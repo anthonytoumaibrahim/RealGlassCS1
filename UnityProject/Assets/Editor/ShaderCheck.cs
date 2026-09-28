@@ -20,7 +20,7 @@ public static class ShaderCheck
         "Assets/RealGlass/GlassUtil.shader",
     };
 
-    private static readonly int[] Passes = { 1, 1 };
+    private static readonly int[] Passes = { 1, 2 };
 
     public static void Run()
     {

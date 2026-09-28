@@ -10,6 +10,11 @@ namespace RealGlass.Glass
     // spelled out so an overload added by a game update cannot make PatchAll fail for every patch
     // in the mod. Parameter names must match the game's: that is how Harmony binds them. Never
     // take __args (CitiesHarmony's Harmony 2.0.4 writes it back over ref arguments).
+    //
+    // A postfix reads each argument as the ORIGINAL LEFT IT, not as the caller passed it: Harmony
+    // copies the original's IL into the patched method, so its starg writes the very slot the
+    // postfix loads (probed with Harmony 2.0.4 on Unity 5.6's Mono, 2026-09-28). Of the methods
+    // below, only the sub-mesh RenderMesh reassigns an argument.
 
     /// <summary>
     /// A near building: when CheckRenderDistance(instance.m_position, info.m_minLodDistance) holds,
@@ -35,8 +40,12 @@ namespace RealGlass.Glass
     }
 
     /// <summary>
-    /// A near sub-building: the game drew subInfo.m_mesh with subInfo.m_material at
-    /// instance.m_dataMatrix1 x matrix, its height put on the ground when followTerrain.
+    /// A near sub-mesh: the game drew subInfo.m_mesh with subInfo.m_material at
+    /// instance.m_dataMatrix1 x matrix, its height put on the ground when followTerrain -- and it
+    /// works that out IN its matrix argument (starg) before drawing, so the matrix this postfix
+    /// reads is already the one the game drew with. Multiplying it by m_dataMatrix1 again (as the
+    /// first version did) drew the glass of every sub-mesh a second building transform away: lone
+    /// blocks of glass across the city, which moved twice as far as their building did.
     /// </summary>
     [HarmonyPatch(typeof(BuildingAI), nameof(BuildingAI.RenderMesh), new[]
     {
@@ -46,17 +55,14 @@ namespace RealGlass.Glass
     public static class RenderSubMeshPatch
     {
         public static void Postfix(RenderManager.CameraInfo cameraInfo, BuildingInfo info, BuildingInfoBase subInfo, Matrix4x4 matrix,
-                                   ref RenderManager.Instance instance, bool followTerrain)
+                                   ref RenderManager.Instance instance)
         {
             if (!GlassDraw.Active || subInfo == null || subInfo.m_mesh == null || info == null)
                 return;
             if (!cameraInfo.CheckRenderDistance(instance.m_position, subInfo.m_minLodDistance))
                 return;
 
-            Matrix4x4 m = instance.m_dataMatrix1 * matrix;
-            if (followTerrain)
-                m.m13 = Singleton<TerrainManager>.instance.SampleDetailHeight(new Vector3(m.m03, m.m13, m.m23));
-            GlassDraw.DrawNear(subInfo.m_mesh, m, subInfo.m_material, info.m_prefabDataLayer, instance.m_dataVector0);
+            GlassDraw.DrawNear(subInfo.m_mesh, matrix, subInfo.m_material, info.m_prefabDataLayer, instance.m_dataVector0);
         }
     }
 

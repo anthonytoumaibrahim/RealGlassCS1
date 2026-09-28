@@ -7,7 +7,9 @@ namespace RealGlass.Glass
     /// The picture the glass reflects: a command buffer on the camera, right after the deferred
     /// final pass (before any glass is drawn, before the fog), copies the lit opaque picture into
     /// _RGScene (mipmapped: rough glass reads a blurrier level) and averages its lower half into the
-    /// 1x1 _RGCity. Engine types only: the GPU preview runs this same file.
+    /// 1x1 _RGCity. Both hold finite light only (GlassUtil says why), and the city colour is blended
+    /// by the shader from a copy of last frame's (_cityPrev), so nothing bad can stay in it.
+    /// Engine types only: the GPU preview runs this same file.
     /// </summary>
     public sealed class GlassScreen
     {
@@ -17,12 +19,16 @@ namespace RealGlass.Glass
         /// <summary>This frame's share of the city colour (the rest is last frame's): ~0.3 s to settle.</summary>
         public const float CityBlend = 0.1f;
 
+        // GlassUtil's passes.
+        private const int PassCity = 0, PassCopy = 1;
+
         private Camera _camera;
         private Material _util;
         private CommandBuffer _buffer;
         private RenderTexture _scene;
-        private RenderTexture _city;
+        private RenderTexture _city, _cityPrev;
         private int _width, _height;
+        private bool _fresh;
 
         public RenderTexture Scene { get { return _scene; } }
         public RenderTexture City { get { return _city; } }
@@ -59,7 +65,10 @@ namespace RealGlass.Glass
 
             Shader.SetGlobalTexture("_RGScene", _scene);
             Shader.SetGlobalTexture("_RGCity", _city);
-            Shader.SetGlobalFloat("_RGCityBlend", CityBlend);
+            // A new target holds whatever its memory held last: its first frame takes this
+            // frame's average alone.
+            Shader.SetGlobalFloat("_RGCityBlend", _fresh ? 1f : CityBlend);
+            _fresh = false;
             Problem = "";
             return true;
         }
@@ -74,15 +83,25 @@ namespace RealGlass.Glass
             _scene.wrapMode = TextureWrapMode.Clamp;
             _scene.Create();
 
-            _city = new RenderTexture(1, 1, 0, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
-            _city.name = "RealGlass city colour";
-            _city.Create();
+            _city = NewCity("RealGlass city colour");
+            _cityPrev = NewCity("RealGlass city colour, last frame");
+            _util.SetTexture("_RGCityPrev", _cityPrev);
 
             _buffer = new CommandBuffer();
             _buffer.name = "RealGlass screen copy";
-            _buffer.Blit(BuiltinRenderTextureType.CameraTarget, _scene);
-            _buffer.Blit(_scene, _city, _util, 0);
+            _buffer.Blit(BuiltinRenderTextureType.CameraTarget, _scene, _util, PassCopy);
+            _buffer.Blit(_city, _cityPrev);
+            _buffer.Blit(_scene, _city, _util, PassCity);
             _camera.AddCommandBuffer(When, _buffer);
+            _fresh = true;
+        }
+
+        private static RenderTexture NewCity(string name)
+        {
+            var rt = new RenderTexture(1, 1, 0, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+            rt.name = name;
+            rt.Create();
+            return rt;
         }
 
         /// <summary>Takes the buffer off the camera and frees the targets (unload, resize, off).</summary>
@@ -96,22 +115,20 @@ namespace RealGlass.Glass
                 _buffer = null;
             }
 
-            if (_scene != null)
-            {
-                _scene.Release();
-                Object.DestroyImmediate(_scene);
-                _scene = null;
-            }
-
-            if (_city != null)
-            {
-                _city.Release();
-                Object.DestroyImmediate(_city);
-                _city = null;
-            }
-
+            Free(ref _scene);
+            Free(ref _city);
+            Free(ref _cityPrev);
             _camera = null;
             _width = _height = 0;
+        }
+
+        private static void Free(ref RenderTexture rt)
+        {
+            if (rt == null)
+                return;
+            rt.Release();
+            Object.DestroyImmediate(rt);
+            rt = null;
         }
     }
 }
