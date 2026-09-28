@@ -10,12 +10,13 @@
 //
 // Which building a pixel belongs to comes from the same place on every tier: its colour index, the
 // building's texel in the game's object colour map (near: _ObjectIndex, middle: _ObjectIndices[],
-// far: the baked second uv). It seeds the building's rooms and finds its lamps (_RGBuildings), so
-// neither changes as a building moves from one tier to the next.
+// far: the baked second uv) -- what the city walk knows its own building by.
 //
 // Queue 2499, the last of the opaque range: Unity draws it forward after the deferred final pass
 // and BEFORE the game's fog ([ImageEffectOpaque]), so the glass is fogged like the rest of the
-// city. What is not glass is discarded; glass is REPLACED (alpha = mask x strength).
+// city. What is not glass is discarded; glass is REPLACED (alpha = mask x strength). Behind it,
+// by day, a dark inside; by night the game's own picture of the window, untouched -- which
+// windows are lit, how brightly and in what colour stays each asset's and the game's.
 Shader "RealGlass/Glass"
 {
     Properties
@@ -80,48 +81,24 @@ Shader "RealGlass/Glass"
                 float2 building : TEXCOORD5;     // the building's colour index: its texel in the object colour map
             };
 
-            // Texture coordinates per metre UP the facade, from the pixel's own derivatives: the
-            // screen-space changes of uv and of the facade position (along, up) give the 2 x 2 map
-            // between them.
-            float2 UvPerMetreUp(float2 uv, float3 P, float3 t)
+            // Texture coordinates per metre ALONG the facade (xy) and UP it (zw), from the pixel's
+            // own derivatives: the screen-space changes of uv and of the facade position (along,
+            // up) give the 2 x 2 map between them.
+            float4 UvPerMetre(float2 uv, float3 P, float3 t)
             {
                 float2 duvx = ddx(uv), duvy = ddy(uv);
                 float3 dPx = ddx(P), dPy = ddy(P);
                 float2 sx = float2(dot(dPx, t), dPx.y);
                 float2 sy = float2(dot(dPy, t), dPy.y);
                 float det = sx.x * sy.y - sy.x * sx.y;
-                return abs(det) > 1e-10 ? (duvx * (-sy.x) + duvy * sx.x) / det : float2(0.0, 0.0);
-            }
-
-            // A tower of plain glass: the asset's texture one storey above and one below is glass
-            // too, lit (or not) exactly alike -- it painted no floors or windows of its own here, so
-            // the rooms' storeys are the only ones it can show (their floor bands, their lights floor
-            // by floor). Anywhere else the asset's own windows lead. Only while a storey is a few
-            // pixels tall: further out the texture is an average and cannot tell.
-            float GlassBox(float2 uv, float illum, float footprint, float4 rect, float2 upUV)
-            {
-                float2 up = upUV * _RGRoom.x;
-                float2 uvUp = uv + up, uvDown = uv - up;
-#if !defined(RG_NEAR)
-                uvUp = clamp(uvUp, rect.xy, rect.xy + rect.zw);
-                uvDown = clamp(uvDown, rect.xy, rect.xy + rect.zw);
-#endif
-                float bUp = tex2D(_ACIMap, uvUp).b;
-                float bDown = tex2D(_ACIMap, uvDown).b;
-                float glassUp = 1.0 - tex2D(_XYSMap, uvUp).z;
-                float glassDown = 1.0 - tex2D(_XYSMap, uvDown).z;
-                float even = 1.0 - saturate((max(abs(bUp - illum), abs(bDown - illum)) - 0.03) * 20.0);
-                float glassy = smoothstep(_RGMask.x - 0.1, _RGMask.x, min(glassUp, glassDown));
-                float sure = saturate(_RGRoom.x / (footprint * 4.0) - 0.5);
-                return even * glassy * sure * step(1e-14, dot(up, up));
+                return abs(det) > 1e-10 ? float4(duvx * sy.y - duvy * sx.y, duvy * sx.x - duvx * sy.x) / det : float4(0.0, 0.0, 0.0, 0.0);
             }
 
 #if defined(RG_NEAR)
             // The window the asset painted round this pixel: where its glass stops above and below,
             // looked for on a fixed grid of world heights (so every pixel of one window finds the
-            // same edges), up to 4 m each way. x the room's floor, y its ceiling (world y); 0, 0 when
-            // none was found and the storeys count up from the base. A tall window is glass from
-            // floor to ceiling; a short one sits on a sill.
+            // same edges), _RGBudget.w steps (0.25 m) each way. (bottom, top), world y; 0, 0 when
+            // none was found (or a window under 0.9 m or over 7 m: not a pane).
             float2 PaintedWindow(float2 uv, float3 P, float2 upUV)
             {
                 const float stepM = 0.25;
@@ -130,8 +107,10 @@ Shader "RealGlass/Glass"
                 float top = 0.0, bottom = 0.0;
                 bool up = false, down = false;
                 [loop]
-                for (int k = 1; k <= 16; k++)
+                for (int k = 1; k <= 32; k++)
                 {
+                    if (k > _RGBudget.w)
+                        break;
                     if (!up)
                     {
                         float yk = y0 + k * stepM;
@@ -156,14 +135,50 @@ Shader "RealGlass/Glass"
                         break;
                 }
 
-                float2 room = float2(0.0, 0.0);
                 float h = top - bottom;
-                if (up && down && h > 0.9 && h < 7.0)
+                return up && down && h > 0.9 && h < 7.0 ? float2(bottom, top) : float2(0.0, 0.0);
+            }
+
+            // The same across: where the asset's glass stops left and right of this pixel along the
+            // facade (x = metres along t), on a fixed 0.1 m grid (painted mullions are thin: 0.25 m
+            // steps walked over them), _RGBudget2.x steps each way. (left, right), or 0, 0 when
+            // either side has none within reach.
+            float2 PaintedPaneSpan(float2 uv, float x, float2 alongUV)
+            {
+                const float stepM = 0.1;
+                float x0 = floor(x / stepM) * stepM;
+                float threshold = _RGMask.x - 0.08;
+                float right = 0.0, left = 0.0;
+                bool r = false, l = false;
+                [loop]
+                for (int k = 1; k <= 32; k++)
                 {
-                    float floorY = h >= 2.2 ? bottom : bottom - 0.9;
-                    room = float2(floorY, h >= 2.2 ? top : max(top + 0.3, floorY + 2.6));
+                    if (k > _RGBudget2.x)
+                        break;
+                    if (!r)
+                    {
+                        float xk = x0 + k * stepM;
+                        float spec = 1.0 - tex2Dlod(_XYSMap, float4(uv + alongUV * (xk - x), 0.0, 0.0)).z;
+                        if (spec < threshold)
+                        {
+                            right = xk - stepM * 0.5;
+                            r = true;
+                        }
+                    }
+                    if (!l)
+                    {
+                        float xk = x0 - (k - 1) * stepM;
+                        float spec = 1.0 - tex2Dlod(_XYSMap, float4(uv + alongUV * (xk - x), 0.0, 0.0)).z;
+                        if (spec < threshold)
+                        {
+                            left = xk + stepM * 0.5;
+                            l = true;
+                        }
+                    }
+                    if (r && l)
+                        break;
                 }
-                return room;
+                return r && l && right - left > 0.4 ? float2(left, right) : float2(0.0, 0.0);
             }
 #endif
 
@@ -256,19 +271,23 @@ Shader "RealGlass/Glass"
                 float footprint = max(length(fwidth(P)), 1e-4);
                 float3 t = FacadeTangent(n);
 
-                // This building: its lamps, what it is, whether it is a plain glass box, and the
-                // window it painted round this pixel. (The derivatives outside every branch.)
-                float2 upUV = UvPerMetreUp(uv, P, t);
-                float seed = BuildingSeed(i.building);
+                // Close up, the pane the building painted round this pixel: its top and bottom, then
+                // its sides. (The derivatives outside every branch.)
+                float4 uvPerMetre = UvPerMetre(uv, P, t);
                 float F0 = _RGGlass.x;
                 float clarity = _RGGlass.z;
-                float warmth = BuildingWarmth(i.building, seed);
-                float use = BuildingUse(i.building, seed);
-                float box = GlassBox(uv, aci.b, footprint, i.rect, upUV);
-                float2 window = float2(0.0, 0.0);
+                float4 painted = float4(0.0, 0.0, 0.0, 0.0);   // the painted pane: left, right (along t), bottom, top
 #if defined(RG_NEAR)
-                if (_RGFeatures.z > 0.5 && _RGRoom.w > 0.5 && box < 0.5 && footprint < 1.0)
-                    window = PaintedWindow(uv, P, upUV);
+                if (_RGBudget2.x > 0.5 && footprint < 0.5)   // where a pane is a few pixels wide
+                {
+                    float2 glassSpan = PaintedWindow(uv, P, uvPerMetre.zw);
+                    if (glassSpan.y > glassSpan.x)
+                    {
+                        float2 across = PaintedPaneSpan(uv, dot(P, t), uvPerMetre.xy);
+                        if (across.y > across.x)
+                            painted = float4(across, glassSpan);
+                    }
+                }
 #endif
 
                 // The glass's colour: the chosen glass, and as much of the building's own painted
@@ -284,7 +303,7 @@ Shader "RealGlass/Glass"
                 coat /= max(Luma(coat), 0.05);
 
                 float2 paneCell;
-                float3 np = PaneNormal(n, t, P, baseY, footprint, paneCell);
+                float3 np = PaneNormal(n, t, P, baseY, footprint, painted, paneCell);
                 float facing = dot(np, -V);
                 if (facing < 0.01)
                     np = normalize(np + V * (facing - 0.01));   // a bent pane never faces away
@@ -327,18 +346,35 @@ Shader "RealGlass/Glass"
                     {
                         // How many pixels a storey of it covers in the reflection: a storey at the
                         // ray's whole length, over the pixel's angle, blurred by the roughness.
-                        float span = _RGRoom.x * dist / max((dist + tCity) * footprint, 1e-4) / (1.0 + rough * 8.0);
+                        float span = _RGPane2.z * dist / max((dist + tCity) * footprint, 1e-4) / (1.0 + rough * 8.0);
                         float3 hitPoint = cityOrigin + R * tCity;
-                        // The building met, as the screen shows it there (its colours, its haze),
-                        // blurred; the city's average where it is off screen.
+
+                        // A stand-in: the building as the screen shows it there (its colours, its
+                        // haze), blurred; the city's average where it is off screen.
                         bool finishedPicture = _RGFinished.x > 0.5;
                         float2 hitScreen;
                         float3 seen = tex2Dlod(_RGCity, float4(0.5, 0.5, 0.0, 0.0)).rgb;
                         if (ScreenUV(hitPoint, finishedPicture, hitScreen) && all(hitScreen > 0.0) && all(hitScreen < 1.0))
                             seen = MirroredPicture(hitScreen, 2.5 + rough * 3.0, finishedPicture);
-                        fallback = NeighbourRadiance(hitPoint, R, hitN, hitId, span, rough, seen);
+                        fallback = NeighbourRadiance(hitPoint, R, hitN, span, rough, seen);
                         cityState = 1.0;
                     }
+                }
+
+                if (_RGDebug.x > 8.5 && _RGDebug.x < 9.5)
+                {
+                    // 9: the hierarchical depth at level _RGDebug.y, its nearest in grey bands every
+                    // 50 m; red where the level does not hold the depth texture here between its
+                    // nearest and farthest (level 0: the depth itself), blue where there is none.
+                    if (_RGHiZInfo.w < 0.5)
+                        return float4(0.1, 0.2, 1.0, 1.0);
+                    float lvl = min(_RGDebug.y, _RGHiZInfo.x - 1.0);
+                    float2 pix = suv * _RGHiZInfo.yz;
+                    float2 hzr = HiZRange(floor(pix / exp2(lvl)), lvl);
+                    float szd = -SceneZ(suv * _ScreenParams.xy);
+                    float tol = max(0.05, szd * 0.002);
+                    bool wrong = hzr.x > szd + tol || hzr.y < szd - tol;
+                    return float4(frac(hzr.x / 50.0).xxx * (wrong ? float3(1.0, 0.1, 0.1) : float3(1.0, 1.0, 1.0)), 1.0);
                 }
 
                 if (_RGDebug.x > 1.5 && _RGDebug.x < 6.5)
@@ -351,13 +387,8 @@ Shader "RealGlass/Glass"
                         float own2 = -mul(UNITY_MATRIX_V, float4(P, 1.0)).z;
                         return float4(frac(sz / 50.0).xxx * (abs(sz - own2) > 2.0 ? float3(1.0, 0.2, 0.2) : float3(1.0, 1.0, 1.0)), 1.0);
                     }
-                    if (_RGDebug.x < 3.5)
-                        return float4(gamePixel, 1.0);
                     if (_RGDebug.x < 4.5)
-                    {
-                        // 4: which buildings are plain glass boxes (white).
-                        return float4(lerp(float3(0.05, 0.05, 0.08), float3(1.0, 1.0, 1.0), box), 1.0);
-                    }
+                        return float4(gamePixel, 1.0);   // 3 (and 4, which was the plain-glass towers): the copy
                     if (_RGDebug.x < 5.5)
                     {
                         // 5: the finished picture where this pane's point was last frame.
@@ -378,7 +409,7 @@ Shader "RealGlass/Glass"
                     float2 hitUV;
                     float hitDistance;
                     bool clipped;
-                    if (TraceScreenRay(csOrig, csDir, Ign(i.pos.xy), hitUV, hitDistance, clipped))
+                    if (TraceReflection(csOrig, csDir, Ign(i.pos.xy), hitUV, hitDistance, clipped))
                     {
                         float2 e = min(hitUV, 1.0 - hitUV);
                         float edge = saturate(min(e.x, e.y) / max(_RGRefl.w, 1e-3));
@@ -401,42 +432,25 @@ Shader "RealGlass/Glass"
                 if (_RGDebug.x > 0.5 && _RGDebug.x < 1.5)
                     return float4(traceState == 1.0 ? float3(0.0, 1.0, 0.0) : (traceState == 2.0 ? float3(1.0, 0.0, 0.0) : float3(0.0, 0.2, 1.0)), 1.0);
 
-                // Through the glass.
-                float3 dayRoom = float3(0.0, 0.0, 0.0);
-                float3 nightRoom = gamePixel;
-                float roomsOn = _RGRoom.w * saturate(1.0 - abs(n.y) * 2.0);
-                if (roomsOn > 0.0)
+                if (_RGDebug.x > 7.5 && _RGDebug.x < 8.5)
                 {
-                    float3 d, nt;
-                    RoomRadiance(P, V, n, t, baseY, footprint, paneCell, gamePixel, seed, warmth, use, box, window, d, nt);
-                    dayRoom = d * roomsOn;
-                    nightRoom = lerp(gamePixel * _RGRoom2.w, nt, roomsOn);
-                    if (_RGDebug.x > 6.5)
-                    {
-                        // 7: the pictured rooms by day, lit alike; 8: where the painted window was
-                        // found (green, the room's floor and ceiling from it) and where not (red).
-                        if (_RGDebug.x < 7.5)
-                            return float4(d / max(_RGRoom2.x * max(Luma(_RGAmbSky.rgb), 0.05), 1e-3) * 0.5, 1.0);
-                        float found = window.y > window.x + 0.5 ? 1.0 : 0.0;
-                        float edge = found * step(frac((P.y - window.x) / max(window.y - window.x, 0.5) + 0.02), 0.04);
-                        return float4(lerp(float3(0.8, 0.1, 0.1), float3(0.1, 0.8, 0.2), found) + edge, 1.0);
-                    }
+                    // 8: the painted pane found round this pixel (green, its border yellow), or not
+                    // (red: the panes' own grid).
+                    float along = dot(P, t);
+                    float found = painted.y > painted.x ? 1.0 : 0.0;
+                    float border = found * (min(min(along - painted.x, painted.y - along), min(P.y - painted.z, painted.w - P.y)) < 0.1 ? 1.0 : 0.0);
+                    return float4(lerp(lerp(float3(0.8, 0.1, 0.1), float3(0.1, 0.8, 0.2), found), float3(1.0, 0.9, 0.1), border), 1.0);
                 }
-                else
-                {
-                    dayRoom = _RGAmbSky.rgb * 0.12 * _RGRoom2.x;
-                    nightRoom = gamePixel * _RGRoom2.w;
-                }
-                float daylight = _RGLight.x;
-                // By night the game's lit windows are already painted as seen from outside: they
-                // keep their brightness and take only a hint of the glass's colour.
-                float3 nightFilter = lerp(float3(1.0, 1.0, 1.0), tint, 0.3);
-                nightFilter /= max(Luma(nightFilter), 0.05);
-                float3 through = dayRoom * (clarity * filter) * daylight
-                               + nightRoom * nightFilter * (1.0 - daylight);
 
+                // Through the glass. By day the inside of a building, dark (a share of the sky's
+                // light, GlassUniforms.InsideByDay), seen through the glass's clarity and colour. By
+                // night the game's own picture of this window, untouched: which windows are lit, how
+                // brightly and in what colour is each asset's own night texture and the game's
+                // timing -- nothing of ours. The reflections go on top either way.
+                float daylight = _RGLight.x;
+                float3 inside = _RGAmbSky.rgb * _RGLight.y * (clarity * filter) * (1.0 - Fs);
                 float3 L = F * refl * _RGRefl.x
-                         + (1.0 - Fs) * through
+                         + lerp(gamePixel, inside, daylight)
                          + SunGlint(np, V, Fs, rough) * (F / max(Fs, 1e-4));
 
                 return float4(L, mask * _RGGlass.w);

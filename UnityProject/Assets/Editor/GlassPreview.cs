@@ -29,8 +29,11 @@ using Debug = UnityEngine.Debug;
 ///   RG_OUT        directory for the frames (rg-[row]-[col].png)
 ///   RG_W, RG_H    frame size
 ///   RG_VIEWS      "aerial,steep,street,low,close,night,nightclose,nightstreet"  one row each
-///   RG_VARIANTS   "vanilla|glass|glass:Trace=0;Rooms=0"  one column each; "glass:" takes
-///                 GlassParams field overrides (bool 0/1, numbers in the settings' units)
+///   RG_VARIANTS   "vanilla|glass|glass:Trace=0;Neighbours=0"  one column each; "glass:" takes
+///                 GlassParams field overrides (bool 0/1, numbers in the settings' units), and
+///                 the preview's own: Debug=n (the shader's check views), Level=n (view 9's
+///                 level), Tier=near|lod|group, Budget=0..3 (the GlassQuality tier), HiZ=0 (the
+///                 tier without the depth pyramid), Q.Field=n (one GlassQuality field)
 ///   RG_SUN        the sun's intensity by day (1.3)
 ///   RG_EXPOSURE   the picture's exposure (0.6 by day; night x6)
 /// Every frame logs "RG FRAME row=.. col=.. view=.. variant=.. file=.. | ..." with its mean colour.
@@ -42,8 +45,8 @@ public static class GlassPreview
     private const string StandInPath = "Assets/Editor/PreviewBuilding.shader";
     private const string CloudsPath = "Assets/Editor/PreviewClouds.shader";
 
-    /// <summary>The variant's "Debug=n": the shader's check view (0 = the picture).</summary>
-    private static float _debug;
+    /// <summary>The variant's "Debug=n": the shader's check view (0 = the picture); "Level=n": the level view 9 shows.</summary>
+    private static float _debug, _debugLevel;
 
     /// <summary>The game's object colour map (RenderManager.OBJECT_COLORMAP_WIDTH x HEIGHT in the game: 512 x 256).</summary>
     private const int ColorMapWidth = 512, ColorMapHeight = 256;
@@ -57,9 +60,6 @@ public static class GlassPreview
 
         /// <summary>Its colour index, as RenderManager.GetColorLocation(id) makes it: its texel in the colour map.</summary>
         public Vector4 ObjectIndex;
-
-        /// <summary>Its lamps' warmth (BuildingLights: 0.2 offices, 0.65 shops, 0.9 homes).</summary>
-        public float Warmth;
 
         /// <summary>The middle tier's test: 8 copies of this building's LOD mesh (uv in the atlas), as BuildingInfoBase.InitMeshData makes them.</summary>
         public Mesh Combined8;
@@ -90,21 +90,25 @@ public static class GlassPreview
         public Material GlassLod, GlassGroup;
         public Mesh Baked;
 
-        /// <summary>Every building's lamps, laid out as the colour map (the mod's BuildingLights, same calls).</summary>
-        public Texture2D Lights;
-
         /// <summary>The stand-in for Volumetric Weather's cloud volume (PreviewClouds.shader), found by its name.</summary>
         public GameObject Clouds;
 
         /// <summary>The city from above (the mod's CityMap, same file): every tower as its box.</summary>
         public CityMap City = new CityMap();
-
-        /// <summary>The pictured rooms (RoomBaker.cs's atlas, as the bundle ships it).</summary>
-        public Texture2D Rooms;
     }
 
     /// <summary>The variant's "Tier=near|lod|group": which of the game's three paths the glass is drawn through.</summary>
     private static string _tier = "near";
+
+    /// <summary>The variant's "Budget=0..3": the GlassQuality tier (the mod runs Ultra).</summary>
+    private static int _quality = GlassQuality.Ultra;
+
+    /// <summary>The variant's "HiZ=0": the tier's budget without the hierarchical depth (the plain trace).</summary>
+    private static bool _hizOff;
+
+    /// <summary>The variant's "Q.Field=n": the tier's budget with that GlassQuality field changed (Q.PaneSearchSteps=0...).</summary>
+    private static readonly List<KeyValuePair<string, int>> _budgetOverrides = new List<KeyValuePair<string, int>>();
+
 
     public static void Render()
     {
@@ -237,11 +241,8 @@ public static class GlassPreview
 
         BuildCity(s);
         BuildLodTiers(s);
-        BuildLights(s);
         BuildCityMap(s);
-        s.Rooms = AssetDatabase.LoadAssetAtPath<Texture2D>(RoomBaker.AtlasPath);
-        Debug.Log("RG PREVIEW: city heights " + s.City.LiveCount + " buildings, highest roof " + s.City.LiveTop.ToString("F0") +
-                  " m; room pictures " + (s.Rooms != null ? s.Rooms.width + "x" + s.Rooms.height + " " + s.Rooms.format : "MISSING"));
+        Debug.Log("RG PREVIEW: city heights " + s.City.LiveCount + " buildings, highest roof " + s.City.LiveTop.ToString("F0") + " m");
 
         // Volumetric Weather's cloud volume, as the mod finds it: a mesh renderer by that name, a
         // box round the camera with a Transparent+100 material and _UseDepth.
@@ -251,26 +252,6 @@ public static class GlassPreview
         s.Clouds.GetComponent<MeshRenderer>().sharedMaterial = new Material(Load(CloudsPath));
         s.Clouds.transform.localScale = Vector3.one * 9000f;
         return s;
-    }
-
-    /// <summary>
-    /// The mod's BuildingLights texture for the preview's city, made with the same engine calls
-    /// (Texture2D RGBA32 linear, SetPixels32, Apply): r the lamps' warmth, a 255.
-    /// </summary>
-    private static void BuildLights(Scene s)
-    {
-        var pixels = new Color32[ColorMapWidth * ColorMapHeight];
-        for (int i = 0; i < s.Buildings.Count; i++)
-        {
-            int id = i + 1;
-            pixels[id] = new Color32((byte)Mathf.RoundToInt(s.Buildings[i].Warmth * 255f), 0, 0, 255);
-        }
-
-        s.Lights = new Texture2D(ColorMapWidth, ColorMapHeight, TextureFormat.RGBA32, false, true);
-        s.Lights.filterMode = FilterMode.Point;
-        s.Lights.wrapMode = TextureWrapMode.Clamp;
-        s.Lights.SetPixels32(pixels);
-        s.Lights.Apply(false, false);
     }
 
     /// <summary>
@@ -457,17 +438,14 @@ public static class GlassPreview
                     Color glassColour = glassColours[rnd.Next(glassColours.Length)];
 
                     // Off the random stream (the city stays the same): its id, whether a curtain
-                    // wall is a plain glass box (no floors painted in, lit all alike), and what it
-                    // is -- offices, shops or homes -- for its lamps.
+                    // wall is a plain glass box (no floors painted in, lit all alike).
                     int id = s.Buildings.Count + 1;
                     if (kind == "curtain" && Hash(id * 3.7f, 11.3f) < 0.45f)
                         kind = "glassbox";
-                    float use = Hash(id * 5.1f, 2.9f);
 
                     Building b = new Building();
                     b.Kind = kind;
                     b.ObjectIndex = ColorIndex(id);
-                    b.Warmth = tower ? (use < 0.65f ? 0.2f : (use < 0.85f ? 0.9f : 0.65f)) : (use < 0.6f ? 0.9f : 0.65f);
                     b.Mesh = BoxMesh(w, h, w);
                     b.Matrix = Matrix4x4.TRS(new Vector3(cx + ox, 0f, cz + oz), Quaternion.Euler(0f, turn, 0f), Vector3.one);
                     MakeFacade(kind, w, h, glassColour, rnd.Next(), out b.Main, out b.Xys, out b.Aci);
@@ -784,10 +762,14 @@ public static class GlassPreview
         bool drawGlass = variant.StartsWith("glass", StringComparison.OrdinalIgnoreCase);
         GlassParams p = GlassParams.Default();
         _debug = 0f;
+        _debugLevel = 0f;
         _tier = "near";
+        _quality = GlassQuality.Ultra;
+        _hizOff = false;
+        _budgetOverrides.Clear();
         if (drawGlass)
             p = Override(p, variant);
-        Shader.SetGlobalVector("_RGDebug", new Vector4(_debug, 0f, 0f, 0f));
+        Shader.SetGlobalVector("_RGDebug", new Vector4(_debug, _debugLevel, 0f, 0f));
         GlassFrame f = new GlassFrame();
         f.SunX = toSun.x; f.SunY = toSun.y; f.SunZ = toSun.z;
         Color sunLin = s.Sun.color.linear * s.Sun.intensity;
@@ -811,19 +793,25 @@ public static class GlassPreview
         // static picture); the live sky proper carries them.
         s.SkyCube.Update(true, 128, 6, null, camPos, p.SkySource == 0 && p.SkyClouds);
         f.CubeMips = s.SkyCube.Mips;
-        f.RoomAtlas = s.Rooms != null;
-        if (s.Rooms != null)
-            Shader.SetGlobalTexture("_RGRooms", s.Rooms);
         s.City.Bind(p.Neighbours);
-        GlassUniforms.Apply(p, f);
-        Shader.SetGlobalTexture("_RGBuildings", s.Lights);
+        GlassQuality q = GlassQuality.ForTier(_quality);
+        object boxedQ = q;
+        foreach (KeyValuePair<string, int> o in _budgetOverrides)
+        {
+            FieldInfo qf = typeof(GlassQuality).GetField(o.Key, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
+            if (qf == null)
+                throw new Exception("GlassQuality has no field '" + o.Key + "'");
+            qf.SetValue(boxedQ, o.Value);
+        }
+        q = (GlassQuality)boxedQ;
+        GlassUniforms.Apply(p, f, q);
         bool screenOk = false;
 
         // Two renders: the first leaves the finished picture and the camera's matrices for the
         // second, which reads them as the mod's glass reads last frame's.
         for (int pass = 0; pass < 2; pass++)
         {
-            screenOk = s.Screen.Update(s.Camera, s.Util, p.Finished);
+            screenOk = s.Screen.Update(s.Camera, s.Util, p.Finished, _hizOff ? 0 : q.HiZLevels);
             DrawCity(s, drawGlass);
             s.Camera.Render();
         }
@@ -837,7 +825,8 @@ public static class GlassPreview
         info = "mean " + Fmt(mean) + " | screen copy " + (screenOk ? s.Screen.Width + "x" + s.Screen.Height : "FAILED " + s.Screen.Problem) +
                " | sky cube " + (p.SkySource == 0 ? s.SkyCube.FacesDone + " faces, " + s.SkyCube.Mips + " mips" + (s.SkyCube.Problem.Length > 0 ? " " + s.SkyCube.Problem : "") : "game map") +
                " | stride " + GlassUniforms.Stride(p.Quality, s.Height).ToString("0", CultureInfo.InvariantCulture) + " x " +
-               GlassUniforms.StepCount(p.Quality).ToString("0", CultureInfo.InvariantCulture);
+               GlassUniforms.StepCount(p.Quality).ToString("0", CultureInfo.InvariantCulture) +
+               " | budget " + q + " | hi-z " + s.Screen.HiZLevels + " levels";
         return pixels;
     }
 
@@ -915,9 +904,30 @@ public static class GlassPreview
                 _debug = float.Parse(kv[1].Trim(), CultureInfo.InvariantCulture);
                 continue;
             }
+            if (kv[0].Trim().Equals("Level", StringComparison.OrdinalIgnoreCase))
+            {
+                _debugLevel = float.Parse(kv[1].Trim(), CultureInfo.InvariantCulture);
+                continue;
+            }
+            if (kv[0].Trim().Equals("HiZ", StringComparison.OrdinalIgnoreCase))
+            {
+                _hizOff = kv[1].Trim() == "0";
+                continue;
+            }
+            if (kv[0].Trim().StartsWith("Q.", StringComparison.OrdinalIgnoreCase))
+            {
+                _budgetOverrides.Add(new KeyValuePair<string, int>(kv[0].Trim().Substring(2), int.Parse(kv[1].Trim(), CultureInfo.InvariantCulture)));
+                continue;
+            }
             if (kv[0].Trim().Equals("Tier", StringComparison.OrdinalIgnoreCase))
             {
                 _tier = kv[1].Trim().ToLowerInvariant();
+                continue;
+            }
+            if (kv[0].Trim().Equals("Budget", StringComparison.OrdinalIgnoreCase))
+            {
+                // Not a setting: the GlassQuality tier (GlassParams.Quality is the screen trace's).
+                _quality = int.Parse(kv[1].Trim(), CultureInfo.InvariantCulture);
                 continue;
             }
             FieldInfo field = typeof(GlassParams).GetField(kv[0].Trim(), BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);

@@ -32,7 +32,7 @@ namespace RealGlass
 
     /// <summary>
     /// The glass presets: kinds of glass real towers are clad in, with the numbers their makers
-    /// publish -- visible light transmittance (how much of the room you see: Clarity) and exterior
+    /// publish -- visible light transmittance (how much light gets through: Clarity) and exterior
     /// visible light reflectance (how much of the sky and the city it mirrors head-on:
     /// Reflectivity) -- and the colour the light takes going through.
     /// </summary>

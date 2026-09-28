@@ -31,7 +31,7 @@ namespace RealGlass.UI
     }
 
     /// <summary>Which tab of the in-game (F7) panel a row appears on. None = not in it.</summary>
-    public enum PanelPage { None, Glass, Reflections, Panes, Interiors, Rendering }
+    public enum PanelPage { None, Glass, Reflections, Panes, Rendering }
 
     /// <summary>General = the game's mod options page (no tabs). None = not on it.</summary>
     public enum OptionsPage { None, General }
@@ -390,7 +390,6 @@ namespace RealGlass.UI
             Log.Msg("settings catalog: " + Rows.Count + " rows | panel Glass=" + CountForPanel(PanelPage.Glass) +
                     " Reflections=" + CountForPanel(PanelPage.Reflections) +
                     " Panes=" + CountForPanel(PanelPage.Panes) +
-                    " Interiors=" + CountForPanel(PanelPage.Interiors) +
                     " Rendering=" + CountForPanel(PanelPage.Rendering) +
                     " | options page=" + CountForOptions(OptionsPage.General) +
                     " | rows with no UI=" + nowhere);
@@ -620,11 +619,6 @@ namespace RealGlass.UI
             return GlassOn() && (Settings.SsrEnabled == null || Settings.SsrEnabled.value);
         }
 
-        private static bool InteriorsOn()
-        {
-            return GlassOn() && (Settings.InteriorEnabled == null || Settings.InteriorEnabled.value);
-        }
-
         private static bool LiveSkyOn()
         {
             return GlassOn() && (Settings.SkyReflection == null || Settings.SkyReflection.value == 0);
@@ -646,7 +640,6 @@ namespace RealGlass.UI
             BuildGlass();
             BuildReflections();
             BuildPanes();
-            BuildInteriors();
             BuildRendering();
             BuildGeneralOptions();
             BuildHidden();
@@ -980,6 +973,20 @@ namespace RealGlass.UI
                 AfterChange = Changed,
             });
 
+            // A pane is one storey tall where the building painted no window of its own, and the
+            // buildings mirrored where the screen cannot show them have their floors this far apart.
+            Add(new Row
+            {
+                Kind = RowKind.Value,
+                Panel = PanelPage.Panes,
+                Float = Settings.FloorHeight,
+                DefaultFloat = Settings.Defaults.FloorHeight,
+                Min = 2.8f, Max = 6f, Step = 0.1f,
+                Format = Metres,
+                Enabled = GlassOn,
+                AfterChange = Changed,
+            });
+
             Add(new Row
             {
                 Kind = RowKind.Percent,
@@ -1023,125 +1030,16 @@ namespace RealGlass.UI
                 Enabled = GlassOn,
                 AfterChange = State("panes follow the weather", OnOff(Settings.PaneWeather)),
             });
-        }
 
-        /// <summary>F7 -> Interiors: the rooms behind the glass.</summary>
-        private static void BuildInteriors()
-        {
             Add(new Row
             {
                 Kind = RowKind.Toggle,
-                Panel = PanelPage.Interiors,
-                Bool = Settings.InteriorEnabled,
-                DefaultBool = Settings.Defaults.InteriorEnabled,
+                Panel = PanelPage.Panes,
+                Bool = Settings.PanesFollowWindows,
+                DefaultBool = Settings.Defaults.PanesFollowWindows,
                 Enabled = GlassOn,
-                AfterChange = State("rooms behind the glass", OnOff(Settings.InteriorEnabled)),
+                AfterChange = State("panes follow the painted windows", OnOff(Settings.PanesFollowWindows)),
             });
-
-            Add(new Row
-            {
-                Kind = RowKind.Value,
-                Panel = PanelPage.Interiors,
-                Group = "Rooms",
-                Float = Settings.FloorHeight,
-                DefaultFloat = Settings.Defaults.FloorHeight,
-                Min = 2.8f, Max = 6f, Step = 0.1f,
-                Format = Metres,
-                Enabled = InteriorsOn,
-                AfterChange = Changed,
-            });
-
-            Add(new Row
-            {
-                Kind = RowKind.Value,
-                Panel = PanelPage.Interiors,
-                Float = Settings.RoomWidth,
-                DefaultFloat = Settings.Defaults.RoomWidth,
-                Min = 3f, Max = 15f, Step = 0.5f,
-                Format = Metres,
-                Enabled = InteriorsOn,
-                AfterChange = Changed,
-            });
-
-            Add(new Row
-            {
-                Kind = RowKind.Value,
-                Panel = PanelPage.Interiors,
-                Float = Settings.RoomDepth,
-                DefaultFloat = Settings.Defaults.RoomDepth,
-                Min = 3f, Max = 20f, Step = 0.5f,
-                Format = Metres,
-                Enabled = InteriorsOn,
-                AfterChange = Changed,
-            });
-
-            Add(new Row
-            {
-                Kind = RowKind.Value,
-                Panel = PanelPage.Interiors,
-                Float = Settings.FloorBand,
-                DefaultFloat = Settings.Defaults.FloorBand,
-                Min = 0f, Max = 2f, Step = 0.1f,
-                Format = Metres,
-                Enabled = InteriorsOn,
-                AfterChange = Changed,
-            });
-
-            Add(new Row
-            {
-                Kind = RowKind.Toggle,
-                Panel = PanelPage.Interiors,
-                Bool = Settings.RoomPictures,
-                DefaultBool = Settings.Defaults.RoomPictures,
-                Enabled = InteriorsOn,
-                AfterChange = State("furnished rooms (pictures)", OnOff(Settings.RoomPictures)),
-            });
-
-            Add(new Row
-            {
-                Kind = RowKind.Toggle,
-                Panel = PanelPage.Interiors,
-                Bool = Settings.RoomsFollowWindows,
-                DefaultBool = Settings.Defaults.RoomsFollowWindows,
-                Enabled = InteriorsOn,
-                AfterChange = State("rooms follow the painted windows", OnOff(Settings.RoomsFollowWindows)),
-            });
-
-            Add(new Row
-            {
-                Kind = RowKind.Percent,
-                Panel = PanelPage.Interiors,
-                Group = "Day",
-                Float = Settings.InteriorBrightness,
-                DefaultFloat = Settings.Defaults.InteriorBrightness,
-                Min = 0f, Max = 300f, Step = 5f,
-                Enabled = InteriorsOn,
-                AfterChange = Changed,
-            });
-
-            Add(new Row
-            {
-                Kind = RowKind.Percent,
-                Panel = PanelPage.Interiors,
-                Float = Settings.Blinds,
-                DefaultFloat = Settings.Defaults.Blinds,
-                Min = 0f, Max = 100f, Step = 1f,
-                Enabled = InteriorsOn,
-                AfterChange = Changed,
-            });
-
-            Add(new Row
-            {
-                Kind = RowKind.Percent,
-                Panel = PanelPage.Interiors,
-                Float = Settings.Furniture,
-                DefaultFloat = Settings.Defaults.Furniture,
-                Min = 0f, Max = 100f, Step = 1f,
-                Enabled = InteriorsOn,
-                AfterChange = Changed,
-            });
-            // At night the lit rooms are at full, with no rows (GlassUniforms.NightRooms): the
-            // author found anything less wrong (2026-09-28).
         }
 
         /// <summary>F7 -> Rendering: how far the glass reaches, and what the live sky costs. The machine, not the look.</summary>

@@ -53,7 +53,6 @@
   <String key="Tab.Glass">Glass</String>
   <String key="Tab.Reflections">Reflections</String>
   <String key="Tab.Panes">Panes</String>
-  <String key="Tab.Interiors">Interiors</String>
   <String key="Tab.Rendering">Rendering</String>
 
   <String key="Key.Press">Press a key</String>
@@ -102,7 +101,7 @@
   <String key="GlassEdgeSilver.Tooltip">Seen edge-on, coated glass loses its colour and turns silvery.</String>
 
   <String key="GlassClarity.Label">Clarity</String>
-  <String key="GlassClarity.Tooltip">How much light gets through: how much of the rooms you see.</String>
+  <String key="GlassClarity.Tooltip">How much light gets through: lower, and the glass looks darker.</String>
 
   <String key="GlassStrength.Label">Strength</String>
   <String key="GlassStrength.Tooltip">0%: the game's own windows. 100%: all new glass.</String>
@@ -170,6 +169,9 @@
   <String key="PaneWidth.Label">Pane width</String>
   <String key="PaneWidth.Tooltip">Each pane bends what it mirrors on its own.</String>
 
+  <String key="FloorHeight.Label">Storey height</String>
+  <String key="FloorHeight.Tooltip">A pane is a storey tall; so are the floors of mirrored buildings.</String>
+
   <String key="Group.Distortion">How the panes bend the reflections</String>
 
   <String key="PanePillow.Label">Cushioned panes</String>
@@ -184,41 +186,8 @@
   <String key="PaneWeather.Label">Panes follow the weather</String>
   <String key="PaneWeather.Tooltip">They bulge on hot days and sink on cold ones.</String>
 
-  <!-- ==================== F7 panel: Interiors ==================== -->
-
-  <String key="InteriorEnabled.Label">Rooms behind the glass</String>
-  <String key="InteriorEnabled.Tooltip">Floors, ceilings and furniture seen through the windows.</String>
-
-  <String key="Group.Rooms">The rooms</String>
-
-  <String key="FloorHeight.Label">Floor height</String>
-  <String key="FloorHeight.Tooltip">From one floor to the next. Offices: about 3.8 m.</String>
-
-  <String key="RoomWidth.Label">Room width</String>
-  <String key="RoomWidth.Tooltip">How wide a room is along the facade.</String>
-
-  <String key="RoomDepth.Label">Room depth</String>
-  <String key="RoomDepth.Tooltip">How far back a room goes.</String>
-
-  <String key="FloorBand.Label">Floor bands</String>
-  <String key="FloorBand.Tooltip">The dark band of floor between storeys, on plain glass towers.</String>
-
-  <String key="RoomPictures.Label">Furnished rooms</String>
-  <String key="RoomPictures.Tooltip">Desks, sofas, shelves, lamps and people instead of plain colours.</String>
-
-  <String key="RoomsFollowWindows.Label">Rooms follow the windows</String>
-  <String key="RoomsFollowWindows.Tooltip">Each room lines up with the window the building painted.</String>
-
-  <String key="Group.Day">By day</String>
-
-  <String key="InteriorBrightness.Label">Room brightness</String>
-  <String key="InteriorBrightness.Tooltip">How bright the rooms are by day.</String>
-
-  <String key="Blinds.Label">Blinds down</String>
-  <String key="Blinds.Tooltip">The share of windows with their blinds lowered.</String>
-
-  <String key="Furniture.Label">Furniture</String>
-  <String key="Furniture.Tooltip">How furnished the rooms are.</String>
+  <String key="PanesFollowWindows.Label">Panes follow the windows</String>
+  <String key="PanesFollowWindows.Tooltip">Up close, each pane fits a window the building painted.</String>
 
   <!-- ==================== F7 panel: Rendering ==================== -->
 

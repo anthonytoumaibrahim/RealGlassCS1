@@ -10,7 +10,8 @@ $root = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 $simDir = Join-Path $root "UnityProject\Assets\Sim"
 New-Item -ItemType Directory -Force $simDir | Out-Null
 
-$files = "Glass\GlassParams.cs", "Glass\GlassUniforms.cs", "Glass\GlassScreen.cs", "Glass\GlassSky.cs", "Glass\CityMap.cs"
+$files = "Glass\GlassParams.cs", "Glass\GlassUniforms.cs", "Glass\GlassScreen.cs", "Glass\GlassSky.cs", "Glass\CityMap.cs",
+         "Glass\GlassQuality.cs"
 $names = @()
 foreach ($f in $files) {
     $name = Split-Path $f -Leaf

@@ -56,7 +56,6 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 | Asset | Source | Licence | Use |
 | --- | --- | --- | --- |
 | `RealGlass/Resources/GlassIcon.png` | Drawn by `tools/make-icon.ps1` (System.Drawing) for this mod | MIT, as the rest | The mod's button icon, embedded in the DLL |
-| `UnityProject/Assets/RealGlass/Rooms/RoomAtlas.png` | Rendered by `UnityProject/Assets/Editor/RoomBaker.cs` (Unity 5.6) from twelve rooms modelled in that script out of Unity's primitive shapes, for this mod; no outside models or textures | MIT, as the rest | The pictured rooms behind the glass, shipped in the shader bundles |
 
 ## Build-time only
 
@@ -69,18 +68,17 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 The glass follows published work -- layered reflections as in Mirror's Edge Catalyst (DICE, GDC
 2016), stochastic and hierarchical screen-space reflections (Frostbite, SIGGRAPH 2015), the
+screen traced over a pyramid of its nearest depths (Uludag, GPU Pro 5, 2014) and farthest
+(Tevs, Ihrke and Seidel's maximum mipmaps, I3D 2008), the
 previous frame's finished picture reprojected for the reflections (Killzone Shadow Fall, GDC
 2014), a live environment cubemap as in GTA V with the sky's volumetric clouds captured into it
-as Unreal's Sky Light does, interior mapping (van Dongen, CGI 2008) with rooms painted onto
-their own walls from their centre as interior cubemaps are (Unreal's InteriorCubemap; Marvel's
-Spider-Man), a top-down height map of the city round the view walked by reflected rays (as
-CRYENGINE's height-map ambient occlusion and Unreal's heightfield sky occlusion read such maps;
-Amanatides and Woo's grid traversal, 1987), specular anti-aliasing (Kaplanyan et al. 2016,
-Tokuyoshi and Kaplanyan 2019, with Filament's documented constants), Schlick's Fresnel
-approximation, Kim et al.'s cubic fit of the Planckian locus (2002) for the lamps' colours, glass
-makers' published transmittance and reflectance, and the physics of insulating-glass pillowing
-and roller-wave distortion -- listed with links in `README.md`. Apart from the ray tracer above,
-the implementations were written for this mod.
+as Unreal's Sky Light does, a top-down height map of the city round the view walked by reflected
+rays (as CRYENGINE's height-map ambient occlusion and Unreal's heightfield sky occlusion read
+such maps; Amanatides and Woo's grid traversal, 1987), specular anti-aliasing (Kaplanyan et al.
+2016, Tokuyoshi and Kaplanyan 2019, with Filament's documented constants), Schlick's Fresnel
+approximation, glass makers' published transmittance and reflectance, and the physics of
+insulating-glass pillowing and roller-wave distortion -- listed with links in `README.md`. Apart
+from the ray tracer above, the implementations were written for this mod.
 
 Other mods were read to understand the game's behaviour and to stay compatible with them:
 xdedss's CS_SSR (its note that the game's camera keeps no glossiness in any screen buffer), and

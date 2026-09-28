@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 using RealGlass;
 
 [assembly: AssemblyTitle("Real Glass")]
-[assembly: AssemblyDescription("Realistic glass for Cities: Skylines' buildings: reflections, rooms behind the glass, real glass tints. Requires Harmony.")]
+[assembly: AssemblyDescription("Realistic glass for Cities: Skylines' buildings: reflections of the city and the sky, real glass tints. Requires Harmony.")]
 [assembly: AssemblyProduct("RealGlass")]
 [assembly: ComVisible(false)]
 

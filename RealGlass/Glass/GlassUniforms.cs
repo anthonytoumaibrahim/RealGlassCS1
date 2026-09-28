@@ -20,43 +20,20 @@ namespace RealGlass.Glass
         public const float RollerAt100 = 0.00006f; // m, half the peak-to-valley of a roller wave
         public const float RollerLength = 0.35f;   // m, the furnace's roller pitch
 
-        /// <summary>Offices with their ceiling lights on in daytime.</summary>
-        public const float CeilingLightsByDay = 0.6f;
-
         /// <summary>How much of the glass colour the reflection takes (a coating reflects tinted).</summary>
         public const float CoatTint = 0.6f;
 
         /// <summary>
-        /// The lamps' colour temperatures, coolest to warmest (warmth 0 .. 1): daylight-white
-        /// office LEDs to incandescent-warm homes. <see cref="WhitePoint"/> reads as white.
+        /// The inside of a building seen through the glass by day, as a share of the sky's light: dark
+        /// -- indoor light is a few percent of daylight. 10% is where the author had the rooms by day
+        /// (round 5); the rooms went in round 7, this is their average. At night there is nothing of
+        /// ours behind the glass: the game's own window shows, lit as its asset and the game light it.
         /// </summary>
-        public static readonly float[] LampKelvin = { 5000f, 4400f, 3800f, 3200f, 2700f };
+        public const float InsideByDay = 0.10f;
 
-        /// <summary>The colour temperature seen as white: a city at night, mixed lamps.</summary>
-        public const float WhitePoint = 4000f;
-
-        /// <summary>
-        /// The rooms at night are at full, with no settings: the author found anything less wrong
-        /// (2026-09-28) and their three sliders went, fixed where he had them. A lit room's light is
-        /// this many times the game's own lit window (the old slider's 600%), and every window the
-        /// game lights is a lit room (the old share at 100%).
-        /// </summary>
-        public const float NightRooms = 6f;
-
-        /// <summary>
-        /// Added to every building's lamp warmth (0 offices .. 1 homes): the old Light colour slider
-        /// at 100%, (1 - 0.45) x 1.5. Every lamp is at or near the warm end, and -- as the room kind
-        /// reads the same warmth -- every building's storeys are mostly flats. That is the look the
-        /// author chose.
-        /// </summary>
-        public const float LampShift = 0.825f;
-
-        private static int _glass, _tint, _mask, _refl, _trace, _fill, _pane, _pane2, _room, _room2, _light,
-                           _sunDir, _sunColor, _ambSky, _ambGround, _glass2, _colorMap, _lamps, _features;
+        private static int _glass, _tint, _mask, _refl, _trace, _fill, _pane, _pane2, _light,
+                           _sunDir, _sunColor, _ambSky, _ambGround, _glass2, _colorMap, _features, _budget, _budget2;
         private static bool _ids;
-
-        // Filled in place: SetGlobalVectorArray keeps the size of its first call.
-        private static readonly Vector4[] LampArray = new Vector4[5];
 
         private static void Ids()
         {
@@ -70,8 +47,6 @@ namespace RealGlass.Glass
             _fill = Shader.PropertyToID("_RGFill");
             _pane = Shader.PropertyToID("_RGPane");
             _pane2 = Shader.PropertyToID("_RGPane2");
-            _room = Shader.PropertyToID("_RGRoom");
-            _room2 = Shader.PropertyToID("_RGRoom2");
             _light = Shader.PropertyToID("_RGLight");
             _sunDir = Shader.PropertyToID("_RGSunDir");
             _sunColor = Shader.PropertyToID("_RGSunColor");
@@ -79,43 +54,10 @@ namespace RealGlass.Glass
             _ambGround = Shader.PropertyToID("_RGAmbGround");
             _glass2 = Shader.PropertyToID("_RGGlass2");
             _colorMap = Shader.PropertyToID("_RGColorMap");
-            _lamps = Shader.PropertyToID("_RGLamps");
             _features = Shader.PropertyToID("_RGFeatures");
+            _budget = Shader.PropertyToID("_RGBudget");
+            _budget2 = Shader.PropertyToID("_RGBudget2");
             _ids = true;
-        }
-
-        /// <summary>
-        /// A lamp of this colour temperature as linear RGB, seen by an eye adapted to
-        /// <see cref="WhitePoint"/> (von Kries in RGB), scaled to a luminance of 1. The chromaticity is
-        /// Kim et al.'s cubic fit of the Planckian locus (2002), 1667 K .. 25000 K.
-        /// </summary>
-        public static Vector3 LampColour(float kelvin)
-        {
-            Vector3 c = Planck(kelvin), white = Planck(WhitePoint);
-            c = new Vector3(c.x / white.x, c.y / white.y, c.z / white.z);
-            float luma = 0.2126f * c.x + 0.7152f * c.y + 0.0722f * c.z;
-            return luma > 1e-4f ? c / luma : new Vector3(1f, 1f, 1f);
-        }
-
-        /// <summary>A black body's colour at this temperature: linear sRGB (D65 primaries), Y = 1.</summary>
-        public static Vector3 Planck(float kelvin)
-        {
-            double t = Mathf.Clamp(kelvin, 1667f, 25000f);
-            double t2 = t * t, t3 = t2 * t;
-            double x = t <= 4000.0
-                ? -0.2661239e9 / t3 - 0.2343589e6 / t2 + 0.8776956e3 / t + 0.179910
-                : -3.0258469e9 / t3 + 2.1070379e6 / t2 + 0.2226347e3 / t + 0.240390;
-            double x2 = x * x, x3 = x2 * x;
-            double y = t <= 2222.0
-                ? -1.1063814 * x3 - 1.34811020 * x2 + 2.18555832 * x - 0.20219683
-                : (t <= 4000.0
-                    ? -0.9549476 * x3 - 1.37418593 * x2 + 2.09137015 * x - 0.16748867
-                    : 3.0817580 * x3 - 5.87338670 * x2 + 3.75112997 * x - 0.37001483);
-            double X = x / y, Y = 1.0, Z = (1.0 - x - y) / y;
-            return new Vector3(
-                (float)(3.2406 * X - 1.5372 * Y - 0.4986 * Z),
-                (float)(-0.9689 * X + 1.8758 * Y + 0.0415 * Z),
-                (float)(0.0557 * X - 0.2040 * Y + 1.0570 * Z));
         }
 
         /// <summary>0 (night) .. 1 (day), from how high the sun stands: civil dusk to a few degrees up.</summary>
@@ -162,27 +104,26 @@ namespace RealGlass.Glass
             return Steps[Mathf.Clamp(quality, 0, Steps.Length - 1)];
         }
 
-        public static void Apply(GlassParams p, GlassFrame f)
+        public static void Apply(GlassParams p, GlassFrame f, GlassQuality q)
         {
             Ids();
+            // What the shader's loops may spend (GlassQuality): x cells of the city walk, y its
+            // coarse blocks, w steps each way up and down to a painted pane's top and bottom;
+            // budget2 x across to its sides (0: the panes' own grid), y of the Hi-Z trace (read only
+            // while GlassScreen has built the pyramid: _RGHiZInfo.w).
+            bool panes = p.PanesFollowWindows && q.PaneSearchSteps > 0 && q.WindowSearchSteps > 0;
+            Shader.SetGlobalVector(_budget, new Vector4(q.CityWalkSteps, q.CityWalkBlocks, 0f, panes ? q.WindowSearchSteps : 0f));
+            Shader.SetGlobalVector(_budget2, new Vector4(panes ? q.PaneSearchSteps : 0f, q.HiZSteps, 0f, 0f));
             Vector3 tint = Tint(p.TintR, p.TintG, p.TintB);
             float rough = Mathf.Clamp01(1f - p.Smoothness);
             float daylight = Daylight(f.SunY);
             float sunUp = Smooth(-0.02f, 0.06f, f.SunY);
 
-            for (int i = 0; i < LampArray.Length; i++)
-            {
-                Vector3 lamp = LampColour(LampKelvin[i]);
-                LampArray[i] = new Vector4(lamp.x, lamp.y, lamp.z, 0f);
-            }
-
-            Shader.SetGlobalVectorArray(_lamps, LampArray);
             Shader.SetGlobalVector(_colorMap, new Vector4(Mathf.Max(f.ColorMapWidth, 1), Mathf.Max(f.ColorMapHeight, 1), 0f, 0f));
-            Shader.SetGlobalVector(_glass2, new Vector4(p.EdgeSilver, 0f, Mathf.Max(p.FloorBand, 0f), 0f));
+            Shader.SetGlobalVector(_glass2, new Vector4(p.EdgeSilver, 0f, 0f, 0f));
             // x the buildings round in the reflections (the map itself says whether it is there:
-            // _RGCityMapST.w), y pictured rooms, z rooms following the painted windows, w steady glints.
-            Shader.SetGlobalVector(_features, new Vector4(p.Neighbours ? 1f : 0f, p.RoomPictures && f.RoomAtlas ? 1f : 0f,
-                                                          p.FollowWindows ? 1f : 0f, p.SteadyGlints ? 1f : 0f));
+            // _RGCityMapST.w), w steady glints.
+            Shader.SetGlobalVector(_features, new Vector4(p.Neighbours ? 1f : 0f, 0f, 0f, p.SteadyGlints ? 1f : 0f));
 
             Shader.SetGlobalVector(_glass, new Vector4(p.Reflectivity, p.Glancing, p.Clarity, p.Enabled ? p.Strength : 0f));
             Shader.SetGlobalVector(_tint, new Vector4(tint.x, tint.y, tint.z, p.OwnColour));
@@ -191,10 +132,8 @@ namespace RealGlass.Glass
             Shader.SetGlobalVector(_trace, new Vector4(p.Trace ? 1f : 0f, StepCount(p.Quality), Stride(p.Quality, f.ScreenHeight), 1f));
             Shader.SetGlobalVector(_fill, new Vector4(p.OffscreenFill, f.GroundY, Mathf.Max(f.CubeMips - 1, 0), 0f));
             Shader.SetGlobalVector(_pane, new Vector4(Mathf.Max(p.PaneWidth, 0.2f), p.Pillow * PillowAt100, p.Tilt * TiltAt100, p.RollerWave * RollerAt100));
-            Shader.SetGlobalVector(_pane2, new Vector4(p.PaneWeather ? BowBias(f.Temperature) : 0f, RollerLength, 0f, 0f));
-            Shader.SetGlobalVector(_room, new Vector4(Mathf.Max(p.FloorHeight, 1f), Mathf.Max(p.RoomWidth, 1f), Mathf.Max(p.RoomDepth, 1f), p.Rooms ? 1f : 0f));
-            Shader.SetGlobalVector(_room2, new Vector4(p.InteriorBrightness, p.Blinds, p.Furniture, NightRooms));
-            Shader.SetGlobalVector(_light, new Vector4(daylight, LampShift, CeilingLightsByDay, 0f));
+            Shader.SetGlobalVector(_pane2, new Vector4(p.PaneWeather ? BowBias(f.Temperature) : 0f, RollerLength, Mathf.Max(p.FloorHeight, 1f), 0f));
+            Shader.SetGlobalVector(_light, new Vector4(daylight, InsideByDay, 0f, 0f));
             Shader.SetGlobalVector(_sunDir, new Vector4(f.SunX, f.SunY, f.SunZ, sunUp));
             Shader.SetGlobalVector(_sunColor, new Vector4(f.SunR, f.SunG, f.SunB, 0f));
             Shader.SetGlobalVector(_ambSky, new Vector4(f.AmbSkyR, f.AmbSkyG, f.AmbSkyB, 0f));

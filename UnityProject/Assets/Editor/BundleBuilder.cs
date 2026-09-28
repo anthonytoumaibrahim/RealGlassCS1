@@ -27,13 +27,10 @@ public static class BundleBuilder
     };
 
     /// <summary>
-    /// Textures the mod ships with the shaders: the pictured rooms (Assets/Editor/RoomBaker.cs
-    /// renders them; ShaderBundle loads every .png in the bundle as the room atlas).
+    /// Textures the mod ships in the bundles: none now (the pictured rooms that were here went in
+    /// round 7). One listed here must exist, and goes into every bundle.
     /// </summary>
-    private static readonly string[] Textures =
-    {
-        "Assets/RealGlass/Rooms/RoomAtlas.png",
-    };
+    private static readonly string[] Textures = { };
 
     private struct Target
     {
@@ -115,7 +112,7 @@ public static class BundleBuilder
         {
             if (AssetDatabase.LoadAssetAtPath<Texture2D>(texture) == null)
             {
-                Debug.LogError("BUNDLE BUILD " + target.Name + " FAILED: " + texture + " is missing (run tools/bake-rooms.ps1)");
+                Debug.LogError("BUNDLE BUILD " + target.Name + " FAILED: " + texture + " is missing");
                 return false;
             }
         }

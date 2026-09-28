@@ -101,7 +101,7 @@ namespace RealGlass
         /// </summary>
         public static FloatSetting GlassEdgeSilver { get; private set; }
 
-        /// <summary>0..1: how much light passes through: what is seen of the rooms behind.</summary>
+        /// <summary>0..1: how much light passes through: how dark the glass looks by day.</summary>
         public static FloatSetting GlassClarity { get; private set; }
 
         /// <summary>0..1: the glass over the game's own look (0 = the game's windows, 1 = ours).</summary>
@@ -172,6 +172,12 @@ namespace RealGlass
         /// <summary>Metres: the width of one pane of glass.</summary>
         public static FloatSetting PaneWidth { get; private set; }
 
+        /// <summary>
+        /// Metres from one floor to the next: a pane's height where the building painted no window
+        /// of its own, and the floors of the buildings mirrored where the screen cannot show them.
+        /// </summary>
+        public static FloatSetting FloorHeight { get; private set; }
+
         /// <summary>0..3: panes bowing like cushions (insulating glass under pressure changes).</summary>
         public static FloatSetting PanePillow { get; private set; }
 
@@ -184,48 +190,15 @@ namespace RealGlass
         /// <summary>Panes bulge on hot days and sink on cold ones (the game's temperature).</summary>
         public static BoolSetting PaneWeather { get; private set; }
 
-        // ---- F7 -> Interiors -----------------------------------------------------------------
-
-        /// <summary>Rooms behind the glass (interior mapping).</summary>
-        public static BoolSetting InteriorEnabled { get; private set; }
-
-        /// <summary>Metres from one floor to the next.</summary>
-        public static FloatSetting FloorHeight { get; private set; }
-
-        /// <summary>Metres: the width of a room along the facade.</summary>
-        public static FloatSetting RoomWidth { get; private set; }
-
-        /// <summary>Metres: how deep a room goes behind the glass.</summary>
-        public static FloatSetting RoomDepth { get; private set; }
-
-        /// <summary>0..3: how bright the rooms are by day.</summary>
-        public static FloatSetting InteriorBrightness { get; private set; }
-
-        /// <summary>0..1: the share of windows with their blinds down.</summary>
-        public static FloatSetting Blinds { get; private set; }
-
-        /// <summary>0..1: how furnished the rooms are.</summary>
-        public static FloatSetting Furniture { get; private set; }
-
-        // The rooms at night have no settings: they are at full (GlassUniforms.NightRooms).
-
         /// <summary>
-        /// Metres: the floor slab's band at every storey (the part of a curtain wall with no view
-        /// in), drawn on plain-glass towers only. 0: none.
+        /// Close up, each pane is a window the asset painted (found between its painted mullions
+        /// and transoms), split into panes about the pane width wide: not a grid of its own.
         /// </summary>
-        public static FloatSetting FloorBand { get; private set; }
+        public static BoolSetting PanesFollowWindows { get; private set; }
 
-        /// <summary>
-        /// The rooms are pictures of furnished rooms (offices, flats, shops...), modelled and
-        /// rendered in the Unity project and shipped in the bundle: not plain coloured boxes.
-        /// </summary>
-        public static BoolSetting RoomPictures { get; private set; }
-
-        /// <summary>
-        /// Each room's floor and ceiling are found from the window the asset painted (where its
-        /// glass stops above and below), not from a storey grid counted up from the base.
-        /// </summary>
-        public static BoolSetting RoomsFollowWindows { get; private set; }
+        // Behind the glass there are no settings (round 7, the author: no rooms, and the game's own
+        // lit windows at night, untouched): by day a dark inside (GlassUniforms), by night the
+        // game's own window.
 
         // ---- F7 -> Rendering -----------------------------------------------------------------
 
@@ -258,15 +231,18 @@ namespace RealGlass
 
             // ---- Glass ----
             public const bool GlassEnabled = true;
-            public const int GlassPreset = GlassPresets.ReflectiveBlue;
-            public const float GlassOwnColour = 0.40f;
+
+            /// <summary>
+            /// Custom: the author's own glass (2026-09-28, the third time his settings became the
+            /// defaults) -- Reflective blue's colour and clarity, reflecting 30% head-on instead of 20%.
+            /// </summary>
+            public const int GlassPreset = GlassPresets.Custom;
+            public const float GlassOwnColour = 0.30f;
 
             /// <summary>The Reflective blue preset's colour (#2E6A80): a static, because a Color32 cannot be a const.</summary>
             public static readonly Color32 GlassColor = new Color32(0x2E, 0x6A, 0x80, 255);
-            // The author's own tuning in the game, made the defaults twice (2026-09-28): the second
-            // time with the full rise edge-on, silver, and the reflections at half brightness.
-            public const float GlassReflectivity = 0.20f;
-            public const float GlassGlancing = 1f;
+            public const float GlassReflectivity = 0.30f;
+            public const float GlassGlancing = 0.80f;
             public const float GlassEdgeSilver = 1f;
             public const float GlassClarity = 0.24f;
             public const float GlassStrength = 1f;
@@ -285,28 +261,17 @@ namespace RealGlass
             public const int OffscreenFill = 0;       // the mirrored screen
             public const float SunGlint = 3f;
             public const bool SteadyGlints = true;
-            public const float GlassSmoothness = 0.80f;
+            public const float GlassSmoothness = 1f;
             public const float SsrEdgeFade = 0.50f;
 
             // ---- Panes ---- (the author's: every bend at the top of its slider)
             public const float PaneWidth = 1.4f;
+            public const float FloorHeight = 3.8f;    // an office storey
             public const float PanePillow = 3f;
             public const float PaneTilt = 3f;
             public const float RollerWave = 3f;
             public const bool PaneWeather = true;
-
-            // ---- Interiors ----
-            public const bool InteriorEnabled = true;
-            public const float FloorHeight = 3.8f;
-            public const float RoomWidth = 12f;   // open-plan office floors, not cells
-            public const float RoomDepth = 12f;
-            /// <summary>Rooms seen from outside by day are dark: indoor light is a few % of daylight.</summary>
-            public const float InteriorBrightness = 0.30f;
-            public const float Blinds = 0.50f;
-            public const float Furniture = 0.6f;
-            public const float FloorBand = 0f;       // none: the author's pick
-            public const bool RoomPictures = true;
-            public const bool RoomsFollowWindows = true;
+            public const bool PanesFollowWindows = true;
 
             // ---- Rendering ---- (the author's: the largest, livest sky)
             public const int GlassDistance = 2;       // the whole city
@@ -368,21 +333,12 @@ namespace RealGlass
                 SsrEdgeFade = new FloatSetting("SsrEdgeFade", Defaults.SsrEdgeFade);
 
                 PaneWidth = new FloatSetting("PaneWidth", Defaults.PaneWidth);
+                FloorHeight = new FloatSetting("FloorHeight", Defaults.FloorHeight);
                 PanePillow = new FloatSetting("PanePillow", Defaults.PanePillow);
                 PaneTilt = new FloatSetting("PaneTilt", Defaults.PaneTilt);
                 RollerWave = new FloatSetting("RollerWave", Defaults.RollerWave);
                 PaneWeather = new BoolSetting("PaneWeather", Defaults.PaneWeather);
-
-                InteriorEnabled = new BoolSetting("InteriorEnabled", Defaults.InteriorEnabled);
-                FloorHeight = new FloatSetting("FloorHeight", Defaults.FloorHeight);
-                RoomWidth = new FloatSetting("RoomWidth", Defaults.RoomWidth);
-                RoomDepth = new FloatSetting("RoomDepth", Defaults.RoomDepth);
-                InteriorBrightness = new FloatSetting("InteriorBrightness", Defaults.InteriorBrightness);
-                Blinds = new FloatSetting("Blinds", Defaults.Blinds);
-                Furniture = new FloatSetting("Furniture", Defaults.Furniture);
-                FloorBand = new FloatSetting("FloorBand", Defaults.FloorBand);
-                RoomPictures = new BoolSetting("RoomPictures", Defaults.RoomPictures);
-                RoomsFollowWindows = new BoolSetting("RoomsFollowWindows", Defaults.RoomsFollowWindows);
+                PanesFollowWindows = new BoolSetting("PanesFollowWindows", Defaults.PanesFollowWindows);
 
                 GlassDistance = new IntSetting("GlassDistance", Defaults.GlassDistance);
                 SkyCubeSize = new IntSetting("SkyCubeSize", Defaults.SkyCubeSize);

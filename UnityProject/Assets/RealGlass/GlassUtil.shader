@@ -4,6 +4,9 @@
 //   what a reflection below the horizon shows when neither the screen nor its mirror has it
 //   (the "City colour" fill), blended over a few frames so it never flickers.
 //   Pass 1 "Copy": the picture itself, into the mipmapped copy the glass reflects.
+//   Pass 2 "HiZ0", pass 3 "HiZMin", pass 4 "HiZCopy": the hierarchical depth the glass traces its
+//   reflections over (GlassScreen.cs builds it: level 0 the linear eye depth, each further level
+//   the nearest and the farthest of the level below, drawn into its mip).
 //
 // Both let only finite, non-negative light through. A NaN or an infinity in the picture spreads
 // to a whole block of every coarser mip, and a blend keeps it for good: NaN x 0.9 is NaN, frame
@@ -84,6 +87,108 @@ Shader "RealGlass/GlassUtil"
             float4 frag(v2f_img i) : SV_Target
             {
                 return float4(Finite(tex2D(_MainTex, i.uv).rgb), 1.0);
+            }
+            ENDCG
+        }
+
+        Pass
+        {
+            // The hierarchical depth's first level: the scene's linear eye depth, pixel for pixel, as
+            // both the nearest (r) and the farthest (g). Held under 60000 m: the pyramid may be half
+            // floats.
+            Name "HiZ0"
+
+            CGPROGRAM
+            #pragma target 3.5
+            #pragma vertex vert_img
+            #pragma fragment frag
+            UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
+
+            float4 frag(v2f_img i) : SV_Target
+            {
+                float d = LinearEyeDepth(SAMPLE_DEPTH_TEXTURE_LOD(_CameraDepthTexture, float4(i.uv, 0.0, 0.0)));
+                d = min(max(d, 0.0), 60000.0);
+                return float4(d, d, 0.0, 0.0);
+            }
+            ENDCG
+        }
+
+        Pass
+        {
+            // Each further level: the NEAREST (r) and the FARTHEST (g) depth of the 2 x 2 texels it
+            // covers one level down (3 along an odd edge, so nothing is lost at the border) --
+            // Uludag's Hi-Z pyramid of minima, with Tevs et al.'s maxima beside it.
+            Name "HiZMin"
+
+            CGPROGRAM
+            #pragma target 3.5
+            #pragma vertex vert_img
+            #pragma fragment frag
+
+            float _RGHiZLevel;       // the level read
+            float4 _RGHiZSizes;      // xy that level's size, zw this one's
+
+            float4 frag(v2f_img i) : SV_Target
+            {
+                float2 dst = floor(i.uv * _RGHiZSizes.zw);
+                float2 src = dst * 2.0;
+                float3 extra = float3(dst.x == _RGHiZSizes.z - 1.0 && fmod(_RGHiZSizes.x, 2.0) > 0.5,
+                                      dst.y == _RGHiZSizes.w - 1.0 && fmod(_RGHiZSizes.y, 2.0) > 0.5, 0.0);
+                float nearest = 1e6, farthest = 0.0;
+                for (int y = 0; y < 3; y++)
+                {
+                    for (int x = 0; x < 3; x++)
+                    {
+                        bool use = (x < 2 || extra.x > 0.5) && (y < 2 || extra.y > 0.5);
+                        float2 uv = (min(src + float2(x, y), _RGHiZSizes.xy - 1.0) + 0.5) / _RGHiZSizes.xy;
+                        float2 s = tex2Dlod(_MainTex, float4(uv, 0.0, _RGHiZLevel)).rg;
+                        nearest = use ? min(nearest, s.x) : nearest;
+                        farthest = use ? max(farthest, s.y) : farthest;
+                    }
+                }
+                return float4(nearest, farthest, 0.0, 0.0);
+            }
+            ENDCG
+        }
+
+        Pass
+        {
+            // ... and into its mip: the command buffer has made that mip the target; a quad given in
+            // clip space copies _RGHiZSource (the level just made, in a target of its own: a mip
+            // cannot be read while another of the same texture is drawn to). CopyTexture into the
+            // mip would do the same, but the NEXT level then read that mip as 0 (probed, Unity 5.6.7,
+            // Direct3D 11, 2026-09-28).
+            Name "HiZCopy"
+
+            CGPROGRAM
+            #pragma target 3.5
+            #pragma vertex vert
+            #pragma fragment frag
+
+            sampler2D _RGHiZSource;
+
+            struct v2f
+            {
+                float4 pos : SV_POSITION;
+                float2 uv : TEXCOORD0;
+            };
+
+            v2f vert(float4 vertex : POSITION, float2 uv : TEXCOORD0)
+            {
+                v2f o;
+                o.pos = float4(vertex.xy, 0.5, 1.0);
+                // The target is always a render texture, which Unity keeps with its first row where
+                // the sampler starts: the top on Direct3D and Metal.
+            #if UNITY_UV_STARTS_AT_TOP
+                uv.y = 1.0 - uv.y;
+            #endif
+                o.uv = uv;
+                return o;
+            }
+
+            float4 frag(v2f i) : SV_Target
+            {
+                return float4(tex2Dlod(_RGHiZSource, float4(i.uv, 0.0, 0.0)).rg, 0.0, 0.0);
             }
             ENDCG
         }

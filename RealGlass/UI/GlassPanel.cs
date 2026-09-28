@@ -8,12 +8,11 @@ namespace RealGlass.UI
     /// The in-game panel (F7): every setting of the glass, judged against the city.
     /// </summary>
     /// <remarks>
-    /// Five tabs, one per <see cref="PanelPage"/>:
+    /// Four tabs, one per <see cref="PanelPage"/>:
     ///   Glass       -- the glass itself: its kind, colour, how much it reflects and lets through,
     ///                  and what counts as glass. A status line at the top says what is drawn.
     ///   Reflections -- what the glass mirrors: the finished picture, the sky and its clouds, the sun.
     ///   Panes       -- the panes: their size, and how they bend the reflections.
-    ///   Interiors   -- the rooms behind the glass, by day and by night.
     ///   Rendering   -- how far the glass reaches, and the sky reflection's cost.
     /// The mod itself (language, key, button, diagnostics, reset) is on the options page
     /// (<see cref="OptionsUI"/>) alone: Row.Options == General.
@@ -37,7 +36,7 @@ namespace RealGlass.UI
 
         private static readonly PanelPage[] Tabs =
         {
-            PanelPage.Glass, PanelPage.Reflections, PanelPage.Panes, PanelPage.Interiors, PanelPage.Rendering,
+            PanelPage.Glass, PanelPage.Reflections, PanelPage.Panes, PanelPage.Rendering,
         };
 
         /// <summary>Where to open, when replacing a panel that was already on screen. Null = centred.</summary>

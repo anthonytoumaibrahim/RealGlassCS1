@@ -40,21 +40,12 @@ namespace RealGlass.Glass
             p.EdgeFade = Settings.SsrEdgeFade.value;
 
             p.PaneWidth = Settings.PaneWidth.value;
+            p.FloorHeight = Settings.FloorHeight.value;
             p.Pillow = Settings.PanePillow.value;
             p.Tilt = Settings.PaneTilt.value;
             p.RollerWave = Settings.RollerWave.value;
             p.PaneWeather = Settings.PaneWeather.value;
-
-            p.Rooms = Settings.InteriorEnabled.value;
-            p.FloorHeight = Settings.FloorHeight.value;
-            p.RoomWidth = Settings.RoomWidth.value;
-            p.RoomDepth = Settings.RoomDepth.value;
-            p.InteriorBrightness = Settings.InteriorBrightness.value;
-            p.Blinds = Settings.Blinds.value;
-            p.Furniture = Settings.Furniture.value;
-            p.FloorBand = Settings.FloorBand.value;
-            p.RoomPictures = Settings.RoomPictures.value;
-            p.FollowWindows = Settings.RoomsFollowWindows.value;
+            p.PanesFollowWindows = Settings.PanesFollowWindows.value;
             return p;
         }
     }

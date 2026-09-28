@@ -12,7 +12,8 @@
 #   never half-read.
 # - ColorText, the colour field's and the file's reader: #RRGGBB both ways, the other spellings.
 # - GlassPresets against the catalog: every preset is a choice of the GlassPreset row, in range
-#   of the rows it writes, and the default preset IS the default colour, reflectivity and clarity.
+#   of the rows it writes, and the default preset IS the default colour, reflectivity and clarity
+#   (or the default is Custom, which writes nothing).
 # - Every slider row's default inside its own range (read from UI\SettingsCatalog.cs, with the
 #   constants' values from the DLL): a default out of range would be clamped and written back.
 #
@@ -278,11 +279,21 @@ for ($i = 0; $i -lt $count; $i++) {
 }
 Check "every preset in value order and inside its rows' ranges" ($bad -join "; ") ""
 
-$default = $presets::At((Default 'GlassPreset') - 1)
-Check "the default preset is Reflective blue" $default.LogName "Reflective blue"
-Check "  and its colour is the default colour" ($colorText::Format($default.Colour)) ($colorText::Format((Default 'GlassColor')))
-Check "  and its reflectivity the default's" ([single]$default.Reflectivity) ([single](Default 'GlassReflectivity'))
-Check "  and its clarity the default's" ([single]$default.Clarity) ([single](Default 'GlassClarity'))
+# The default glass is either a preset whose numbers ARE the default colour, reflectivity and
+# clarity, or Custom (which writes nothing): never a preset that a Reset would contradict.
+$defaultPreset = Default 'GlassPreset'
+if ($defaultPreset -eq $custom) {
+    Check "the default glass is Custom: the three rows' own defaults stand" $defaultPreset $custom
+    $blue = $presets::At(10 - 1)
+    Check "  in Reflective blue's colour" ($colorText::Format($blue.Colour)) ($colorText::Format((Default 'GlassColor')))
+    Check "  with Reflective blue's clarity" ([single]$blue.Clarity) ([single](Default 'GlassClarity'))
+}
+else {
+    $default = $presets::At($defaultPreset - 1)
+    Check "the default preset's colour is the default colour" ($colorText::Format($default.Colour)) ($colorText::Format((Default 'GlassColor')))
+    Check "  and its reflectivity the default's" ([single]$default.Reflectivity) ([single](Default 'GlassReflectivity'))
+    Check "  and its clarity the default's" ([single]$default.Clarity) ([single](Default 'GlassClarity'))
+}
 
 $preset = [Activator]::CreateInstance($asm.GetType('RealGlass.GlassPreset', $true))
 $tryArgs = [object[]]@(0, $preset)
@@ -379,12 +390,9 @@ $pairs = @(
     @('Trace', 'SsrEnabled'), @('Quality', 'SsrQuality'), @('ReflectionBrightness', 'ReflectionBrightness'),
     @('SkySource', 'SkyReflection'), @('OffscreenFill', 'OffscreenFill'), @('SunGlint', 'SunGlint'),
     @('Smoothness', 'GlassSmoothness'), @('EdgeFade', 'SsrEdgeFade'), @('PaneWidth', 'PaneWidth'),
-    @('Pillow', 'PanePillow'), @('Tilt', 'PaneTilt'), @('RollerWave', 'RollerWave'), @('PaneWeather', 'PaneWeather'),
-    @('Rooms', 'InteriorEnabled'), @('FloorHeight', 'FloorHeight'), @('RoomWidth', 'RoomWidth'), @('RoomDepth', 'RoomDepth'),
-    @('InteriorBrightness', 'InteriorBrightness'), @('Blinds', 'Blinds'), @('Furniture', 'Furniture'),
-    @('EdgeSilver', 'GlassEdgeSilver'), @('FloorBand', 'FloorBand'), @('Finished', 'ReflectFinished'), @('SkyClouds', 'SkyClouds'),
-    @('Neighbours', 'ReflectNeighbours'), @('SteadyGlints', 'SteadyGlints'), @('RoomPictures', 'RoomPictures'),
-    @('FollowWindows', 'RoomsFollowWindows'))
+    @('FloorHeight', 'FloorHeight'), @('Pillow', 'PanePillow'), @('Tilt', 'PaneTilt'), @('RollerWave', 'RollerWave'),
+    @('PaneWeather', 'PaneWeather'), @('EdgeSilver', 'GlassEdgeSilver'), @('Finished', 'ReflectFinished'), @('SkyClouds', 'SkyClouds'),
+    @('Neighbours', 'ReflectNeighbours'), @('SteadyGlints', 'SteadyGlints'), @('PanesFollowWindows', 'PanesFollowWindows'))
 $mismatch = @()
 foreach ($pair in $pairs) {
     $mine = $paramsType.GetField($pair[0]).GetValue($gp)
@@ -395,18 +403,6 @@ Check "GlassParams.Default() = Settings.Defaults, row by row" ($mismatch -join "
 $c = Default 'GlassColor'
 $tint = "{0:F4} {1:F4} {2:F4}" -f $paramsType.GetField('TintR').GetValue($gp), $paramsType.GetField('TintG').GetValue($gp), $paramsType.GetField('TintB').GetValue($gp)
 Check "  and the glass colour" $tint ("{0:F4} {1:F4} {2:F4}" -f ($c.r / 255.0), ($c.g / 255.0), ($c.b / 255.0))
-
-# ---- the lamps (GlassUniforms, pure maths) ---------------------------------------------------
-
-$uniforms = $asm.GetType('RealGlass.Glass.GlassUniforms', $true)
-$white = $uniforms::LampColour(4000)
-Check "the lamps' white point (4000 K) is white" ("{0:F3} {1:F3} {2:F3}" -f $white.x, $white.y, $white.z) "1.000 1.000 1.000"
-$warm = $uniforms::LampColour(2700)
-$cool = $uniforms::LampColour(5000)
-Check "  2700 K is warm (red > green > blue)" ($warm.x -gt $warm.y -and $warm.y -gt $warm.z) "True"
-Check "  5000 K is cool (blue > green > red)" ($cool.z -gt $cool.y -and $cool.y -gt $cool.x) "True"
-$lumaOf = { param($v) 0.2126 * $v.x + 0.7152 * $v.y + 0.0722 * $v.z }
-Check "  every lamp has a luminance of 1" ("{0:F3} {1:F3}" -f (& $lumaOf $warm), (& $lumaOf $cool)) "1.000 1.000"
 
 Write-Host ""
 if ($failed -eq 0) { Write-Host "all passed" } else { Write-Host "$failed FAILED"; exit 1 }

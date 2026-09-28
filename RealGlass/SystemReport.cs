@@ -73,11 +73,9 @@ namespace RealGlass
                         " skyClouds=" + On(Settings.SkyClouds, Settings.Defaults.SkyClouds) +
                         " offscreen=" + FillName(Int(Settings.OffscreenFill, Settings.Defaults.OffscreenFill)) +
                         " skyCube=" + Settings.SkyCubePixels + "px x" + Int(Settings.SkyCubeRate, Settings.Defaults.SkyCubeRate) + "/frame" +
-                        " | interiors=" + On(Settings.InteriorEnabled, Settings.Defaults.InteriorEnabled) +
-                        " floorBands=" + (Settings.FloorBand != null ? Settings.FloorBand.value : Settings.Defaults.FloorBand).ToString("F1") + "m" +
-                        " pictures=" + On(Settings.RoomPictures, Settings.Defaults.RoomPictures) +
-                        " followWindows=" + On(Settings.RoomsFollowWindows, Settings.Defaults.RoomsFollowWindows) +
-                        " | panes: weather=" + On(Settings.PaneWeather, Settings.Defaults.PaneWeather));
+                        " | panes: storey=" + (Settings.FloorHeight != null ? Settings.FloorHeight.value : Settings.Defaults.FloorHeight).ToString("F1") + "m" +
+                        " weather=" + On(Settings.PaneWeather, Settings.Defaults.PaneWeather) +
+                        " followWindows=" + On(Settings.PanesFollowWindows, Settings.Defaults.PanesFollowWindows));
 
                 Log.Msg("panel key: " + (Settings.PanelKey != null ? SettingsXmlFormat.FormatKey(Settings.PanelKey.value) : "?") +
                         ", keep the game's debug panel off it=" + On(Settings.QuietDebugKey, Settings.Defaults.QuietDebugKey) +

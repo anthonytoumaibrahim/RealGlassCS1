@@ -19,13 +19,17 @@ The first version: realistic glass on every building, at every distance.
   roof heights, walked by every ray that misses the screen: the towers across a street, not open
   sky), the live sky with Volumetric Weather's clouds in it (or the game's own sky picture), the
   sun's glint, steady far away; below the horizon, the screen mirrored at its edge. More
-  reflective edge-on, and silvery there as coated glass is.
-- **Panes** that bend the reflections: cushioned, tilted, rippled, bulging with the weather.
-- **Rooms behind the glass**: twelve furnished rooms -- offices, flats, shops, restaurants,
-  lobbies -- pictured by day and by night, lined up with each building's own painted windows, with
-  blinds room by room. At night every window the game lights becomes a lit room at full
-  brightness, in warm lamplight; on towers of plain glass, floor bands between the storeys.
-- **The panel on F7** (or its Unified UI button), five tabs, every setting of the glass. F7 is
+  reflective edge-on, and silvery there as coated glass is. The screen is traced over a pyramid of
+  its depths, so reflections reach across a 4K screen.
+- **Panes** that bend the reflections: cushioned, tilted, rippled, bulging with the weather; up
+  close, each pane is one of the windows the building painted.
+- **Behind the glass**: by day the dark inside of a building, through the glass's colour and
+  clarity; by night each window exactly as the game and its asset light it -- the glass only adds
+  the reflections.
+- **Quality in one place**: every costly part of the glass (the walk over the city, the searches
+  for painted panes, the depth pyramid) takes its budget from one table of four tiers, ready for
+  a quality choice; the mod runs the highest.
+- **The panel on F7** (or its Unified UI button), four tabs, every setting of the glass. F7 is
   also the game's debug-output key: while it is this mod's key, it opens only this mod's panel in
   a city (a switch on the options page).
 - **RealGlass.xml**: every setting in a file you can read and edit while the game runs.
