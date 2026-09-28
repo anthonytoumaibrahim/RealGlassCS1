@@ -15,20 +15,23 @@ ceilings and furniture, lit at night.
 ## Using it
 
 Open the panel with **F7** (or its Unified UI button). Everything about the glass is there, on
-five tabs:
+six tabs:
 
 - **Glass** -- the kind of glass (reflective blue, ocean blue, aqua blue, sky blue, green, bronze,
   grey, clear low-E, silver and gold reflective: real products' tints, reflectance and
   transmittance), or your own colour;
   how much of the building's own painted colour to keep; how much it reflects head-on and at an
-  angle; how much light it lets through; and what counts as glass. "Show what counts as glass"
-  paints it magenta, to check.
+  angle, and how silvery it turns seen edge-on; how much light it lets through; and what counts
+  as glass. "Show what counts as glass" paints it magenta, to check.
+- **Skyline** -- a city of many glasses: every building takes one of the kinds you tick (the one
+  chosen on the Glass tab among them), and keeps it at every distance.
 - **Reflections** -- the city on screen in the glass, the live sky, what shows below the horizon
   when nothing on screen is mirrored, the sun's glint, how sharp the reflections are.
 - **Panes** -- the panes' width, and how they bend what they mirror: cushioned (insulating glass
   bowing in or out), tilted, rippled (toughened glass).
-- **Interiors** -- the rooms behind the glass: floor height, room size, blinds, furniture; how
-  bright they are by day, and at night.
+- **Interiors** -- the rooms behind the glass: floor height, room size, the floor bands of
+  plain-glass towers, blinds, furniture; how bright they are by day; and at night how bright the
+  lit rooms are, how many of the lit windows are lit rooms, and how warm their light is.
 - **Rendering** -- how far out the glass is drawn, and what the live sky costs.
 
 The game's options page holds the mod itself: its language, the panel's key, the button,
@@ -57,9 +60,19 @@ the log is `RealGlass.log`, next to it.
   a raised camera's reflections mostly point, a facade mirrors the street at its feet: that spot
   is found on screen, and where it is off screen the picture is mirrored back in at the edge.
 - **Fresnel**: glass reflects little straight on and nearly everything edge-on (Schlick's
-  approximation), capped by a setting, because a city-builder camera sees facades edge-on.
+  approximation), capped by a setting, because a city-builder camera sees facades edge-on. The
+  rise is the same for every colour, so a coated pane's tint gives way to silver edge-on.
+- **A city of many glasses.** Which building a pixel belongs to is known at every distance from
+  the building's own index into the game's colour map (the same number on every tier, a
+  sub-building its parent's), so each building keeps one kind of glass however far away it is.
 - **Rooms** behind the glass by interior mapping: a ray per pixel against the floors, ceilings and
   walls of rooms that are not modelled at all.
+- **At night** the game still decides which windows are lit, how brightly and when; the rooms
+  say how that light falls (bright ceilings and light panels, the floor under them, desks, the
+  back of the room), in the colour of what the building is -- cool office light, warm homes, shops
+  between -- and some lit windows are rooms with their lights off. Where an asset painted its own
+  windows, they lead; on a tower of plain glass, which paints none, the rooms' storeys do: floor
+  bands between them, and floors lit or dark one at a time.
 - **Panes** bend reflections the way real facades do: insulating units bow with the weather,
   toughened glass carries the furnace rollers' ripple, and no two panes are set quite alike.
 
@@ -104,6 +117,13 @@ Every technique here has shipped in a game or is published:
 9. xdedss, [**CS_SSR**](https://github.com/xdedss/CS_SSR): a screen-space reflection experiment
    for this game, whose note that no screen buffer says what is shiny is why the glass here is
    drawn per building, from each asset's own maps.
+10. Lamp colours are black bodies, from Kim et al.'s cubic fit of the Planckian locus, 1667 K to
+    25000 K: B. Kang, O. Moon, C. Hong, H. Lee, B. Cho and Y. Kim, *Design of Advanced Color
+    Temperature Control System for HDTV Applications*, Journal of the Korean Physical Society
+    41(6), 865-871, 2002 (and US patent 7024034)
+    ([Planckian locus](https://en.wikipedia.org/wiki/Planckian_locus#Approximation)).
+    Rooms lit and unlit at random behind the windows, as interior-mapped cities show them:
+    Marvel's Spider-Man, [as developers read it](https://polycount.com/discussion/204601/interior-mapping-in-spider-man-ps4).
 
 ## Building
 

@@ -95,6 +95,12 @@ namespace RealGlass
         /// <summary>0..1: the most the glass reflects at a glancing angle.</summary>
         public static FloatSetting GlassGlancing { get; private set; }
 
+        /// <summary>
+        /// 0..1: how far a coated pane's reflection loses its colour edge-on. Physics says all the
+        /// way (1): the Fresnel rise is the same for every colour. 0 keeps the tint at every angle.
+        /// </summary>
+        public static FloatSetting GlassEdgeSilver { get; private set; }
+
         /// <summary>0..1: how much light passes through: what is seen of the rooms behind.</summary>
         public static FloatSetting GlassClarity { get; private set; }
 
@@ -109,6 +115,29 @@ namespace RealGlass
 
         /// <summary>A check: paints what counts as glass magenta instead of drawing it.</summary>
         public static BoolSetting GlassShowMask { get; private set; }
+
+        // ---- F7 -> Skyline -------------------------------------------------------------------
+
+        /// <summary>
+        /// Every building its own kind of glass: the chosen one (Glass tab) or one of the presets
+        /// ticked in <see cref="SkylineKinds"/>, picked per building and kept at every distance.
+        /// </summary>
+        public static BoolSetting SkylineMix { get; private set; }
+
+        // Whether each preset is in the mix, named after it.
+        public static BoolSetting SkylineReflectiveBlue { get; private set; }
+        public static BoolSetting SkylineOceanBlue { get; private set; }
+        public static BoolSetting SkylineAquaBlue { get; private set; }
+        public static BoolSetting SkylineSkyBlue { get; private set; }
+        public static BoolSetting SkylineGreen { get; private set; }
+        public static BoolSetting SkylineBronze { get; private set; }
+        public static BoolSetting SkylineGrey { get; private set; }
+        public static BoolSetting SkylineClearLowE { get; private set; }
+        public static BoolSetting SkylineSilverReflective { get; private set; }
+        public static BoolSetting SkylineGoldReflective { get; private set; }
+
+        /// <summary>The same switches in GlassPresets value order: index = value - 1.</summary>
+        public static BoolSetting[] SkylineKinds { get; private set; }
 
         // ---- F7 -> Reflections ---------------------------------------------------------------
 
@@ -182,8 +211,20 @@ namespace RealGlass
         /// <summary>0..3: how bright the lit rooms are at night.</summary>
         public static FloatSetting NightRooms { get; private set; }
 
-        /// <summary>0..1: the rooms' light at night, from cool office light (0) to warm home light (1).</summary>
+        /// <summary>
+        /// 0..1: shifts every building's lamps (offices cool, homes warm) cooler (0) or warmer (1);
+        /// 0.45 leaves them as they are.
+        /// </summary>
         public static FloatSetting NightWarmth { get; private set; }
+
+        /// <summary>0..1: of the windows the game lights at night, the share that are lit rooms.</summary>
+        public static FloatSetting NightLitShare { get; private set; }
+
+        /// <summary>
+        /// Metres: the floor slab's band at every storey (the part of a curtain wall with no view
+        /// in), drawn on plain-glass towers only. 0: none.
+        /// </summary>
+        public static FloatSetting FloorBand { get; private set; }
 
         // ---- F7 -> Rendering -----------------------------------------------------------------
 
@@ -223,11 +264,30 @@ namespace RealGlass
             public static readonly Color32 GlassColor = new Color32(0x2E, 0x6A, 0x80, 255);
             public const float GlassReflectivity = 0.20f;
             public const float GlassGlancing = 0.70f;
+
+            /// <summary>Half way: the tint fades toward silver edge-on, but the glass stays blue to the eye.</summary>
+            public const float GlassEdgeSilver = 0.50f;
             public const float GlassClarity = 0.24f;
             public const float GlassStrength = 1f;
             public const float GlassThreshold = 0.70f;
             public const bool GlassNightWindows = true;
             public const bool GlassShowMask = false;
+
+            // ---- Skyline ----
+            public const bool SkylineMix = true;
+
+            // The kinds in the mix: the glass of most towers. Bronze and gold are the player's
+            // to add (a city of gold mirrors is a choice).
+            public const bool SkylineClearLowE = true;
+            public const bool SkylineAquaBlue = true;
+            public const bool SkylineOceanBlue = true;
+            public const bool SkylineSkyBlue = true;
+            public const bool SkylineGreen = true;
+            public const bool SkylineBronze = false;
+            public const bool SkylineGrey = true;
+            public const bool SkylineSilverReflective = true;
+            public const bool SkylineGoldReflective = false;
+            public const bool SkylineReflectiveBlue = true;
 
             // ---- Reflections ----
             public const bool SsrEnabled = true;
@@ -255,7 +315,9 @@ namespace RealGlass
             public const float Blinds = 0.35f;
             public const float Furniture = 0.6f;
             public const float NightRooms = 1f;
-            public const float NightWarmth = 0.45f;
+            public const float NightWarmth = 0.45f;   // GlassUniforms.NeutralWarmth: every building as it is
+            public const float NightLitShare = 0.8f;
+            public const float FloorBand = 1f;        // a 3.8 m storey: 2.8 m of view, 1 m of slab and ceiling void
 
             // ---- Rendering ----
             public const int GlassDistance = 2;       // the whole city
@@ -295,11 +357,30 @@ namespace RealGlass
                 GlassColor = new ColorSetting("GlassColor", Defaults.GlassColor);
                 GlassReflectivity = new FloatSetting("GlassReflectivity", Defaults.GlassReflectivity);
                 GlassGlancing = new FloatSetting("GlassGlancing", Defaults.GlassGlancing);
+                GlassEdgeSilver = new FloatSetting("GlassEdgeSilver", Defaults.GlassEdgeSilver);
                 GlassClarity = new FloatSetting("GlassClarity", Defaults.GlassClarity);
                 GlassStrength = new FloatSetting("GlassStrength", Defaults.GlassStrength);
                 GlassThreshold = new FloatSetting("GlassThreshold", Defaults.GlassThreshold);
                 GlassNightWindows = new BoolSetting("GlassNightWindows", Defaults.GlassNightWindows);
                 GlassShowMask = new BoolSetting("GlassShowMask", Defaults.GlassShowMask);
+
+                SkylineMix = new BoolSetting("SkylineMix", Defaults.SkylineMix);
+                SkylineReflectiveBlue = new BoolSetting("SkylineReflectiveBlue", Defaults.SkylineReflectiveBlue);
+                SkylineOceanBlue = new BoolSetting("SkylineOceanBlue", Defaults.SkylineOceanBlue);
+                SkylineAquaBlue = new BoolSetting("SkylineAquaBlue", Defaults.SkylineAquaBlue);
+                SkylineSkyBlue = new BoolSetting("SkylineSkyBlue", Defaults.SkylineSkyBlue);
+                SkylineGreen = new BoolSetting("SkylineGreen", Defaults.SkylineGreen);
+                SkylineBronze = new BoolSetting("SkylineBronze", Defaults.SkylineBronze);
+                SkylineGrey = new BoolSetting("SkylineGrey", Defaults.SkylineGrey);
+                SkylineClearLowE = new BoolSetting("SkylineClearLowE", Defaults.SkylineClearLowE);
+                SkylineSilverReflective = new BoolSetting("SkylineSilverReflective", Defaults.SkylineSilverReflective);
+                SkylineGoldReflective = new BoolSetting("SkylineGoldReflective", Defaults.SkylineGoldReflective);
+                // Index = GlassPresets value - 1.
+                SkylineKinds = new[]
+                {
+                    SkylineClearLowE, SkylineAquaBlue, SkylineOceanBlue, SkylineSkyBlue, SkylineGreen,
+                    SkylineBronze, SkylineGrey, SkylineSilverReflective, SkylineGoldReflective, SkylineReflectiveBlue,
+                };
 
                 SsrEnabled = new BoolSetting("SsrEnabled", Defaults.SsrEnabled);
                 SsrQuality = new IntSetting("SsrQuality", Defaults.SsrQuality);
@@ -325,6 +406,8 @@ namespace RealGlass
                 Furniture = new FloatSetting("Furniture", Defaults.Furniture);
                 NightRooms = new FloatSetting("NightRooms", Defaults.NightRooms);
                 NightWarmth = new FloatSetting("NightWarmth", Defaults.NightWarmth);
+                NightLitShare = new FloatSetting("NightLitShare", Defaults.NightLitShare);
+                FloorBand = new FloatSetting("FloorBand", Defaults.FloorBand);
 
                 GlassDistance = new IntSetting("GlassDistance", Defaults.GlassDistance);
                 SkyCubeSize = new IntSetting("SkyCubeSize", Defaults.SkyCubeSize);
@@ -357,6 +440,25 @@ namespace RealGlass
         public static int DefaultPanelKey
         {
             get { return SavedInputKey.Encode(KeyCode.F7, false, false, false); }
+        }
+
+        /// <summary>The kinds ticked for the mix as bits: bit (value - 1) of each GlassPresets value.</summary>
+        public static int SkylineMask
+        {
+            get
+            {
+                int mask = 0;
+                if (SkylineKinds == null)
+                    return mask;
+
+                for (int i = 0; i < SkylineKinds.Length; i++)
+                {
+                    if (SkylineKinds[i] != null && SkylineKinds[i].value)
+                        mask |= 1 << i;
+                }
+
+                return mask;
+            }
         }
 
         /// <summary>The live sky cube's face size in pixels, from <see cref="SkyCubeSize"/>: 64, 128 or 256.</summary>

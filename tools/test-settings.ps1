@@ -382,7 +382,8 @@ $pairs = @(
     @('Pillow', 'PanePillow'), @('Tilt', 'PaneTilt'), @('RollerWave', 'RollerWave'), @('PaneWeather', 'PaneWeather'),
     @('Rooms', 'InteriorEnabled'), @('FloorHeight', 'FloorHeight'), @('RoomWidth', 'RoomWidth'), @('RoomDepth', 'RoomDepth'),
     @('InteriorBrightness', 'InteriorBrightness'), @('Blinds', 'Blinds'), @('Furniture', 'Furniture'),
-    @('NightRooms', 'NightRooms'), @('NightWarmth', 'NightWarmth'))
+    @('NightRooms', 'NightRooms'), @('NightWarmth', 'NightWarmth'), @('Preset', 'GlassPreset'),
+    @('EdgeSilver', 'GlassEdgeSilver'), @('Mix', 'SkylineMix'), @('LitShare', 'NightLitShare'), @('FloorBand', 'FloorBand'))
 $mismatch = @()
 foreach ($pair in $pairs) {
     $mine = $paramsType.GetField($pair[0]).GetValue($gp)
@@ -393,6 +394,42 @@ Check "GlassParams.Default() = Settings.Defaults, row by row" ($mismatch -join "
 $c = Default 'GlassColor'
 $tint = "{0:F4} {1:F4} {2:F4}" -f $paramsType.GetField('TintR').GetValue($gp), $paramsType.GetField('TintG').GetValue($gp), $paramsType.GetField('TintB').GetValue($gp)
 Check "  and the glass colour" $tint ("{0:F4} {1:F4} {2:F4}" -f ($c.r / 255.0), ($c.g / 255.0), ($c.b / 255.0))
+
+# The kinds of glass in the mix: bit (value - 1) of each preset ticked by default.
+$kindNames = @('SkylineClearLowE', 'SkylineAquaBlue', 'SkylineOceanBlue', 'SkylineSkyBlue', 'SkylineGreen', 'SkylineBronze',
+               'SkylineGrey', 'SkylineSilverReflective', 'SkylineGoldReflective', 'SkylineReflectiveBlue')
+$mask = 0
+for ($i = 0; $i -lt $kindNames.Count; $i++) {
+    $d = Default $kindNames[$i]
+    if ($d -eq $null) { $mask = -1; break }
+    if ($d) { $mask = $mask -bor (1 -shl $i) }
+}
+Check "  and the kinds in the mix (MixMask)" ($paramsType.GetField('MixMask').GetValue($gp)) $mask
+$sameNames = @()
+for ($i = 0; $i -lt $count; $i++) {
+    $p = $presets::At($i)
+    $key = $kindNames[$p.Value - 1] -replace '^Skyline', ''
+    $pk = ($p.LogName -replace '[^A-Za-z]', '')
+    if ($pk -ne $key) { $sameNames += "$($p.LogName) (value $($p.Value)) vs $($kindNames[$p.Value - 1])" }
+}
+Check "  every preset's mix switch is named after it, by value" ($sameNames -join "; ") ""
+
+# ---- the mix and the lamps (GlassUniforms, pure maths) -------------------------------------
+
+$uniforms = $asm.GetType('RealGlass.Glass.GlassUniforms', $true)
+$gp2 = $paramsType.GetMethod('Default').Invoke($null, @())
+Check "the default city mixes 8 kinds of glass (the chosen one + 7 other ticked)" ($uniforms::MixCount($gp2)) 8
+$paramsType.GetField('Mix').SetValue($gp2, $false)
+Check "  one kind with the mix off" ($uniforms::MixCount($gp2)) 1
+
+$white = $uniforms::LampColour(4000)
+Check "the lamps' white point (4000 K) is white" ("{0:F3} {1:F3} {2:F3}" -f $white.x, $white.y, $white.z) "1.000 1.000 1.000"
+$warm = $uniforms::LampColour(2700)
+$cool = $uniforms::LampColour(5000)
+Check "  2700 K is warm (red > green > blue)" ($warm.x -gt $warm.y -and $warm.y -gt $warm.z) "True"
+Check "  5000 K is cool (blue > green > red)" ($cool.z -gt $cool.y -and $cool.y -gt $cool.x) "True"
+$lumaOf = { param($v) 0.2126 * $v.x + 0.7152 * $v.y + 0.0722 * $v.z }
+Check "  every lamp has a luminance of 1" ("{0:F3} {1:F3}" -f (& $lumaOf $warm), (& $lumaOf $cool)) "1.000 1.000"
 
 Write-Host ""
 if ($failed -eq 0) { Write-Host "all passed" } else { Write-Host "$failed FAILED"; exit 1 }

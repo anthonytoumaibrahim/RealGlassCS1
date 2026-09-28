@@ -24,6 +24,11 @@ namespace RealGlass.Glass
             p.Threshold = Settings.GlassThreshold.value;
             p.NightWindows = Settings.GlassNightWindows.value;
             p.ShowMask = Settings.GlassShowMask.value;
+            p.Preset = Settings.GlassPreset.value;
+            p.EdgeSilver = Settings.GlassEdgeSilver.value;
+
+            p.Mix = Settings.SkylineMix.value;
+            p.MixMask = Settings.SkylineMask;
 
             p.Trace = Settings.SsrEnabled.value;
             p.Quality = Settings.SsrQuality.value;
@@ -49,6 +54,8 @@ namespace RealGlass.Glass
             p.Furniture = Settings.Furniture.value;
             p.NightRooms = Settings.NightRooms.value;
             p.NightWarmth = Settings.NightWarmth.value;
+            p.LitShare = Settings.NightLitShare.value;
+            p.FloorBand = Settings.FloorBand.value;
             return p;
         }
     }

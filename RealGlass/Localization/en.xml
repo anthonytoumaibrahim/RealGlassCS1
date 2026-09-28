@@ -51,6 +51,7 @@
   </String>
 
   <String key="Tab.Glass">Glass</String>
+  <String key="Tab.Skyline">Skyline</String>
   <String key="Tab.Reflections">Reflections</String>
   <String key="Tab.Panes">Panes</String>
   <String key="Tab.Interiors">Interiors</String>
@@ -98,6 +99,9 @@
   <String key="GlassGlancing.Label">Reflectivity, at an angle</String>
   <String key="GlassGlancing.Tooltip">The most it mirrors seen edge-on. Lower it if towers glare.</String>
 
+  <String key="GlassEdgeSilver.Label">Silvery edge-on</String>
+  <String key="GlassEdgeSilver.Tooltip">Seen edge-on, coated glass loses its colour and turns silvery.</String>
+
   <String key="GlassClarity.Label">Clarity</String>
   <String key="GlassClarity.Tooltip">How much light gets through: how much of the rooms you see.</String>
 
@@ -114,6 +118,34 @@
 
   <String key="GlassShowMask.Label">Show what counts as glass</String>
   <String key="GlassShowMask.Tooltip">Paints the glass magenta, to check the settings above.</String>
+
+  <!-- ==================== F7 panel: Skyline ==================== -->
+
+  <String key="SkylineMix.Label">Mix kinds of glass</String>
+  <String key="SkylineMix.Tooltip">Each building gets one of the kinds ticked below, as in a real city.</String>
+
+  <String key="Group.SkylineKinds">Kinds in the mix (and the one on the Glass tab)</String>
+
+  <String key="SkylineReflectiveBlue.Label">Reflective blue</String>
+  <String key="SkylineReflectiveBlue.Tooltip">Mirrors 20%, lets 24% through. The default glass.</String>
+  <String key="SkylineOceanBlue.Label">Ocean blue</String>
+  <String key="SkylineOceanBlue.Tooltip">A rich blue. Mirrors 11%, lets 29% through.</String>
+  <String key="SkylineAquaBlue.Label">Aqua blue</String>
+  <String key="SkylineAquaBlue.Tooltip">A light blue-green. Mirrors 21%, lets 47% through.</String>
+  <String key="SkylineSkyBlue.Label">Sky blue</String>
+  <String key="SkylineSkyBlue.Tooltip">A pale blue. Mirrors 15%, lets 20% through.</String>
+  <String key="SkylineGreen.Label">Green</String>
+  <String key="SkylineGreen.Tooltip">Mirrors 24%, lets 27% through.</String>
+  <String key="SkylineBronze.Label">Bronze</String>
+  <String key="SkylineBronze.Tooltip">A warm brown. Mirrors 14%, lets 19% through.</String>
+  <String key="SkylineGrey.Label">Grey</String>
+  <String key="SkylineGrey.Tooltip">A neutral dark grey. Mirrors 11%, lets 16% through.</String>
+  <String key="SkylineClearLowE.Label">Clear low-E</String>
+  <String key="SkylineClearLowE.Tooltip">Nearly clear. Mirrors 11%, lets 64% through.</String>
+  <String key="SkylineSilverReflective.Label">Silver reflective</String>
+  <String key="SkylineSilverReflective.Tooltip">A mirror. Mirrors 35%, lets 20% through.</String>
+  <String key="SkylineGoldReflective.Label">Gold reflective</String>
+  <String key="SkylineGoldReflective.Tooltip">A gold mirror. Mirrors 30%, lets 18% through.</String>
 
   <!-- ==================== F7 panel: Reflections ==================== -->
 
@@ -185,6 +217,9 @@
   <String key="RoomDepth.Label">Room depth</String>
   <String key="RoomDepth.Tooltip">How far back a room goes.</String>
 
+  <String key="FloorBand.Label">Floor bands</String>
+  <String key="FloorBand.Tooltip">The dark band of floor between storeys, on plain glass towers.</String>
+
   <String key="Group.Day">By day</String>
 
   <String key="InteriorBrightness.Label">Room brightness</String>
@@ -201,8 +236,11 @@
   <String key="NightRooms.Label">Lit rooms</String>
   <String key="NightRooms.Tooltip">How bright the lit rooms are at night.</String>
 
+  <String key="NightLitShare.Label">Rooms with lights on</String>
+  <String key="NightLitShare.Tooltip">Of the windows the game lights, how many are lit rooms.</String>
+
   <String key="NightWarmth.Label">Light colour</String>
-  <String key="NightWarmth.Tooltip">From cool office light to warm home light.</String>
+  <String key="NightWarmth.Tooltip">Offices light cool, homes warm. 45%: as they are.</String>
 
   <!-- ==================== F7 panel: Rendering ==================== -->
 

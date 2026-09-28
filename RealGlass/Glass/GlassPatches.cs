@@ -35,7 +35,8 @@ namespace RealGlass.Glass
             if (!cameraInfo.CheckRenderDistance(instance.m_position, info.m_minLodDistance))
                 return;
 
-            GlassDraw.DrawNear(info.m_mesh, instance.m_dataMatrix1, info.m_material, info.m_prefabDataLayer, instance.m_dataVector0);
+            GlassDraw.DrawNear(info.m_mesh, instance.m_dataMatrix1, info.m_material, info.m_prefabDataLayer, instance.m_dataVector0,
+                instance.m_dataVector3);
         }
     }
 
@@ -62,7 +63,8 @@ namespace RealGlass.Glass
             if (!cameraInfo.CheckRenderDistance(instance.m_position, subInfo.m_minLodDistance))
                 return;
 
-            GlassDraw.DrawNear(subInfo.m_mesh, matrix, subInfo.m_material, info.m_prefabDataLayer, instance.m_dataVector0);
+            GlassDraw.DrawNear(subInfo.m_mesh, matrix, subInfo.m_material, info.m_prefabDataLayer, instance.m_dataVector0,
+                instance.m_dataVector3);
         }
     }
 

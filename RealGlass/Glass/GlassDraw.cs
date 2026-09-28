@@ -27,7 +27,7 @@ namespace RealGlass.Glass
         private static readonly Dictionary<int, bool> GroupLayerOk = new Dictionary<int, bool>();
         private static readonly Dictionary<string, int> ShaderCounts = new Dictionary<string, int>();
 
-        private static int _idMain, _idXys, _idAci, _idState, _idMainSt;
+        private static int _idMain, _idXys, _idAci, _idState, _idMainSt, _idObjectIndex;
         private static bool _ids;
 
         /// <summary>What a building material gives the glass: its three maps, or nothing (not glass-capable).</summary>
@@ -47,6 +47,7 @@ namespace RealGlass.Glass
             _idAci = Shader.PropertyToID("_ACIMap");
             _idState = Shader.PropertyToID("_BuildingState");
             _idMainSt = Shader.PropertyToID("_MainTex_ST");
+            _idObjectIndex = Shader.PropertyToID("_ObjectIndex");
             _ids = true;
         }
 
@@ -90,8 +91,13 @@ namespace RealGlass.Glass
             return maps;
         }
 
-        /// <summary>One near building or sub-building: the game just drew mesh with material at matrix.</summary>
-        public static void DrawNear(Mesh mesh, Matrix4x4 matrix, Material material, int layer, Vector4 state)
+        /// <summary>
+        /// One near building or sub-mesh: the game just drew mesh with material at matrix. state is
+        /// its _BuildingState (m_dataVector0), objectIndex its _ObjectIndex (m_dataVector3: where it
+        /// is in the game's object colour map -- which building it is, for its kind of glass and
+        /// its lamps).
+        /// </summary>
+        public static void DrawNear(Mesh mesh, Matrix4x4 matrix, Material material, int layer, Vector4 state, Vector4 objectIndex)
         {
             if (!Active || mesh == null || material == null || Near == null)
                 return;
@@ -109,6 +115,7 @@ namespace RealGlass.Glass
             Block.SetTexture(_idAci, maps.Aci);
             Block.SetVector(_idMainSt, maps.MainSt);
             Block.SetVector(_idState, state);
+            Block.SetVector(_idObjectIndex, objectIndex);
             Graphics.DrawMesh(mesh, matrix, Near, layer, null, 0, Block, false, false);
             NearDraws++;
         }

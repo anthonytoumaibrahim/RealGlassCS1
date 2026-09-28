@@ -8,6 +8,11 @@
 // below are the game's own (read from the disassembly of Custom/Buildings/Building/Default), so
 // this draw lands on the game's depth exactly; Offset -1 -1 settles the last bit.
 //
+// Which building a pixel belongs to comes from the same place on every tier: its colour index, the
+// building's texel in the game's object colour map (near: _ObjectIndex, middle: _ObjectIndices[],
+// far: the baked second uv). It chooses the building's kind of glass (the Skyline mix) and finds
+// its lamps (_RGBuildings), so neither changes as a building moves from one tier to the next.
+//
 // Queue 2499, the last of the opaque range: Unity draws it forward after the deferred final pass
 // and BEFORE the game's fog ([ImageEffectOpaque]), so the glass is fogged like the rest of the
 // city. What is not glass is discarded; glass is REPLACED (alpha = mask x strength).
@@ -47,8 +52,10 @@ Shader "RealGlass/Glass"
 #if defined(RG_LOD)
             float4x4 _BuildingLocations[8];
             float4 _BuildingStates[8];
+            float4 _ObjectIndices[8];
 #elif defined(RG_NEAR)
             float4 _BuildingState;
+            float4 _ObjectIndex;
 #endif
 
             struct appdata
@@ -56,6 +63,7 @@ Shader "RealGlass/Glass"
                 float4 vertex : POSITION;
                 float3 normal : NORMAL;
                 float4 texcoord : TEXCOORD0;
+                float4 texcoord1 : TEXCOORD1;
                 float4 texcoord2 : TEXCOORD2;
                 float4 texcoord3 : TEXCOORD3;
                 float4 color : COLOR;
@@ -69,7 +77,44 @@ Shader "RealGlass/Glass"
                 float2 uv : TEXCOORD2;
                 float4 rect : TEXCOORD3;         // the asset's rectangle in the LOD atlas (LOD, GROUP)
                 float4 screenPos : TEXCOORD4;
+                float2 building : TEXCOORD5;     // the building's colour index: its texel in the object colour map
             };
+
+            // Texture coordinates per metre UP the facade, from the pixel's own derivatives: the
+            // screen-space changes of uv and of the facade position (along, up) give the 2 x 2 map
+            // between them.
+            float2 UvPerMetreUp(float2 uv, float3 P, float3 t)
+            {
+                float2 duvx = ddx(uv), duvy = ddy(uv);
+                float3 dPx = ddx(P), dPy = ddy(P);
+                float2 sx = float2(dot(dPx, t), dPx.y);
+                float2 sy = float2(dot(dPy, t), dPy.y);
+                float det = sx.x * sy.y - sy.x * sx.y;
+                return abs(det) > 1e-10 ? (duvx * (-sy.x) + duvy * sx.x) / det : float2(0.0, 0.0);
+            }
+
+            // A tower of plain glass: the asset's texture one storey above and one below is glass
+            // too, lit (or not) exactly alike -- it painted no floors or windows of its own here, so
+            // the rooms' storeys are the only ones it can show (their floor bands, their lights floor
+            // by floor). Anywhere else the asset's own windows lead. Only while a storey is a few
+            // pixels tall: further out the texture is an average and cannot tell.
+            float GlassBox(float2 uv, float illum, float3 P, float3 t, float footprint, float4 rect)
+            {
+                float2 up = UvPerMetreUp(uv, P, t) * _RGRoom.x;
+                float2 uvUp = uv + up, uvDown = uv - up;
+#if !defined(RG_NEAR)
+                uvUp = clamp(uvUp, rect.xy, rect.xy + rect.zw);
+                uvDown = clamp(uvDown, rect.xy, rect.xy + rect.zw);
+#endif
+                float bUp = tex2D(_ACIMap, uvUp).b;
+                float bDown = tex2D(_ACIMap, uvDown).b;
+                float glassUp = 1.0 - tex2D(_XYSMap, uvUp).z;
+                float glassDown = 1.0 - tex2D(_XYSMap, uvDown).z;
+                float even = 1.0 - saturate((max(abs(bUp - illum), abs(bDown - illum)) - 0.03) * 20.0);
+                float glassy = smoothstep(_RGMask.x - 0.1, _RGMask.x, min(glassUp, glassDown));
+                float sure = saturate(_RGRoom.x / (footprint * 4.0) - 0.5);
+                return even * glassy * sure * step(1e-14, dot(up, up));
+            }
 
             v2f vert(appdata v)
             {
@@ -83,14 +128,17 @@ Shader "RealGlass/Glass"
                 place = _BuildingLocations[index];
                 state = _BuildingStates[index];
                 baseWeight = 1.0;
+                o.building = _ObjectIndices[index].xy;
 #elif defined(RG_GROUP)
                 place = float4x4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
                 state = float4(0.0, 100000.0, 0.0, 1.0);   // baked: nothing squashed, nothing extended
                 baseWeight = 0.0;
+                o.building = v.texcoord1.xy;               // BuildingAI.PopulateGroupData: uvs2 = the colour index
 #else
                 place = float4x4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
                 state = _BuildingState;
                 baseWeight = v.color.a;
+                o.building = _ObjectIndex.xy;
 #endif
                 // The game's rule: a building under construction is squashed above its progress
                 // height (state.y); its base (the ring at y = -1) is stretched down to the ground.
@@ -155,15 +203,37 @@ Shader "RealGlass/Glass"
                 float dist = length(toP);
                 float3 V = toP / max(dist, 1e-3);
                 float footprint = max(length(fwidth(P)), 1e-4);
-
                 float3 t = FacadeTangent(n);
+
+                // This building: its kind of glass, its lamps, and whether it is a plain glass box.
+                // (Outside every branch: GlassBox takes derivatives.)
+                float seed = BuildingSeed(i.building);
+                int kind = MixKind(seed);
+                float F0 = _RGMixGlass[kind].x;
+                float clarity = _RGMixGlass[kind].y;
+                float warmth = BuildingWarmth(i.building, seed);
+                float box = GlassBox(uv, aci.b, P, t, footprint, i.rect);
+
+                // The glass's colour: the building's kind of glass, and as much of its own painted
+                // glass colour as the "own colour" setting keeps. The data sheets' numbers are
+                // LUMINOUS (visible light transmittance / reflectance, eye-weighted), so both
+                // filters are scaled to a luminance of 1: "clarity 24%" lets 24% of the light
+                // through, whatever the colour; "reflectivity 20%" reflects 20%.
+                float3 own = NormaliseTint(tex2D(_MainTex, uv).rgb);
+                float3 tint = NormaliseTint(lerp(_RGMixTint[kind].rgb, own, _RGTint.a));
+                float3 filter = lerp(float3(1.0, 1.0, 1.0), tint, 0.6);
+                filter /= max(Luma(filter), 0.05);
+                float3 coat = lerp(float3(1.0, 1.0, 1.0), tint, _RGMask.w);
+                coat /= max(Luma(coat), 0.05);
+
                 float2 paneCell;
                 float3 np = PaneNormal(n, t, P, baseY, footprint, paneCell);
                 float facing = dot(np, -V);
                 if (facing < 0.01)
                     np = normalize(np + V * (facing - 0.01));   // a bent pane never faces away
                 float cosT = saturate(dot(np, -V));
-                float F = GlassFresnel(cosT);
+                float Fs;
+                float3 F = GlassFresnel(cosT, F0, coat, Fs);
                 float3 R = reflect(V, np);
                 float rough = _RGRefl.y;
 
@@ -185,10 +255,13 @@ Shader "RealGlass/Glass"
                         // The depth texture here, against this pixel's own depth: grey bands every
                         // 50 m of what the texture says; red where it disagrees with us by > 2 m.
                         float sz = -SceneZ(suv * _ScreenParams.xy);
-                        float own = -mul(UNITY_MATRIX_V, float4(P, 1.0)).z;
-                        return float4(frac(sz / 50.0).xxx * (abs(sz - own) > 2.0 ? float3(1.0, 0.2, 0.2) : float3(1.0, 1.0, 1.0)), 1.0);
+                        float own2 = -mul(UNITY_MATRIX_V, float4(P, 1.0)).z;
+                        return float4(frac(sz / 50.0).xxx * (abs(sz - own2) > 2.0 ? float3(1.0, 0.2, 0.2) : float3(1.0, 1.0, 1.0)), 1.0);
                     }
-                    return float4(gamePixel, 1.0);
+                    if (_RGDebug.x < 3.5)
+                        return float4(gamePixel, 1.0);
+                    // 4: which buildings are plain glass boxes (white), and their kind of glass.
+                    return float4(lerp(_RGMixTint[kind].rgb * 0.3, float3(1.0, 1.0, 1.0), box), 1.0);
                 }
 
                 float3 refl = fallback;
@@ -218,18 +291,6 @@ Shader "RealGlass/Glass"
                 if (_RGDebug.x > 0.5)
                     return float4(traceState == 1.0 ? float3(0.0, 1.0, 0.0) : (traceState == 2.0 ? float3(1.0, 0.0, 0.0) : float3(0.0, 0.2, 1.0)), 1.0);
 
-                // The glass's colour: the chosen tint, and as much of the building's own painted
-                // glass colour as the "own colour" setting keeps. The data sheets' numbers are
-                // LUMINOUS (visible light transmittance / reflectance, eye-weighted), so both
-                // filters are scaled to a luminance of 1: "clarity 24%" lets 24% of the light
-                // through, whatever the colour; "reflectivity 20%" reflects 20%.
-                float3 own = NormaliseTint(tex2D(_MainTex, uv).rgb);
-                float3 tint = NormaliseTint(lerp(_RGTint.rgb, own, _RGTint.a));
-                float3 filter = lerp(float3(1.0, 1.0, 1.0), tint, 0.6);
-                filter /= max(Luma(filter), 0.05);
-                float3 coat = lerp(float3(1.0, 1.0, 1.0), tint, _RGMask.w);
-                coat /= max(Luma(coat), 0.05);
-
                 // Through the glass.
                 float3 dayRoom = float3(0.0, 0.0, 0.0);
                 float3 nightRoom = gamePixel;
@@ -237,7 +298,7 @@ Shader "RealGlass/Glass"
                 if (roomsOn > 0.0)
                 {
                     float3 d, nt;
-                    RoomRadiance(P, V, n, t, baseY, footprint, paneCell, gamePixel, d, nt);
+                    RoomRadiance(P, V, n, t, baseY, footprint, paneCell, gamePixel, seed, warmth, box, aci.b, d, nt);
                     dayRoom = d * roomsOn;
                     nightRoom = lerp(gamePixel * _RGRoom2.w, nt, roomsOn);
                 }
@@ -251,12 +312,12 @@ Shader "RealGlass/Glass"
                 // keep their brightness and take only a hint of the glass's colour.
                 float3 nightFilter = lerp(float3(1.0, 1.0, 1.0), tint, 0.3);
                 nightFilter /= max(Luma(nightFilter), 0.05);
-                float3 through = dayRoom * (_RGGlass.z * filter) * daylight
+                float3 through = dayRoom * (clarity * filter) * daylight
                                + nightRoom * nightFilter * (1.0 - daylight);
 
-                float3 L = F * refl * coat * _RGRefl.x
-                         + (1.0 - F) * through
-                         + SunGlint(np, V, F, rough) * coat;
+                float3 L = F * refl * _RGRefl.x
+                         + (1.0 - Fs) * through
+                         + SunGlint(np, V, Fs, rough) * (F / max(Fs, 1e-4));
 
                 return float4(L, mask * _RGGlass.w);
             }

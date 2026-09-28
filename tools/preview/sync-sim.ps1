@@ -1,6 +1,7 @@
 # Copies the mod's engine-only glass sources -- the settings struct, the uniforms, the screen
-# copy and the sky cube -- into UnityProject\Assets\Sim, where the editor compiles them for the
-# GPU preview (Assets\Editor\GlassPreview.cs), so the preview draws with the mod's own code.
+# copy, the sky cube, and the glass presets the uniforms mix -- into UnityProject\Assets\Sim, where
+# the editor compiles them for the GPU preview (Assets\Editor\GlassPreview.cs), so the preview
+# draws with the mod's own code.
 # Run by tools\preview\gpu-render.ps1 and by build-bundle.ps1: the editor compiles EVERY script
 # under Assets before it does anything, so a stale copy here breaks the bundle build with
 # "Scripts have compiler errors". The folder is generated, and gitignored.
@@ -10,7 +11,7 @@ $root = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 $simDir = Join-Path $root "UnityProject\Assets\Sim"
 New-Item -ItemType Directory -Force $simDir | Out-Null
 
-$files = "Glass\GlassParams.cs", "Glass\GlassUniforms.cs", "Glass\GlassScreen.cs", "Glass\GlassSky.cs"
+$files = "Glass\GlassParams.cs", "Glass\GlassUniforms.cs", "Glass\GlassScreen.cs", "Glass\GlassSky.cs", "GlassPresets.cs"
 $names = @()
 foreach ($f in $files) {
     $name = Split-Path $f -Leaf

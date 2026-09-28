@@ -31,7 +31,7 @@ namespace RealGlass.UI
     }
 
     /// <summary>Which tab of the in-game (F7) panel a row appears on. None = not in it.</summary>
-    public enum PanelPage { None, Glass, Reflections, Panes, Interiors, Rendering }
+    public enum PanelPage { None, Glass, Skyline, Reflections, Panes, Interiors, Rendering }
 
     /// <summary>General = the game's mod options page (no tabs). None = not on it.</summary>
     public enum OptionsPage { None, General }
@@ -388,6 +388,7 @@ namespace RealGlass.UI
             }
 
             Log.Msg("settings catalog: " + Rows.Count + " rows | panel Glass=" + CountForPanel(PanelPage.Glass) +
+                    " Skyline=" + CountForPanel(PanelPage.Skyline) +
                     " Reflections=" + CountForPanel(PanelPage.Reflections) +
                     " Panes=" + CountForPanel(PanelPage.Panes) +
                     " Interiors=" + CountForPanel(PanelPage.Interiors) +
@@ -635,6 +636,11 @@ namespace RealGlass.UI
             return GlassOn() && (Settings.SkyReflection == null || Settings.SkyReflection.value == 0);
         }
 
+        private static bool MixOn()
+        {
+            return GlassOn() && (Settings.SkylineMix == null || Settings.SkylineMix.value);
+        }
+
         // ---- the catalog ----------------------------------------------------------------------
 
         private static void Build()
@@ -649,6 +655,7 @@ namespace RealGlass.UI
             _rows = new List<Row>();
 
             BuildGlass();
+            BuildSkyline();
             BuildReflections();
             BuildPanes();
             BuildInteriors();
@@ -763,6 +770,17 @@ namespace RealGlass.UI
             {
                 Kind = RowKind.Percent,
                 Panel = PanelPage.Glass,
+                Float = Settings.GlassEdgeSilver,
+                DefaultFloat = Settings.Defaults.GlassEdgeSilver,
+                Min = 0f, Max = 100f, Step = 1f,
+                Enabled = GlassOn,
+                AfterChange = Changed,
+            });
+
+            Add(new Row
+            {
+                Kind = RowKind.Percent,
+                Panel = PanelPage.Glass,
                 Float = Settings.GlassClarity,
                 DefaultFloat = Settings.Defaults.GlassClarity,
                 Min = 0f, Max = 100f, Step = 1f,
@@ -818,6 +836,91 @@ namespace RealGlass.UI
                 Enabled = GlassOn,
                 AfterChange = State("glass mask view (what counts as glass, in magenta)", OnOff(Settings.GlassShowMask)),
             });
+        }
+
+        /// <summary>
+        /// F7 -> Skyline: every building its own kind of glass, from the kinds ticked here -- a
+        /// real skyline is not one product. The chosen glass (Glass tab) is always one of them.
+        /// </summary>
+        private static void BuildSkyline()
+        {
+            Add(new Row
+            {
+                Kind = RowKind.Toggle,
+                Panel = PanelPage.Skyline,
+                Bool = Settings.SkylineMix,
+                DefaultBool = Settings.Defaults.SkylineMix,
+                Enabled = GlassOn,
+                AfterChange = State("mix kinds of glass across the city", OnOff(Settings.SkylineMix)),
+            });
+
+            // The kinds, in the Glass tab's order (its preset row).
+            Add(new Row
+            {
+                Kind = RowKind.Toggle, Panel = PanelPage.Skyline, Group = "SkylineKinds",
+                Bool = Settings.SkylineReflectiveBlue, DefaultBool = Settings.Defaults.SkylineReflectiveBlue,
+                Enabled = MixOn, AfterChange = InMix(10, Settings.SkylineReflectiveBlue),
+            });
+            Add(new Row
+            {
+                Kind = RowKind.Toggle, Panel = PanelPage.Skyline,
+                Bool = Settings.SkylineOceanBlue, DefaultBool = Settings.Defaults.SkylineOceanBlue,
+                Enabled = MixOn, AfterChange = InMix(3, Settings.SkylineOceanBlue),
+            });
+            Add(new Row
+            {
+                Kind = RowKind.Toggle, Panel = PanelPage.Skyline,
+                Bool = Settings.SkylineAquaBlue, DefaultBool = Settings.Defaults.SkylineAquaBlue,
+                Enabled = MixOn, AfterChange = InMix(2, Settings.SkylineAquaBlue),
+            });
+            Add(new Row
+            {
+                Kind = RowKind.Toggle, Panel = PanelPage.Skyline,
+                Bool = Settings.SkylineSkyBlue, DefaultBool = Settings.Defaults.SkylineSkyBlue,
+                Enabled = MixOn, AfterChange = InMix(4, Settings.SkylineSkyBlue),
+            });
+            Add(new Row
+            {
+                Kind = RowKind.Toggle, Panel = PanelPage.Skyline,
+                Bool = Settings.SkylineGreen, DefaultBool = Settings.Defaults.SkylineGreen,
+                Enabled = MixOn, AfterChange = InMix(5, Settings.SkylineGreen),
+            });
+            Add(new Row
+            {
+                Kind = RowKind.Toggle, Panel = PanelPage.Skyline,
+                Bool = Settings.SkylineBronze, DefaultBool = Settings.Defaults.SkylineBronze,
+                Enabled = MixOn, AfterChange = InMix(6, Settings.SkylineBronze),
+            });
+            Add(new Row
+            {
+                Kind = RowKind.Toggle, Panel = PanelPage.Skyline,
+                Bool = Settings.SkylineGrey, DefaultBool = Settings.Defaults.SkylineGrey,
+                Enabled = MixOn, AfterChange = InMix(7, Settings.SkylineGrey),
+            });
+            Add(new Row
+            {
+                Kind = RowKind.Toggle, Panel = PanelPage.Skyline,
+                Bool = Settings.SkylineClearLowE, DefaultBool = Settings.Defaults.SkylineClearLowE,
+                Enabled = MixOn, AfterChange = InMix(1, Settings.SkylineClearLowE),
+            });
+            Add(new Row
+            {
+                Kind = RowKind.Toggle, Panel = PanelPage.Skyline,
+                Bool = Settings.SkylineSilverReflective, DefaultBool = Settings.Defaults.SkylineSilverReflective,
+                Enabled = MixOn, AfterChange = InMix(8, Settings.SkylineSilverReflective),
+            });
+            Add(new Row
+            {
+                Kind = RowKind.Toggle, Panel = PanelPage.Skyline,
+                Bool = Settings.SkylineGoldReflective, DefaultBool = Settings.Defaults.SkylineGoldReflective,
+                Enabled = MixOn, AfterChange = InMix(9, Settings.SkylineGoldReflective),
+            });
+        }
+
+        /// <summary>A kind's switch in the mix: logged always, like every switch.</summary>
+        private static Action InMix(int presetValue, BoolSetting kind)
+        {
+            return State("in the mix: " + GlassPresets.LogName(presetValue), OnOff(kind));
         }
 
         /// <summary>F7 -> Reflections: what the glass mirrors. No group headings: the rows are few.</summary>
@@ -1029,6 +1132,18 @@ namespace RealGlass.UI
 
             Add(new Row
             {
+                Kind = RowKind.Value,
+                Panel = PanelPage.Interiors,
+                Float = Settings.FloorBand,
+                DefaultFloat = Settings.Defaults.FloorBand,
+                Min = 0f, Max = 2f, Step = 0.1f,
+                Format = Metres,
+                Enabled = InteriorsOn,
+                AfterChange = Changed,
+            });
+
+            Add(new Row
+            {
                 Kind = RowKind.Percent,
                 Panel = PanelPage.Interiors,
                 Group = "Day",
@@ -1069,6 +1184,17 @@ namespace RealGlass.UI
                 Float = Settings.NightRooms,
                 DefaultFloat = Settings.Defaults.NightRooms,
                 Min = 0f, Max = 300f, Step = 5f,
+                Enabled = InteriorsOn,
+                AfterChange = Changed,
+            });
+
+            Add(new Row
+            {
+                Kind = RowKind.Percent,
+                Panel = PanelPage.Interiors,
+                Float = Settings.NightLitShare,
+                DefaultFloat = Settings.Defaults.NightLitShare,
+                Min = 0f, Max = 100f, Step = 1f,
                 Enabled = InteriorsOn,
                 AfterChange = Changed,
             });

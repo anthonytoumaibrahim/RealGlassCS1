@@ -68,10 +68,12 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 The glass follows published work -- layered reflections as in Mirror's Edge Catalyst (DICE, GDC
 2016), stochastic and hierarchical screen-space reflections (Frostbite, SIGGRAPH 2015), a live
-environment cubemap as in GTA V, interior mapping (van Dongen, CGI 2008), Schlick's Fresnel
-approximation, glass makers' published transmittance and reflectance, and the physics of
-insulating-glass pillowing and roller-wave distortion -- listed with links in `README.md`. Apart
-from the ray tracer above, the implementations were written for this mod.
+environment cubemap as in GTA V, interior mapping (van Dongen, CGI 2008) with rooms lit and unlit
+at random as interior-mapped cities show them (Marvel's Spider-Man), Schlick's Fresnel
+approximation, Kim et al.'s cubic fit of the Planckian locus (2002) for the lamps' colours, glass
+makers' published transmittance and reflectance, and the physics of insulating-glass pillowing
+and roller-wave distortion -- listed with links in `README.md`. Apart from the ray tracer above,
+the implementations were written for this mod.
 
 Other mods were read to understand the game's behaviour and to stay compatible with them:
 xdedss's CS_SSR (its note that the game's camera keeps no glossiness in any screen buffer), and

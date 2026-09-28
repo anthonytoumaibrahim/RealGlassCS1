@@ -8,9 +8,10 @@ namespace RealGlass.UI
     /// The in-game panel (F7): every setting of the glass, judged against the city.
     /// </summary>
     /// <remarks>
-    /// Five tabs, one per <see cref="PanelPage"/>:
+    /// Six tabs, one per <see cref="PanelPage"/>:
     ///   Glass       -- the glass itself: its kind, colour, how much it reflects and lets through,
     ///                  and what counts as glass. A status line at the top says what is drawn.
+    ///   Skyline     -- every building its own kind of glass, from the kinds ticked there.
     ///   Reflections -- what the glass mirrors: the screen, the sky, the sun.
     ///   Panes       -- the panes: their size, and how they bend the reflections.
     ///   Interiors   -- the rooms behind the glass, by day and by night.
@@ -37,7 +38,7 @@ namespace RealGlass.UI
 
         private static readonly PanelPage[] Tabs =
         {
-            PanelPage.Glass, PanelPage.Reflections, PanelPage.Panes, PanelPage.Interiors, PanelPage.Rendering,
+            PanelPage.Glass, PanelPage.Skyline, PanelPage.Reflections, PanelPage.Panes, PanelPage.Interiors, PanelPage.Rendering,
         };
 
         /// <summary>Where to open, when replacing a panel that was already on screen. Null = centred.</summary>

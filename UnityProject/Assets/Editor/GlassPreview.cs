@@ -44,12 +44,21 @@ public static class GlassPreview
     /// <summary>The variant's "Debug=n": the shader's check view (0 = the picture).</summary>
     private static float _debug;
 
+    /// <summary>The game's object colour map (RenderManager.OBJECT_COLORMAP_WIDTH x HEIGHT in the game: 512 x 256).</summary>
+    private const int ColorMapWidth = 512, ColorMapHeight = 256;
+
     private sealed class Building
     {
         public Mesh Mesh;
         public Matrix4x4 Matrix;
         public Texture2D Main, Xys, Aci;
         public string Kind;
+
+        /// <summary>Its colour index, as RenderManager.GetColorLocation(id) makes it: its texel in the colour map.</summary>
+        public Vector4 ObjectIndex;
+
+        /// <summary>Its lamps' warmth (BuildingLights: 0.2 offices, 0.65 shops, 0.9 homes).</summary>
+        public float Warmth;
 
         /// <summary>The middle tier's test: 8 copies of this building's LOD mesh (uv in the atlas), as BuildingInfoBase.InitMeshData makes them.</summary>
         public Mesh Combined8;
@@ -79,6 +88,9 @@ public static class GlassPreview
         public Texture2D AtlasMain, AtlasXys, AtlasAci;
         public Material GlassLod, GlassGroup;
         public Mesh Baked;
+
+        /// <summary>Every building's lamps, laid out as the colour map (the mod's BuildingLights, same calls).</summary>
+        public Texture2D Lights;
     }
 
     /// <summary>The variant's "Tier=near|lod|group": which of the game's three paths the glass is drawn through.</summary>
@@ -132,7 +144,7 @@ public static class GlassPreview
                 string variant = variants[col].Trim();
                 string info;
                 Color[] pixels = RenderView(s, view, variant, sunIntensity, out info);
-                float exp = view == "night" ? exposure * 6f : exposure;
+                float exp = view.StartsWith("night") ? exposure * 6f : exposure;
                 string file = Path.Combine(outDir, "rg-" + row + "-" + col + ".png");
                 SavePng(pixels, width, height, exp, file);
                 Debug.Log("RG FRAME row=" + row + " col=" + col + " view=" + view + " variant=" + variant + " file=" + file + " | " + info);
@@ -214,7 +226,34 @@ public static class GlassPreview
 
         BuildCity(s);
         BuildLodTiers(s);
+        BuildLights(s);
         return s;
+    }
+
+    /// <summary>
+    /// The mod's BuildingLights texture for the preview's city, made with the same engine calls
+    /// (Texture2D RGBA32 linear, SetPixels32, Apply): r the lamps' warmth, a 255.
+    /// </summary>
+    private static void BuildLights(Scene s)
+    {
+        var pixels = new Color32[ColorMapWidth * ColorMapHeight];
+        for (int i = 0; i < s.Buildings.Count; i++)
+        {
+            int id = i + 1;
+            pixels[id] = new Color32((byte)Mathf.RoundToInt(s.Buildings[i].Warmth * 255f), 0, 0, 255);
+        }
+
+        s.Lights = new Texture2D(ColorMapWidth, ColorMapHeight, TextureFormat.RGBA32, false, true);
+        s.Lights.filterMode = FilterMode.Point;
+        s.Lights.wrapMode = TextureWrapMode.Clamp;
+        s.Lights.SetPixels32(pixels);
+        s.Lights.Apply(false, false);
+    }
+
+    /// <summary>RenderManager.GetColorLocation: the texel centre of object id in the colour map.</summary>
+    private static Vector4 ColorIndex(int id)
+    {
+        return new Vector4((id % ColorMapWidth + 0.5f) / ColorMapWidth, (id / ColorMapWidth + 0.5f) / ColorMapHeight, 1f, 0f);
     }
 
     /// <summary>
@@ -234,6 +273,7 @@ public static class GlassPreview
         var bakedN = new List<Vector3>();
         var bakedT = new List<Vector4>();
         var bakedUv = new List<Vector2>();
+        var bakedUv2 = new List<Vector2>();
         var bakedUv3 = new List<Vector2>();
         var bakedUv4 = new List<Vector2>();
         var bakedTris = new List<int>();
@@ -308,6 +348,7 @@ public static class GlassPreview
                 Vector3 tw = b.Matrix.MultiplyVector(new Vector3(t0[j].x, t0[j].y, t0[j].z)).normalized;
                 bakedT.Add(new Vector4(tw.x, tw.y, tw.z, t0[j].w));
                 bakedUv.Add(new Vector2(rect.x + uv0[j].x * rect.width, rect.y + uv0[j].y * rect.height));
+                bakedUv2.Add(new Vector2(b.ObjectIndex.x, b.ObjectIndex.y));   // PopulateGroupData: uvs2 = the colour index
                 bakedUv3.Add(new Vector2(rect.x, rect.y));
                 bakedUv4.Add(new Vector2(rect.width, rect.height));
             }
@@ -330,6 +371,7 @@ public static class GlassPreview
         s.Baked.SetNormals(bakedN);
         s.Baked.SetTangents(bakedT);
         s.Baked.SetUVs(0, bakedUv);
+        s.Baked.SetUVs(1, bakedUv2);
         s.Baked.SetUVs(2, bakedUv3);
         s.Baked.SetUVs(3, bakedUv4);
         var white = new Color32[baked.Count];
@@ -372,8 +414,18 @@ public static class GlassPreview
                     string kind = tower ? (rnd.NextDouble() < 0.7 ? "curtain" : "fins") : "punched";
                     Color glassColour = glassColours[rnd.Next(glassColours.Length)];
 
+                    // Off the random stream (the city stays the same): its id, whether a curtain
+                    // wall is a plain glass box (no floors painted in, lit all alike), and what it
+                    // is -- offices, shops or homes -- for its lamps.
+                    int id = s.Buildings.Count + 1;
+                    if (kind == "curtain" && Hash(id * 3.7f, 11.3f) < 0.45f)
+                        kind = "glassbox";
+                    float use = Hash(id * 5.1f, 2.9f);
+
                     Building b = new Building();
                     b.Kind = kind;
+                    b.ObjectIndex = ColorIndex(id);
+                    b.Warmth = tower ? (use < 0.65f ? 0.2f : (use < 0.85f ? 0.9f : 0.65f)) : (use < 0.6f ? 0.9f : 0.65f);
                     b.Mesh = BoxMesh(w, h, w);
                     b.Matrix = Matrix4x4.TRS(new Vector3(cx + ox, 0f, cz + oz), Quaternion.Euler(0f, turn, 0f), Vector3.one);
                     MakeFacade(kind, w, h, glassColour, rnd.Next(), out b.Main, out b.Xys, out b.Aci);
@@ -515,9 +567,12 @@ public static class GlassPreview
                 }
                 else
                 {
+                    // A glass box: thin mullions only, no spandrels painted in, one illumination
+                    // value for all its glass (a whole tower lights at once, as such assets do).
+                    bool box = kind == "glassbox";
                     bool fin = kind == "fins" && (column % 2 == 0) && inCol < 0.12f;
-                    bool mull = inCol < 0.05f || inCol > 0.95f;
-                    bool spandrel = inFloor < 0.22f;
+                    bool mull = box ? (inCol < 0.03f || inCol > 0.97f) : (inCol < 0.05f || inCol > 0.95f);
+                    bool spandrel = !box && inFloor < 0.22f;
                     if (fin)
                     {
                         c = concrete * 1.05f;
@@ -532,6 +587,12 @@ public static class GlassPreview
                     {
                         c = glassColour * 0.55f;
                         spec = 0.58f;
+                    }
+                    else if (box)
+                    {
+                        c = glassColour * (0.95f + 0.05f * cell);
+                        spec = 0.9f;
+                        lit = 0.85f;
                     }
                     else
                     {
@@ -636,7 +697,8 @@ public static class GlassPreview
     private static Color[] RenderView(Scene s, string view, string variant, float sunIntensity, out string info)
     {
         // The light of the moment.
-        bool night = view == "night";
+        // "night" (the aerial camera) and "nightclose" (the close one) are both by night.
+        bool night = view.StartsWith("night");
         float sunElev = view == "low" ? 7f : (night ? -12f : 42f);
         float sunYaw = view == "low" ? 200f : 140f;
         Vector3 toSun = Quaternion.Euler(-sunElev, sunYaw, 0f) * Vector3.forward;
@@ -660,16 +722,19 @@ public static class GlassPreview
         switch (view)
         {
             case "steep": target = new Vector3(0f, 40f, 0f); yaw = 60f; pitch = 55f; dist = 1000f; break;
-            case "street": target = new Vector3(20f, 140f, 30f); yaw = 20f; pitch = -28f; dist = 160f; break;
-            case "close": target = new Vector3(0f, 60f, 0f); yaw = 35f; pitch = 20f; dist = 260f; break;
+            case "street":
+            case "nightstreet": target = new Vector3(20f, 140f, 30f); yaw = 20f; pitch = -28f; dist = 160f; break;
+            case "close":
+            case "nightclose": target = new Vector3(0f, 60f, 0f); yaw = 35f; pitch = 20f; dist = 260f; break;
             default: target = new Vector3(0f, 70f, 0f); yaw = 30f; pitch = 32f; dist = 650f; break;
         }
         Quaternion rot = Quaternion.Euler(pitch, yaw, 0f);
         Vector3 camPos = target - rot * Vector3.forward * dist;
-        if (view == "street")
+        bool street = view == "street" || view == "nightstreet";
+        if (street)
             camPos = new Vector3(-40f, 3f, -95f);
         s.Camera.transform.position = camPos;
-        s.Camera.transform.rotation = view == "street" ? Quaternion.LookRotation(target - camPos) : rot;
+        s.Camera.transform.rotation = street ? Quaternion.LookRotation(target - camPos) : rot;
 
         // The glass, as the mod sets it.
         bool drawGlass = variant.StartsWith("glass", StringComparison.OrdinalIgnoreCase);
@@ -689,10 +754,13 @@ public static class GlassPreview
         f.GroundY = 0f;
         f.Temperature = view == "low" ? 8f : 24f;
         f.ScreenHeight = s.Height;
+        f.ColorMapWidth = ColorMapWidth;
+        f.ColorMapHeight = ColorMapHeight;
 
         s.SkyCube.Update(p.SkySource == 0, 128, 6, null, camPos);
         f.CubeMips = s.SkyCube.Mips;
         GlassUniforms.Apply(p, f);
+        Shader.SetGlobalTexture("_RGBuildings", s.Lights);
         bool screenOk = s.Screen.Update(s.Camera, s.Util);
 
         // The game's draws, then ours.
@@ -705,12 +773,14 @@ public static class GlassPreview
         Matrix4x4 away = Matrix4x4.TRS(s.Camera.transform.forward * -100000f, Quaternion.identity, Vector3.one);
         var locations = new Matrix4x4[8];
         var states = new Vector4[8];
+        var indices = new Vector4[8];
         foreach (Building b in s.Buildings)
         {
             s.Block.Clear();
             s.Block.SetTexture("_MainTex", b.Main);
             s.Block.SetTexture("_XYSMap", b.Xys);
             s.Block.SetTexture("_ACIMap", b.Aci);
+            s.Block.SetVector("_ObjectIndex", b.ObjectIndex);
             Graphics.DrawMesh(b.Mesh, b.Matrix, s.StandIn, 0, s.Camera, 0, s.Block, true, true);
             if (!drawGlass)
                 continue;
@@ -723,12 +793,15 @@ public static class GlassPreview
                 {
                     locations[k] = away;
                     states[k] = Vector4.zero;
+                    indices[k] = Vector4.zero;
                 }
                 locations[5] = b.Matrix;
                 states[5] = new Vector4(0f, 100000f, 0f, 1f);
+                indices[5] = b.ObjectIndex;
                 var lodBlock = new MaterialPropertyBlock();
                 lodBlock.SetMatrixArray("_BuildingLocations", locations);
                 lodBlock.SetVectorArray("_BuildingStates", states);
+                lodBlock.SetVectorArray("_ObjectIndices", indices);
                 Vector3 c = b.Matrix.MultiplyPoint3x4(Vector3.zero);
                 b.Combined8.bounds = new Bounds(c + Vector3.up * 150f, new Vector3(400f, 400f, 400f));
                 Graphics.DrawMesh(b.Combined8, Matrix4x4.identity, s.GlassLod, 0, s.Camera, 0, lodBlock, false, false);
