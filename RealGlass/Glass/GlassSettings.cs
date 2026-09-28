@@ -50,9 +50,6 @@ namespace RealGlass.Glass
             p.InteriorBrightness = Settings.InteriorBrightness.value;
             p.Blinds = Settings.Blinds.value;
             p.Furniture = Settings.Furniture.value;
-            p.NightRooms = Settings.NightRooms.value;
-            p.NightWarmth = Settings.NightWarmth.value;
-            p.LitShare = Settings.NightLitShare.value;
             p.FloorBand = Settings.FloorBand.value;
             return p;
         }

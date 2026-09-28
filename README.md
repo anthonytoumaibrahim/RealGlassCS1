@@ -29,8 +29,8 @@ five tabs:
 - **Panes** -- the panes' width, and how they bend what they mirror: cushioned (insulating glass
   bowing in or out), tilted, rippled (toughened glass).
 - **Interiors** -- the rooms behind the glass: floor height, room size, the floor bands of
-  plain-glass towers, blinds, furniture; how bright they are by day; and at night how bright the
-  lit rooms are, how many of the lit windows are lit rooms, and how warm their light is.
+  plain-glass towers, blinds, furniture, and how bright they are by day. At night every window
+  the game lights is a lit room, at full brightness.
 - **Rendering** -- how far out the glass is drawn, and what the live sky costs.
 
 The game's options page holds the mod itself: its language, the panel's key, the button,
@@ -69,12 +69,11 @@ the log is `RealGlass.log`, next to it.
   sub-building its parent's): its rooms and its lamps stay the same however far away it is.
 - **Rooms** behind the glass by interior mapping: a ray per pixel against the floors, ceilings and
   walls of rooms that are not modelled at all.
-- **At night** the game still decides which windows are lit, how brightly and when; the rooms
-  say how that light falls (bright ceilings and light panels, the floor under them, desks, the
-  back of the room), in the colour of what the building is -- cool office light, warm homes, shops
-  between -- and some lit windows are rooms with their lights off. Where an asset painted its own
-  windows, they lead; on a tower of plain glass, which paints none, the rooms' storeys do: floor
-  bands between them, and floors lit or dark one at a time.
+- **At night** the game still decides which windows are lit, how brightly and when; every one of
+  them is a lit room, and the room says how that light falls (a bright ceiling, the floor under
+  it, the back of the room, the blinds glowing), in warm lamplight -- black-body colours -- with a
+  little of the game's own hue in it. Where an asset painted its own windows, they lead; on a
+  tower of plain glass, which paints none, the rooms' storeys do, with floor bands between them.
 - **Panes** bend reflections the way real facades do: insulating units bow with the weather,
   toughened glass carries the furnace rollers' ripple, and no two panes are set quite alike.
 
@@ -124,8 +123,6 @@ Every technique here has shipped in a game or is published:
     Temperature Control System for HDTV Applications*, Journal of the Korean Physical Society
     41(6), 865-871, 2002 (and US patent 7024034)
     ([Planckian locus](https://en.wikipedia.org/wiki/Planckian_locus#Approximation)).
-    Rooms lit and unlit at random behind the windows, as interior-mapped cities show them:
-    Marvel's Spider-Man, [as developers read it](https://polycount.com/discussion/204601/interior-mapping-in-spider-man-ps4).
 11. Reflections of the previous frame's finished picture, reprojected: Michal Valient, **Taking
     Killzone Shadow Fall Image Quality into the Next Generation** (Guerrilla, GDC 2014).
     [Guerrilla](https://www.guerrilla-games.com/read/taking-killzone-shadow-fall-image-quality-into-the-next-generation-1)

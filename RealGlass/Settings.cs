@@ -194,17 +194,7 @@ namespace RealGlass
         /// <summary>0..1: how furnished the rooms are.</summary>
         public static FloatSetting Furniture { get; private set; }
 
-        /// <summary>0..3: how bright the lit rooms are at night.</summary>
-        public static FloatSetting NightRooms { get; private set; }
-
-        /// <summary>
-        /// 0..1: shifts every building's lamps (offices cool, homes warm) cooler (0) or warmer (1);
-        /// 0.45 leaves them as they are.
-        /// </summary>
-        public static FloatSetting NightWarmth { get; private set; }
-
-        /// <summary>0..1: of the windows the game lights at night, the share that are lit rooms.</summary>
-        public static FloatSetting NightLitShare { get; private set; }
+        // The rooms at night have no settings: they are at full (GlassUniforms.NightRooms).
 
         /// <summary>
         /// Metres: the floor slab's band at every storey (the part of a curtain wall with no view
@@ -287,10 +277,7 @@ namespace RealGlass
             public const float InteriorBrightness = 0.15f;
             public const float Blinds = 0.30f;
             public const float Furniture = 0.6f;
-            public const float NightRooms = 3f;       // the author's (the old cap); the cap is now 600%
-            public const float NightWarmth = 0.81f;   // warmer than every building as it is (0.45, GlassUniforms.NeutralWarmth)
-            public const float NightLitShare = 0.59f;
-            public const float FloorBand = 1f;        // a 3.8 m storey: 2.8 m of view, 1 m of slab and ceiling void
+            public const float FloorBand = 1f;       // a 3.8 m storey: 2.8 m of view, 1 m of slab and ceiling void
 
             // ---- Rendering ----
             public const int GlassDistance = 2;       // the whole city
@@ -362,9 +349,6 @@ namespace RealGlass
                 InteriorBrightness = new FloatSetting("InteriorBrightness", Defaults.InteriorBrightness);
                 Blinds = new FloatSetting("Blinds", Defaults.Blinds);
                 Furniture = new FloatSetting("Furniture", Defaults.Furniture);
-                NightRooms = new FloatSetting("NightRooms", Defaults.NightRooms);
-                NightWarmth = new FloatSetting("NightWarmth", Defaults.NightWarmth);
-                NightLitShare = new FloatSetting("NightLitShare", Defaults.NightLitShare);
                 FloorBand = new FloatSetting("FloorBand", Defaults.FloorBand);
 
                 GlassDistance = new IntSetting("GlassDistance", Defaults.GlassDistance);

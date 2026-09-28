@@ -20,10 +20,9 @@ The first version: realistic glass on every building, at every distance.
   more edge-on than straight on, capped by a setting, and turn silvery edge-on as coated glass
   does.
 - **Panes** that bend the reflections: cushioned, tilted, rippled, bulging with the weather.
-- **Rooms behind the glass**: floors, ceilings, furniture and blinds. At night the windows the
-  game lights become lit rooms -- bright ceilings and light panels, desks, the back of the room --
-  in the light of what the building is (cool offices, warm homes), some of them with their lights
-  off; on towers of plain glass, floor bands and floors lit one at a time.
+- **Rooms behind the glass**: floors, ceilings, furniture and blinds. At night every window the
+  game lights becomes a lit room at full brightness -- a bright ceiling, the floor under it, the
+  back of the room -- in warm lamplight; on towers of plain glass, floor bands between the storeys.
 - **The panel on F7** (or its Unified UI button), five tabs, every setting of the glass. F7 is
   also the game's debug-output key: while it is this mod's key, it opens only this mod's panel in
   a city (a switch on the options page).

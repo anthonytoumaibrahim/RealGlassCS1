@@ -35,8 +35,21 @@ namespace RealGlass.Glass
         /// <summary>The colour temperature seen as white: a city at night, mixed lamps.</summary>
         public const float WhitePoint = 4000f;
 
-        /// <summary>The Night warmth setting that leaves every building's lamps as they are.</summary>
-        public const float NeutralWarmth = 0.45f;
+        /// <summary>
+        /// The rooms at night are at full, with no settings: the author found anything less wrong
+        /// (2026-09-28) and their three sliders went, fixed where he had them. A lit room's light is
+        /// this many times the game's own lit window (the old slider's 600%), and every window the
+        /// game lights is a lit room (the old share at 100%).
+        /// </summary>
+        public const float NightRooms = 6f;
+
+        /// <summary>
+        /// Added to every building's lamp warmth (0 offices .. 1 homes): the old Light colour slider
+        /// at 100%, (1 - 0.45) x 1.5. Every lamp is at or near the warm end, and -- as the room kind
+        /// reads the same warmth -- every building's storeys are mostly flats. That is the look the
+        /// author chose.
+        /// </summary>
+        public const float LampShift = 0.825f;
 
         private static int _glass, _tint, _mask, _refl, _trace, _fill, _pane, _pane2, _room, _room2, _light,
                            _sunDir, _sunColor, _ambSky, _ambGround, _glass2, _colorMap, _lamps;
@@ -164,7 +177,7 @@ namespace RealGlass.Glass
 
             Shader.SetGlobalVectorArray(_lamps, LampArray);
             Shader.SetGlobalVector(_colorMap, new Vector4(Mathf.Max(f.ColorMapWidth, 1), Mathf.Max(f.ColorMapHeight, 1), 0f, 0f));
-            Shader.SetGlobalVector(_glass2, new Vector4(p.EdgeSilver, p.LitShare, Mathf.Max(p.FloorBand, 0f), 0f));
+            Shader.SetGlobalVector(_glass2, new Vector4(p.EdgeSilver, 0f, Mathf.Max(p.FloorBand, 0f), 0f));
 
             Shader.SetGlobalVector(_glass, new Vector4(p.Reflectivity, p.Glancing, p.Clarity, p.Enabled ? p.Strength : 0f));
             Shader.SetGlobalVector(_tint, new Vector4(tint.x, tint.y, tint.z, p.OwnColour));
@@ -175,9 +188,8 @@ namespace RealGlass.Glass
             Shader.SetGlobalVector(_pane, new Vector4(Mathf.Max(p.PaneWidth, 0.2f), p.Pillow * PillowAt100, p.Tilt * TiltAt100, p.RollerWave * RollerAt100));
             Shader.SetGlobalVector(_pane2, new Vector4(p.PaneWeather ? BowBias(f.Temperature) : 0f, RollerLength, 0f, 0f));
             Shader.SetGlobalVector(_room, new Vector4(Mathf.Max(p.FloorHeight, 1f), Mathf.Max(p.RoomWidth, 1f), Mathf.Max(p.RoomDepth, 1f), p.Rooms ? 1f : 0f));
-            Shader.SetGlobalVector(_room2, new Vector4(p.InteriorBrightness, p.Blinds, p.Furniture, p.NightRooms));
-            // y: the player's shift of every building's lamps, cooler (-) or warmer (+).
-            Shader.SetGlobalVector(_light, new Vector4(daylight, (p.NightWarmth - NeutralWarmth) * 1.5f, CeilingLightsByDay, 0f));
+            Shader.SetGlobalVector(_room2, new Vector4(p.InteriorBrightness, p.Blinds, p.Furniture, NightRooms));
+            Shader.SetGlobalVector(_light, new Vector4(daylight, LampShift, CeilingLightsByDay, 0f));
             Shader.SetGlobalVector(_sunDir, new Vector4(f.SunX, f.SunY, f.SunZ, sunUp));
             Shader.SetGlobalVector(_sunColor, new Vector4(f.SunR, f.SunG, f.SunB, 0f));
             Shader.SetGlobalVector(_ambSky, new Vector4(f.AmbSkyR, f.AmbSkyG, f.AmbSkyB, 0f));

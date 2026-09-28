@@ -309,7 +309,7 @@ Shader "RealGlass/Glass"
                 if (roomsOn > 0.0)
                 {
                     float3 d, nt;
-                    RoomRadiance(P, V, n, t, baseY, footprint, paneCell, gamePixel, seed, warmth, box, aci.b, d, nt);
+                    RoomRadiance(P, V, n, t, baseY, footprint, paneCell, gamePixel, seed, warmth, box, d, nt);
                     dayRoom = d * roomsOn;
                     nightRoom = lerp(gamePixel * _RGRoom2.w, nt, roomsOn);
                 }

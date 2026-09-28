@@ -598,11 +598,6 @@ namespace RealGlass.UI
             return Localization.Get("Unit.Metres", value.ToString("F1"));
         }
 
-        private static string Warmth(float value)
-        {
-            return Localization.Get("Readout.Warmth", value.ToString("F0"));
-        }
-
         private static string Steps(float value)
         {
             return value.ToString("F0");
@@ -1104,41 +1099,8 @@ namespace RealGlass.UI
                 Enabled = InteriorsOn,
                 AfterChange = Changed,
             });
-
-            Add(new Row
-            {
-                Kind = RowKind.Percent,
-                Panel = PanelPage.Interiors,
-                Group = "Night",
-                Float = Settings.NightRooms,
-                DefaultFloat = Settings.Defaults.NightRooms,
-                Min = 0f, Max = 600f, Step = 5f,
-                Enabled = InteriorsOn,
-                AfterChange = Changed,
-            });
-
-            Add(new Row
-            {
-                Kind = RowKind.Percent,
-                Panel = PanelPage.Interiors,
-                Float = Settings.NightLitShare,
-                DefaultFloat = Settings.Defaults.NightLitShare,
-                Min = 0f, Max = 100f, Step = 1f,
-                Enabled = InteriorsOn,
-                AfterChange = Changed,
-            });
-
-            Add(new Row
-            {
-                Kind = RowKind.Percent,
-                Panel = PanelPage.Interiors,
-                Float = Settings.NightWarmth,
-                DefaultFloat = Settings.Defaults.NightWarmth,
-                Min = 0f, Max = 100f, Step = 1f,
-                Format = Warmth,
-                Enabled = InteriorsOn,
-                AfterChange = Changed,
-            });
+            // At night the lit rooms are at full, with no rows (GlassUniforms.NightRooms): the
+            // author found anything less wrong (2026-09-28).
         }
 
         /// <summary>F7 -> Rendering: how far the glass reaches, and what the live sky costs. The machine, not the look.</summary>

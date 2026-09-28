@@ -73,7 +73,6 @@ namespace RealGlass
                         " skyCube=" + Settings.SkyCubePixels + "px x" + Int(Settings.SkyCubeRate, Settings.Defaults.SkyCubeRate) + "/frame" +
                         " | interiors=" + On(Settings.InteriorEnabled, Settings.Defaults.InteriorEnabled) +
                         " floorBands=" + (Settings.FloorBand != null ? Settings.FloorBand.value : Settings.Defaults.FloorBand).ToString("F1") + "m" +
-                        " litRooms=" + Percent(Settings.NightLitShare, Settings.Defaults.NightLitShare) +
                         " | panes: weather=" + On(Settings.PaneWeather, Settings.Defaults.PaneWeather));
 
                 Log.Msg("panel key: " + (Settings.PanelKey != null ? SettingsXmlFormat.FormatKey(Settings.PanelKey.value) : "?") +

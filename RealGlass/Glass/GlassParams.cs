@@ -47,11 +47,8 @@ namespace RealGlass.Glass
         public float RoomDepth;             // metres
         public float InteriorBrightness;    // 0..3
         public float Blinds;                // 0..1
-        public float Furniture;             // 0..1
-        public float NightRooms;            // 0..6
-        public float NightWarmth;           // 0..1
-        public float LitShare;              // 0..1: of the windows the game lights, the share that are lit rooms
-        public float FloorBand;             // metres: the slab band between storeys on plain-glass towers
+        public float Furniture;             // 0..1  (the rooms at night: no settings, GlassUniforms.NightRooms)
+        public float FloorBand;            // metres: the slab band between storeys on plain-glass towers
 
         /// <summary>The defaults the mod ships (Settings.Defaults); tools/test-params.ps1 checks they agree.</summary>
         public static GlassParams Default()
@@ -95,9 +92,6 @@ namespace RealGlass.Glass
             p.InteriorBrightness = 0.15f;
             p.Blinds = 0.30f;
             p.Furniture = 0.60f;
-            p.NightRooms = 3.00f;
-            p.NightWarmth = 0.81f;
-            p.LitShare = 0.59f;
             p.FloorBand = 1.0f;
             return p;
         }

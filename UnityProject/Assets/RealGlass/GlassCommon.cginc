@@ -16,9 +16,7 @@
 //  - What is mirrored is last frame's FINISHED picture, reprojected (Killzone Shadow Fall, GDC
 //    2014): fog, clouds, the lamps' glow and the other glass are in the reflections.
 //  - Lamp colours: black bodies (Kim et al.'s cubic fit of the Planckian locus, 2002), computed in
-//    GlassUniforms.cs; offices about 4500 K, homes about 2900 K.
-//  - Rooms lit at random, some on and some off, as interior-mapped cities do it (Marvel's
-//    Spider-Man): here keyed to the windows the asset painted, never across them.
+//    GlassUniforms.cs; with the warm shift the author chose, about 2700-2900 K.
 
 #ifndef REALGLASS_COMMON_INCLUDED
 #define REALGLASS_COMMON_INCLUDED
@@ -30,7 +28,7 @@
 // ---------------------------------------------------------------------------------------------
 
 float4 _RGGlass;      // x reflectance head-on (F0, the chosen glass), y reflectance edge-on, z clarity (VLT), w strength
-float4 _RGGlass2;     // x silvery edge-on 0..1, y lit rooms' share at night 0..1, z floor band (m), w -
+float4 _RGGlass2;     // x silvery edge-on 0..1, y -, z floor band (m), w -
 float4 _RGColorMap;   // xy the game's object colour map (width, height): where a building's colour index points
 float4 _RGLamps[5];   // lamp colours, luma 1: 5000, 4400, 3800, 3200, 2700 K (seen with a 4000 K white)
 float4 _RGFinished;   // x 1 while _RGSceneFinished holds last frame's finished picture
@@ -42,8 +40,8 @@ float4 _RGFill;       // x off-screen fill (0 mirrored screen, 1 city colour, 2 
 float4 _RGPane;       // x pane width (m), y pillow bow (m), z tilt (rad), w roller-wave peak (m)
 float4 _RGPane2;      // x bow bias -1 (all sunk) .. +1 (all bulging), y roller-wave length (m), z -, w -
 float4 _RGRoom;       // x floor height (m), y room width (m), z room depth (m), w rooms on (1)
-float4 _RGRoom2;      // x day brightness, y blinds share, z furniture, w night rooms
-float4 _RGLight;      // x daylight 0 (night) .. 1 (day), y the player's shift of every lamp's warmth, z ceiling lights by day, w -
+float4 _RGRoom2;      // x day brightness, y blinds share, z furniture, w lit rooms at night (x the game's lit window)
+float4 _RGLight;      // x daylight 0 (night) .. 1 (day), y the shift of every lamp's warmth, z ceiling lights by day, w -
 float4 _RGSunDir;     // xyz towards the sun (world), w sun above the horizon 0..1
 float4 _RGSunColor;   // rgb the sun's radiance (colour x intensity)
 float4 _RGAmbSky;     // rgb light from the sky (trilight "sky")
@@ -117,8 +115,8 @@ float3 LampColour(float warmth)
     return lerp(_RGLamps[i].rgb, _RGLamps[i + 1].rgb, f - i);
 }
 
-// 0 cool (offices) .. 1 warm (homes): what the building is (BuildingLights.cs), the player's shift
-// on top. A building the table does not know gets its own, from its seed.
+// 0 cool (offices) .. 1 warm (homes): what the building is (BuildingLights.cs), the shift on top
+// (GlassUniforms.LampShift). A building the table does not know gets its own, from its seed.
 float BuildingWarmth(float2 colourIndex, float seed)
 {
     float4 d = tex2Dlod(_RGBuildings, float4(colourIndex, 0.0, 0.0));
@@ -599,10 +597,9 @@ float BlindCover(float2 paneCell, float yInStorey, float fid)
 // its tint and clarity; the game's lit windows are already painted as seen from outside).
 // gamePixel: the game's own colour for this pixel (the screen copy) -- its lit windows at night.
 // seed, warmth: the building's (BuildingSeed, BuildingWarmth). box: 1 on a tower of plain glass,
-// whose only storeys are the rooms' (Glass.shader's GlassBox). illum: the asset's illumination
-// value here (_ACIMap.b): one value per window, as the asset's author painted it.
+// whose only storeys are the rooms' (Glass.shader's GlassBox).
 void RoomRadiance(float3 P, float3 V, float3 n, float3 t, float baseY, float footprint,
-                  float2 paneCell, float3 gamePixel, float seed, float warmth, float box, float illum,
+                  float2 paneCell, float3 gamePixel, float seed, float warmth, float box,
                   out float3 dayOut, out float3 nightOut)
 {
     float fid = FacadeId(n);
@@ -633,22 +630,15 @@ void RoomRadiance(float3 P, float3 V, float3 n, float3 t, float baseY, float foo
         day = hit.albedo * sky * _RGRoom2.x;   // the slab's face looks out: the sky lights it
 
     // Night: the game decides which windows are lit, how brightly and when (its own timing, per
-    // building); the room says how that light falls -- the ceiling and its panels bright, the
-    // floor under them, the back of the room a little less, the desks catching it -- in the colour
-    // of the building's lamps with a little of the game's own hue. The weights average about 1: a
-    // lit window keeps, over its room, the brightness the game gave it.
+    // building), and every window it lights is a lit room; the room says how that light falls --
+    // the ceiling and its panels bright, the floor under them, the back of the room a little less,
+    // the desks catching it -- in the colour of the building's lamps with a little of the game's own
+    // hue, at _RGRoom2.w times the game's brightness (GlassUniforms.NightRooms: at full, the
+    // author's call). The weights average about 1 over a room.
     float gameLum = Luma(gamePixel);
     float3 light = lerp(lamp, gamePixel / max(gameLum, 1e-4), 0.25);
     light /= max(Luma(light), 0.05);
-
-    // Which lit windows are lit ROOMS: on a plain-glass tower a storey at a time (a floor is one
-    // tenant), elsewhere a painted window at a time (one illumination value), so a window the
-    // asset painted is never cut in two. What an asset paints always lit (<= 0.5) stays lit.
     float storey = floor((P.y - baseY) / H);
-    float key = box > 0.5 ? storey * 3.17 + 50.0 : floor(illum * 64.0) * 7.31;
-    float roomOn = step(Hash12(float2(key, seed * 613.0 + fid)), _RGGlass2.y);
-    roomOn = illum > 0.5 ? roomOn : 1.0;
-    float on = lerp(_RGGlass2.y, roomOn, detail);   // far away, the average: never a flicker
 
     float w = hit.ceiling > 0.5 ? 1.3 + hit.panel * 5.0
             : (hit.desk > 0.5 ? 1.25
@@ -658,7 +648,7 @@ void RoomRadiance(float3 P, float3 V, float3 n, float3 t, float baseY, float foo
     // Where the asset painted windows of its own, the rooms' storeys need not match them: a
     // gentler shape there.
     float structure = lerp(0.6, 1.0, box) * detail;
-    float3 lit = light * gameLum * on * _RGRoom2.w;
+    float3 lit = light * gameLum * _RGRoom2.w;
     float3 night = lit * lerp(1.0, w, structure);
 
     // Blinds: lit from outside by day, glowing from inside at night. They hang over the window,

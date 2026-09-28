@@ -383,7 +383,7 @@ namespace RealGlass.Glass
                    "; panes " + p.PaneWidth.ToString("F1") + " m, pillow " + Pct(p.Pillow) + ", tilt " + Pct(p.Tilt) + ", roller " + Pct(p.RollerWave) +
                    (p.PaneWeather ? " (weather)" : "") + "; rooms " + (p.Rooms ? p.FloorHeight.ToString("F1") + " x " + p.RoomWidth.ToString("F0") + " x " + p.RoomDepth.ToString("F0") + " m" : "off") +
                    ", floor bands " + p.FloorBand.ToString("F1") + " m, blinds " + Pct(p.Blinds) + ", furniture " + Pct(p.Furniture) +
-                   ", night " + Pct(p.NightRooms) + " lit " + Pct(p.LitShare) + " warmth " + Pct(p.NightWarmth);
+                   ", day rooms " + Pct(p.InteriorBrightness);
         }
 
         private static string Pct(float v)

@@ -208,17 +208,6 @@
   <String key="Furniture.Label">Furniture</String>
   <String key="Furniture.Tooltip">How furnished the rooms are.</String>
 
-  <String key="Group.Night">At night</String>
-
-  <String key="NightRooms.Label">Lit rooms</String>
-  <String key="NightRooms.Tooltip">How bright the lit rooms are at night.</String>
-
-  <String key="NightLitShare.Label">Rooms with lights on</String>
-  <String key="NightLitShare.Tooltip">Of the windows the game lights, how many are lit rooms.</String>
-
-  <String key="NightWarmth.Label">Light colour</String>
-  <String key="NightWarmth.Tooltip">Offices light cool, homes warm. 45%: as they are.</String>
-
   <!-- ==================== F7 panel: Rendering ==================== -->
 
   <String key="GlassDistance.Label">Glass on</String>
@@ -293,7 +282,6 @@
   <String key="Unit.Metres">{0} m</String>
   <String key="Unit.Pixels">{0} px</String>
   <String key="Unit.FacesPerFrame">{0} a frame</String>
-  <String key="Readout.Warmth">{0}% warm</String>
 
   <!-- ==================== The settings file (RealGlass.xml) ==================== -->
   <!-- Comments the mod writes into the player's settings file. The names of the settings in
