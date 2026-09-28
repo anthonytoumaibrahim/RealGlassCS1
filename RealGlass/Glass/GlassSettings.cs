@@ -24,16 +24,14 @@ namespace RealGlass.Glass
             p.Threshold = Settings.GlassThreshold.value;
             p.NightWindows = Settings.GlassNightWindows.value;
             p.ShowMask = Settings.GlassShowMask.value;
-            p.Preset = Settings.GlassPreset.value;
             p.EdgeSilver = Settings.GlassEdgeSilver.value;
 
-            p.Mix = Settings.SkylineMix.value;
-            p.MixMask = Settings.SkylineMask;
-
             p.Trace = Settings.SsrEnabled.value;
+            p.Finished = Settings.ReflectFinished.value;
             p.Quality = Settings.SsrQuality.value;
             p.ReflectionBrightness = Settings.ReflectionBrightness.value;
             p.SkySource = Settings.SkyReflection.value;
+            p.SkyClouds = Settings.SkyClouds.value;
             p.OffscreenFill = Settings.OffscreenFill.value;
             p.SunGlint = Settings.SunGlint.value;
             p.Smoothness = Settings.GlassSmoothness.value;

@@ -15,7 +15,7 @@ ceilings and furniture, lit at night.
 ## Using it
 
 Open the panel with **F7** (or its Unified UI button). Everything about the glass is there, on
-six tabs:
+five tabs:
 
 - **Glass** -- the kind of glass (reflective blue, ocean blue, aqua blue, sky blue, green, bronze,
   grey, clear low-E, silver and gold reflective: real products' tints, reflectance and
@@ -23,10 +23,9 @@ six tabs:
   how much of the building's own painted colour to keep; how much it reflects head-on and at an
   angle, and how silvery it turns seen edge-on; how much light it lets through; and what counts
   as glass. "Show what counts as glass" paints it magenta, to check.
-- **Skyline** -- a city of many glasses: every building takes one of the kinds you tick (the one
-  chosen on the Glass tab among them), and keeps it at every distance.
-- **Reflections** -- the city on screen in the glass, the live sky, what shows below the horizon
-  when nothing on screen is mirrored, the sun's glint, how sharp the reflections are.
+- **Reflections** -- the city on screen in the glass (the finished picture: haze, clouds, lamps,
+  the other glass), the live sky with its clouds or the game's own sky picture, what shows below
+  the horizon when nothing on screen is mirrored, the sun's glint, how sharp the reflections are.
 - **Panes** -- the panes' width, and how they bend what they mirror: cushioned (insulating glass
   bowing in or out), tilted, rippled (toughened glass).
 - **Interiors** -- the rooms behind the glass: floor height, room size, the floor bands of
@@ -56,15 +55,18 @@ the log is `RealGlass.log`, next to it.
   night.
 - **Reflections**, layered as in the games that do glass cities well: first what is on screen,
   traced through the depth buffer (screen-space ray tracing); then, for what is not on screen, a
-  live picture of the game's own sky, kept up to date a side at a time. Below the horizon, where
-  a raised camera's reflections mostly point, a facade mirrors the street at its feet: that spot
-  is found on screen, and where it is off screen the picture is mirrored back in at the edge.
+  live picture of the game's own sky, kept up to date a side at a time, with the clouds
+  Volumetric Weather draws drawn into it too. Below the horizon, where a raised camera's
+  reflections mostly point, a facade mirrors the street at its feet: that spot is found on
+  screen, and where it is off screen the picture is mirrored back in at the edge. What is
+  mirrored is the previous frame's FINISHED picture, put back where each point was: the city's
+  haze, the clouds, the lamps' glow at night and the other towers' glass are all in the glass.
 - **Fresnel**: glass reflects little straight on and nearly everything edge-on (Schlick's
   approximation), capped by a setting, because a city-builder camera sees facades edge-on. The
   rise is the same for every colour, so a coated pane's tint gives way to silver edge-on.
-- **A city of many glasses.** Which building a pixel belongs to is known at every distance from
+- **Every building its own.** Which building a pixel belongs to is known at every distance from
   the building's own index into the game's colour map (the same number on every tier, a
-  sub-building its parent's), so each building keeps one kind of glass however far away it is.
+  sub-building its parent's): its rooms and its lamps stay the same however far away it is.
 - **Rooms** behind the glass by interior mapping: a ray per pixel against the floors, ceilings and
   walls of rooms that are not modelled at all.
 - **At night** the game still decides which windows are lit, how brightly and when; the rooms
@@ -124,6 +126,12 @@ Every technique here has shipped in a game or is published:
     ([Planckian locus](https://en.wikipedia.org/wiki/Planckian_locus#Approximation)).
     Rooms lit and unlit at random behind the windows, as interior-mapped cities show them:
     Marvel's Spider-Man, [as developers read it](https://polycount.com/discussion/204601/interior-mapping-in-spider-man-ps4).
+11. Reflections of the previous frame's finished picture, reprojected: Michal Valient, **Taking
+    Killzone Shadow Fall Image Quality into the Next Generation** (Guerrilla, GDC 2014).
+    [Guerrilla](https://www.guerrilla-games.com/read/taking-killzone-shadow-fall-image-quality-into-the-next-generation-1)
+    Clouds in the reflected sky: captured into the reflection cube as Unreal's
+    [Sky Light](https://dev.epicgames.com/documentation/en-us/unreal-engine/sky-lights-in-unreal-engine)
+    captures its [volumetric clouds](https://dev.epicgames.com/documentation/en-us/unreal-engine/volumetric-cloud-component-in-unreal-engine).
 
 ## Building
 

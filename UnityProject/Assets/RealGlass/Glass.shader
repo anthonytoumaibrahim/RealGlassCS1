@@ -10,8 +10,8 @@
 //
 // Which building a pixel belongs to comes from the same place on every tier: its colour index, the
 // building's texel in the game's object colour map (near: _ObjectIndex, middle: _ObjectIndices[],
-// far: the baked second uv). It chooses the building's kind of glass (the Skyline mix) and finds
-// its lamps (_RGBuildings), so neither changes as a building moves from one tier to the next.
+// far: the baked second uv). It seeds the building's rooms and finds its lamps (_RGBuildings), so
+// neither changes as a building moves from one tier to the next.
 //
 // Queue 2499, the last of the opaque range: Unity draws it forward after the deferred final pass
 // and BEFORE the game's fog ([ImageEffectOpaque]), so the glass is fogged like the rest of the
@@ -205,22 +205,21 @@ Shader "RealGlass/Glass"
                 float footprint = max(length(fwidth(P)), 1e-4);
                 float3 t = FacadeTangent(n);
 
-                // This building: its kind of glass, its lamps, and whether it is a plain glass box.
-                // (Outside every branch: GlassBox takes derivatives.)
+                // This building: its lamps, and whether it is a plain glass box. (Outside every
+                // branch: GlassBox takes derivatives.)
                 float seed = BuildingSeed(i.building);
-                int kind = MixKind(seed);
-                float F0 = _RGMixGlass[kind].x;
-                float clarity = _RGMixGlass[kind].y;
+                float F0 = _RGGlass.x;
+                float clarity = _RGGlass.z;
                 float warmth = BuildingWarmth(i.building, seed);
                 float box = GlassBox(uv, aci.b, P, t, footprint, i.rect);
 
-                // The glass's colour: the building's kind of glass, and as much of its own painted
+                // The glass's colour: the chosen glass, and as much of the building's own painted
                 // glass colour as the "own colour" setting keeps. The data sheets' numbers are
                 // LUMINOUS (visible light transmittance / reflectance, eye-weighted), so both
                 // filters are scaled to a luminance of 1: "clarity 24%" lets 24% of the light
                 // through, whatever the colour; "reflectivity 20%" reflects 20%.
                 float3 own = NormaliseTint(tex2D(_MainTex, uv).rgb);
-                float3 tint = NormaliseTint(lerp(_RGMixTint[kind].rgb, own, _RGTint.a));
+                float3 tint = NormaliseTint(lerp(_RGTint.rgb, own, _RGTint.a));
                 float3 filter = lerp(float3(1.0, 1.0, 1.0), tint, 0.6);
                 filter /= max(Luma(filter), 0.05);
                 float3 coat = lerp(float3(1.0, 1.0, 1.0), tint, _RGMask.w);
@@ -260,8 +259,14 @@ Shader "RealGlass/Glass"
                     }
                     if (_RGDebug.x < 3.5)
                         return float4(gamePixel, 1.0);
-                    // 4: which buildings are plain glass boxes (white), and their kind of glass.
-                    return float4(lerp(_RGMixTint[kind].rgb * 0.3, float3(1.0, 1.0, 1.0), box), 1.0);
+                    if (_RGDebug.x < 4.5)
+                    {
+                        // 4: which buildings are plain glass boxes (white).
+                        return float4(lerp(float3(0.05, 0.05, 0.08), float3(1.0, 1.0, 1.0), box), 1.0);
+                    }
+                    // 5: the finished picture where this pane's point was last frame.
+                    float2 uvLast;
+                    return float4(ScreenUV(P, true, uvLast) ? tex2Dlod(_RGSceneFinished, float4(uvLast, 0.0, 0.0)).rgb : float3(1.0, 0.0, 1.0), 1.0);
                 }
 
                 float3 refl = fallback;
@@ -279,7 +284,13 @@ Shader "RealGlass/Glass"
                         float2 e = min(hitUV, 1.0 - hitUV);
                         float edge = saturate(min(e.x, e.y) / max(_RGRefl.w, 1e-3));
                         float lod = rough * 5.0 * saturate(hitDistance / 150.0);
-                        float3 onScreen = tex2Dlod(_RGScene, float4(hitUV, 0.0, lod)).rgb;
+                        // The point hit, read in the finished picture where it was last frame
+                        // (the copy before the fog at the hit itself when it was off screen).
+                        float3 hitWorld = origin + R * hitDistance;
+                        float2 uvLast;
+                        bool last = _RGFinished.x > 0.5 && ScreenUV(hitWorld, true, uvLast) &&
+                                    all(uvLast >= 0.0) && all(uvLast <= 1.0);
+                        float3 onScreen = last ? MirroredPicture(uvLast, lod, true) : MirroredPicture(hitUV, lod, false);
                         refl = lerp(fallback, onScreen, edge);
                         traceState = 1.0;
                     }

@@ -28,7 +28,7 @@ using Debug = UnityEngine.Debug;
 /// Parameters come in as environment variables (executeMethod takes none):
 ///   RG_OUT        directory for the frames (rg-[row]-[col].png)
 ///   RG_W, RG_H    frame size
-///   RG_VIEWS      "aerial,steep,street,low,night"  one row each
+///   RG_VIEWS      "aerial,steep,street,low,close,night,nightclose,nightstreet"  one row each
 ///   RG_VARIANTS   "vanilla|glass|glass:Trace=0;Rooms=0"  one column each; "glass:" takes
 ///                 GlassParams field overrides (bool 0/1, numbers in the settings' units)
 ///   RG_SUN        the sun's intensity by day (1.3)
@@ -40,6 +40,7 @@ public static class GlassPreview
     private const string GlassShaderPath = "Assets/RealGlass/Glass.shader";
     private const string UtilShaderPath = "Assets/RealGlass/GlassUtil.shader";
     private const string StandInPath = "Assets/Editor/PreviewBuilding.shader";
+    private const string CloudsPath = "Assets/Editor/PreviewClouds.shader";
 
     /// <summary>The variant's "Debug=n": the shader's check view (0 = the picture).</summary>
     private static float _debug;
@@ -91,6 +92,9 @@ public static class GlassPreview
 
         /// <summary>Every building's lamps, laid out as the colour map (the mod's BuildingLights, same calls).</summary>
         public Texture2D Lights;
+
+        /// <summary>The stand-in for Volumetric Weather's cloud volume (PreviewClouds.shader), found by its name.</summary>
+        public GameObject Clouds;
     }
 
     /// <summary>The variant's "Tier=near|lod|group": which of the game's three paths the glass is drawn through.</summary>
@@ -227,6 +231,14 @@ public static class GlassPreview
         BuildCity(s);
         BuildLodTiers(s);
         BuildLights(s);
+
+        // Volumetric Weather's cloud volume, as the mod finds it: a mesh renderer by that name, a
+        // box round the camera with a Transparent+100 material and _UseDepth.
+        s.Clouds = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        s.Clouds.name = GlassSky.CloudVolumeName;
+        UnityEngine.Object.DestroyImmediate(s.Clouds.GetComponent<Collider>());
+        s.Clouds.GetComponent<MeshRenderer>().sharedMaterial = new Material(Load(CloudsPath));
+        s.Clouds.transform.localScale = Vector3.one * 9000f;
         return s;
     }
 
@@ -757,13 +769,45 @@ public static class GlassPreview
         f.ColorMapWidth = ColorMapWidth;
         f.ColorMapHeight = ColorMapHeight;
 
-        s.SkyCube.Update(p.SkySource == 0, 128, 6, null, camPos);
+        // The clouds' stand-in round the camera, lit by the sun of the moment (VW follows the camera
+        // the same way).
+        s.Clouds.transform.position = camPos;
+        Color cloudLight = night ? new Color(0.01f, 0.012f, 0.02f) : sunLin * 0.55f + sky;
+        Shader.SetGlobalVector("_PreviewCloudLight", new Vector4(cloudLight.r, cloudLight.g, cloudLight.b, 0f));
+
+        // No game map here: its stand-in is the live sky WITHOUT clouds (the game's map is a
+        // static picture); the live sky proper carries them.
+        s.SkyCube.Update(true, 128, 6, null, camPos, p.SkySource == 0 && p.SkyClouds);
         f.CubeMips = s.SkyCube.Mips;
         GlassUniforms.Apply(p, f);
         Shader.SetGlobalTexture("_RGBuildings", s.Lights);
-        bool screenOk = s.Screen.Update(s.Camera, s.Util);
+        bool screenOk = false;
 
-        // The game's draws, then ours.
+        // Two renders: the first leaves the finished picture and the camera's matrices for the
+        // second, which reads them as the mod's glass reads last frame's.
+        for (int pass = 0; pass < 2; pass++)
+        {
+            screenOk = s.Screen.Update(s.Camera, s.Util, p.Finished);
+            DrawCity(s, drawGlass);
+            s.Camera.Render();
+        }
+
+        Color[] pixels = ReadPixels(s);
+
+        Color mean = Color.black;
+        for (int i = 0; i < pixels.Length; i++)
+            mean += pixels[i];
+        mean /= pixels.Length;
+        info = "mean " + Fmt(mean) + " | screen copy " + (screenOk ? s.Screen.Width + "x" + s.Screen.Height : "FAILED " + s.Screen.Problem) +
+               " | sky cube " + (p.SkySource == 0 ? s.SkyCube.FacesDone + " faces, " + s.SkyCube.Mips + " mips" + (s.SkyCube.Problem.Length > 0 ? " " + s.SkyCube.Problem : "") : "game map") +
+               " | stride " + GlassUniforms.Stride(p.Quality, s.Height).ToString("0", CultureInfo.InvariantCulture) + " x " +
+               GlassUniforms.StepCount(p.Quality).ToString("0", CultureInfo.InvariantCulture);
+        return pixels;
+    }
+
+    /// <summary>The game's draws, then ours, for the camera's next render.</summary>
+    private static void DrawCity(Scene s, bool drawGlass)
+    {
         s.Block.Clear();
         s.Block.SetTexture("_MainTex", s.GroundMain);
         s.Block.SetTexture("_XYSMap", s.GroundXys);
@@ -815,19 +859,6 @@ public static class GlassPreview
 
         if (drawGlass && _tier == "group")
             Graphics.DrawMesh(s.Baked, Matrix4x4.identity, s.GlassGroup, 0, s.Camera, 0, null, false, false);
-
-        s.Camera.Render();
-        Color[] pixels = ReadPixels(s);
-
-        Color mean = Color.black;
-        for (int i = 0; i < pixels.Length; i++)
-            mean += pixels[i];
-        mean /= pixels.Length;
-        info = "mean " + Fmt(mean) + " | screen copy " + (screenOk ? s.Screen.Width + "x" + s.Screen.Height : "FAILED " + s.Screen.Problem) +
-               " | sky cube " + (p.SkySource == 0 ? s.SkyCube.FacesDone + " faces, " + s.SkyCube.Mips + " mips" + (s.SkyCube.Problem.Length > 0 ? " " + s.SkyCube.Problem : "") : "game map") +
-               " | stride " + GlassUniforms.Stride(p.Quality, s.Height).ToString("0", CultureInfo.InvariantCulture) + " x " +
-               GlassUniforms.StepCount(p.Quality).ToString("0", CultureInfo.InvariantCulture);
-        return pixels;
     }
 
     /// <summary>"glass:Trace=0;Reflectivity=0.3" -> the defaults with those GlassParams fields set.</summary>

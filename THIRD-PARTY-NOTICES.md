@@ -67,8 +67,10 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ## Techniques credited, not copied
 
 The glass follows published work -- layered reflections as in Mirror's Edge Catalyst (DICE, GDC
-2016), stochastic and hierarchical screen-space reflections (Frostbite, SIGGRAPH 2015), a live
-environment cubemap as in GTA V, interior mapping (van Dongen, CGI 2008) with rooms lit and unlit
+2016), stochastic and hierarchical screen-space reflections (Frostbite, SIGGRAPH 2015), the
+previous frame's finished picture reprojected for the reflections (Killzone Shadow Fall, GDC
+2014), a live environment cubemap as in GTA V with the sky's volumetric clouds captured into it
+as Unreal's Sky Light does, interior mapping (van Dongen, CGI 2008) with rooms lit and unlit
 at random as interior-mapped cities show them (Marvel's Spider-Man), Schlick's Fresnel
 approximation, Kim et al.'s cubic fit of the Planckian locus (2002) for the lamps' colours, glass
 makers' published transmittance and reflectance, and the physics of insulating-glass pillowing
@@ -78,8 +80,9 @@ the implementations were written for this mod.
 Other mods were read to understand the game's behaviour and to stay compatible with them:
 xdedss's CS_SSR (its note that the game's camera keeps no glossiness in any screen buffer), and
 Volumetric Weather, Volumetric Explosions and RealFlag, by the same author, whose foundations
-(settings, panel, logging, localization, tools) this mod's are. No code from any other mod is
-included.
+(settings, panel, logging, localization, tools) this mod's are. When Volumetric Weather runs,
+Real Glass draws that mod's own cloud volume (found by its object's name) into its reflected
+sky; nothing of it is copied. No code from any other mod is included.
 
 ## Trademarks
 

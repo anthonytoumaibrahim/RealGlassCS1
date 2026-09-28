@@ -27,6 +27,7 @@ namespace RealGlass.Glass
         private int _buildingLayers;
         private bool _layersKnown;
         private bool _wasOn;
+        private bool _loggedClouds;
         private string _lastState = "";
         private float _nextDetail;
         private int _frames;
@@ -217,10 +218,18 @@ namespace RealGlass.Glass
             GlassFrame f = ReadFrame(camera);
             int size = Settings.IsInitialised ? Settings.SkyCubePixels : 128;
             int rate = Settings.IsInitialised ? Settings.SkyCubeRate.value : 1;
-            _sky.Update(p.SkySource == 0, size, rate, Shader.GetGlobalTexture("_EnvironmentCubemap"), camera.transform.position);
+            _sky.Update(p.SkySource == 0, size, rate, Shader.GetGlobalTexture("_EnvironmentCubemap"), camera.transform.position, p.SkyClouds);
+            if (_sky.DrawsClouds != _loggedClouds)
+            {
+                _loggedClouds = _sky.DrawsClouds;
+                Log.Msg(_loggedClouds
+                    ? "glass: the live sky carries Volumetric Weather's clouds ('" + GlassSky.CloudVolumeName + "' drawn into it)"
+                    : "glass: the live sky has no clouds (" + (p.SkySource != 0 ? "the game's map is the sky" :
+                        (!p.SkyClouds ? "switched off" : "no '" + GlassSky.CloudVolumeName + "' drawing")) + ")");
+            }
             f.CubeMips = _sky.Mips;
             GlassUniforms.Apply(p, f);
-            bool copied = _screen.Update(camera, _util);
+            bool copied = _screen.Update(camera, _util, p.Finished);
             if (!copied)
             {
                 // Without the copy nothing on screen can be reflected: the trace and the mirrored
@@ -243,7 +252,9 @@ namespace RealGlass.Glass
                 Log.Detail("glass: 5 s: " + GlassDraw.NearDraws / 5 + " near, " + GlassDraw.LodDraws / 5 + " middle, " +
                            GlassDraw.GroupDraws / 5 + " far draws a second (" + GlassDraw.NearSkipped / 5 + " near skipped: not glass-capable); " +
                            "frame " + ms.ToString("F1") + " ms; copy " + (copied ? _screen.Width + "x" + _screen.Height : "OFF " + _screen.Problem) +
-                           "; sky " + (p.SkySource == 0 ? _sky.FacesDone + "/6 faces " + _sky.Mips + " mips" + (_sky.Problem.Length > 0 ? " " + _sky.Problem : "") : "the game's map") +
+                           (copied ? (_screen.Finished ? " + the finished picture" : " (no finished picture)") : "") +
+                           "; sky " + (p.SkySource == 0 ? _sky.FacesDone + "/6 faces " + _sky.Mips + " mips" + (_sky.DrawsClouds ? " with clouds" : "") +
+                               (_sky.Problem.Length > 0 ? " " + _sky.Problem : "") : "the game's map") +
                            "; daylight " + GlassUniforms.Daylight(f.SunY).ToString("F2") + ", sun (" + f.SunR.ToString("F2") + " " + f.SunG.ToString("F2") + " " + f.SunB.ToString("F2") +
                            "), ground " + f.GroundY.ToString("F0") + " m, " + f.Temperature.ToString("F0") + " C; lamps of " + _lights.Standing +
                            " buildings; shaders seen: " + GlassDraw.DescribeShaders());
@@ -366,8 +377,8 @@ namespace RealGlass.Glass
                    "), clarity " + Pct(p.Clarity) +
                    ", tint #" + Hex(p.TintR) + Hex(p.TintG) + Hex(p.TintB) + " own " + Pct(p.OwnColour) + ", strength " + Pct(p.Strength) +
                    ", glass above " + Pct(p.Threshold) + (p.NightWindows ? " + night windows" : "") + (p.ShowMask ? ", SHOWING THE MASK" : "") +
-                   "; skyline " + (p.Mix ? GlassUniforms.MixCount(p) + " kinds of glass" : "one kind of glass") +
-                   "; trace " + (p.Trace ? "q" + p.Quality : "off") + ", brightness " + Pct(p.ReflectionBrightness) + ", sky " + (p.SkySource == 0 ? "live" : "game map") +
+                   "; trace " + (p.Trace ? "q" + p.Quality : "off") + (p.Finished ? " of the finished picture" : " of the copy") +
+                   ", brightness " + Pct(p.ReflectionBrightness) + ", sky " + (p.SkySource == 0 ? (p.SkyClouds ? "live with clouds" : "live") : "game map") +
                    ", fill " + p.OffscreenFill + ", glint " + Pct(p.SunGlint) + ", smooth " + Pct(p.Smoothness) +
                    "; panes " + p.PaneWidth.ToString("F1") + " m, pillow " + Pct(p.Pillow) + ", tilt " + Pct(p.Tilt) + ", roller " + Pct(p.RollerWave) +
                    (p.PaneWeather ? " (weather)" : "") + "; rooms " + (p.Rooms ? p.FloorHeight.ToString("F1") + " x " + p.RoomWidth.ToString("F0") + " x " + p.RoomDepth.ToString("F0") + " m" : "off") +

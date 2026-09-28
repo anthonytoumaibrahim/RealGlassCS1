@@ -11,7 +11,10 @@
 //  - Pane bending: insulating-glass "pillowing" (a plate's first mode, Navier) and the roller
 //    wave of toughened glass (ASTM C1651).
 //  - Layering of the reflection (screen first, then a live cube, one face a frame): Mirror's Edge
-//    Catalyst, "Lighting the City of Glass" (GDC 2016); the sky cube: GTA V's per-frame cubemap.
+//    Catalyst, "Lighting the City of Glass" (GDC 2016); the sky cube: GTA V's per-frame cubemap,
+//    with the clouds drawn into it as Unreal's Sky Light captures volumetric clouds.
+//  - What is mirrored is last frame's FINISHED picture, reprojected (Killzone Shadow Fall, GDC
+//    2014): fog, clouds, the lamps' glow and the other glass are in the reflections.
 //  - Lamp colours: black bodies (Kim et al.'s cubic fit of the Planckian locus, 2002), computed in
 //    GlassUniforms.cs; offices about 4500 K, homes about 2900 K.
 //  - Rooms lit at random, some on and some off, as interior-mapped cities do it (Marvel's
@@ -28,10 +31,9 @@
 
 float4 _RGGlass;      // x reflectance head-on (F0, the chosen glass), y reflectance edge-on, z clarity (VLT), w strength
 float4 _RGGlass2;     // x silvery edge-on 0..1, y lit rooms' share at night 0..1, z floor band (m), w -
-float4 _RGMix;        // x kinds of glass in the city (1..11), y z the game's object colour map (width, height), w -
-float4 _RGMixTint[11];  // per kind: rgb linear tint, brightest channel 1 (0: the chosen glass)
-float4 _RGMixGlass[11]; // per kind: x reflectance head-on, y clarity
+float4 _RGColorMap;   // xy the game's object colour map (width, height): where a building's colour index points
 float4 _RGLamps[5];   // lamp colours, luma 1: 5000, 4400, 3800, 3200, 2700 K (seen with a 4000 K white)
+float4 _RGFinished;   // x 1 while _RGSceneFinished holds last frame's finished picture
 float4 _RGTint;       // rgb glass tint (linear, brightest channel 1), a own-colour mix 0..1
 float4 _RGMask;       // x shininess threshold, y night-window weight, z show mask (1), w coat tint mix
 float4 _RGRefl;       // x reflection brightness, y roughness 0..1, z sun glint, w screen-edge fade 0..0.5
@@ -47,10 +49,12 @@ float4 _RGSunColor;   // rgb the sun's radiance (colour x intensity)
 float4 _RGAmbSky;     // rgb light from the sky (trilight "sky")
 float4 _RGAmbGround;  // rgb light from below (trilight "ground")
 float4 _RGDebug;      // x: 0 off; the GPU preview's checks (1 trace, 2 depth, 3 screen copy, 4 plain-glass towers in
-                      // white over each building's kind of glass). The mod never sets it.
+                      // white, 5 the finished picture reprojected; magenta off it). The mod never sets it.
 
-sampler2D _RGScene;           // the lit opaque picture, copied before any glass (mipmapped)
+sampler2D _RGScene;           // the lit opaque picture, copied before any glass (mipmapped): what is UNDER a pane
 float4 _RGScene_TexelSize;
+sampler2D _RGSceneFinished;   // last frame's finished picture (fog, clouds, lamps, glass; mipmapped): what a pane MIRRORS
+float4x4 _RGPrevVP;           // last frame's camera (OpenGL-convention projection x view): where a point was on it
 sampler2D _RGCity;            // 1x1: the average colour of the lower half of the screen
 samplerCUBE _RGSky;           // the live sky (or the game's environment map)
 sampler2D _RGBuildings;       // per building, laid out as the game's object colour map: r lamp warmth, a 1 = known
@@ -94,22 +98,15 @@ float3 NormaliseTint(float3 c)
 
 // ---------------------------------------------------------------------------------------------
 // Which building a pixel is: its place in the game's object colour map (the colour index every
-// distance tier carries, a sub-building its parent's), turned into a number of its own, the kind
-// of glass it takes, and its lamps.
+// distance tier carries, a sub-building its parent's), turned into a number of its own, and its
+// lamps.
 // ---------------------------------------------------------------------------------------------
 
 float BuildingSeed(float2 colourIndex)
 {
     // The index is a texel centre, (k + 0.5) / size: exact on every tier.
-    float2 cell = floor(colourIndex * _RGMix.yz);
+    float2 cell = floor(colourIndex * _RGColorMap.xy);
     return Hash12(cell + float2(0.37, 0.71));
-}
-
-// The building's kind of glass: one of the _RGMix.x kinds, 0 (the chosen glass) when not mixing.
-int MixKind(float seed)
-{
-    int n = max((int)_RGMix.x, 1);
-    return min((int)(seed * n), n - 1);
 }
 
 // A lamp's colour, luma 1: warmth 0 (5000 K) .. 1 (2700 K).
@@ -381,6 +378,31 @@ float3 SkyRadiance(float3 R, float roughness)
     return texCUBElod(_RGSky, float4(R, roughness * _RGFill.z)).rgb;
 }
 
+// Where a world point is on screen, in the convention the copies are read with: on this frame's
+// camera, or -- lastFrame -- on last frame's, which the finished picture was drawn with. False
+// behind the camera.
+bool ScreenUV(float3 W, bool lastFrame, out float2 uv)
+{
+    // One exit: fxc takes early returns in inlined helpers for "potentially uninitialized".
+    float4 clip = mul(UNITY_MATRIX_VP, float4(W, 1.0));
+    float4 s = ComputeScreenPos(clip);
+    float4 c = mul(_RGPrevVP, float4(W, 1.0));
+    uv = lastFrame ? c.xy / max(c.w, 1e-4) * 0.5 + 0.5 : s.xy / max(s.w, 1e-4);
+    return (lastFrame ? c.w : clip.w) > _ProjectionParams.y;
+}
+
+// What the glass mirrors at a place on screen: the finished picture (fog, clouds, lamps, the other
+// glass) when there is one, else the copy taken before them.
+float3 MirroredPicture(float2 uv, float lod, bool finished)
+{
+    float3 c;
+    if (finished)
+        c = tex2Dlod(_RGSceneFinished, float4(uv, 0.0, lod)).rgb;
+    else
+        c = tex2Dlod(_RGScene, float4(uv, 0.0, lod)).rgb;
+    return c;
+}
+
 // Below the horizon and nothing hit: the ground at the building's feet, where the reflected ray
 // meets it, is almost always what a facade shows from a city-builder's camera. Found on screen it
 // is read there; off screen it is mirrored in (mode 0), or the city's average colour (mode 1).
@@ -397,17 +419,16 @@ float3 GroundFill(float3 P, float3 R, float roughness, float groundY)
         float drop = max(P.y - groundY, 1.0);
         float t = min(drop / max(-R.y, 0.02), 4000.0);
         float3 G = P + R * t;
-        float4 clip = mul(UNITY_MATRIX_VP, float4(G, 1.0));
-        if (clip.w > _ProjectionParams.y)
+        bool finished = _RGFinished.x > 0.5;
+        float2 uv;
+        if (ScreenUV(G, finished, uv))
         {
-            float4 s = ComputeScreenPos(clip);
-            float2 uv = s.xy / s.w;
             float outside = max(max(-uv.x, uv.x - 1.0), max(-uv.y, uv.y - 1.0));
             float2 muv = MirrorUV(uv);
             // Sharp where the ground point is on screen; blurred the further outside it had to
             // be mirrored from (a mirrored street is a plausible street, not the right one).
             float lod = saturate(outside * 4.0) * 1.5 + saturate(outside) * 2.5 + roughness * 3.0;
-            float3 mirrored = tex2Dlod(_RGScene, float4(muv, 0.0, lod)).rgb;
+            float3 mirrored = MirroredPicture(muv, lod, finished);
             result = lerp(mirrored, city, saturate(outside - 0.6));
         }
     }

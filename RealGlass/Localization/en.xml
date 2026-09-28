@@ -51,7 +51,6 @@
   </String>
 
   <String key="Tab.Glass">Glass</String>
-  <String key="Tab.Skyline">Skyline</String>
   <String key="Tab.Reflections">Reflections</String>
   <String key="Tab.Panes">Panes</String>
   <String key="Tab.Interiors">Interiors</String>
@@ -119,38 +118,13 @@
   <String key="GlassShowMask.Label">Show what counts as glass</String>
   <String key="GlassShowMask.Tooltip">Paints the glass magenta, to check the settings above.</String>
 
-  <!-- ==================== F7 panel: Skyline ==================== -->
-
-  <String key="SkylineMix.Label">Mix kinds of glass</String>
-  <String key="SkylineMix.Tooltip">Each building gets one of the kinds ticked below, as in a real city.</String>
-
-  <String key="Group.SkylineKinds">Kinds in the mix (and the one on the Glass tab)</String>
-
-  <String key="SkylineReflectiveBlue.Label">Reflective blue</String>
-  <String key="SkylineReflectiveBlue.Tooltip">Mirrors 20%, lets 24% through. The default glass.</String>
-  <String key="SkylineOceanBlue.Label">Ocean blue</String>
-  <String key="SkylineOceanBlue.Tooltip">A rich blue. Mirrors 11%, lets 29% through.</String>
-  <String key="SkylineAquaBlue.Label">Aqua blue</String>
-  <String key="SkylineAquaBlue.Tooltip">A light blue-green. Mirrors 21%, lets 47% through.</String>
-  <String key="SkylineSkyBlue.Label">Sky blue</String>
-  <String key="SkylineSkyBlue.Tooltip">A pale blue. Mirrors 15%, lets 20% through.</String>
-  <String key="SkylineGreen.Label">Green</String>
-  <String key="SkylineGreen.Tooltip">Mirrors 24%, lets 27% through.</String>
-  <String key="SkylineBronze.Label">Bronze</String>
-  <String key="SkylineBronze.Tooltip">A warm brown. Mirrors 14%, lets 19% through.</String>
-  <String key="SkylineGrey.Label">Grey</String>
-  <String key="SkylineGrey.Tooltip">A neutral dark grey. Mirrors 11%, lets 16% through.</String>
-  <String key="SkylineClearLowE.Label">Clear low-E</String>
-  <String key="SkylineClearLowE.Tooltip">Nearly clear. Mirrors 11%, lets 64% through.</String>
-  <String key="SkylineSilverReflective.Label">Silver reflective</String>
-  <String key="SkylineSilverReflective.Tooltip">A mirror. Mirrors 35%, lets 20% through.</String>
-  <String key="SkylineGoldReflective.Label">Gold reflective</String>
-  <String key="SkylineGoldReflective.Tooltip">A gold mirror. Mirrors 30%, lets 18% through.</String>
-
   <!-- ==================== F7 panel: Reflections ==================== -->
 
   <String key="SsrEnabled.Label">Reflect what is on screen</String>
   <String key="SsrEnabled.Tooltip">Streets, cars and buildings in view show in the glass.</String>
+
+  <String key="ReflectFinished.Label">Reflect fog, clouds and lights</String>
+  <String key="ReflectFinished.Tooltip">The glass mirrors the finished picture: haze, clouds, lamps, glass.</String>
 
   <String key="SsrQuality.Label">Reflection quality</String>
   <String key="SsrQuality.Tooltip">Higher: sharper, with fewer gaps. Costs frame rate.</String>
@@ -166,6 +140,9 @@
   <String key="SkyReflection.Tooltip">The live sky follows the time of day and the weather.</String>
   <String key="SkyReflection.Live">Live sky</String>
   <String key="SkyReflection.Game">The game's own</String>
+
+  <String key="SkyClouds.Label">Clouds in the live sky</String>
+  <String key="SkyClouds.Tooltip">The clouds Volumetric Weather draws show in the glass too.</String>
 
   <String key="OffscreenFill.Label">Below the horizon</String>
   <String key="OffscreenFill.Tooltip">What the glass shows where nothing on screen is mirrored.</String>

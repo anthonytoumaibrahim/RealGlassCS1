@@ -26,9 +26,6 @@ namespace RealGlass.Glass
         /// <summary>How much of the glass colour the reflection takes (a coating reflects tinted).</summary>
         public const float CoatTint = 0.6f;
 
-        /// <summary>The kinds of glass a city can mix: the chosen one and every preset.</summary>
-        public const int MixSlots = 11;
-
         /// <summary>
         /// The lamps' colour temperatures, coolest to warmest (warmth 0 .. 1): daylight-white
         /// office LEDs to incandescent-warm homes. <see cref="WhitePoint"/> reads as white.
@@ -42,12 +39,10 @@ namespace RealGlass.Glass
         public const float NeutralWarmth = 0.45f;
 
         private static int _glass, _tint, _mask, _refl, _trace, _fill, _pane, _pane2, _room, _room2, _light,
-                           _sunDir, _sunColor, _ambSky, _ambGround, _glass2, _mix, _mixTint, _mixGlass, _lamps;
+                           _sunDir, _sunColor, _ambSky, _ambGround, _glass2, _colorMap, _lamps;
         private static bool _ids;
 
-        // Filled in place every frame: SetGlobalVectorArray keeps the size of its first call.
-        private static readonly Vector4[] MixTintArray = new Vector4[MixSlots];
-        private static readonly Vector4[] MixGlassArray = new Vector4[MixSlots];
+        // Filled in place: SetGlobalVectorArray keeps the size of its first call.
         private static readonly Vector4[] LampArray = new Vector4[5];
 
         private static void Ids()
@@ -70,62 +65,9 @@ namespace RealGlass.Glass
             _ambSky = Shader.PropertyToID("_RGAmbSky");
             _ambGround = Shader.PropertyToID("_RGAmbGround");
             _glass2 = Shader.PropertyToID("_RGGlass2");
-            _mix = Shader.PropertyToID("_RGMix");
-            _mixTint = Shader.PropertyToID("_RGMixTint");
-            _mixGlass = Shader.PropertyToID("_RGMixGlass");
+            _colorMap = Shader.PropertyToID("_RGColorMap");
             _lamps = Shader.PropertyToID("_RGLamps");
             _ids = true;
-        }
-
-        /// <summary>
-        /// The kinds of glass buildings take, in slot order: the chosen glass (the Glass tab's
-        /// colour, reflectivity and clarity) first, then every preset ticked for the mix that is not
-        /// the chosen one. With the mix off, the chosen glass alone. Returns how many; each entry is
-        /// the colour (sRGB 0..1), reflectivity and clarity.
-        /// </summary>
-        public static int MixEntries(GlassParams p, float[] r, float[] g, float[] b, float[] reflectivity, float[] clarity)
-        {
-            r[0] = p.TintR;
-            g[0] = p.TintG;
-            b[0] = p.TintB;
-            reflectivity[0] = p.Reflectivity;
-            clarity[0] = p.Clarity;
-            int n = 1;
-            if (!p.Mix)
-                return n;
-
-            for (int i = 0; i < GlassPresets.Count && n < r.Length; i++)
-            {
-                GlassPreset preset = GlassPresets.At(i);
-                if ((p.MixMask & (1 << (preset.Value - 1))) == 0 || preset.Value == p.Preset)
-                    continue;
-
-                r[n] = preset.Colour.r / 255f;
-                g[n] = preset.Colour.g / 255f;
-                b[n] = preset.Colour.b / 255f;
-                reflectivity[n] = preset.Reflectivity;
-                clarity[n] = preset.Clarity;
-                n++;
-            }
-
-            return n;
-        }
-
-        /// <summary>How many kinds of glass the city shows: the chosen one and the other ticked presets.</summary>
-        public static int MixCount(GlassParams p)
-        {
-            if (!p.Mix)
-                return 1;
-
-            int n = 1;
-            for (int i = 0; i < GlassPresets.Count; i++)
-            {
-                int value = GlassPresets.At(i).Value;
-                if ((p.MixMask & (1 << (value - 1))) != 0 && value != p.Preset)
-                    n++;
-            }
-
-            return Mathf.Min(n, MixSlots);
         }
 
         /// <summary>
@@ -206,9 +148,6 @@ namespace RealGlass.Glass
             return Steps[Mathf.Clamp(quality, 0, Steps.Length - 1)];
         }
 
-        private static readonly float[] MixR = new float[MixSlots], MixG = new float[MixSlots], MixB = new float[MixSlots],
-                                        MixRefl = new float[MixSlots], MixClarity = new float[MixSlots];
-
         public static void Apply(GlassParams p, GlassFrame f)
         {
             Ids();
@@ -217,25 +156,14 @@ namespace RealGlass.Glass
             float daylight = Daylight(f.SunY);
             float sunUp = Smooth(-0.02f, 0.06f, f.SunY);
 
-            int kinds = MixEntries(p, MixR, MixG, MixB, MixRefl, MixClarity);
-            for (int i = 0; i < MixSlots; i++)
-            {
-                int k = i < kinds ? i : 0;
-                Vector3 t = Tint(MixR[k], MixG[k], MixB[k]);
-                MixTintArray[i] = new Vector4(t.x, t.y, t.z, 0f);
-                MixGlassArray[i] = new Vector4(MixRefl[k], MixClarity[k], 0f, 0f);
-            }
-
             for (int i = 0; i < LampArray.Length; i++)
             {
                 Vector3 lamp = LampColour(LampKelvin[i]);
                 LampArray[i] = new Vector4(lamp.x, lamp.y, lamp.z, 0f);
             }
 
-            Shader.SetGlobalVectorArray(_mixTint, MixTintArray);
-            Shader.SetGlobalVectorArray(_mixGlass, MixGlassArray);
             Shader.SetGlobalVectorArray(_lamps, LampArray);
-            Shader.SetGlobalVector(_mix, new Vector4(kinds, Mathf.Max(f.ColorMapWidth, 1), Mathf.Max(f.ColorMapHeight, 1), 0f));
+            Shader.SetGlobalVector(_colorMap, new Vector4(Mathf.Max(f.ColorMapWidth, 1), Mathf.Max(f.ColorMapHeight, 1), 0f, 0f));
             Shader.SetGlobalVector(_glass2, new Vector4(p.EdgeSilver, p.LitShare, Mathf.Max(p.FloorBand, 0f), 0f));
 
             Shader.SetGlobalVector(_glass, new Vector4(p.Reflectivity, p.Glancing, p.Clarity, p.Enabled ? p.Strength : 0f));

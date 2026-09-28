@@ -64,11 +64,11 @@ namespace RealGlass
                         " strength=" + Percent(Settings.GlassStrength, Settings.Defaults.GlassStrength) +
                         " threshold=" + Percent(Settings.GlassThreshold, Settings.Defaults.GlassThreshold) +
                         " nightWindows=" + On(Settings.GlassNightWindows, Settings.Defaults.GlassNightWindows) +
-                        " | skyline: mix=" + On(Settings.SkylineMix, Settings.Defaults.SkylineMix) +
-                        " kinds=" + SkylineKinds() +
                         " | reflections: screen=" + On(Settings.SsrEnabled, Settings.Defaults.SsrEnabled) +
+                        " finishedPicture=" + On(Settings.ReflectFinished, Settings.Defaults.ReflectFinished) +
                         " quality=" + QualityName(Int(Settings.SsrQuality, Settings.Defaults.SsrQuality)) +
                         " sky=" + (Int(Settings.SkyReflection, Settings.Defaults.SkyReflection) == 0 ? "live" : "game's map") +
+                        " skyClouds=" + On(Settings.SkyClouds, Settings.Defaults.SkyClouds) +
                         " offscreen=" + FillName(Int(Settings.OffscreenFill, Settings.Defaults.OffscreenFill)) +
                         " skyCube=" + Settings.SkyCubePixels + "px x" + Int(Settings.SkyCubeRate, Settings.Defaults.SkyCubeRate) + "/frame" +
                         " | interiors=" + On(Settings.InteriorEnabled, Settings.Defaults.InteriorEnabled) +
@@ -151,21 +151,6 @@ namespace RealGlass
                 case 2: return "sky only";
                 default: return "unknown (" + value + ")";
             }
-        }
-
-        /// <summary>The presets ticked for the mix, by their English names ("none" when none is).</summary>
-        private static string SkylineKinds()
-        {
-            int mask = Settings.SkylineMask;
-            string s = "";
-            for (int i = 0; i < GlassPresets.Count; i++)
-            {
-                GlassPreset preset = GlassPresets.At(i);
-                if ((mask & (1 << (preset.Value - 1))) != 0)
-                    s += (s.Length > 0 ? "/" : "") + preset.LogName;
-            }
-
-            return s.Length > 0 ? s : "none";
         }
 
         private static string On(BoolSetting setting, bool fallback)

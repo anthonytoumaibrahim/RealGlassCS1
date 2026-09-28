@@ -19,18 +19,15 @@ namespace RealGlass.Glass
         public float Threshold;             // 0.4..0.95: what counts as glass (the asset's shininess)
         public bool NightWindows;           // windows lit at night count as glass
         public bool ShowMask;
-        public int Preset;                  // the chosen kind of glass (GlassPresets value; 0 = Custom)
         public float EdgeSilver;            // 0..1: how far the reflection's colour turns silver edge-on (1 = as physics has it)
-
-        // Skyline
-        public bool Mix;                    // every building its own kind of glass
-        public int MixMask;                 // the kinds in the mix: bit (value - 1) of each GlassPresets value
 
         // Reflections
         public bool Trace;                  // screen-space reflections
+        public bool Finished;               // reflect last frame's finished picture (fog, clouds, lamps), reprojected
         public int Quality;                 // 0 Low .. 3 Ultra
         public float ReflectionBrightness;  // 0..3
         public int SkySource;               // 0 live sky, 1 the game's environment map
+        public bool SkyClouds;              // the live sky carries the clouds (Volumetric Weather's volume)
         public int OffscreenFill;           // 0 mirrored screen, 1 city colour, 2 sky only
         public float SunGlint;              // 0..3
         public float Smoothness;            // 0..1
@@ -51,7 +48,7 @@ namespace RealGlass.Glass
         public float InteriorBrightness;    // 0..3
         public float Blinds;                // 0..1
         public float Furniture;             // 0..1
-        public float NightRooms;            // 0..3
+        public float NightRooms;            // 0..6
         public float NightWarmth;           // 0..1
         public float LitShare;              // 0..1: of the windows the game lights, the share that are lit rooms
         public float FloorBand;             // metres: the slab band between storeys on plain-glass towers
@@ -66,45 +63,41 @@ namespace RealGlass.Glass
             p.TintB = 0x80 / 255f;
             p.OwnColour = 0.40f;
             p.Reflectivity = 0.20f;
-            p.Glancing = 0.70f;
+            p.Glancing = 0.21f;
             p.Clarity = 0.24f;
             p.Strength = 1.00f;
             p.Threshold = 0.70f;
             p.NightWindows = true;
             p.ShowMask = false;
-            p.Preset = 10;                  // Reflective blue
-            p.EdgeSilver = 0.50f;
-
-            p.Mix = true;
-            // Reflective blue, ocean, aqua and sky blue, green, grey, clear low-E and silver: the
-            // glass of most towers. Bronze (value 6) and gold (value 9) are left to the player.
-            p.MixMask = (1 << 9) | (1 << 2) | (1 << 1) | (1 << 3) | (1 << 4) | (1 << 6) | (1 << 0) | (1 << 7);
+            p.EdgeSilver = 1.00f;
 
             p.Trace = true;
+            p.Finished = true;
             p.Quality = 2;
             p.ReflectionBrightness = 1.00f;
-            p.SkySource = 0;
+            p.SkySource = 1;
+            p.SkyClouds = true;
             p.OffscreenFill = 0;
             p.SunGlint = 1.00f;
             p.Smoothness = 0.92f;
             p.EdgeFade = 0.12f;
 
-            p.PaneWidth = 1.5f;
-            p.Pillow = 1.00f;
-            p.Tilt = 0.60f;
-            p.RollerWave = 0.60f;
+            p.PaneWidth = 1.4f;
+            p.Pillow = 1.50f;
+            p.Tilt = 1.40f;
+            p.RollerWave = 1.45f;
             p.PaneWeather = true;
 
             p.Rooms = true;
             p.FloorHeight = 3.8f;
             p.RoomWidth = 12f;
             p.RoomDepth = 12f;
-            p.InteriorBrightness = 1.00f;
-            p.Blinds = 0.35f;
+            p.InteriorBrightness = 0.15f;
+            p.Blinds = 0.30f;
             p.Furniture = 0.60f;
-            p.NightRooms = 1.00f;
-            p.NightWarmth = 0.45f;
-            p.LitShare = 0.80f;
+            p.NightRooms = 3.00f;
+            p.NightWarmth = 0.81f;
+            p.LitShare = 0.59f;
             p.FloorBand = 1.0f;
             return p;
         }
