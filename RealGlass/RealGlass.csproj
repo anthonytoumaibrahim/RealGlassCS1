@@ -1,0 +1,109 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Cities: Skylines runs Unity 5.6 on Mono's .NET 3.5 profile. -->
+    <TargetFramework>net35</TargetFramework>
+    <!-- 7.3 is the newest version that needs no polyfill types on net35. -->
+    <LangVersion>7.3</LangVersion>
+    <RootNamespace>RealGlass</RootNamespace>
+    <AssemblyName>RealGlass</AssemblyName>
+
+    <!-- We write Properties\AssemblyInfo.cs by hand instead of letting the SDK generate it. -->
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <!-- AssemblyVersion(Mod.Version + ".*") is silently ignored while deterministic builds are on. -->
+    <Deterministic>false</Deterministic>
+
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <DebugType>full</DebugType>
+    <!-- Optimised IL in every configuration: the glass is set up for every building drawn, every
+         frame, and the Debug default (no optimisation, DebuggableAttribute asking the JIT not to
+         optimise either) made RealFlag's per-frame work seven times slower. -->
+    <Optimize>true</Optimize>
+
+    <GameManaged>$(MSBuildProgramFiles32)\Steam\steamapps\common\Cities_Skylines\Cities_Data\Managed</GameManaged>
+    <ModsDir>$(LOCALAPPDATA)\Colossal Order\Cities_Skylines\Addons\Mods\$(AssemblyName)</ModsDir>
+    <LibsDir>$(MSBuildProjectDirectory)\..\libs</LibsDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\GlassIcon.png" />
+    <!-- Every language file, as "Localization.<code>.xml": Localization.cs finds them by name. -->
+    <EmbeddedResource Include="Localization\*.xml" LogicalName="Localization.%(Filename)%(Extension)" />
+    <!-- Shader bundles from UnityProject (see build-bundle.ps1), one per platform: Direct3D 11
+         + OpenGL Core for Windows, OpenGL Core for Linux, Metal + OpenGL Core for the Mac.
+         ShaderBundle picks one by Application.platform, by these exact LogicalNames.
+         Conditional so the mod still builds without them; without the right one the mod
+         stands down in every city (Loader.cs). -->
+    <EmbeddedResource Include="Resources\realglass-win.bundle"
+                      LogicalName="RealGlass.Resources.realglass-win.bundle"
+                      Condition="Exists('Resources\realglass-win.bundle')" />
+    <EmbeddedResource Include="Resources\realglass-linux.bundle"
+                      LogicalName="RealGlass.Resources.realglass-linux.bundle"
+                      Condition="Exists('Resources\realglass-linux.bundle')" />
+    <EmbeddedResource Include="Resources\realglass-mac.bundle"
+                      LogicalName="RealGlass.Resources.realglass-mac.bundle"
+                      Condition="Exists('Resources\realglass-mac.bundle')" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Build-time only: net35 reference assemblies, which VS no longer installs. -->
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net35" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!-- Private=false keeps the game's own DLLs out of bin\ and out of the Mods folder. -->
+  <ItemGroup>
+    <Reference Include="Assembly-CSharp">
+      <HintPath>$(GameManaged)\Assembly-CSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="ColossalManaged">
+      <HintPath>$(GameManaged)\ColossalManaged.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="ICities">
+      <HintPath>$(GameManaged)\ICities.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>$(GameManaged)\UnityEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- Shipped next to our DLL, the same way MoveIt and TM:PE bundle it. -->
+    <Reference Include="UnifiedUILib">
+      <HintPath>$(LibsDir)\UnifiedUILib.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- Shipped alongside our DLL; the real Harmony comes from the CitiesHarmony mod
+         (Volumetric Weather's arrangement). -->
+    <Reference Include="CitiesHarmony.API">
+      <HintPath>$(LibsDir)\CitiesHarmony.API.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- Compile-time only: provided at runtime by the CitiesHarmony mod, never shipped. -->
+    <Reference Include="CitiesHarmony.Harmony">
+      <HintPath>$(LibsDir)\CitiesHarmony.Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- `dotnet build -t:Compile` runs CoreCompile WITHOUT PrepareResources: RealFlag's DLL came out
+       with no bundle, no icon and no language files, and the next full build, finding it up to
+       date, deployed it as it was. So the resources are always prepared first: before
+       _GenerateCompileInputs, which lists them for CoreCompile from the metadata
+       PrepareResources gives them (Microsoft.Common.CurrentVersion.targets). -->
+  <Target Name="PrepareResourcesBeforeCompile" BeforeTargets="_GenerateCompileInputs" DependsOnTargets="PrepareResources" />
+
+  <!-- `-p:Deploy=false`: a full build that leaves the game's Mods folder alone.
+       `-p:ModsDir=<folder>`: deploy somewhere else (a scratch folder) instead. -->
+  <Target Name="DeployToGame" AfterTargets="Build" Condition="'$(Deploy)' != 'false'">
+    <MakeDir Directories="$(ModsDir)" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ModsDir)" />
+    <!-- The PDB is deliberately NOT deployed. Unity 5.6's Mono reads .mdb, not .pdb, so it
+         gives the game nothing (no line numbers in any stack trace), while the Workshop
+         uploads whatever sits in this folder, along with the source paths inside it. -->
+    <Copy SourceFiles="$(LibsDir)\UnifiedUILib.dll" DestinationFolder="$(ModsDir)" />
+    <Copy SourceFiles="$(LibsDir)\CitiesHarmony.API.dll" DestinationFolder="$(ModsDir)" />
+    <Message Importance="high" Text="Deployed $(AssemblyName).dll -> $(ModsDir)" />
+  </Target>
+
+</Project>

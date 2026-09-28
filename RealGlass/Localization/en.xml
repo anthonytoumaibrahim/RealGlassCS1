@@ -1,0 +1,317 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Real Glass: every text a player reads, in English. The source for every translation.
+
+  To translate: copy this file, name it with the game's code for your language (de.xml, es.xml,
+  fr.xml, ko.xml, pl.xml, pt.xml, ru.xml, zh.xml), set code and name below, and translate the
+  text between the tags. Leave the keys alone.
+
+  - {0}, {1}... are filled in by the mod (a number, a name). Keep every one of them.
+  - A long text can be wrapped over several lines here: the break reads as one space.
+  - \n is a real line break (used in the dialogs).
+  - A key missing from a translation shows in English, so a partial translation works.
+
+  Tooltips: as few words as possible, never more than one short line (a long one runs out of
+  the game's tooltip box). Say only what the label leaves out. Everyday words, no rendering
+  terms (shader, screen-space, raymarch, cubemap, Fresnel).
+-->
+<Language code="en" name="English">
+
+  <!-- ==================== The mod ==================== -->
+
+  <!-- One line in the game's mods list: about 30 characters fit before it wraps. -->
+  <String key="Mod.Description">Realistic glass on buildings</String>
+  <String key="Mod.Unsupported">
+    Real Glass could not draw its glass on this computer, so it has switched itself off:
+    nothing in this city is changed by it.\n\n
+    The mod needs Metal or OpenGL 3.3, and the game does not have either here. If the game is
+    started with a launch option that changes its graphics (Steam: right-click the game,
+    Properties, Launch Options), remove it and restart the game.
+  </String>
+  <String key="Mod.UnsupportedLinux">
+    Real Glass could not draw its glass on this computer, so it has switched itself off:
+    nothing in this city is changed by it.\n\n
+    The mod needs OpenGL 3.3, and the game does not have it here. If the game is started with a
+    launch option that changes its graphics (Steam: right-click the game, Properties, Launch
+    Options), remove it and restart the game.\n\n
+    The Windows version of the game runs the mod through Proton: Steam, right-click the game,
+    Properties, Compatibility, tick "Force the use of a specific Steam Play compatibility tool"
+    and pick a Proton version.
+  </String>
+  <String key="Mod.UnsupportedWindows">
+    Real Glass could not draw its glass on this PC, so it has switched itself off: nothing in
+    this city is changed by it.\n\n
+    The usual causes:\n
+    - the game is started with a launch option such as -force-d3d9, or -force-glcore on a
+    graphics card whose OpenGL is older than 3.3 (Steam: right-click the game, Properties,
+    Launch Options). Remove it, and restart the game.\n
+    - the graphics card is older than DirectX 10.\n\n
+    If neither applies, please report it on the mod's Workshop page, with this file:\n
+    {0}
+  </String>
+
+  <String key="Tab.Glass">Glass</String>
+  <String key="Tab.Reflections">Reflections</String>
+  <String key="Tab.Panes">Panes</String>
+  <String key="Tab.Interiors">Interiors</String>
+  <String key="Tab.Rendering">Rendering</String>
+
+  <String key="Key.Press">Press a key</String>
+
+  <!-- ==================== F7 panel: Glass ==================== -->
+
+  <!-- The status line at the top of the Glass tab. {0} {1} {2}: buildings drawn with glass
+       last frame, near / middle distance / far blocks. -->
+  <String key="Status.On">Glass on {0} near, {1} middle and {2} far groups of buildings.</String>
+  <String key="Status.Off">The glass is off.</String>
+  <String key="Status.Waiting">Waiting for the city's camera.</String>
+  <String key="Status.InfoView">Paused while an info view is open.</String>
+
+  <String key="GlassEnabled.Label">Realistic glass</String>
+  <String key="GlassEnabled.Tooltip">Off: the game's own windows, untouched.</String>
+
+  <String key="Group.TheGlass">The glass</String>
+
+  <String key="GlassPreset.Label">Kind of glass</String>
+  <String key="GlassPreset.Tooltip">Real glass products. Sets the colour, reflectivity and clarity.</String>
+  <String key="GlassPreset.ReflectiveBlue">Reflective blue</String>
+  <String key="GlassPreset.ClearLowE">Clear low-E</String>
+  <String key="GlassPreset.AquaBlue">Aqua blue</String>
+  <String key="GlassPreset.OceanBlue">Ocean blue</String>
+  <String key="GlassPreset.SkyBlue">Sky blue</String>
+  <String key="GlassPreset.Green">Green</String>
+  <String key="GlassPreset.Bronze">Bronze</String>
+  <String key="GlassPreset.Grey">Grey</String>
+  <String key="GlassPreset.SilverReflective">Silver reflective</String>
+  <String key="GlassPreset.GoldReflective">Gold reflective</String>
+  <String key="GlassPreset.Custom">Custom</String>
+
+  <String key="GlassOwnColour.Label">Keep the building's colour</String>
+  <String key="GlassOwnColour.Tooltip">How much of the colour the building's own glass has stays.</String>
+
+  <String key="GlassColor.Label">Glass colour</String>
+  <String key="GlassColor.Tooltip">The tint of the glass. Picking one makes the kind Custom.</String>
+
+  <String key="GlassReflectivity.Label">Reflectivity, head-on</String>
+  <String key="GlassReflectivity.Tooltip">How much it mirrors seen straight on. Real glass: 8 to 40%.</String>
+
+  <String key="GlassGlancing.Label">Reflectivity, at an angle</String>
+  <String key="GlassGlancing.Tooltip">The most it mirrors seen edge-on. Lower it if towers glare.</String>
+
+  <String key="GlassClarity.Label">Clarity</String>
+  <String key="GlassClarity.Tooltip">How much light gets through: how much of the rooms you see.</String>
+
+  <String key="GlassStrength.Label">Strength</String>
+  <String key="GlassStrength.Tooltip">0%: the game's own windows. 100%: all new glass.</String>
+
+  <String key="Group.WhatIsGlass">What counts as glass</String>
+
+  <String key="GlassThreshold.Label">Shininess needed</String>
+  <String key="GlassThreshold.Tooltip">Lower: more of a building counts as glass, walls too.</String>
+
+  <String key="GlassNightWindows.Label">Windows lit at night are glass</String>
+  <String key="GlassNightWindows.Tooltip">Windows a building lights at night count as glass too.</String>
+
+  <String key="GlassShowMask.Label">Show what counts as glass</String>
+  <String key="GlassShowMask.Tooltip">Paints the glass magenta, to check the settings above.</String>
+
+  <!-- ==================== F7 panel: Reflections ==================== -->
+
+  <String key="SsrEnabled.Label">Reflect what is on screen</String>
+  <String key="SsrEnabled.Tooltip">Streets, cars and buildings in view show in the glass.</String>
+
+  <String key="SsrQuality.Label">Reflection quality</String>
+  <String key="SsrQuality.Tooltip">Higher: sharper, with fewer gaps. Costs frame rate.</String>
+  <String key="SsrQuality.Low">Low</String>
+  <String key="SsrQuality.Medium">Medium</String>
+  <String key="SsrQuality.High">High</String>
+  <String key="SsrQuality.Ultra">Ultra</String>
+
+  <String key="ReflectionBrightness.Label">Reflection brightness</String>
+  <String key="ReflectionBrightness.Tooltip">Everything the glass mirrors, brighter or darker.</String>
+
+  <String key="SkyReflection.Label">Sky in the glass</String>
+  <String key="SkyReflection.Tooltip">The live sky follows the time of day and the weather.</String>
+  <String key="SkyReflection.Live">Live sky</String>
+  <String key="SkyReflection.Game">The game's own</String>
+
+  <String key="OffscreenFill.Label">Below the horizon</String>
+  <String key="OffscreenFill.Tooltip">What the glass shows where nothing on screen is mirrored.</String>
+  <String key="OffscreenFill.Mirror">Mirrored screen</String>
+  <String key="OffscreenFill.City">City colour</String>
+  <String key="OffscreenFill.Sky">Sky only</String>
+
+  <String key="SunGlint.Label">Sun glint</String>
+  <String key="SunGlint.Tooltip">The sun's flash off the panes.</String>
+
+  <String key="GlassSmoothness.Label">Smoothness</String>
+  <String key="GlassSmoothness.Tooltip">Lower: softer, blurrier reflections.</String>
+
+  <String key="SsrEdgeFade.Label">Fade at the screen's edges</String>
+  <String key="SsrEdgeFade.Tooltip">Softens reflections cut off by the edge of the screen.</String>
+
+  <!-- ==================== F7 panel: Panes ==================== -->
+
+  <String key="PaneWidth.Label">Pane width</String>
+  <String key="PaneWidth.Tooltip">Each pane bends what it mirrors on its own.</String>
+
+  <String key="Group.Distortion">How the panes bend the reflections</String>
+
+  <String key="PanePillow.Label">Cushioned panes</String>
+  <String key="PanePillow.Tooltip">Panes bow in or out like cushions: round distortions.</String>
+
+  <String key="PaneTilt.Label">Pane tilt</String>
+  <String key="PaneTilt.Tooltip">Each pane set at a slightly different angle.</String>
+
+  <String key="RollerWave.Label">Ripple</String>
+  <String key="RollerWave.Tooltip">The faint waves of toughened glass.</String>
+
+  <String key="PaneWeather.Label">Panes follow the weather</String>
+  <String key="PaneWeather.Tooltip">They bulge on hot days and sink on cold ones.</String>
+
+  <!-- ==================== F7 panel: Interiors ==================== -->
+
+  <String key="InteriorEnabled.Label">Rooms behind the glass</String>
+  <String key="InteriorEnabled.Tooltip">Floors, ceilings and furniture seen through the windows.</String>
+
+  <String key="Group.Rooms">The rooms</String>
+
+  <String key="FloorHeight.Label">Floor height</String>
+  <String key="FloorHeight.Tooltip">From one floor to the next. Offices: about 3.8 m.</String>
+
+  <String key="RoomWidth.Label">Room width</String>
+  <String key="RoomWidth.Tooltip">How wide a room is along the facade.</String>
+
+  <String key="RoomDepth.Label">Room depth</String>
+  <String key="RoomDepth.Tooltip">How far back a room goes.</String>
+
+  <String key="Group.Day">By day</String>
+
+  <String key="InteriorBrightness.Label">Room brightness</String>
+  <String key="InteriorBrightness.Tooltip">How bright the rooms are by day.</String>
+
+  <String key="Blinds.Label">Blinds down</String>
+  <String key="Blinds.Tooltip">The share of windows with their blinds lowered.</String>
+
+  <String key="Furniture.Label">Furniture</String>
+  <String key="Furniture.Tooltip">How furnished the rooms are.</String>
+
+  <String key="Group.Night">At night</String>
+
+  <String key="NightRooms.Label">Lit rooms</String>
+  <String key="NightRooms.Tooltip">How bright the lit rooms are at night.</String>
+
+  <String key="NightWarmth.Label">Light colour</String>
+  <String key="NightWarmth.Tooltip">From cool office light to warm home light.</String>
+
+  <!-- ==================== F7 panel: Rendering ==================== -->
+
+  <String key="GlassDistance.Label">Glass on</String>
+  <String key="GlassDistance.Tooltip">Fewer buildings cost less frame rate in big cities.</String>
+  <String key="GlassDistance.Near">Near buildings</String>
+  <String key="GlassDistance.Middle">Near and middle</String>
+  <String key="GlassDistance.City">The whole city</String>
+
+  <String key="Group.LiveSky">The live sky in the glass</String>
+
+  <String key="SkyCubeSize.Label">Sky detail</String>
+  <String key="SkyCubeSize.Tooltip">The size of the live sky's picture.</String>
+
+  <String key="SkyCubeRate.Label">Sky updates</String>
+  <String key="SkyCubeRate.Tooltip">Sides redrawn each frame. 6: the whole sky, every frame.</String>
+
+  <!-- ==================== The game's options page ==================== -->
+
+  <!-- "(more languages...)" can go on this heading when the first translation lands. -->
+  <String key="Group.Language">Language</String>
+
+  <String key="Language.Label">Show this mod in</String>
+  <String key="Language.Tooltip">Language of this mod's panels.</String>
+  <String key="Language.Game">Same as the game</String>
+
+  <String key="Group.Panel">The in-game panel (every setting of the glass is there)</String>
+
+  <String key="PanelKey.Label">Open this panel</String>
+  <String key="PanelKey.Tooltip">Click, then press a key.</String>
+
+  <String key="QuietDebugKey.Label">Keep the game's debug panel off this key</String>
+  <String key="QuietDebugKey.Tooltip">F7 is also the game's debug key. On: only this panel opens.</String>
+
+  <String key="UseUnifiedUI.Label">Show icon in Unified UI</String>
+  <String key="UseUnifiedUI.Tooltip">Puts the button in the Unified UI bar.</String>
+
+  <String key="Group.Diagnostics">Diagnostics</String>
+
+  <String key="DetailedLogging.Label">Detailed logging</String>
+  <String key="DetailedLogging.Tooltip">For bug reports. Leave off normally.</String>
+
+  <String key="Group.StartingOver">Starting over</String>
+
+  <String key="ResetAll.Label">Reset all settings to defaults</String>
+  <String key="ResetAll.Tooltip">Every setting back to how the mod comes.</String>
+  <String key="ResetAll.Confirm">
+    Put every setting back to how the mod comes?\n\n
+    This throws away everything you have tuned, including the glass colour and the changes
+    made in the in-game panel.
+  </String>
+
+  <!-- ==================== No row in either UI ==================== -->
+
+  <String key="HudButtonX.Label">The mod's button (without Unified UI): distance from the left edge</String>
+  <String key="HudButtonY.Label">The mod's button (without Unified UI): distance from the top edge</String>
+
+  <!-- ==================== The colour row ==================== -->
+
+  <String key="Colour.Field.Tooltip">Type a colour and press Enter.</String>
+  <String key="Colour.Invalid">Not a colour: {0}. Try #2A5C78.</String>
+  <String key="Colour.Copy">Copy</String>
+  <String key="Colour.Copied">Copied</String>
+  <String key="Colour.Copy.Tooltip">Copy {0}.</String>
+  <String key="Colour.Paste">Paste</String>
+  <String key="Colour.Paste.Tooltip">Paste a colour.</String>
+  <String key="Colour.Reset">Default</String>
+  <String key="Colour.Reset.Tooltip">Back to {0}.</String>
+
+  <!-- ==================== Slider readouts ==================== -->
+
+  <String key="Unit.Percent">{0}%</String>
+  <String key="Unit.Metres">{0} m</String>
+  <String key="Unit.Pixels">{0} px</String>
+  <String key="Unit.FacesPerFrame">{0} a frame</String>
+  <String key="Readout.Warmth">{0}% warm</String>
+
+  <!-- ==================== The settings file (RealGlass.xml) ==================== -->
+  <!-- Comments the mod writes into the player's settings file. The names of the settings in
+       that file are not translated. -->
+
+  <!-- One line of the file per \n: a bullet wrapped here stays one line there. -->
+  <String key="File.Header">
+    Real Glass settings.\n
+    \n
+    You can edit this file while the game is running: the mod reads it again within a
+    second of it being saved, and the panels follow.\n
+    \n
+    - Numbers use a dot for decimals: 0.5, never 0,5.\n
+    - A percentage is written the way its slider shows it: 47 means 47%.\n
+    - A value outside its range is pulled back into it. A value that cannot be read, and a
+    name the mod does not know, are ignored. RealGlass.log says which.\n
+    - A setting whose line is missing keeps the value it has (at startup, its default).\n
+    - If the file cannot be read at all, the mod leaves it alone and says so in the log.\n
+    - The mod rewrites this file, these comments included, whenever a setting changes in
+    the game: notes of your own will not survive.\n
+    - Delete the file with the game closed to start again from every default.
+  </String>
+  <String key="File.Section.Panel">In-game panel: {0} tab</String>
+  <String key="File.Section.Options">The game's options page</String>
+  <String key="File.Section.None">Not shown on either page</String>
+  <String key="File.Percent">{0}, in %. {1} to {2}, default {3}.</String>
+  <String key="File.Number">{0}. {1} to {2}{3}, default {4}.</String>
+  <String key="File.AnyNumber">{0}. Default {1}.</String>
+  <String key="File.Readout">(slider: {0} to {1})</String>
+  <String key="File.Toggle">{0}. true or false, default {1}.</String>
+  <String key="File.Choice">{0}. One of {1}; default {2}.</String>
+  <String key="File.Key">{0}. A key such as F7 or Ctrl+Shift+G, or None; default {1}.</String>
+  <String key="File.Colour">{0}. A colour, #RRGGBB (42, 92, 120 is read too); default {1}.</String>
+  <String key="File.Confirm">Switching it on here skips the question the game asks first.</String>
+
+</Language>

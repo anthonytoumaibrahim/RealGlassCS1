@@ -1,0 +1,131 @@
+using System.IO;
+using UnityEditor;
+using UnityEngine;
+using UnityEngine.Rendering;
+
+/// <summary>
+/// Builds the shader bundles the mod embeds: one per platform, because a bundle only holds
+/// code for the graphics APIs of its build target (and the Mac's Metal can only come out of
+/// a Mac-target build). Run headless:
+///   Unity.exe -batchmode -nographics -quit -projectPath . -executeMethod BundleBuilder.Build
+/// Needs the Mac and Linux Build Support modules of this exact editor version installed.
+/// (Volumetric Weather's builder, with this mod's names.)
+/// </summary>
+public static class BundleBuilder
+{
+    private const string OutputDir = "Bundles";
+    private const string BundleName = "realglass";
+
+    /// <summary>
+    /// Every shader the mod ships. Add new ones here and nowhere else: build-bundle.ps1 reads
+    /// this list out of this file and makes tools/bundle-apis.ps1 check every name in it.
+    /// </summary>
+    private static readonly string[] Shaders =
+    {
+        "Assets/RealGlass/Glass.shader",
+        "Assets/RealGlass/GlassUtil.shader",
+    };
+
+    private struct Target
+    {
+        public string Name;
+        public BuildTarget BuildTarget;
+        public GraphicsDeviceType[] Apis;
+    }
+
+    /// <summary>
+    /// The three bundles and the graphics APIs each carries. The names are the resource names
+    /// ("realglass-win.bundle"...) ShaderBundle picks from by Application.platform.
+    /// </summary>
+    private static readonly Target[] Targets =
+    {
+        new Target
+        {
+            Name = "win",
+            BuildTarget = BuildTarget.StandaloneWindows64,
+            Apis = new[] { GraphicsDeviceType.Direct3D11, GraphicsDeviceType.OpenGLCore },
+        },
+        new Target
+        {
+            Name = "linux",
+            BuildTarget = BuildTarget.StandaloneLinux64,
+            Apis = new[] { GraphicsDeviceType.OpenGLCore },
+        },
+        new Target
+        {
+            Name = "mac",
+            BuildTarget = BuildTarget.StandaloneOSXUniversal,
+            Apis = new[] { GraphicsDeviceType.Metal, GraphicsDeviceType.OpenGLCore },
+        },
+    };
+
+    /// <summary>
+    /// One UNCOMPRESSED bundle per target in Bundles/[name]/realglass, and that exact file is what
+    /// ships: tools/bundle-apis.ps1 can only read an uncompressed bundle, and what it verifies
+    /// must be the bytes that are embedded.
+    /// </summary>
+    public static void Build()
+    {
+        // "-bundleTargets win,linux" (build-bundle.ps1 -Only) builds just those; default all.
+        string only = null;
+        string[] args = System.Environment.GetCommandLineArgs();
+        for (int i = 0; i + 1 < args.Length; i++)
+        {
+            if (args[i] == "-bundleTargets")
+                only = "," + args[i + 1] + ",";
+        }
+
+        foreach (Target target in Targets)
+        {
+            if (only != null && only.IndexOf("," + target.Name + ",", System.StringComparison.Ordinal) < 0)
+                continue;
+            if (!BuildOne(target))
+            {
+                EditorApplication.Exit(1);
+                return;
+            }
+        }
+
+        Debug.Log("BUNDLE BUILD ALL OK");
+    }
+
+    private static bool BuildOne(Target target)
+    {
+        PlayerSettings.SetUseDefaultGraphicsAPIs(target.BuildTarget, false);
+        PlayerSettings.SetGraphicsAPIs(target.BuildTarget, target.Apis);
+
+        GraphicsDeviceType[] readBack = PlayerSettings.GetGraphicsAPIs(target.BuildTarget);
+        string list = "";
+        for (int i = 0; i < readBack.Length; i++)
+            list += (i > 0 ? ", " : "") + readBack[i];
+
+        string dir = Path.Combine(OutputDir, target.Name);
+        Directory.CreateDirectory(dir);
+
+        AssetBundleBuild build = new AssetBundleBuild
+        {
+            assetBundleName = BundleName,
+            assetNames = Shaders,
+        };
+
+        // Always rebuild. The incremental check only hashes the .shader files themselves,
+        // so an edit confined to GlassCommon.cginc would otherwise yield a byte-identical,
+        // stale bundle -- with no error anywhere (Volumetric Weather lost a day to that).
+        AssetBundleManifest manifest = BuildPipeline.BuildAssetBundles(
+            dir,
+            new[] { build },
+            BuildAssetBundleOptions.ForceRebuildAssetBundle | BuildAssetBundleOptions.UncompressedAssetBundle,
+            target.BuildTarget);
+
+        string what = "BUNDLE BUILD " + target.Name + " (" + target.BuildTarget + ", apis=[" + list + "])";
+
+        if (manifest == null)
+        {
+            Debug.LogError(what + " FAILED");
+            return false;
+        }
+
+        Debug.Log("BUNDLE BUILD OK: " + target.Name + " -> " + Path.Combine(dir, BundleName) + "  [" + what + "]");
+        return true;
+    }
+}
