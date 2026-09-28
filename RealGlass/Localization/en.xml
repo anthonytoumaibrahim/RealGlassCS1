@@ -126,6 +126,9 @@
   <String key="ReflectFinished.Label">Reflect fog, clouds and lights</String>
   <String key="ReflectFinished.Tooltip">The glass mirrors the finished picture: haze, clouds, lamps, glass.</String>
 
+  <String key="ReflectNeighbours.Label">Reflect the buildings around</String>
+  <String key="ReflectNeighbours.Tooltip">The towers across the street show in the glass, not open sky.</String>
+
   <String key="SsrQuality.Label">Reflection quality</String>
   <String key="SsrQuality.Tooltip">Higher: sharper, with fewer gaps. Costs frame rate.</String>
   <String key="SsrQuality.Low">Low</String>
@@ -152,6 +155,9 @@
 
   <String key="SunGlint.Label">Sun glint</String>
   <String key="SunGlint.Tooltip">The sun's flash off the panes.</String>
+
+  <String key="SteadyGlints.Label">Steady glints</String>
+  <String key="SteadyGlints.Tooltip">Glints and reflections on far glass stop flickering.</String>
 
   <String key="GlassSmoothness.Label">Smoothness</String>
   <String key="GlassSmoothness.Tooltip">Lower: softer, blurrier reflections.</String>
@@ -196,6 +202,12 @@
 
   <String key="FloorBand.Label">Floor bands</String>
   <String key="FloorBand.Tooltip">The dark band of floor between storeys, on plain glass towers.</String>
+
+  <String key="RoomPictures.Label">Furnished rooms</String>
+  <String key="RoomPictures.Tooltip">Desks, sofas, shelves, lamps and people instead of plain colours.</String>
+
+  <String key="RoomsFollowWindows.Label">Rooms follow the windows</String>
+  <String key="RoomsFollowWindows.Tooltip">Each room lines up with the window the building painted.</String>
 
   <String key="Group.Day">By day</String>
 

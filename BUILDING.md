@@ -45,6 +45,17 @@ cannot compile for -- which is why every shader is `#pragma target 3.5` and neve
 (Windows: Direct3D 11 + OpenGL Core, Linux: OpenGL Core, Mac: Metal + OpenGL Core). Then rebuild
 the mod to embed them.
 
+The bundles also carry the pictured rooms, `UnityProject\Assets\RealGlass\Rooms\RoomAtlas.png`.
+After changing a room in `UnityProject\Assets\Editor\RoomBaker.cs`, render them again first:
+
+```
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\bake-rooms.ps1
+```
+
+(Unity with a GPU, no `-nographics`: twelve rooms, by day and by night, six faces each; a contact
+sheet in `tools\preview\out\rooms.png`). The atlas must stay a power of two to compress (DXT1):
+Unity 5.6 leaves a non-power-of-two texture uncompressed.
+
 ## Checking changes without the game
 
 ```

@@ -95,6 +95,12 @@ public static class GlassPreview
 
         /// <summary>The stand-in for Volumetric Weather's cloud volume (PreviewClouds.shader), found by its name.</summary>
         public GameObject Clouds;
+
+        /// <summary>The city from above (the mod's CityMap, same file): every tower as its box.</summary>
+        public CityMap City = new CityMap();
+
+        /// <summary>The pictured rooms (RoomBaker.cs's atlas, as the bundle ships it).</summary>
+        public Texture2D Rooms;
     }
 
     /// <summary>The variant's "Tier=near|lod|group": which of the game's three paths the glass is drawn through.</summary>
@@ -157,6 +163,7 @@ public static class GlassPreview
 
         s.Screen.Detach();
         s.SkyCube.Destroy();
+        s.City.Destroy();
         s.Camera.targetTexture = null;
         UnityEngine.Object.DestroyImmediate(s.Camera.gameObject);
         UnityEngine.Object.DestroyImmediate(s.Target);
@@ -231,6 +238,10 @@ public static class GlassPreview
         BuildCity(s);
         BuildLodTiers(s);
         BuildLights(s);
+        BuildCityMap(s);
+        s.Rooms = AssetDatabase.LoadAssetAtPath<Texture2D>(RoomBaker.AtlasPath);
+        Debug.Log("RG PREVIEW: city heights " + s.City.LiveCount + " buildings, highest roof " + s.City.LiveTop.ToString("F0") +
+                  " m; room pictures " + (s.Rooms != null ? s.Rooms.width + "x" + s.Rooms.height + " " + s.Rooms.format : "MISSING"));
 
         // Volumetric Weather's cloud volume, as the mod finds it: a mesh renderer by that name, a
         // box round the camera with a Transparent+100 material and _UseDepth.
@@ -260,6 +271,25 @@ public static class GlassPreview
         s.Lights.wrapMode = TextureWrapMode.Clamp;
         s.Lights.SetPixels32(pixels);
         s.Lights.Apply(false, false);
+    }
+
+    /// <summary>
+    /// The mod's city height map (CityMap, the same file) for the preview's city: every building as
+    /// its mesh's bounding box, at its matrix, under its id. The game gives each its prefab's height
+    /// grid; a box is a box.
+    /// </summary>
+    private static void BuildCityMap(Scene s)
+    {
+        s.City.Begin(0f, 0f);
+        for (int i = 0; i < s.Buildings.Count; i++)
+        {
+            Building b = s.Buildings[i];
+            Vector3 position = b.Matrix.GetColumn(3);
+            Quaternion rotation = Quaternion.LookRotation(b.Matrix.GetColumn(2), b.Matrix.GetColumn(1));
+            Bounds bounds = b.Mesh.bounds;
+            s.City.AddBuilding(position, rotation, bounds.min, bounds.max, null, i + 1);
+        }
+        s.City.Finish();
     }
 
     /// <summary>RenderManager.GetColorLocation: the texel centre of object id in the colour map.</summary>
@@ -738,6 +768,8 @@ public static class GlassPreview
             case "nightstreet": target = new Vector3(20f, 140f, 30f); yaw = 20f; pitch = -28f; dist = 160f; break;
             case "close":
             case "nightclose": target = new Vector3(0f, 60f, 0f); yaw = 35f; pitch = 20f; dist = 260f; break;
+            case "near":
+            case "nightnear": target = new Vector3(0f, 50f, 0f); yaw = 35f; pitch = 12f; dist = 110f; break;
             default: target = new Vector3(0f, 70f, 0f); yaw = 30f; pitch = 32f; dist = 650f; break;
         }
         Quaternion rot = Quaternion.Euler(pitch, yaw, 0f);
@@ -779,6 +811,10 @@ public static class GlassPreview
         // static picture); the live sky proper carries them.
         s.SkyCube.Update(true, 128, 6, null, camPos, p.SkySource == 0 && p.SkyClouds);
         f.CubeMips = s.SkyCube.Mips;
+        f.RoomAtlas = s.Rooms != null;
+        if (s.Rooms != null)
+            Shader.SetGlobalTexture("_RGRooms", s.Rooms);
+        s.City.Bind(p.Neighbours);
         GlassUniforms.Apply(p, f);
         Shader.SetGlobalTexture("_RGBuildings", s.Lights);
         bool screenOk = false;

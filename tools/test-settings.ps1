@@ -382,7 +382,9 @@ $pairs = @(
     @('Pillow', 'PanePillow'), @('Tilt', 'PaneTilt'), @('RollerWave', 'RollerWave'), @('PaneWeather', 'PaneWeather'),
     @('Rooms', 'InteriorEnabled'), @('FloorHeight', 'FloorHeight'), @('RoomWidth', 'RoomWidth'), @('RoomDepth', 'RoomDepth'),
     @('InteriorBrightness', 'InteriorBrightness'), @('Blinds', 'Blinds'), @('Furniture', 'Furniture'),
-    @('EdgeSilver', 'GlassEdgeSilver'), @('FloorBand', 'FloorBand'), @('Finished', 'ReflectFinished'), @('SkyClouds', 'SkyClouds'))
+    @('EdgeSilver', 'GlassEdgeSilver'), @('FloorBand', 'FloorBand'), @('Finished', 'ReflectFinished'), @('SkyClouds', 'SkyClouds'),
+    @('Neighbours', 'ReflectNeighbours'), @('SteadyGlints', 'SteadyGlints'), @('RoomPictures', 'RoomPictures'),
+    @('FollowWindows', 'RoomsFollowWindows'))
 $mismatch = @()
 foreach ($pair in $pairs) {
     $mine = $paramsType.GetField($pair[0]).GetValue($gp)

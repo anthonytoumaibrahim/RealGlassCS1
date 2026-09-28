@@ -26,6 +26,15 @@ public static class BundleBuilder
         "Assets/RealGlass/GlassUtil.shader",
     };
 
+    /// <summary>
+    /// Textures the mod ships with the shaders: the pictured rooms (Assets/Editor/RoomBaker.cs
+    /// renders them; ShaderBundle loads every .png in the bundle as the room atlas).
+    /// </summary>
+    private static readonly string[] Textures =
+    {
+        "Assets/RealGlass/Rooms/RoomAtlas.png",
+    };
+
     private struct Target
     {
         public string Name;
@@ -102,10 +111,22 @@ public static class BundleBuilder
         string dir = Path.Combine(OutputDir, target.Name);
         Directory.CreateDirectory(dir);
 
+        foreach (string texture in Textures)
+        {
+            if (AssetDatabase.LoadAssetAtPath<Texture2D>(texture) == null)
+            {
+                Debug.LogError("BUNDLE BUILD " + target.Name + " FAILED: " + texture + " is missing (run tools/bake-rooms.ps1)");
+                return false;
+            }
+        }
+
+        string[] assets = new string[Shaders.Length + Textures.Length];
+        Shaders.CopyTo(assets, 0);
+        Textures.CopyTo(assets, Shaders.Length);
         AssetBundleBuild build = new AssetBundleBuild
         {
             assetBundleName = BundleName,
-            assetNames = Shaders,
+            assetNames = assets,
         };
 
         // Always rebuild. The incremental check only hashes the .shader files themselves,

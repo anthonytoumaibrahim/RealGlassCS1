@@ -29,6 +29,31 @@ namespace RealGlass
         /// <summary>The glass's helpers: full-screen copies, the sky cube, the mask view.</summary>
         public const string GlassUtil = "RealGlass/GlassUtil";
 
+        /// <summary>The global the glass shader reads the pictured rooms from.</summary>
+        public const string RoomAtlasUniform = "_RGRooms";
+
+        private static Texture2D _roomAtlas;
+
+        /// <summary>
+        /// The pictured rooms (Assets/RealGlass/Rooms/RoomAtlas.png, rendered from modelled rooms by
+        /// Assets/Editor/RoomBaker.cs), or null when the bundle has none.
+        /// </summary>
+        public static Texture2D RoomAtlas
+        {
+            get
+            {
+                if (_shaders == null)
+                    _shaders = Load();
+                return _roomAtlas;
+            }
+        }
+
+        /// <summary>The room pictures' format and mips, for the log.</summary>
+        public static string RoomAtlasFormat
+        {
+            get { return _roomAtlas == null ? "none" : _roomAtlas.format + ", " + _roomAtlas.mipmapCount + " mips"; }
+        }
+
         /// <summary>
         /// "RealGlass.Resources.realglass-win.bundle" and so on: the csproj's LogicalName for each
         /// bundle, with the name from <see cref="BundleFor"/> in between.
@@ -116,6 +141,19 @@ namespace RealGlass
 
                 foreach (string asset in bundle.GetAllAssetNames())
                 {
+                    if (asset.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // The pictured rooms. Kept by this static (and marked so an unused-asset
+                        // sweep between cities leaves it), like the shaders.
+                        Texture2D texture = bundle.LoadAsset<Texture2D>(asset);
+                        if (texture != null)
+                        {
+                            texture.hideFlags = HideFlags.DontUnloadUnusedAsset;
+                            _roomAtlas = texture;
+                        }
+                        continue;
+                    }
+
                     if (!asset.EndsWith(".shader", StringComparison.OrdinalIgnoreCase))
                         continue;
 
@@ -129,7 +167,8 @@ namespace RealGlass
                 string[] names = new string[result.Count];
                 result.Keys.CopyTo(names, 0);
                 Log.Msg("shader bundle loaded: " + name + " (" + data.Length + " bytes) for " + Application.platform +
-                        " on " + SystemInfo.graphicsDeviceType + ": " + string.Join(", ", names));
+                        " on " + SystemInfo.graphicsDeviceType + ": " + string.Join(", ", names) +
+                        (_roomAtlas != null ? "; room pictures " + _roomAtlas.width + "x" + _roomAtlas.height + " " + RoomAtlasFormat : "; no room pictures"));
             }
             catch (Exception e)
             {

@@ -24,13 +24,15 @@ five tabs:
   angle, and how silvery it turns seen edge-on; how much light it lets through; and what counts
   as glass. "Show what counts as glass" paints it magenta, to check.
 - **Reflections** -- the city on screen in the glass (the finished picture: haze, clouds, lamps,
-  the other glass), the live sky with its clouds or the game's own sky picture, what shows below
-  the horizon when nothing on screen is mirrored, the sun's glint, how sharp the reflections are.
+  the other glass), the buildings around where the screen cannot show them, the live sky with its
+  clouds or the game's own sky picture, what shows below the horizon when nothing on screen is
+  mirrored, the sun's glint and whether it stays steady far away, how sharp the reflections are.
 - **Panes** -- the panes' width, and how they bend what they mirror: cushioned (insulating glass
   bowing in or out), tilted, rippled (toughened glass).
-- **Interiors** -- the rooms behind the glass: floor height, room size, the floor bands of
-  plain-glass towers, blinds, furniture, and how bright they are by day. At night every window
-  the game lights is a lit room, at full brightness.
+- **Interiors** -- the rooms behind the glass: furnished (offices, flats, shops, restaurants,
+  lobbies) or plain, lined up with each building's own windows or counted in storeys, floor
+  height, room size, the floor bands of plain-glass towers, blinds, furniture, and how bright they
+  are by day. At night every window the game lights is a lit room, at full brightness.
 - **Rendering** -- how far out the glass is drawn, and what the live sky costs.
 
 The game's options page holds the mod itself: its language, the panel's key, the button,
@@ -61,6 +63,15 @@ the log is `RealGlass.log`, next to it.
   screen, and where it is off screen the picture is mirrored back in at the edge. What is
   mirrored is the previous frame's FINISHED picture, put back where each point was: the city's
   haze, the clouds, the lamps' glow at night and the other towers' glass are all in the glass.
+- **The buildings around**, where the screen cannot show them: the city seen from above -- every
+  building's roof height round the view, drawn from the game's own height grid of each building
+  -- and every reflected ray that misses the screen walks it cell by cell. The lower floors of a
+  street mirror the towers across it, their outlines against the sky, instead of open sky; from
+  above, a tower in the way hides the street behind it. What such a tower looks like is taken from
+  the screen where it is on it (its colours, its haze), with its floors and, at night, its lit
+  windows in its own lamps' colour.
+- **Steady glints**: where a pane's bend changes within a pixel far away, its glint and its
+  reflection widen to match (specular anti-aliasing) instead of sparkling as the camera moves.
 - **Fresnel**: glass reflects little straight on and nearly everything edge-on (Schlick's
   approximation), capped by a setting, because a city-builder camera sees facades edge-on. The
   rise is the same for every colour, so a coated pane's tint gives way to silver edge-on.
@@ -68,7 +79,15 @@ the log is `RealGlass.log`, next to it.
   the building's own index into the game's colour map (the same number on every tier, a
   sub-building its parent's): its rooms and its lamps stay the same however far away it is.
 - **Rooms** behind the glass by interior mapping: a ray per pixel against the floors, ceilings and
-  walls of rooms that are not modelled at all.
+  walls of rooms that are not modelled at all. What is in them are pictures of twelve furnished
+  rooms -- open-plan offices, a meeting room, small offices, living rooms, a bedroom, a kitchen, a
+  shop, a restaurant, a lobby, an empty floor -- modelled and rendered for this mod, each by day
+  and by night, seen from its centre and painted onto its walls, floor and ceiling. An office
+  building's floors are offices (a floor at a time, a meeting room here and there), a residential
+  one's are flats (a room at a time), with shops, restaurants or lobbies on the ground floor.
+- **Rooms follow the windows**: a room's floor and ceiling are found from the window the asset
+  painted -- where its glass stops above and below -- so rooms line up with each building's own
+  windows instead of a storey grid counted up from its base.
 - **At night** the game still decides which windows are lit, how brightly and when; every one of
   them is a lit room, and the room says how that light falls (a bright ceiling, the floor under
   it, the back of the room, the blinds glowing), in warm lamplight -- black-body colours -- with a
@@ -129,6 +148,26 @@ Every technique here has shipped in a game or is published:
     Clouds in the reflected sky: captured into the reflection cube as Unreal's
     [Sky Light](https://dev.epicgames.com/documentation/en-us/unreal-engine/sky-lights-in-unreal-engine)
     captures its [volumetric clouds](https://dev.epicgames.com/documentation/en-us/unreal-engine/volumetric-cloud-component-in-unreal-engine).
+12. The buildings around, from a map of the city seen from above: CRYENGINE's height-map ambient
+    occlusion (3.8.4) draws "a top-down depth map of the world around the camera" and gathers
+    occlusion from it at "hundreds-of-metres scale"
+    ([documentation](https://docs.cryengine.com/pages/viewpage.action?pageId=26215324)); Unreal's
+    distance-field ambient occlusion "also provides approximate specular occlusion on Sky Lights",
+    heightfields included
+    ([documentation](https://dev.epicgames.com/documentation/unreal-engine/distance-field-ambient-occlusion-in-unreal-engine));
+    the walk from cell to cell is John Amanatides and Andrew Woo, **A Fast Voxel Traversal
+    Algorithm for Ray Tracing**, Eurographics 1987 ([paper](http://www.cse.yorku.ca/~amana/research/grid.pdf)).
+13. Rooms painted onto a room's own walls from its centre -- interior cubemaps, as Unreal's
+    InteriorCubemap material function samples a captured room
+    ([Epic forums](https://forums.unrealengine.com/t/using-textures-on-the-new-interiorcubemap-mf/78464)),
+    and as Marvel's Spider-Man's rooms are painted, whose "desks in the rooms are in fact flat
+    textures on the walls" (Joost van Dongen, [2018](http://joostdevblog.blogspot.com/2018/09/interior-mapping-real-rooms-without.html)).
+14. Steady glints, specular anti-aliasing: Anton Kaplanyan, Stephen Hill, Anjul Patney and Aaron
+    Lefohn, **Filtering Distributions of Normals for Shading Antialiasing** (HPG 2016); Yusuke
+    Tokuyoshi and Anton Kaplanyan, **Improved Geometric Specular Antialiasing** (I3D 2019,
+    [paper](https://yusuketokuyoshi.com/papers/2019/ImprovedGeometricSpecularAA.pdf)); the
+    constants (variance 0.15, threshold 0.2) are Filament's
+    ([materials guide](https://google.github.io/filament/Materials.md.html)).
 
 ## Building
 

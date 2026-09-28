@@ -28,12 +28,14 @@ namespace RealGlass.Glass
 
             p.Trace = Settings.SsrEnabled.value;
             p.Finished = Settings.ReflectFinished.value;
+            p.Neighbours = Settings.ReflectNeighbours.value;
             p.Quality = Settings.SsrQuality.value;
             p.ReflectionBrightness = Settings.ReflectionBrightness.value;
             p.SkySource = Settings.SkyReflection.value;
             p.SkyClouds = Settings.SkyClouds.value;
             p.OffscreenFill = Settings.OffscreenFill.value;
             p.SunGlint = Settings.SunGlint.value;
+            p.SteadyGlints = Settings.SteadyGlints.value;
             p.Smoothness = Settings.GlassSmoothness.value;
             p.EdgeFade = Settings.SsrEdgeFade.value;
 
@@ -51,6 +53,8 @@ namespace RealGlass.Glass
             p.Blinds = Settings.Blinds.value;
             p.Furniture = Settings.Furniture.value;
             p.FloorBand = Settings.FloorBand.value;
+            p.RoomPictures = Settings.RoomPictures.value;
+            p.FollowWindows = Settings.RoomsFollowWindows.value;
             return p;
         }
     }

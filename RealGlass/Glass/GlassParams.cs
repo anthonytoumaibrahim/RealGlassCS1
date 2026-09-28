@@ -24,12 +24,14 @@ namespace RealGlass.Glass
         // Reflections
         public bool Trace;                  // screen-space reflections
         public bool Finished;               // reflect last frame's finished picture (fog, clouds, lamps), reprojected
+        public bool Neighbours;             // rays that miss the screen walk the city's height map (CityMap)
         public int Quality;                 // 0 Low .. 3 Ultra
         public float ReflectionBrightness;  // 0..3
         public int SkySource;               // 0 live sky, 1 the game's environment map
         public bool SkyClouds;              // the live sky carries the clouds (Volumetric Weather's volume)
         public int OffscreenFill;           // 0 mirrored screen, 1 city colour, 2 sky only
         public float SunGlint;              // 0..3
+        public bool SteadyGlints;           // specular anti-aliasing of the bent panes
         public float Smoothness;            // 0..1
         public float EdgeFade;              // 0..0.5
 
@@ -48,7 +50,9 @@ namespace RealGlass.Glass
         public float InteriorBrightness;    // 0..3
         public float Blinds;                // 0..1
         public float Furniture;             // 0..1  (the rooms at night: no settings, GlassUniforms.NightRooms)
-        public float FloorBand;            // metres: the slab band between storeys on plain-glass towers
+        public float FloorBand;             // metres: the slab band between storeys on plain-glass towers
+        public bool RoomPictures;           // pictured rooms (the room atlas) rather than plain coloured boxes
+        public bool FollowWindows;          // a room's floor and ceiling from the window the asset painted
 
         /// <summary>The defaults the mod ships (Settings.Defaults); tools/test-params.ps1 checks they agree.</summary>
         public static GlassParams Default()
@@ -60,7 +64,7 @@ namespace RealGlass.Glass
             p.TintB = 0x80 / 255f;
             p.OwnColour = 0.40f;
             p.Reflectivity = 0.20f;
-            p.Glancing = 0.21f;
+            p.Glancing = 1.00f;
             p.Clarity = 0.24f;
             p.Strength = 1.00f;
             p.Threshold = 0.70f;
@@ -70,29 +74,33 @@ namespace RealGlass.Glass
 
             p.Trace = true;
             p.Finished = true;
-            p.Quality = 2;
-            p.ReflectionBrightness = 1.00f;
-            p.SkySource = 1;
+            p.Neighbours = true;
+            p.Quality = 3;
+            p.ReflectionBrightness = 0.50f;
+            p.SkySource = 0;
             p.SkyClouds = true;
             p.OffscreenFill = 0;
-            p.SunGlint = 1.00f;
-            p.Smoothness = 0.92f;
-            p.EdgeFade = 0.12f;
+            p.SunGlint = 3.00f;
+            p.SteadyGlints = true;
+            p.Smoothness = 0.80f;
+            p.EdgeFade = 0.50f;
 
             p.PaneWidth = 1.4f;
-            p.Pillow = 1.50f;
-            p.Tilt = 1.40f;
-            p.RollerWave = 1.45f;
+            p.Pillow = 3.00f;
+            p.Tilt = 3.00f;
+            p.RollerWave = 3.00f;
             p.PaneWeather = true;
 
             p.Rooms = true;
             p.FloorHeight = 3.8f;
             p.RoomWidth = 12f;
             p.RoomDepth = 12f;
-            p.InteriorBrightness = 0.15f;
-            p.Blinds = 0.30f;
+            p.InteriorBrightness = 0.30f;
+            p.Blinds = 0.50f;
             p.Furniture = 0.60f;
-            p.FloorBand = 1.0f;
+            p.FloorBand = 0f;
+            p.RoomPictures = true;
+            p.FollowWindows = true;
             return p;
         }
     }
@@ -114,5 +122,6 @@ namespace RealGlass.Glass
         public int CubeMips;                     // mip levels of the sky cube
         public int ColorMapWidth;                // the game's object colour map, whose texel a building's
         public int ColorMapHeight;               // colour index names (RenderManager.OBJECT_COLORMAP_*)
+        public bool RoomAtlas;                   // the pictured rooms are bound (_RGRooms)
     }
 }

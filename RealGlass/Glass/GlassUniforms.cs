@@ -52,7 +52,7 @@ namespace RealGlass.Glass
         public const float LampShift = 0.825f;
 
         private static int _glass, _tint, _mask, _refl, _trace, _fill, _pane, _pane2, _room, _room2, _light,
-                           _sunDir, _sunColor, _ambSky, _ambGround, _glass2, _colorMap, _lamps;
+                           _sunDir, _sunColor, _ambSky, _ambGround, _glass2, _colorMap, _lamps, _features;
         private static bool _ids;
 
         // Filled in place: SetGlobalVectorArray keeps the size of its first call.
@@ -80,6 +80,7 @@ namespace RealGlass.Glass
             _glass2 = Shader.PropertyToID("_RGGlass2");
             _colorMap = Shader.PropertyToID("_RGColorMap");
             _lamps = Shader.PropertyToID("_RGLamps");
+            _features = Shader.PropertyToID("_RGFeatures");
             _ids = true;
         }
 
@@ -178,6 +179,10 @@ namespace RealGlass.Glass
             Shader.SetGlobalVectorArray(_lamps, LampArray);
             Shader.SetGlobalVector(_colorMap, new Vector4(Mathf.Max(f.ColorMapWidth, 1), Mathf.Max(f.ColorMapHeight, 1), 0f, 0f));
             Shader.SetGlobalVector(_glass2, new Vector4(p.EdgeSilver, 0f, Mathf.Max(p.FloorBand, 0f), 0f));
+            // x the buildings round in the reflections (the map itself says whether it is there:
+            // _RGCityMapST.w), y pictured rooms, z rooms following the painted windows, w steady glints.
+            Shader.SetGlobalVector(_features, new Vector4(p.Neighbours ? 1f : 0f, p.RoomPictures && f.RoomAtlas ? 1f : 0f,
+                                                          p.FollowWindows ? 1f : 0f, p.SteadyGlints ? 1f : 0f));
 
             Shader.SetGlobalVector(_glass, new Vector4(p.Reflectivity, p.Glancing, p.Clarity, p.Enabled ? p.Strength : 0f));
             Shader.SetGlobalVector(_tint, new Vector4(tint.x, tint.y, tint.z, p.OwnColour));

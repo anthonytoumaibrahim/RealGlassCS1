@@ -17,6 +17,14 @@
 //    2014): fog, clouds, the lamps' glow and the other glass are in the reflections.
 //  - Lamp colours: black bodies (Kim et al.'s cubic fit of the Planckian locus, 2002), computed in
 //    GlassUniforms.cs; with the warm shift the author chose, about 2700-2900 K.
+//  - The buildings round, off screen: a top-down height map of the city round the view (as
+//    CRYENGINE's height-map ambient occlusion and Unreal's heightfield sky occlusion of
+//    reflections read one), walked cell by cell (Amanatides & Woo, Eurographics 1987): CityHit.
+//  - Pictured rooms: interior cubemaps -- a room painted onto its own walls from its centre, as
+//    Unreal's InteriorCubemap samples a captured room and as Marvel's Spider-Man paints its desks
+//    onto the walls (van Dongen 2018); the rooms rendered for this mod (Assets/Editor/RoomBaker.cs).
+//  - Steady glints: specular anti-aliasing (Kaplanyan et al. 2016; Tokuyoshi & Kaplanyan 2019),
+//    Filament's constants.
 
 #ifndef REALGLASS_COMMON_INCLUDED
 #define REALGLASS_COMMON_INCLUDED
@@ -46,8 +54,28 @@ float4 _RGSunDir;     // xyz towards the sun (world), w sun above the horizon 0.
 float4 _RGSunColor;   // rgb the sun's radiance (colour x intensity)
 float4 _RGAmbSky;     // rgb light from the sky (trilight "sky")
 float4 _RGAmbGround;  // rgb light from below (trilight "ground")
+float4 _RGFeatures;   // x the buildings round in the reflections, y pictured rooms, z rooms follow the painted windows, w steady glints
 float4 _RGDebug;      // x: 0 off; the GPU preview's checks (1 trace, 2 depth, 3 screen copy, 4 plain-glass towers in
-                      // white, 5 the finished picture reprojected; magenta off it). The mod never sets it.
+                      // white, 5 the finished picture reprojected, magenta off it; 6 the city walk: green a building
+                      // met, blue none, red no map; 7 the pictured room kinds; 8 the painted window found: green
+                      // yes, red the storey grid). The mod never sets it.
+
+// The city from above (CityMap.cs): per cell the highest roof over it and whose it is.
+sampler2D _RGCityMap;         // rg the roof's world height in 1/32 m, ba the building's id (0 none): 4 m cells
+sampler2D _RGCityCoarse;      // the same for blocks of 8 x 8 cells: each block's highest roof
+float4 _RGCityMapST;          // xy the map's corner (world x, z), z metres a cell, w 1 while a map is bound
+float4 _RGCityMapInfo;        // x cells a side, y cells a block, z the highest roof in the map (world y)
+
+// The pictured rooms (Assets/Editor/RoomBaker.cs): twelve rooms by day and by night, each a cube of
+// six 112 px faces seen from its centre; face f of capture c (room k by day 2k, by night 2k + 1) is
+// tile t = 6c + f at (t mod 9, t div 9) of the 1024 x 2048 atlas, rows from the bottom.
+sampler2D _RGRooms;
+#define RG_ROOM_TILE 112.0
+#define RG_ROOM_PER_ROW 9.0
+#define RG_ROOM_ATLAS float2(1024.0, 2048.0)
+#define RG_ROOM_DAY_MEAN 0.25
+#define RG_ROOM_NIGHT_MEAN 0.30
+static const float3 RG_ROOM_SIZE = float3(12.0, 3.4, 12.0);   // the modelled room: along the facade, up, in
 
 sampler2D _RGScene;           // the lit opaque picture, copied before any glass (mipmapped): what is UNDER a pane
 float4 _RGScene_TexelSize;
@@ -115,13 +143,32 @@ float3 LampColour(float warmth)
     return lerp(_RGLamps[i].rgb, _RGLamps[i + 1].rgb, f - i);
 }
 
-// 0 cool (offices) .. 1 warm (homes): what the building is (BuildingLights.cs), the shift on top
-// (GlassUniforms.LampShift). A building the table does not know gets its own, from its seed.
-float BuildingWarmth(float2 colourIndex, float seed)
+// What the building is, as BuildingLights.cs files it: offices 0.2, industry 0.1, shops 0.65, homes
+// 0.9, anything else 0.45. A building the table does not know gets a value of its own, from its seed.
+float BuildingUse(float2 colourIndex, float seed)
 {
     float4 d = tex2Dlod(_RGBuildings, float4(colourIndex, 0.0, 0.0));
-    float warmth = d.a > 0.5 ? d.r : 0.15 + 0.7 * seed;
-    return saturate(warmth + _RGLight.y);
+    return d.a > 0.5 ? d.r : 0.15 + 0.7 * seed;
+}
+
+// 0 cool (offices) .. 1 warm (homes): what the building is, the shift on top (GlassUniforms.LampShift).
+float BuildingWarmth(float2 colourIndex, float seed)
+{
+    return saturate(BuildingUse(colourIndex, seed) + _RGLight.y);
+}
+
+// A building's colour index from its id (RenderManager.GetColorLocation), and back.
+float2 ColourIndexOf(float id)
+{
+    float W = _RGColorMap.x;
+    float row = floor((id + 0.5) / W);
+    return float2((id - row * W + 0.5) / W, (row + 0.5) / _RGColorMap.y);
+}
+
+float IdOf(float2 colourIndex)
+{
+    float2 cell = floor(colourIndex * _RGColorMap.xy);
+    return cell.x + cell.y * _RGColorMap.x;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -434,6 +481,144 @@ float3 GroundFill(float3 P, float3 R, float roughness, float groundY)
 }
 
 // ---------------------------------------------------------------------------------------------
+// The buildings round a facade, where the screen cannot show them: the reflected ray walked across
+// the city seen from above (CityMap.cs), cell by cell -- Amanatides & Woo's grid traversal (1987):
+// from one cell to the next is two compares and an add. The first cell of another building whose
+// roof the ray passes under is what the glass mirrors. 4 m cells for the first ~250 m, then 32 m
+// blocks, each its highest roof, out to ~1 km. The same kind of top-down map as CRYENGINE's
+// height-map ambient occlusion and Unreal's heightfield sky occlusion of reflections.
+// ---------------------------------------------------------------------------------------------
+
+float2 DecodeCity(float4 cell)
+{
+    float4 b = floor(cell * 255.0 + 0.5);
+    return float2((b.r * 256.0 + b.g) * (1.0 / 32.0), b.b + b.a * 256.0);
+}
+
+// True when the ray from origin along R runs into a building other than ownId before it leaves the
+// map, climbs over every roof or reaches groundY. tHit: metres along R; hitN: the side it met (the
+// roof's +y when it came down onto it).
+bool CityHit(float3 origin, float3 R, float ownId, float groundY, out float tHit, out float hitId, out float3 hitN)
+{
+    tHit = 0.0;
+    hitId = 0.0;
+    hitN = float3(0.0, 1.0, 0.0);
+    bool hit = false;
+    float top = _RGCityMapInfo.z;
+    bool done = R.y >= 0.0 && origin.y >= top;
+    float t = 0.0;
+
+    [unroll]
+    for (int phase = 0; phase < 2; phase++)
+    {
+        float block = phase == 0 ? 1.0 : _RGCityMapInfo.y;
+        float cellSize = _RGCityMapST.z * block;
+        float count = _RGCityMapInfo.x / block;
+        float2 p = (origin.xz + R.xz * t - _RGCityMapST.xy) / cellSize;
+        float2 d = R.xz / cellSize;
+        d = float2(abs(d.x) > 1e-7 ? d.x : 1e-7, abs(d.y) > 1e-7 ? d.y : 1e-7);
+        float2 stepDir = float2(d.x > 0.0 ? 1.0 : -1.0, d.y > 0.0 ? 1.0 : -1.0);
+        float2 c = floor(p);
+        float2 tDelta = abs(1.0 / d);
+        float2 tMax = t + (c + max(stepDir, 0.0) - p) / d;
+        float side = -1.0;
+        int steps = phase == 0 ? 64 : 24;
+
+        [loop]
+        for (int i = 0; i < steps; i++)
+        {
+            if (done || any(c < 0.0) || any(c >= count))
+            {
+                done = true;
+                break;
+            }
+
+            float tExit = min(tMax.x, tMax.y);
+            float4 texel = phase == 0 ? tex2Dlod(_RGCityMap, float4((c + 0.5) / count, 0.0, 0.0))
+                                      : tex2Dlod(_RGCityCoarse, float4((c + 0.5) / count, 0.0, 0.0));
+            float2 roof = DecodeCity(texel);
+            float yIn = origin.y + R.y * t;
+            float yOut = origin.y + R.y * tExit;
+            if (roof.y > 0.5 && abs(roof.y - ownId) > 0.5 && min(yIn, yOut) < roof.x)
+            {
+                hit = true;
+                done = true;
+                hitId = roof.y;
+                if (yIn < roof.x)
+                {
+                    tHit = t;
+                    hitN = side > 0.5 ? float3(0.0, 0.0, -stepDir.y)
+                         : (side > -0.5 ? float3(-stepDir.x, 0.0, 0.0) : normalize(float3(-R.x, 0.0, -R.z) + float3(1e-4, 0.0, 0.0)));
+                }
+                else
+                {
+                    tHit = (roof.x - origin.y) / min(R.y, -1e-4);
+                }
+                break;
+            }
+
+            // Over every roof and climbing, or down at the ground (the ground fill's): nothing more.
+            if ((R.y >= 0.0 && yOut > top) || yOut < groundY)
+            {
+                done = true;
+                break;
+            }
+
+            if (tMax.x < tMax.y)
+            {
+                c.x += stepDir.x;
+                t = tMax.x;
+                tMax.x += tDelta.x;
+                side = 0.0;
+            }
+            else
+            {
+                c.y += stepDir.y;
+                t = tMax.y;
+                tMax.y += tDelta.y;
+                side = 1.0;
+            }
+        }
+    }
+    return hit;
+}
+
+// What a mirrored building looks like from across the street, which the screen never showed from
+// that side: its own facade, drawn from what is known of it. seen: the building as the screen shows
+// it where the point met falls (blurred; the city's average colour where that is off screen) -- its
+// own colours, its haze -- for the body. By day that body, lighter on its sunny side, its glass
+// mirroring the sky above its horizon and the city below, a darker band at every floor slab; at
+// night darker, with its windows lit or not bay by bay and storey by storey, in its lamps' colour.
+// span: pixels a storey of it covers in the reflection -- under a couple, the average.
+float3 NeighbourRadiance(float3 H, float3 R, float3 nb, float hitId, float span, float roughness, float3 seen)
+{
+    float2 ci = ColourIndexOf(hitId);
+    float seed = BuildingSeed(ci);
+    float3 lamp = LampColour(BuildingWarmth(ci, seed));
+    float3 city = tex2Dlod(_RGCity, float4(0.5, 0.5, 0.0, 0.0)).rgb;
+    float detail = saturate(span * 0.5 - 0.5);
+
+    float3 Rn = reflect(R, nb);
+    float3 mirrored = Rn.y > 0.0 ? SkyRadiance(Rn, max(roughness, 0.3)) : city;
+    float sunSide = saturate(dot(nb, _RGSunDir.xyz)) * saturate(_RGSunDir.w);
+    float3 body = seen * (0.7 + 0.6 * sunSide);
+    float storeyH = _RGRoom.x;
+    float y = max(H.y - _RGFill.y, 0.0);
+    float along = dot(H.xz, float2(nb.z, -nb.x));
+    float2 w = frac(float2(along / 3.0, y / storeyH));
+    float band = step(w.y, 0.2) * detail;
+    float3 day = lerp(body, mirrored * 0.45 + body * 0.35, 0.6) * (1.0 - 0.3 * band);
+
+    float storey = floor(y / storeyH);
+    float bay = floor(along / 3.0);
+    float lit = step(Hash12(float2(bay * 1.37 + hitId * 0.071, storey * 7.13 + seed * 91.0)), 0.5);
+    float glassArea = step(0.12, w.x) * step(w.x, 0.88) * step(0.28, w.y) * step(w.y, 0.92);
+    float windows = lerp(0.5 * 0.5, lit * glassArea, detail);
+    float3 night = seen * 0.35 + lamp * windows * 1.2;
+    return lerp(night, day, _RGLight.x);
+}
+
+// ---------------------------------------------------------------------------------------------
 // The sun's glint: GGX (Walter et al. 2007), capped so a mirror-smooth pane cannot put a firefly
 // through the game's bloom.
 // ---------------------------------------------------------------------------------------------
@@ -472,13 +657,20 @@ struct RoomHit
     float desk;       // 1 on a desk top
     float onFloor;    // 1 on the floor
     float slab;       // 1 on the floor slab's edge: the band between storeys
+    float3 local;     // the point met, in the room: x along the facade 0..W, y up 0..ceilH, z in 0..D
+    float atGlass;    // the pixel's own height above the room's floor, at the glass
+    float ceilH;      // the room's floor-to-ceiling height here
+    float bay;        // which room along the facade
+    float storey;     // which storey (counted from the building's base)
 };
 
 // slab: metres at the top of every storey taken by the slab and the ceiling void (0: rooms from
 // floor to floor). seed: the building's. homes: 1 where the building is homes (its storeys are
-// flats, a few offices), 0 where it is not (offices, a few flats).
+// flats, a few offices), 0 where it is not (offices, a few flats). window: the floor and ceiling
+// (world y) of the window the asset painted round this pixel, when one was found (else 0, 0: the
+// storeys count up from the base).
 RoomHit TraceRoom(float3 P, float3 V, float3 n, float3 t, float baseY, float fid, float detail, float slab,
-                  float seed, float homes, out float roomSeed)
+                  float seed, float homes, float2 window, out float roomSeed)
 {
     RoomHit o;
     o.albedo = float3(0.0, 0.0, 0.0);
@@ -499,18 +691,22 @@ RoomHit TraceRoom(float3 P, float3 V, float3 n, float3 t, float baseY, float fid
     float iy = floor(y / H);
     float ly0 = y - iy * H;            // height above this storey's floor, at the glass
     float ceilH = H - slab;            // the room's ceiling; above it the ceiling void and the slab
+    if (window.y > window.x + 0.5)
+    {
+        // The window the asset painted sets this room's floor and ceiling.
+        iy = floor((window.x - baseY) / H + 0.5);
+        ly0 = P.y - window.x;
+        ceilH = window.y - window.x;
+    }
+    o.local = float3(0.0, ly0, 0.0);
+    o.atGlass = ly0;
+    o.ceilH = ceilH;
+    o.bay = ix;
+    o.storey = iy;
     // A storey is one tenant: its kind, its finishes and whether its lights are on belong to the
     // floor, not to each room -- towers read in floors, not in a checkerboard. Every building its own.
     roomSeed = Hash12(float2(fid * 131.0 + seed * 977.0, iy));
     float r2 = Hash12(float2(iy + 17.0, fid * 7.0 + floor(ix / 4.0) + seed * 131.0));
-
-    if (ly0 > ceilH)
-    {
-        // The slab's edge, right behind the glass.
-        o.albedo = float3(0.035, 0.037, 0.04);
-        o.slab = 1.0;
-        return o;
-    }
 
     float dx = abs(d.x) > 1e-4 ? d.x : 1e-4;
     float dy = abs(d.y) > 1e-4 ? d.y : -1e-4;
@@ -520,6 +716,7 @@ RoomHit TraceRoom(float3 P, float3 V, float3 n, float3 t, float baseY, float fid
     float tHit = min(tx, min(ty, tz));
     float lx = x + d.x * tHit - ix * W;   // in the room: 0..W
     float lz = d.z * tHit;                // 0..D
+    o.local = float3(lx, clamp(ly0 + d.y * tHit, 0.0, ceilH), lz);
 
     // Storey kinds: offices (grey carpet, white ceiling with light panels) and flats (wood,
     // warm walls): mostly what the building is, a few of the other.
@@ -580,26 +777,105 @@ RoomHit TraceRoom(float3 P, float3 V, float3 n, float3 t, float baseY, float fid
             }
         }
     }
+
+    // Above the ceiling: the slab's edge, right behind the glass. (One exit: fxc takes an early
+    // return in an inlined helper for "potentially uninitialized".)
+    if (ly0 > ceilH)
+    {
+        o.albedo = float3(0.035, 0.037, 0.04);
+        o.slab = 1.0;
+        o.depth = 0.0;
+        o.ceiling = 0.0;
+        o.panel = 0.0;
+        o.desk = 0.0;
+        o.onFloor = 0.0;
+        o.local = float3(0.0, ly0, 0.0);
+    }
     return o;
 }
 
-// Blinds hang just inside the glass: a window (one pane, one storey) has them down over the top
-// part of its height, or not at all.
-float BlindCover(float2 paneCell, float yInStorey, float fid)
+// Blinds hang just inside the glass: a room has them down over the top part of its windows, or not
+// at all -- one room's alike, each pane at its own height near the room's.
+float BlindCover(float2 roomCell, float2 paneCell, float yInStorey, float fid)
 {
-    float2 r = Hash22(paneCell * float2(1.0, 7.0) + fid * 0.37);
-    float drop = 0.25 + 0.75 * r.y;   // share of the height, from the top
+    float2 r = Hash22(roomCell * float2(1.0, 7.0) + fid * 0.37);
+    float pane = Hash12(paneCell * float2(3.1, 1.7) + fid * 0.11);
+    float drop = saturate(0.25 + 0.75 * r.y + 0.12 * (pane - 0.5));   // share of the height, from the top
     return step(r.x, _RGRoom2.y - 1e-4) * step(1.0 - drop, yInStorey);
+}
+
+// ---------------------------------------------------------------------------------------------
+// Pictured rooms: which face of a room's cube a direction from its centre meets, and where on it
+// (RoomBaker.cs's convention: u along the capturing camera's right, v along its up); where that
+// face is in the atlas; and what a storey of a building is.
+// ---------------------------------------------------------------------------------------------
+
+float2 RoomFaceUV(float3 d, out float face)
+{
+    float3 a = abs(d);
+    float2 uv;
+    if (a.z >= a.x && a.z >= a.y)
+    {
+        face = d.z > 0.0 ? 0.0 : 1.0;
+        uv = float2(d.z > 0.0 ? d.x : -d.x, d.y) / max(a.z, 1e-5);
+    }
+    else if (a.x >= a.y)
+    {
+        face = d.x > 0.0 ? 2.0 : 3.0;
+        uv = float2(d.x > 0.0 ? -d.z : d.z, d.y) / max(a.x, 1e-5);
+    }
+    else
+    {
+        face = d.y > 0.0 ? 4.0 : 5.0;
+        uv = float2(d.y > 0.0 ? -d.x : d.x, d.z) / max(a.y, 1e-5);
+    }
+    return uv * 0.5 + 0.5;
+}
+
+float2 RoomAtlasUV(float capture, float face, float2 uv, float lod)
+{
+    float tile = capture * 6.0 + face;
+    float row = floor((tile + 0.5) / RG_ROOM_PER_ROW);
+    float col = tile - row * RG_ROOM_PER_ROW;
+    // Stay inside the tile at this mip: its neighbours in the atlas are other faces.
+    float inset = (0.5 * exp2(lod) + 0.5) / RG_ROOM_TILE;
+    uv = clamp(uv, inset, 1.0 - inset);
+    return (float2(col, row) + uv) * (RG_ROOM_TILE / RG_ROOM_ATLAS);
+}
+
+// The pictured room of a storey, from what the building is (BuildingUse): 0 an open-plan office,
+// 1 an office of desk clusters, 2 a meeting room, 3 small offices, 4 a living room, 5 a living and
+// dining room, 6 a bedroom, 7 a kitchen, 8 a shop, 9 a restaurant, 10 a lobby, 11 an empty floor.
+// Offices are a floor at a time (a storey is one tenant), a meeting room here and there; homes are a
+// room at a time; shops and offices have a lobby, a shop or a restaurant on the ground floor.
+float RoomKind(float use, float storey, float bay, float roomSeed, float seed)
+{
+    float perBay = Hash12(float2(bay * 1.7 + seed * 53.0, storey * 3.1 + 0.5));
+    float office = frac(roomSeed * 7.3);
+    float officeKind = office < 0.35 ? 0.0 : (office < 0.65 ? 1.0 : (office < 0.8 ? 3.0 : 2.0));
+    officeKind = perBay < 0.12 ? 2.0 : officeKind;
+    officeKind = roomSeed < 0.05 ? 11.0 : officeKind;
+    float kind;
+    if (use > 0.8)
+        kind = 4.0 + floor(perBay * 3.999);
+    else if (use > 0.55)
+        kind = storey < 0.5 ? (perBay < 0.6 ? 8.0 : 9.0) : officeKind;
+    else if (use < 0.15)
+        kind = roomSeed < 0.5 ? 11.0 : floor(office * 1.999);
+    else
+        kind = storey < 0.5 ? 10.0 : officeKind;
+    return kind;
 }
 
 // The radiance leaving the glass from inside (before the glass's own tint and clarity), by day
 // and by night separately (the glass treats them differently: by day the rooms are seen through
 // its tint and clarity; the game's lit windows are already painted as seen from outside).
 // gamePixel: the game's own colour for this pixel (the screen copy) -- its lit windows at night.
-// seed, warmth: the building's (BuildingSeed, BuildingWarmth). box: 1 on a tower of plain glass,
-// whose only storeys are the rooms' (Glass.shader's GlassBox).
+// seed, warmth, use: the building's (BuildingSeed, BuildingWarmth, BuildingUse). box: 1 on a tower
+// of plain glass, whose only storeys are the rooms' (Glass.shader's GlassBox). window: the painted
+// window's floor and ceiling (Glass.shader's PaintedWindow), or 0, 0.
 void RoomRadiance(float3 P, float3 V, float3 n, float3 t, float baseY, float footprint,
-                  float2 paneCell, float3 gamePixel, float seed, float warmth, float box,
+                  float2 paneCell, float3 gamePixel, float seed, float warmth, float use, float box, float2 window,
                   out float3 dayOut, out float3 nightOut)
 {
     float fid = FacadeId(n);
@@ -614,7 +890,7 @@ void RoomRadiance(float3 P, float3 V, float3 n, float3 t, float baseY, float foo
     float homes = saturate((warmth - 0.55) * 4.0);
 
     float roomSeed;
-    RoomHit hit = TraceRoom(P, V, n, t, baseY, fid, deskDetail, slab * detail, seed, homes, roomSeed);
+    RoomHit hit = TraceRoom(P, V, n, t, baseY, fid, deskDetail, slab * detail, seed, homes, window, roomSeed);
     float3 lamp = LampColour(warmth);
 
     float3 sky = _RGAmbSky.rgb;
@@ -638,7 +914,6 @@ void RoomRadiance(float3 P, float3 V, float3 n, float3 t, float baseY, float foo
     float gameLum = Luma(gamePixel);
     float3 light = lerp(lamp, gamePixel / max(gameLum, 1e-4), 0.25);
     light /= max(Luma(light), 0.05);
-    float storey = floor((P.y - baseY) / H);
 
     float w = hit.ceiling > 0.5 ? 1.3 + hit.panel * 5.0
             : (hit.desk > 0.5 ? 1.25
@@ -651,11 +926,32 @@ void RoomRadiance(float3 P, float3 V, float3 n, float3 t, float baseY, float foo
     float3 lit = light * gameLum * _RGRoom2.w;
     float3 night = lit * lerp(1.0, w, structure);
 
+    if (_RGFeatures.y > 0.5 && hit.slab < 0.5)
+    {
+        // A pictured room: the point met on this room's walls, floor or ceiling, as a direction
+        // from its centre in the modelled room's own measure, read on that room's cube -- by day as
+        // the window lights it, by night by its own lamps. Every other room along a storey is the
+        // mirror image. Its light in the building's lamp colour; offices and shops keep theirs on
+        // by day, a floor at a time.
+        float kind = RoomKind(use, hit.storey, hit.bay, roomSeed, seed);
+        float3 m = hit.local / float3(W, max(hit.ceilH, 0.5), max(_RGRoom.z, 0.5)) * RG_ROOM_SIZE;
+        float3 dir = m - RG_ROOM_SIZE * 0.5;
+        dir.x = frac(hit.bay * 0.5) > 0.25 ? -dir.x : dir.x;
+        float face;
+        float2 faceUV = RoomFaceUV(dir, face);
+        float lod = clamp(log2(max(footprint * (1.0 + hit.depth * 0.05) * (RG_ROOM_TILE / 12.0), 1e-3)), 0.0, 3.0);
+        float3 dayPic = tex2Dlod(_RGRooms, float4(RoomAtlasUV(kind * 2.0, face, faceUV, lod), 0.0, lod)).rgb;
+        float3 nightPic = tex2Dlod(_RGRooms, float4(RoomAtlasUV(kind * 2.0 + 1.0, face, faceUV, lod), 0.0, lod)).rgb;
+        float lampsByDay = (kind < 3.5 && frac(roomSeed * 29.1) < _RGLight.z) || (kind > 7.5 && kind < 10.5) ? 1.0 : 0.0;
+        day = (dayPic * sky * (0.25 / RG_ROOM_DAY_MEAN)
+             + nightPic * lamp * lampsByDay * max(Luma(sky), 0.05) * (0.1 / RG_ROOM_NIGHT_MEAN)) * _RGRoom2.x;
+        night = nightPic * lit * (1.0 / RG_ROOM_NIGHT_MEAN);
+    }
+
     // Blinds: lit from outside by day, glowing from inside at night. They hang over the window,
     // not the band.
-    float inStorey = (P.y - baseY) - storey * H;
-    float storeyY = saturate(inStorey / max(H - slab * detail, 0.5));
-    float blind = BlindCover(paneCell, storeyY, fid) * saturate(detail * 2.0) * (1.0 - hit.slab);
+    float storeyY = saturate(hit.atGlass / max(hit.ceilH, 0.5));
+    float blind = BlindCover(float2(hit.bay, hit.storey), paneCell, storeyY, fid) * saturate(detail * 2.0) * (1.0 - hit.slab);
     float3 blindC = lerp(float3(0.62, 0.60, 0.56), float3(0.82, 0.80, 0.76), frac(roomSeed * 5.7));
     day = lerp(day, blindC * sky * 0.85 * _RGRoom2.x, blind);
     night = lerp(night, lit * 0.8, blind);

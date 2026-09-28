@@ -22,6 +22,9 @@ namespace RealGlass.Glass
         private readonly GlassScreen _screen = new GlassScreen();
         private readonly GlassSky _sky = new GlassSky();
         private readonly BuildingLights _lights = new BuildingLights();
+        private readonly CityHeights _heights = new CityHeights();
+        private Vector3 _look;
+        private bool _loggedRooms;
         private Material _near, _lod, _group, _util;
         private Texture _atlasRgb, _atlasXys, _atlasAci;
         private int _buildingLayers;
@@ -228,6 +231,25 @@ namespace RealGlass.Glass
                         (!p.SkyClouds ? "switched off" : "no '" + GlassSky.CloudVolumeName + "' drawing")) + ")");
             }
             f.CubeMips = _sky.Mips;
+
+            // The buildings round the view, from above: what a reflection meets off screen.
+            if (p.Neighbours)
+                _heights.Update(_look, Time.realtimeSinceStartup);
+            _heights.Map.Bind(p.Neighbours);
+
+            // The pictured rooms, from the bundle.
+            Texture rooms = ShaderBundle.RoomAtlas;
+            f.RoomAtlas = rooms != null;
+            if (rooms != null)
+                Shader.SetGlobalTexture(ShaderBundle.RoomAtlasUniform, rooms);
+            if (!_loggedRooms)
+            {
+                _loggedRooms = true;
+                Log.Msg(rooms != null
+                    ? "glass: pictured rooms " + rooms.width + "x" + rooms.height + " (" + ShaderBundle.RoomAtlasFormat + ")"
+                    : "glass: NO pictured rooms in the bundle; the rooms are plain");
+            }
+
             GlassUniforms.Apply(p, f);
             bool copied = _screen.Update(camera, _util, p.Finished);
             if (!copied)
@@ -257,7 +279,10 @@ namespace RealGlass.Glass
                                (_sky.Problem.Length > 0 ? " " + _sky.Problem : "") : "the game's map") +
                            "; daylight " + GlassUniforms.Daylight(f.SunY).ToString("F2") + ", sun (" + f.SunR.ToString("F2") + " " + f.SunG.ToString("F2") + " " + f.SunB.ToString("F2") +
                            "), ground " + f.GroundY.ToString("F0") + " m, " + f.Temperature.ToString("F0") + " C; lamps of " + _lights.Standing +
-                           " buildings; shaders seen: " + GlassDraw.DescribeShaders());
+                           " buildings; " + (p.Neighbours ? (_heights.Map.Live ? "city heights " + _heights.Map.LiveCount + " buildings, highest roof " +
+                               _heights.Map.LiveTop.ToString("F0") + " m, " + _heights.LastMs.ToString("F1") + " ms over " + _heights.LastFrames + " frames"
+                               : "city heights being drawn") : "no city heights") +
+                           "; shaders seen: " + GlassDraw.DescribeShaders());
                 ResetCounters();
             }
             else if (!Log.Detailed && _frames >= 300)
@@ -362,7 +387,8 @@ namespace RealGlass.Glass
             CameraController cc = camera.GetComponent<CameraController>();
             if (cc != null)
                 look = cc.m_currentPosition;
-            f.GroundY = Singleton<TerrainManager>.exists ? Singleton<TerrainManager>.instance.SampleDetailHeight(look) : 0f;
+            _look = look;
+            f.GroundY =Singleton<TerrainManager>.exists ? Singleton<TerrainManager>.instance.SampleDetailHeight(look) : 0f;
             f.Temperature = Singleton<WeatherManager>.exists ? Singleton<WeatherManager>.instance.m_currentTemperature : 15f;
             f.ScreenHeight = camera.pixelHeight;
             f.ColorMapWidth = RenderManager.OBJECT_COLORMAP_WIDTH;
@@ -378,12 +404,14 @@ namespace RealGlass.Glass
                    ", tint #" + Hex(p.TintR) + Hex(p.TintG) + Hex(p.TintB) + " own " + Pct(p.OwnColour) + ", strength " + Pct(p.Strength) +
                    ", glass above " + Pct(p.Threshold) + (p.NightWindows ? " + night windows" : "") + (p.ShowMask ? ", SHOWING THE MASK" : "") +
                    "; trace " + (p.Trace ? "q" + p.Quality : "off") + (p.Finished ? " of the finished picture" : " of the copy") +
+                   (p.Neighbours ? " + city heights" : "") + (p.SteadyGlints ? ", steady glints" : "") +
                    ", brightness " + Pct(p.ReflectionBrightness) + ", sky " + (p.SkySource == 0 ? (p.SkyClouds ? "live with clouds" : "live") : "game map") +
                    ", fill " + p.OffscreenFill + ", glint " + Pct(p.SunGlint) + ", smooth " + Pct(p.Smoothness) +
                    "; panes " + p.PaneWidth.ToString("F1") + " m, pillow " + Pct(p.Pillow) + ", tilt " + Pct(p.Tilt) + ", roller " + Pct(p.RollerWave) +
                    (p.PaneWeather ? " (weather)" : "") + "; rooms " + (p.Rooms ? p.FloorHeight.ToString("F1") + " x " + p.RoomWidth.ToString("F0") + " x " + p.RoomDepth.ToString("F0") + " m" : "off") +
                    ", floor bands " + p.FloorBand.ToString("F1") + " m, blinds " + Pct(p.Blinds) + ", furniture " + Pct(p.Furniture) +
-                   ", day rooms " + Pct(p.InteriorBrightness);
+                   ", day rooms " + Pct(p.InteriorBrightness) + (p.RoomPictures ? ", pictured" : ", plain") +
+                   (p.FollowWindows ? ", following the windows" : "");
         }
 
         private static string Pct(float v)
@@ -404,6 +432,7 @@ namespace RealGlass.Glass
             _screen.Detach();
             _sky.Destroy();
             _lights.Destroy();
+            _heights.Destroy();
             RestoreCamera();
             foreach (Material m in new[] { _near, _lod, _group, _util })
             {

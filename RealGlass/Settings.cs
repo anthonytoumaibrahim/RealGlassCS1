@@ -127,6 +127,13 @@ namespace RealGlass
         /// </summary>
         public static BoolSetting ReflectFinished { get; private set; }
 
+        /// <summary>
+        /// The glass mirrors the buildings around it where the screen cannot show them: a map of
+        /// the city's roof heights round the view, walked by every reflected ray that misses the
+        /// screen (Glass/CityMap.cs) -- the towers across a street instead of open sky.
+        /// </summary>
+        public static BoolSetting ReflectNeighbours { get; private set; }
+
         /// <summary>0 Low, 1 Medium, 2 High, 3 Ultra: how finely the reflections are traced.</summary>
         public static IntSetting SsrQuality { get; private set; }
 
@@ -147,6 +154,12 @@ namespace RealGlass
 
         /// <summary>0..3: multiplier on the sun's glint off the panes.</summary>
         public static FloatSetting SunGlint { get; private set; }
+
+        /// <summary>
+        /// Specular anti-aliasing: where the panes' bend changes within a pixel, the glint and the
+        /// reflection widen to match instead of flickering (Kaplanyan et al. 2016).
+        /// </summary>
+        public static BoolSetting SteadyGlints { get; private set; }
 
         /// <summary>0..1: how sharp the reflections are (1 = a perfect mirror).</summary>
         public static FloatSetting GlassSmoothness { get; private set; }
@@ -202,6 +215,18 @@ namespace RealGlass
         /// </summary>
         public static FloatSetting FloorBand { get; private set; }
 
+        /// <summary>
+        /// The rooms are pictures of furnished rooms (offices, flats, shops...), modelled and
+        /// rendered in the Unity project and shipped in the bundle: not plain coloured boxes.
+        /// </summary>
+        public static BoolSetting RoomPictures { get; private set; }
+
+        /// <summary>
+        /// Each room's floor and ceiling are found from the window the asset painted (where its
+        /// glass stops above and below), not from a storey grid counted up from the base.
+        /// </summary>
+        public static BoolSetting RoomsFollowWindows { get; private set; }
+
         // ---- F7 -> Rendering -----------------------------------------------------------------
 
         /// <summary>0: near buildings only. 1: near and middle distance. 2: the whole city.</summary>
@@ -238,10 +263,10 @@ namespace RealGlass
 
             /// <summary>The Reflective blue preset's colour (#2E6A80): a static, because a Color32 cannot be a const.</summary>
             public static readonly Color32 GlassColor = new Color32(0x2E, 0x6A, 0x80, 255);
-            // The author's own tuning in the game (2026-09-28), made the defaults: the glass barely
-            // brighter edge-on (the rise read as "too much mirror"), but what rise there is silver.
+            // The author's own tuning in the game, made the defaults twice (2026-09-28): the second
+            // time with the full rise edge-on, silver, and the reflections at half brightness.
             public const float GlassReflectivity = 0.20f;
-            public const float GlassGlancing = 0.21f;
+            public const float GlassGlancing = 1f;
             public const float GlassEdgeSilver = 1f;
             public const float GlassClarity = 0.24f;
             public const float GlassStrength = 1f;
@@ -252,20 +277,22 @@ namespace RealGlass
             // ---- Reflections ----
             public const bool SsrEnabled = true;
             public const bool ReflectFinished = true;
-            public const int SsrQuality = 2;          // High
-            public const float ReflectionBrightness = 1f;
-            public const int SkyReflection = 1;       // the game's own map (the author's pick)
+            public const bool ReflectNeighbours = true;
+            public const int SsrQuality = 3;          // Ultra
+            public const float ReflectionBrightness = 0.5f;
+            public const int SkyReflection = 0;       // the live sky, with the clouds
             public const bool SkyClouds = true;
             public const int OffscreenFill = 0;       // the mirrored screen
-            public const float SunGlint = 1f;
-            public const float GlassSmoothness = 0.92f;
-            public const float SsrEdgeFade = 0.12f;
+            public const float SunGlint = 3f;
+            public const bool SteadyGlints = true;
+            public const float GlassSmoothness = 0.80f;
+            public const float SsrEdgeFade = 0.50f;
 
-            // ---- Panes ---- (the author's: more bend than the first defaults)
+            // ---- Panes ---- (the author's: every bend at the top of its slider)
             public const float PaneWidth = 1.4f;
-            public const float PanePillow = 1.5f;
-            public const float PaneTilt = 1.4f;
-            public const float RollerWave = 1.45f;
+            public const float PanePillow = 3f;
+            public const float PaneTilt = 3f;
+            public const float RollerWave = 3f;
             public const bool PaneWeather = true;
 
             // ---- Interiors ----
@@ -274,15 +301,17 @@ namespace RealGlass
             public const float RoomWidth = 12f;   // open-plan office floors, not cells
             public const float RoomDepth = 12f;
             /// <summary>Rooms seen from outside by day are dark: indoor light is a few % of daylight.</summary>
-            public const float InteriorBrightness = 0.15f;
-            public const float Blinds = 0.30f;
+            public const float InteriorBrightness = 0.30f;
+            public const float Blinds = 0.50f;
             public const float Furniture = 0.6f;
-            public const float FloorBand = 1f;       // a 3.8 m storey: 2.8 m of view, 1 m of slab and ceiling void
+            public const float FloorBand = 0f;       // none: the author's pick
+            public const bool RoomPictures = true;
+            public const bool RoomsFollowWindows = true;
 
-            // ---- Rendering ----
+            // ---- Rendering ---- (the author's: the largest, livest sky)
             public const int GlassDistance = 2;       // the whole city
-            public const int SkyCubeSize = 1;         // 128 px
-            public const int SkyCubeRate = 1;
+            public const int SkyCubeSize = 2;         // 256 px
+            public const int SkyCubeRate = 6;
         }
 
         private static bool _initialised;
@@ -327,12 +356,14 @@ namespace RealGlass
 
                 SsrEnabled = new BoolSetting("SsrEnabled", Defaults.SsrEnabled);
                 ReflectFinished = new BoolSetting("ReflectFinished", Defaults.ReflectFinished);
+                ReflectNeighbours = new BoolSetting("ReflectNeighbours", Defaults.ReflectNeighbours);
                 SsrQuality = new IntSetting("SsrQuality", Defaults.SsrQuality);
                 ReflectionBrightness = new FloatSetting("ReflectionBrightness", Defaults.ReflectionBrightness);
                 SkyReflection = new IntSetting("SkyReflection", Defaults.SkyReflection);
                 SkyClouds = new BoolSetting("SkyClouds", Defaults.SkyClouds);
                 OffscreenFill = new IntSetting("OffscreenFill", Defaults.OffscreenFill);
                 SunGlint = new FloatSetting("SunGlint", Defaults.SunGlint);
+                SteadyGlints = new BoolSetting("SteadyGlints", Defaults.SteadyGlints);
                 GlassSmoothness = new FloatSetting("GlassSmoothness", Defaults.GlassSmoothness);
                 SsrEdgeFade = new FloatSetting("SsrEdgeFade", Defaults.SsrEdgeFade);
 
@@ -350,6 +381,8 @@ namespace RealGlass
                 Blinds = new FloatSetting("Blinds", Defaults.Blinds);
                 Furniture = new FloatSetting("Furniture", Defaults.Furniture);
                 FloorBand = new FloatSetting("FloorBand", Defaults.FloorBand);
+                RoomPictures = new BoolSetting("RoomPictures", Defaults.RoomPictures);
+                RoomsFollowWindows = new BoolSetting("RoomsFollowWindows", Defaults.RoomsFollowWindows);
 
                 GlassDistance = new IntSetting("GlassDistance", Defaults.GlassDistance);
                 SkyCubeSize = new IntSetting("SkyCubeSize", Defaults.SkyCubeSize);

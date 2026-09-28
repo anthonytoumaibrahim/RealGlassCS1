@@ -66,6 +66,8 @@ namespace RealGlass
                         " nightWindows=" + On(Settings.GlassNightWindows, Settings.Defaults.GlassNightWindows) +
                         " | reflections: screen=" + On(Settings.SsrEnabled, Settings.Defaults.SsrEnabled) +
                         " finishedPicture=" + On(Settings.ReflectFinished, Settings.Defaults.ReflectFinished) +
+                        " neighbours=" + On(Settings.ReflectNeighbours, Settings.Defaults.ReflectNeighbours) +
+                        " steadyGlints=" + On(Settings.SteadyGlints, Settings.Defaults.SteadyGlints) +
                         " quality=" + QualityName(Int(Settings.SsrQuality, Settings.Defaults.SsrQuality)) +
                         " sky=" + (Int(Settings.SkyReflection, Settings.Defaults.SkyReflection) == 0 ? "live" : "game's map") +
                         " skyClouds=" + On(Settings.SkyClouds, Settings.Defaults.SkyClouds) +
@@ -73,6 +75,8 @@ namespace RealGlass
                         " skyCube=" + Settings.SkyCubePixels + "px x" + Int(Settings.SkyCubeRate, Settings.Defaults.SkyCubeRate) + "/frame" +
                         " | interiors=" + On(Settings.InteriorEnabled, Settings.Defaults.InteriorEnabled) +
                         " floorBands=" + (Settings.FloorBand != null ? Settings.FloorBand.value : Settings.Defaults.FloorBand).ToString("F1") + "m" +
+                        " pictures=" + On(Settings.RoomPictures, Settings.Defaults.RoomPictures) +
+                        " followWindows=" + On(Settings.RoomsFollowWindows, Settings.Defaults.RoomsFollowWindows) +
                         " | panes: weather=" + On(Settings.PaneWeather, Settings.Defaults.PaneWeather));
 
                 Log.Msg("panel key: " + (Settings.PanelKey != null ? SettingsXmlFormat.FormatKey(Settings.PanelKey.value) : "?") +

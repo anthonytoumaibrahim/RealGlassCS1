@@ -15,14 +15,16 @@ The first version: realistic glass on every building, at every distance.
   reflective, with real products' tints, reflectance and transmittance; or a colour of your own,
   and as much of the building's own painted colour as you like.
 - **Reflections**: the city on screen -- the finished picture, with its haze, clouds, lamps and
-  the other glass -- the live sky with Volumetric Weather's clouds in it (or the game's own sky
-  picture), the sun's glint; below the horizon, the screen mirrored at its edge. Reflect a little
-  more edge-on than straight on, capped by a setting, and turn silvery edge-on as coated glass
-  does.
+  the other glass -- the buildings around where the screen cannot show them (a map of the city's
+  roof heights, walked by every ray that misses the screen: the towers across a street, not open
+  sky), the live sky with Volumetric Weather's clouds in it (or the game's own sky picture), the
+  sun's glint, steady far away; below the horizon, the screen mirrored at its edge. More
+  reflective edge-on, and silvery there as coated glass is.
 - **Panes** that bend the reflections: cushioned, tilted, rippled, bulging with the weather.
-- **Rooms behind the glass**: floors, ceilings, furniture and blinds. At night every window the
-  game lights becomes a lit room at full brightness -- a bright ceiling, the floor under it, the
-  back of the room -- in warm lamplight; on towers of plain glass, floor bands between the storeys.
+- **Rooms behind the glass**: twelve furnished rooms -- offices, flats, shops, restaurants,
+  lobbies -- pictured by day and by night, lined up with each building's own painted windows, with
+  blinds room by room. At night every window the game lights becomes a lit room at full
+  brightness, in warm lamplight; on towers of plain glass, floor bands between the storeys.
 - **The panel on F7** (or its Unified UI button), five tabs, every setting of the glass. F7 is
   also the game's debug-output key: while it is this mod's key, it opens only this mod's panel in
   a city (a switch on the options page).

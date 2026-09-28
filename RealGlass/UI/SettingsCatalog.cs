@@ -850,6 +850,17 @@ namespace RealGlass.UI
                 AfterChange = State("reflect the finished picture (fog, clouds, lamps)", OnOff(Settings.ReflectFinished)),
             });
 
+            // Whether or not the trace is on: what a reflection meets off screen.
+            Add(new Row
+            {
+                Kind = RowKind.Toggle,
+                Panel = PanelPage.Reflections,
+                Bool = Settings.ReflectNeighbours,
+                DefaultBool = Settings.Defaults.ReflectNeighbours,
+                Enabled = GlassOn,
+                AfterChange = State("the buildings around in the reflections (city heights)", OnOff(Settings.ReflectNeighbours)),
+            });
+
             Add(new Row
             {
                 Kind = RowKind.Choice,
@@ -919,6 +930,16 @@ namespace RealGlass.UI
                 Min = 0f, Max = 300f, Step = 5f,
                 Enabled = GlassOn,
                 AfterChange = Changed,
+            });
+
+            Add(new Row
+            {
+                Kind = RowKind.Toggle,
+                Panel = PanelPage.Reflections,
+                Bool = Settings.SteadyGlints,
+                DefaultBool = Settings.Defaults.SteadyGlints,
+                Enabled = GlassOn,
+                AfterChange = State("steady glints (specular anti-aliasing)", OnOff(Settings.SteadyGlints)),
             });
 
             Add(new Row
@@ -1064,6 +1085,26 @@ namespace RealGlass.UI
                 Format = Metres,
                 Enabled = InteriorsOn,
                 AfterChange = Changed,
+            });
+
+            Add(new Row
+            {
+                Kind = RowKind.Toggle,
+                Panel = PanelPage.Interiors,
+                Bool = Settings.RoomPictures,
+                DefaultBool = Settings.Defaults.RoomPictures,
+                Enabled = InteriorsOn,
+                AfterChange = State("furnished rooms (pictures)", OnOff(Settings.RoomPictures)),
+            });
+
+            Add(new Row
+            {
+                Kind = RowKind.Toggle,
+                Panel = PanelPage.Interiors,
+                Bool = Settings.RoomsFollowWindows,
+                DefaultBool = Settings.Defaults.RoomsFollowWindows,
+                Enabled = InteriorsOn,
+                AfterChange = State("rooms follow the painted windows", OnOff(Settings.RoomsFollowWindows)),
             });
 
             Add(new Row
