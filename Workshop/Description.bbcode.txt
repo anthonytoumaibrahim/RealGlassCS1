@@ -1,6 +1,6 @@
 [h1]Version 1.0: First Release[/h1]
-Adds a glass shader to all buildings (or only the near ones, changeable in the mod) that makes their glass look and feel like real-life glass.
-So far it has been tested on one PC (Windows 11, RTX 5070 Ti). If anything looks wrong or runs badly for you, please let me know in the comments.
+Makes the glass on your buildings (especially skyscrapers) look real and mirroring the sky, the streets and the towers around it.
+Just as with the [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3805863507]Volumetric Weather[/url] mod, this mod was tested only on my Windows 11 PC and MacBook. If anything looks wrong or runs badly for you, please let me know in the comments.
 
 [hr][/hr]
 [h1]Requirements[/h1]
@@ -13,10 +13,11 @@ So far it has been tested on one PC (Windows 11, RTX 5070 Ti). If anything looks
 [h1]How to use[/h1]
 [olist]
 [*][b]Subscribe[/b] to this mod and to Harmony, then make sure both are enabled in [i]Content Manager → Mods[/i]. If you use Skyve, make sure the mod is enabled in it.
-[*][b]Load a city[/b] (new or saved) and the glass is there. The mod does not run in the editors.
+[*][b]Load a city[/b] (new or saved) and the glass is there. It works in the Asset Editor and the Scenario Editor too.
 [*][b]Press F8[/b] (or click the mod's button in UUI) to open the in-game panel. Every setting of the glass is there, on four tabs.
 [/olist]
-The mod's own options (the panel's key, the button, a reset) are in the Pause Menu.
+The mod's own options (the panel's key, the button) are in the Pause Menu, under [i]Options → Real Glass[/i].
+The default settings are tested and work well with LUTs and [b]Render It![/b]. If you've changed things and want to start over, [i]Reset all settings to defaults[/i] is on the same page.
 
 [hr][/hr]
 [h1]Features[/h1]
@@ -62,11 +63,12 @@ You don't need to do anything special, the mod reads the textures your asset alr
 [*][b]Window frames[/b]: paint them darker in the specular map (below 60%) and the panes will follow your windows up close.
 [*][b]LODs[/b]: if you make your own LOD textures, include a specular map ([i]_lod_s[/i]) too, or the glass disappears when you zoom out.
 [/list]
-To check your building, turn on [i]Show what counts as glass[/i] (Glass tab) and the glass turns magenta.
+To check your building, open it in the [b]Asset Editor[/b]: the glass is there too, and zooming out shows your LOD's glass. Turn on [i]Show what counts as glass[/i] (Glass tab) and the glass turns magenta.
+The glass pauses while you use the Snapshot tool, so your asset's thumbnails and snapshots show it the way everyone else sees it.
 
 [hr][/hr]
 [h1]Source code[/h1]
-The mod is open source under the MIT license. The glass is built on published techniques from games and research, all credited on GitHub; its screen-space ray tracer is adapted from Morgan McGuire and Michael Mara's BSD-licensed code. It includes two small MIT-licensed libraries: UnifiedUILib by kianzarrin and CitiesHarmony.API by boformer. Many thanks to all of them.
+The mod is open source under the MIT license. It includes two small MIT-licensed libraries: UnifiedUILib by kianzarrin and CitiesHarmony.API by boformer. Many thanks to both of them.
 [h3][url=https://github.com/anthonytoumaibrahim/RealGlassCS1]Open on GitHub[/url][/h3]
 
 [hr][/hr]

@@ -16,7 +16,8 @@
 dotnet build RealGlass/RealGlass.csproj
 ```
 
-builds and deploys `RealGlass.dll`, `UnifiedUILib.dll` and `CitiesHarmony.API.dll` to
+builds and deploys `RealGlass.dll`, `UnifiedUILib.dll`, `CitiesHarmony.API.dll` and
+`THIRD-PARTY-NOTICES.md` (the shipped code's licences ask for their notices to go with it) to
 `%LOCALAPPDATA%\Colossal Order\Cities_Skylines\Addons\Mods\RealGlass` (never the PDB: Unity 5.6's
 Mono reads only .mdb, and the Workshop would upload it). To build without deploying, add
 `-p:Deploy=false`; to deploy somewhere else, `-p:ModsDir=<folder>`. The deployed DLL can only be

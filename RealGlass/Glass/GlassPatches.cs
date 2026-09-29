@@ -4,12 +4,13 @@ using UnityEngine;
 
 namespace RealGlass.Glass
 {
-    // The game's three building paths (IL, 2026-09-28). Each postfix repeats the game's own
-    // choice -- near or LOD, which mesh, which matrix -- and draws the same thing again with the
-    // glass. Postfixes only: the game's draw is never skipped or changed. The argument types are
-    // spelled out so an overload added by a game update cannot make PatchAll fail for every patch
-    // in the mod. Parameter names must match the game's: that is how Harmony binds them. Never
-    // take __args (CitiesHarmony's Harmony 2.0.4 writes it back over ref arguments).
+    // The game's three building paths (IL, 2026-09-28) and the asset editor's (2026-09-29). Each
+    // postfix repeats the game's own choice -- near or LOD, which mesh, which matrix -- and draws
+    // the same thing again with the glass. Postfixes only: the game's draw is never skipped or
+    // changed. The argument types are spelled out so an overload added by a game update cannot
+    // make PatchAll fail for every patch in the mod. Parameter names must match the game's: that
+    // is how Harmony binds them. Never take __args (CitiesHarmony's Harmony 2.0.4 writes it back
+    // over ref arguments).
     //
     // A postfix reads each argument as the ORIGINAL LEFT IT, not as the caller passed it: Harmony
     // copies the original's IL into the patched method, so its starg writes the very slot the
@@ -104,6 +105,57 @@ namespace RealGlass.Glass
                 if (w.m_mesh != null)
                     GlassDraw.DrawGroup(w.m_mesh, __instance.m_matrix, layer.m_layer, layer.m_renderMaterial);
             }
+        }
+    }
+
+    /// <summary>
+    /// The asset editor's building. It is not a building instance: ToolManager.EndRenderingImpl
+    /// draws the edited prefab through BuildingInfo.RenderMesh -> this method, at a fixed
+    /// TRS((0, 60, 0), identity, one) with _BuildingState (0, 1000, 0, 0) and _ObjectIndex =
+    /// RenderManager.GetColorLocation(0). Near when m_ForceLowLod (the editor's LOD view) is off
+    /// and CheckRenderDistance((0, 60, 0), m_minLodDistance) holds; else the asset's OWN m_lodMesh
+    /// with m_lodMaterial, one mesh with the LOD's own textures, no atlas: the near glass draws
+    /// it. The sub-meshes the editor shows (IsSubMeshRendered) the same way, at that matrix x
+    /// m_matrix, on the main asset's layer. Sub-BUILDINGS are real buildings: the patches above.
+    /// </summary>
+    [HarmonyPatch(typeof(BuildingDecoration), nameof(BuildingDecoration.RenderBuildingMesh), new[]
+    {
+        typeof(RenderManager.CameraInfo), typeof(BuildingInfo),
+    })]
+    public static class EditorRenderMeshPatch
+    {
+        private static readonly Vector3 Position = new Vector3(0f, 60f, 0f);
+        private static readonly Vector4 State = new Vector4(0f, 1000f, 0f, 0f);
+
+        public static void Postfix(RenderManager.CameraInfo cameraInfo, BuildingInfo info)
+        {
+            if (!GlassDraw.Active || cameraInfo == null || info == null)
+                return;
+
+            Matrix4x4 matrix = Matrix4x4.TRS(Position, Quaternion.identity, Vector3.one);
+            Vector4 objectIndex = RenderManager.GetColorLocation(0);
+            Draw(cameraInfo, info, matrix, info.m_prefabDataLayer, objectIndex);
+
+            BuildingInfo.MeshInfo[] subMeshes = info.m_subMeshes;
+            if (subMeshes == null)
+                return;
+
+            for (int i = 0; i < subMeshes.Length; i++)
+            {
+                BuildingInfo.MeshInfo sub = subMeshes[i];
+                if (sub == null || sub.m_subInfo == null || !BuildingDecoration.IsSubMeshRendered(sub.m_subInfo))
+                    continue;
+
+                Draw(cameraInfo, sub.m_subInfo, matrix * sub.m_matrix, info.m_prefabDataLayer, objectIndex);
+            }
+        }
+
+        private static void Draw(RenderManager.CameraInfo cameraInfo, BuildingInfoBase mesh, Matrix4x4 matrix, int layer, Vector4 objectIndex)
+        {
+            if (!BuildingDecoration.m_ForceLowLod && cameraInfo.CheckRenderDistance(Position, mesh.m_minLodDistance))
+                GlassDraw.DrawNear(mesh.m_mesh, matrix, mesh.m_material, layer, State, objectIndex);
+            else if (GlassDraw.Tiers >= 1)
+                GlassDraw.DrawNear(mesh.m_lodMesh, matrix, mesh.m_lodMaterial, layer, State, objectIndex);
         }
     }
 

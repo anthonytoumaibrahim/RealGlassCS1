@@ -180,9 +180,11 @@ namespace RealGlass.Glass
             GlassParams p = _params;
             Camera camera = Camera.main;
             bool infoView = Singleton<InfoManager>.exists && Singleton<InfoManager>.instance.CurrentMode != InfoManager.InfoMode.None;
-            bool on = p.Enabled && camera != null && _near != null && !infoView;
+            bool snapshot = IsTakingSnapshots();
+            bool on = p.Enabled && camera != null && _near != null && !infoView && !snapshot;
 
-            string state = !p.Enabled ? "off" : (camera == null ? "no camera" : (infoView ? "an info view is open" : "on"));
+            string state = !p.Enabled ? "off" : (camera == null ? "no camera" : (infoView ? "an info view is open" :
+                (snapshot ? "the Snapshot tool is in use" : "on")));
             if (state != _lastState)
             {
                 Log.Msg("glass: " + state);
@@ -205,7 +207,7 @@ namespace RealGlass.Glass
                     RestoreCamera();
                     _wasOn = false;
                 }
-                _status = Localization.Get(p.Enabled ? (infoView ? "Status.InfoView" : "Status.Waiting") : "Status.Off");
+                _status = Localization.Get(p.Enabled ? (infoView ? "Status.InfoView" : (snapshot ? "Status.Snapshot" : "Status.Waiting")) : "Status.Off");
 
                 // The frame time without the glass, for the same line with it: what the glass costs.
                 if (Log.Detailed && Time.realtimeSinceStartup >= _nextDetail)
@@ -294,6 +296,19 @@ namespace RealGlass.Glass
             {
                 ResetCounters();
             }
+        }
+
+        /// <summary>
+        /// Every picture an editor takes of its asset goes through the Snapshot tool: the
+        /// snapshots, thumbnails and tooltips a creator takes, and the ones the asset editor takes
+        /// itself on save (SaveAssetPanel.TakeCompulsoryShot switches to this tool first; IL,
+        /// 2026-09-29). They ship with the asset and every player sees them, most without this
+        /// mod, so they show the asset as the game draws it.
+        /// </summary>
+        private static bool IsTakingSnapshots()
+        {
+            ToolController tools = ToolsModifierControl.toolController;
+            return tools != null && tools.CurrentTool is SnapshotTool;
         }
 
         private void ResetCounters()

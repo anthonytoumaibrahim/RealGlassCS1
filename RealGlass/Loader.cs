@@ -23,12 +23,16 @@ namespace RealGlass
         {
             base.OnLevelLoaded(mode);
 
-            // Cities only: a new game, a save, a scenario. Not the map, asset or theme editors.
-            if (mode != LoadMode.NewGame && mode != LoadMode.LoadGame && mode != LoadMode.NewGameFromScenario)
+            // Wherever there are buildings to see: a city, the asset editor (a creator checking the
+            // glass), the scenario editor (a city). Not the map or theme editors: no buildings.
+            string where = Where(mode);
+            if (where == null)
                 return;
 
             if (_root != null)
                 return;
+
+            Log.Msg("loaded: " + where);
 
             if (!CanDrawGlass())
             {
@@ -52,6 +56,29 @@ namespace RealGlass
 
             Object.Destroy(_root);
             _root = null;
+        }
+
+        /// <summary>Where the glass runs, in words for the log; null where it does not.</summary>
+        private static string Where(LoadMode mode)
+        {
+            switch (mode)
+            {
+                case LoadMode.NewGame:
+                case LoadMode.LoadGame:
+                case LoadMode.NewGameFromScenario:
+                    return "a city";
+                case LoadMode.NewAsset:
+                case LoadMode.LoadAsset:
+                    return "the asset editor";
+                case LoadMode.NewScenarioFromGame:
+                case LoadMode.NewScenarioFromMap:
+                case LoadMode.LoadScenario:
+                case LoadMode.UpdateScenarioFromGame:
+                case LoadMode.UpdateScenarioFromMap:
+                    return "the scenario editor";
+                default:
+                    return null;
+            }
         }
 
         /// <summary>

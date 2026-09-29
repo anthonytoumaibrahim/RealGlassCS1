@@ -49,6 +49,11 @@ that repo's `docs/RELEASE-CHECKLIST.md` has the long version.
       the description's table; it saves them in `docs\benchmark-<date>.txt`.
 - [ ] A true first run: move `RealGlass.xml` aside, load a city, change nothing: the defaults
       look right, then put the file back.
+- [ ] The editors (added 2026-09-29, untested): in the Asset Editor, a glass building shows its
+      glass (the log says "loaded: the asset editor", then "glass: on"), the magenta mask works,
+      zooming out shows the LOD's glass, and the Snapshot tool pauses it ("glass: the Snapshot
+      tool is in use") and the glass comes back after. A scenario in the Scenario Editor has glass.
+      F8 and the panel look as in a city (their sprites were read from a city's UIView atlas).
 - [ ] `output_log.txt` has no exception from RealGlass.
 
 ## 3. The folder that gets uploaded
@@ -56,7 +61,11 @@ that repo's `docs/RELEASE-CHECKLIST.md` has the long version.
 The Workshop uploads `%LOCALAPPDATA%\Colossal Order\Cities_Skylines\Addons\Mods\RealGlass` as it
 stands.
 
-- [x] Exactly three files: `RealGlass.dll`, `UnifiedUILib.dll`, `CitiesHarmony.API.dll` (no PDB).
+- [ ] Exactly four files: `RealGlass.dll`, `UnifiedUILib.dll`, `CitiesHarmony.API.dll` (no PDB)
+      and `THIRD-PARTY-NOTICES.md` (2026-09-29): BSD 2-Clause asks a binary redistribution to
+      carry McGuire & Mara's notice "in the documentation and/or other materials provided with
+      the distribution", and MIT its notice "in all copies" -- a GitHub link is not with the
+      distribution. Deployed by the next full build.
       UnifiedUILib.dll must ship: our code references its types, and the game resolves a
       reference by NAME among the assemblies already loaded (`BuildConfig.CurrentDomain_
       AssemblyResolve`); a player with no other mod carrying it would get "Assembly resolution

@@ -103,6 +103,10 @@
          uploads whatever sits in this folder, along with the source paths inside it. -->
     <Copy SourceFiles="$(LibsDir)\UnifiedUILib.dll" DestinationFolder="$(ModsDir)" />
     <Copy SourceFiles="$(LibsDir)\CitiesHarmony.API.dll" DestinationFolder="$(ModsDir)" />
+    <!-- The licences of the two libraries above and of the ray tracer compiled into the shader
+         bundles ask for their notices to go WITH the binaries: the Workshop upload is this
+         folder, so the notices are in it. -->
+    <Copy SourceFiles="$(MSBuildProjectDirectory)\..\THIRD-PARTY-NOTICES.md" DestinationFolder="$(ModsDir)" />
     <Message Importance="high" Text="Deployed $(AssemblyName).dll -> $(ModsDir)" />
   </Target>
 

@@ -32,4 +32,7 @@ The first Workshop release: realistic glass on every building, at every distance
   a quality choice; the mod runs the highest.
 - **The panel on F8** (or its Unified UI button), four tabs, every setting of the glass. (F7, the
   first choice, is the game's own debug-output key.)
+- **In the editors**: the Asset Editor (the edited building, its sub-meshes and, zoomed out, its
+  LOD) and the Scenario Editor as well as cities. The glass pauses while the Snapshot tool is in
+  use, so an asset's thumbnails and snapshots show it as the game draws it.
 - **RealGlass.xml**: every setting in a file you can read and edit while the game runs.
