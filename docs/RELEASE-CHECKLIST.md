@@ -26,8 +26,10 @@ that repo's `docs/RELEASE-CHECKLIST.md` has the long version.
       patch) renames the game's `Update()` methods to `FpsBoosterUpdate`, so the patch could not
       find its target and wrote a WARN and an ERROR to every player's log who runs it. The game
       binds no F key but F1, F7 and F12; the sister mods have F3, F4, F6.
-- [x] Defaults = the author's settings of 2026-09-29: Reflective blue (20% / 24%), reflection
+- [x] Defaults = the author's settings of 2026-09-29: Silver reflective (#A9B4BA, 35% / 20%;
+      "I love the silver look", the evening session -- Reflective blue until then), reflection
       brightness 55%, cushioned panes, pane tilt and ripple 150%. Detailed logging stays off.
+      The "Kind of glass" row lists Silver reflective first (the default first, Custom last).
 - [x] `Mod.Version` 1.0.0.
 - [x] Tests: `tools\test-settings.ps1` and `tools\test-localization.ps1` pass; the three shader
       bundles carry real code for every API (`tools\bundle-apis.ps1`: D3D11 + OpenGL Core, OpenGL
@@ -44,9 +46,13 @@ that repo's `docs/RELEASE-CHECKLIST.md` has the long version.
 
 - [ ] A session on build 1.0.0.x with Detailed logging on: the log's first line says 1.0.0,
       F8 opens the panel and F7 only the game's debug panel, and the log has no WARN or ERROR.
-- [ ] **The performance table**: city loaded, camera parked on a downtown, panel closed, then
-      `tools\benchmark.ps1` (about 2.5 minutes, hands off). Its numbers replace the TODO cells of
-      the description's table; it saves them in `docs\benchmark-<date>.txt`.
+- [x] **The performance table** (2026-09-29, from the log of the 20:34 session, not the
+      benchmark): the one glass-off window between glass-on ones at 4K, same view (ground
+      85-87 m, 1,500-1,650 buildings in the city map): on 21.3 ms, off 20.6 ms, on 21.4 ms ->
+      49 / 47 FPS. Two rows; the Low-quality, near+middle and near-only rows were never measured
+      and are out of the table. For all five: city loaded, camera parked on a downtown, panel
+      closed, `tools\benchmark.ps1` (about 2.5 minutes, hands off; saves
+      `docs\benchmark-<date>.txt`).
 - [ ] A true first run: move `RealGlass.xml` aside, load a city, change nothing: the defaults
       look right, then put the file back.
 - [ ] The editors (added 2026-09-29, untested): in the Asset Editor, a glass building shows its
@@ -86,8 +92,9 @@ stands.
 - [x] `Workshop/Description.bbcode.txt` (Volumetric Weather's format, edited by the author, with
       a "For asset creators" section read from the game's importer IL: `_XYSMap.z` = 1 - `_s`,
       `_ACIMap` = (1 - `_a`, 1 - `_c`, `_i`), a LOD without `<name>_lod_d` gets its textures
-      baked from the main model's; shortened to the author's voice; about 6,000 of 8,000
-      characters counted Steam's way). Its table waits for step 2's numbers.
+      baked from the main model's; shortened to the author's voice). Cut to a tl;dr on
+      2026-09-29 evening at the author's request ("this mod is just a one-time thing"): one line
+      per section, the Features as the four tabs; about 2,800 of 8,000 characters Steam's way.
 - [x] `Workshop/ChangeNotes/1.0.0.bbcode.txt`.
 
 ## 6. Publish

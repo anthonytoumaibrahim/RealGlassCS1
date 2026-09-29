@@ -11,8 +11,8 @@ The first Workshop release: realistic glass on every building, at every distance
 
 - **The glass**: drawn over each building's own glass -- what the asset's author painted shiny,
   and optionally the windows it lights up at night -- near, middle-distance and far.
-- **Kinds of glass**: reflective blue (the default), clear low-E, aqua, ocean and sky blue, green,
-  bronze, grey, silver and gold reflective, with real products' tints, reflectance and
+- **Kinds of glass**: silver reflective (the default), reflective blue, clear low-E, aqua, ocean
+  and sky blue, green, bronze, grey and gold reflective, with real products' tints, reflectance and
   transmittance; or a colour of your own, and as much of the building's own painted colour as you
   like.
 - **Reflections**: the city on screen -- the finished picture, with its haze, clouds, lamps and

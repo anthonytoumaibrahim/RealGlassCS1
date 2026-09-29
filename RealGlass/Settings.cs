@@ -225,19 +225,19 @@ namespace RealGlass
             public const bool GlassEnabled = true;
 
             /// <summary>
-            /// Reflective blue (Solarcool Azuria's numbers): the author's own glass for the first
-            /// release (2026-09-29, the fourth time his settings became the defaults). The colour,
-            /// reflectivity and clarity below ARE the preset's (tools/test-settings.ps1).
+            /// Silver reflective: the author's own glass for the first release (2026-09-29, the
+            /// fifth time his settings became the defaults). The colour, reflectivity and clarity
+            /// below ARE the preset's (tools/test-settings.ps1).
             /// </summary>
-            public const int GlassPreset = GlassPresets.ReflectiveBlue;
+            public const int GlassPreset = GlassPresets.SilverReflective;
             public const float GlassOwnColour = 0.30f;
 
-            /// <summary>The Reflective blue preset's colour (#2E6A80): a static, because a Color32 cannot be a const.</summary>
-            public static readonly Color32 GlassColor = new Color32(0x2E, 0x6A, 0x80, 255);
-            public const float GlassReflectivity = 0.20f;
+            /// <summary>The Silver reflective preset's colour (#A9B4BA): a static, because a Color32 cannot be a const.</summary>
+            public static readonly Color32 GlassColor = new Color32(0xA9, 0xB4, 0xBA, 255);
+            public const float GlassReflectivity = 0.35f;
             public const float GlassGlancing = 0.80f;
             public const float GlassEdgeSilver = 1f;
-            public const float GlassClarity = 0.24f;
+            public const float GlassClarity = 0.20f;
             public const float GlassStrength = 1f;
             public const float GlassThreshold = 0.70f;
             public const bool GlassNightWindows = true;

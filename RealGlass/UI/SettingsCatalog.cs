@@ -682,11 +682,11 @@ namespace RealGlass.UI
                 DefaultInt = Settings.Defaults.GlassPreset,
                 ChoiceKeys = new[]
                 {
-                    "GlassPreset.ReflectiveBlue", "GlassPreset.OceanBlue", "GlassPreset.AquaBlue", "GlassPreset.SkyBlue",
-                    "GlassPreset.Green", "GlassPreset.Bronze", "GlassPreset.Grey", "GlassPreset.ClearLowE",
-                    "GlassPreset.SilverReflective", "GlassPreset.GoldReflective", "GlassPreset.Custom",
+                    "GlassPreset.SilverReflective", "GlassPreset.ReflectiveBlue", "GlassPreset.OceanBlue", "GlassPreset.AquaBlue",
+                    "GlassPreset.SkyBlue", "GlassPreset.Green", "GlassPreset.Bronze", "GlassPreset.Grey", "GlassPreset.ClearLowE",
+                    "GlassPreset.GoldReflective", "GlassPreset.Custom",
                 },
-                ChoiceValues = new[] { 10, 3, 2, 4, 5, 6, 7, 1, 8, 9, 0 },
+                ChoiceValues = new[] { 8, 10, 3, 2, 4, 5, 6, 7, 1, 9, 0 },
                 Enabled = GlassOn,
                 AfterChange = () =>
                 {

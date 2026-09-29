@@ -18,9 +18,9 @@ but untested.
 Open the panel with **F8** (or its Unified UI button). Everything about the glass is there, on
 four tabs:
 
-- **Glass** -- the kind of glass (reflective blue, ocean blue, aqua blue, sky blue, green, bronze,
-  grey, clear low-E, silver and gold reflective: real products' tints, reflectance and
-  transmittance), or your own colour;
+- **Glass** -- the kind of glass (silver reflective, the default; reflective blue, ocean blue, aqua
+  blue, sky blue, green, bronze, grey, clear low-E, gold reflective: real products' tints,
+  reflectance and transmittance), or your own colour;
   how much of the building's own painted colour to keep; how much it reflects head-on and at an
   angle, and how silvery it turns seen edge-on; how much light it lets through; and what counts
   as glass. "Show what counts as glass" paints it magenta, to check.

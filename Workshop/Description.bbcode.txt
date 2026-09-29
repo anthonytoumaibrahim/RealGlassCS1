@@ -1,6 +1,5 @@
-[h1]Version 1.0: First Release[/h1]
-Makes the glass on your buildings (especially skyscrapers) look real and mirroring the sky, the streets and the towers around it.
-Just as with the [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3805863507]Volumetric Weather[/url] mod, this mod was tested only on my Windows 11 PC and MacBook. If anything looks wrong or runs badly for you, please let me know in the comments.
+Makes the glass on your buildings, especially skyscrapers, look real, with [b]screen space reflections[/b] of the city around them and a live sky.
+Tested only on my Windows 11 PC and MacBook. If anything looks wrong or runs badly, let me know in the comments.
 
 [hr][/hr]
 [h1]Requirements[/h1]
@@ -11,77 +10,41 @@ Just as with the [url=https://steamcommunity.com/sharedfiles/filedetails/?id=380
 
 [hr][/hr]
 [h1]How to use[/h1]
-[olist]
-[*][b]Subscribe[/b] to this mod and to Harmony, then make sure both are enabled in [i]Content Manager → Mods[/i]. If you use Skyve, make sure the mod is enabled in it.
-[*][b]Load a city[/b] (new or saved) and the glass is there. It works in the Asset Editor and the Scenario Editor too.
-[*][b]Press F8[/b] (or click the mod's button in UUI) to open the in-game panel. Every setting of the glass is there, on four tabs.
-[/olist]
-The mod's own options (the panel's key, the button) are in the Pause Menu, under [i]Options → Real Glass[/i].
-The default settings are tested and work well with LUTs and [b]Render It![/b]. If you've changed things and want to start over, [i]Reset all settings to defaults[/i] is on the same page.
+Load a city (or the Asset or Scenario Editor) and press [b]F8[/b] for every setting. The defaults are tested with LUTs and [b]Render It![/b]; [i]Options → Real Glass[/i] has the key and [i]Reset all settings to defaults[/i].
 
 [hr][/hr]
 [h1]Features[/h1]
 [list]
-[*][b]Real glass on every building[/b], near and far. It is read from each asset's own textures, so it works with any building
-[*][b]Ten kinds of real glass[/b], with tints and reflectivity taken from real architectural glass
-[*][b]Reflections of your city[/b]: the streets, cars and towers on screen, with the fog, the clouds and the lights
-[*][b]The buildings around[/b]: the towers across the street show in the glass, even where the screen can't show them
-[*][b]A live sky[/b] in the glass that follows the time of day and the weather, with [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3805863507]Volumetric Weather[/url]'s clouds when you use it
-[*][b]Panes that bend the reflections[/b] like real facades
+[*][b]Glass[/b]: ten kinds of real architectural glass or your own color, and what counts as glass
+[*][b]Reflections[/b]: the city on screen, the buildings around, a live sky with [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3805863507]Volumetric Weather[/url]'s clouds, the sun's glint
+[*][b]Panes[/b]: their size, and how they bend the reflections like real facades
+[*][b]Rendering[/b]: how far the glass is drawn, and the sky's detail
 [/list]
 
 [hr][/hr]
 [h1]Performance[/h1]
-The glass is drawn by your GPU: it costs more at higher resolutions and with more glass on screen. Measured on my PC (RTX 5070 Ti, 4K, a downtown of about 2,000 buildings), with the camera still:
+Measured on my PC (RTX 5070 Ti, 4K, on large vanilla city):
 [table]
 [tr][th]Setting[/th][th]FPS[/th][th]Frame time[/th][/tr]
-[tr][td]Glass off[/td][td]TODO[/td][td]TODO ms[/td][/tr]
-[tr][td]Glass on: the whole city, reflection quality Ultra (default)[/td][td]TODO[/td][td]TODO ms[/td][/tr]
-[tr][td]Glass on: the whole city, reflection quality Low[/td][td]TODO[/td][td]TODO ms[/td][/tr]
-[tr][td]Glass on: near and middle buildings[/td][td]TODO[/td][td]TODO ms[/td][/tr]
-[tr][td]Glass on: near buildings only[/td][td]TODO[/td][td]TODO ms[/td][/tr]
+[tr][td]Glass off[/td][td]49[/td][td]20.6 ms[/td][/tr]
+[tr][td]Glass on, default settings (the whole city, reflection quality Ultra)[/td][td]47[/td][td]21.4 ms[/td][/tr]
 [/table]
-If the glass is too demanding, in the in-game panel:
-[list]
-[*]Set [i]Glass on[/i] (Rendering tab) to [i]Near and middle[/i] or [i]Near buildings[/i].
-[*]Lower [i]Reflection quality[/i] (Reflections tab).
-[*]Lower [i]Sky detail[/i] and [i]Sky updates[/i] (Rendering tab).
-[/list]
 
 [hr][/hr]
 [h1]Compatibility[/h1]
-Works with any building asset, with no setup: what counts as glass is read from each asset's own textures.
-Tested in my own game next to my usual mods, among them [b]Volumetric Weather[/b], [b]Render It![/b], [b]AD Cloud Replacer[/b], [b]Move It![/b], [b]TM:PE[/b] and [b]FPS Booster[/b], with no conflicts found.
-Made on Windows. Mac and Linux versions are included (Linux is not tested, please share feedback).
-[b]Removing the mod[/b] is safe: it saves nothing in your cities.
+Works with any building asset, no setup. No conflicts found with Volumetric Weather, Render It!, AD Cloud Replacer, Move It!, TM:PE or FPS Booster. Mac and Linux versions included (Linux untested). Safe to remove as it saves nothing in your cities.
 
 [hr][/hr]
 [h1]For asset creators[/h1]
-You don't need to do anything special, the mod reads the textures your asset already has:
-[list]
-[*][b]Specular map ([i]_s[/i])[/b]: anything 70% or brighter (180 out of 255) counts as glass, and no specular map means no glass. Keep shiny things that aren't glass (like metal) below 70%, or they turn into glass too.
-[*][b]Window frames[/b]: paint them darker in the specular map (below 60%) and the panes will follow your windows up close.
-[*][b]LODs[/b]: if you make your own LOD textures, include a specular map ([i]_lod_s[/i]) too, or the glass disappears when you zoom out.
-[/list]
-To check your building, open it in the [b]Asset Editor[/b]: the glass is there too, and zooming out shows your LOD's glass. Turn on [i]Show what counts as glass[/i] (Glass tab) and the glass turns magenta.
-The glass pauses while you use the Snapshot tool, so your asset's thumbnails and snapshots show it the way everyone else sees it.
+Anything 70% or brighter in your specular map ([i]_s[/i]) is glass, so keep shiny metal below that, and give your own LOD textures an [i]_lod_s[/i] too. Check it in the Asset Editor with [i]Show what counts as glass[/i] (Glass tab).
 
 [hr][/hr]
 [h1]Source code[/h1]
-The mod is open source under the MIT license. It includes two small MIT-licensed libraries: UnifiedUILib by kianzarrin and CitiesHarmony.API by boformer. Many thanks to both of them.
-[h3][url=https://github.com/anthonytoumaibrahim/RealGlassCS1]Open on GitHub[/url][/h3]
+Open source (MIT) on [url=https://github.com/anthonytoumaibrahim/RealGlassCS1]GitHub[/url]. Includes UnifiedUILib by kianzarrin and CitiesHarmony.API by boformer, thanks to both.
 
 [hr][/hr]
 [h1]Reporting a bug[/h1]
-Please include the following:
-[olist]
-[*][b]The game's log[/b], [i]output_log.txt[/i]. In Steam, right-click Cities: Skylines → [i]Manage → Browse local files[/i], then open the [i]Cities_Data[/i] folder. On a Mac it is [i]~/Library/Logs/Unity/Player.log[/i], on Linux [i]~/.config/unity3d/Colossal Order/Cities_Skylines/Player.log[/i].
-[*][b]The mod's own log[/b], [i]RealGlass.log[/i]. Tick [i]Detailed logging[/i] (Options → Real Glass) first, then make the problem happen again. To find it, paste this into File Explorer's address bar:
-[code]%LOCALAPPDATA%\Colossal Order\Cities_Skylines[/code]
-On a Mac it is in [i]~/Library/Application Support/Colossal Order/Cities_Skylines[/i], on Linux in [i]~/.local/share/Colossal Order/Cities_Skylines[/i].
-[*][b]What happened[/b]: what you did and expected, screenshots, your graphics card and your other mods.
-[/olist]
-Both logs start fresh at every launch, so copy them before restarting, upload them (Google Drive, Pastebin...) and post the link in the comments.
+Tick [i]Detailed logging[/i] (Options → Real Glass), make the problem happen again, then post [i]RealGlass.log[/i] (in [i]%LOCALAPPDATA%\Colossal Order\Cities_Skylines[/i]), the game's [i]output_log.txt[/i] and a screenshot in the comments. Both logs reset at every launch.
 
 [hr][/hr]
-This mod was made with substantial help from AI. I set the goals, made the design decisions, and did all of the in-game testing and tuning. Everything was checked against the game along the way.
+This mod was made with substantial help from AI. I set the goals, made the design decisions, and did all of the in-game testing and tuning.
