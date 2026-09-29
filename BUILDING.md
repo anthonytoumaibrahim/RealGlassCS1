@@ -61,6 +61,17 @@ against the code, both ways.
 shader in Unity 5.6, in the game's legacy deferred lighting, over test towers painted the way
 the game's assets are, and lays the frames out as a sheet in `tools\preview\out\`.
 
+## Measuring the cost
+
+```
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\benchmark.ps1
+```
+
+with the game running, a city loaded and the camera parked: it switches the glass off, on, and
+through its distance and reflection-quality settings by editing `RealGlass.xml` (the mod reads it
+within a second), holds each step 21 s, puts the file back byte for byte, and prints the frame
+times it read from `RealGlass.log` -- as text and as the Workshop page's BBCode table.
+
 ## Reading the game
 
 `tools\ilscan.ps1` is an IL "find usages" for the game's assemblies (what a method really does,

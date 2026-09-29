@@ -169,6 +169,12 @@ namespace RealGlass.Glass
             {
                 _params = GlassSettings.Read();
                 _dirty = false;
+
+                // A fresh 5 s for the detail line after a change of setting too, as after a change
+                // of state below: every frame time it gives is then all one setting's, and two of
+                // them compare (tools/benchmark.ps1 reads them so).
+                ResetCounters();
+                _nextDetail = Time.realtimeSinceStartup + 5f;
             }
 
             GlassParams p = _params;

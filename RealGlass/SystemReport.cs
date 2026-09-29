@@ -78,7 +78,6 @@ namespace RealGlass
                         " followWindows=" + On(Settings.PanesFollowWindows, Settings.Defaults.PanesFollowWindows));
 
                 Log.Msg("panel key: " + (Settings.PanelKey != null ? SettingsXmlFormat.FormatKey(Settings.PanelKey.value) : "?") +
-                        ", keep the game's debug panel off it=" + On(Settings.QuietDebugKey, Settings.Defaults.QuietDebugKey) +
                         ", Unified UI wanted=" + On(Settings.UseUnifiedUI, Settings.Defaults.UseUnifiedUI));
 
                 // Asked here, not inside: the method names Harmony's types, and without the Harmony

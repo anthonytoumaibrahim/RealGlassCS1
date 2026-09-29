@@ -20,17 +20,17 @@ namespace RealGlass.UI
         Key,
         Button,
 
-        /// <summary>A line of text the UI keeps up to date. The F7 panel only.</summary>
+        /// <summary>A line of text the UI keeps up to date. The F8 panel only.</summary>
         Status,
 
         /// <summary>A choice over <see cref="Row.ChoiceValues"/>: a slider of names in the panel, a dropdown on the options page.</summary>
         Choice,
 
-        /// <summary>A colour: swatch and picker, a text field, Copy, Paste, reset. The F7 panel only.</summary>
+        /// <summary>A colour: swatch and picker, a text field, Copy, Paste, reset. The F8 panel only.</summary>
         Colour,
     }
 
-    /// <summary>Which tab of the in-game (F7) panel a row appears on. None = not in it.</summary>
+    /// <summary>Which tab of the in-game (F8) panel a row appears on. None = not in it.</summary>
     public enum PanelPage { None, Glass, Reflections, Panes, Rendering }
 
     /// <summary>General = the game's mod options page (no tabs). None = not on it.</summary>
@@ -304,7 +304,7 @@ namespace RealGlass.UI
     /// </summary>
     /// <remarks>
     /// Built because the same rows are needed by two different UIs with two different widget
-    /// vocabularies (the F7 panel's hand-built controls and the options page's UIHelper
+    /// vocabularies (the F8 panel's hand-built controls and the options page's UIHelper
     /// factories), and keeping two imperative lists in step is how they drift. Reset-to-defaults
     /// walks this list, and so does RealGlass.xml: a setting with no row is never saved.
     ///
@@ -650,7 +650,7 @@ namespace RealGlass.UI
             _rows.Add(row);
         }
 
-        /// <summary>F7 -> Glass: the glass itself, and what counts as glass.</summary>
+        /// <summary>F8 -> Glass: the glass itself, and what counts as glass.</summary>
         private static void BuildGlass()
         {
             Add(new Row
@@ -819,7 +819,7 @@ namespace RealGlass.UI
             });
         }
 
-        /// <summary>F7 -> Reflections: what the glass mirrors. No group headings: the rows are few.</summary>
+        /// <summary>F8 -> Reflections: what the glass mirrors. No group headings: the rows are few.</summary>
         private static void BuildReflections()
         {
             Add(new Row
@@ -958,7 +958,7 @@ namespace RealGlass.UI
             });
         }
 
-        /// <summary>F7 -> Panes: the panes, and how they bend what they mirror.</summary>
+        /// <summary>F8 -> Panes: the panes, and how they bend what they mirror.</summary>
         private static void BuildPanes()
         {
             Add(new Row
@@ -1042,7 +1042,7 @@ namespace RealGlass.UI
             });
         }
 
-        /// <summary>F7 -> Rendering: how far the glass reaches, and what the live sky costs. The machine, not the look.</summary>
+        /// <summary>F8 -> Rendering: how far the glass reaches, and what the live sky costs. The machine, not the look.</summary>
         private static void BuildRendering()
         {
             Add(new Row
@@ -1116,16 +1116,6 @@ namespace RealGlass.UI
                 Key = Settings.PanelKey,
                 DefaultKey = Settings.DefaultPanelKey,
                 Profiled = false,
-            });
-
-            Add(new Row
-            {
-                Kind = RowKind.Toggle,
-                Options = OptionsPage.General,
-                Bool = Settings.QuietDebugKey,
-                DefaultBool = Settings.Defaults.QuietDebugKey,
-                Profiled = false,
-                AfterChange = DebugKeyPatch.Describe,
             });
 
             Add(new Row

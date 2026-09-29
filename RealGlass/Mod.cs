@@ -16,9 +16,9 @@ namespace RealGlass
         /// The release a player has: raised once per Workshop upload (the third number for a
         /// fix or a compatibility change, the second for new features), with its own section in
         /// CHANGELOG.md. Also the first three parts of the assembly version
-        /// (Properties/AssemblyInfo.cs). Not on the Workshop yet.
+        /// (Properties/AssemblyInfo.cs). 1.0.0 is the first Workshop release.
         /// </summary>
-        public const string Version = "0.1.0";
+        public const string Version = "1.0.0";
 
         /// <summary>
         /// The mods list and the options page show the version after the name, so a bug report
@@ -55,7 +55,7 @@ namespace RealGlass
         /// Called by the game via reflection when the options page is (re)built -- at least
         /// once per scene, and again whenever any mod is enabled or disabled. The mod itself is
         /// configured here (language, key, button, diagnostics, reset); every setting of the
-        /// glass is in the in-game panel (F7), where it can be judged against the city.
+        /// glass is in the in-game panel (F8), where it can be judged against the city.
         /// </summary>
         public void OnSettingsUI(UIHelperBase helper)
         {

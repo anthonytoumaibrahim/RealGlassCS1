@@ -9,8 +9,8 @@ namespace RealGlass.UI
 {
     /// <summary>
     /// The mod's page in the game's own options: the mod itself (language, the panel's key, the
-    /// debug key, the button, diagnostics, the reset). Every setting of the GLASS is in the
-    /// in-game panel (<see cref="GlassPanel"/>, F7), where it can be judged against the city.
+    /// button, diagnostics, the reset). Every setting of the GLASS is in the in-game panel
+    /// (<see cref="GlassPanel"/>, F8), where it can be judged against the city.
     /// </summary>
     /// <remarks>
     /// (Volumetric Weather's options page.) Two things about this page decide how it has to be
@@ -375,7 +375,6 @@ namespace RealGlass.UI
                 button.buttonsMask = UIMouseButton.Left;
                 button.text = row.Label + ":  " + key.ToLocalizedString("KEYNAME");
                 SettingsXml.SaveNow();
-                DebugKeyPatch.Describe();
             };
 
             return button;

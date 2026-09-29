@@ -44,7 +44,7 @@ namespace RealGlass.Glass
         public bool PaneWeather;
         public bool PanesFollowWindows;     // close up, the panes are the windows the asset painted
 
-        /// <summary>The defaults the mod ships (Settings.Defaults); tools/test-params.ps1 checks they agree.</summary>
+        /// <summary>The defaults the mod ships (Settings.Defaults); tools/test-settings.ps1 checks they agree.</summary>
         public static GlassParams Default()
         {
             GlassParams p;
@@ -53,7 +53,7 @@ namespace RealGlass.Glass
             p.TintG = 0x6A / 255f;
             p.TintB = 0x80 / 255f;
             p.OwnColour = 0.30f;
-            p.Reflectivity = 0.30f;
+            p.Reflectivity = 0.20f;
             p.Glancing = 0.80f;
             p.Clarity = 0.24f;
             p.Strength = 1.00f;
@@ -66,7 +66,7 @@ namespace RealGlass.Glass
             p.Finished = true;
             p.Neighbours = true;
             p.Quality = 3;
-            p.ReflectionBrightness = 0.50f;
+            p.ReflectionBrightness = 0.55f;
             p.SkySource = 0;
             p.SkyClouds = true;
             p.OffscreenFill = 0;
@@ -77,9 +77,9 @@ namespace RealGlass.Glass
 
             p.PaneWidth = 1.4f;
             p.FloorHeight = 3.8f;
-            p.Pillow = 3.00f;
-            p.Tilt = 3.00f;
-            p.RollerWave = 3.00f;
+            p.Pillow = 1.50f;
+            p.Tilt = 1.50f;
+            p.RollerWave = 1.50f;
             p.PaneWeather = true;
             p.PanesFollowWindows = true;
             return p;

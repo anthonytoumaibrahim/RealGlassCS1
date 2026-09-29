@@ -9,8 +9,8 @@ namespace RealGlass
     /// <summary>
     /// Harmony bootstrap. The CitiesHarmony mod provides the actual Harmony assembly at runtime,
     /// so patching is deferred until it reports ready rather than assumed. Every [HarmonyPatch]
-    /// class in this assembly is applied, each on its own so one failure cannot stop the rest:
-    /// the glass's draw hooks and the panel key's DebugKeyPatch alike.
+    /// class in this assembly is applied, each on its own so one failure cannot stop the rest.
+    /// Today they are all the glass's draw hooks (namespace RealGlass.Glass).
     /// </summary>
     /// <remarks>
     /// CitiesHarmony's Harmony is 2.0.4, which writes an <c>object[] __args</c> back over every
@@ -69,7 +69,8 @@ namespace RealGlass
                 return;
 
             // One class at a time, not PatchAll: PatchAll stops at the first class that throws, and
-            // the panel key's DebugKeyPatch once took every glass hook down with it (2026-09-28).
+            // a patch on the game's debug panel (removed since) once took every glass hook down
+            // with it (2026-09-28).
             Harmony harmony;
             Type[] types;
             try

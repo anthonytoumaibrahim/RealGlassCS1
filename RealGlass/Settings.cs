@@ -44,15 +44,8 @@ namespace RealGlass
         /// </summary>
         public static IntSetting Language { get; private set; }
 
-        /// <summary>Opens and closes the in-game panel. F7 by default.</summary>
+        /// <summary>Opens and closes the in-game panel. F8 by default.</summary>
         public static SavedInputKey PanelKey { get; private set; }
-
-        /// <summary>
-        /// On (the default): while <see cref="PanelKey"/> is also the game's own "debug output"
-        /// key (F7 out of the box), pressing it in a city opens only this mod's panel, not the
-        /// game's debug panel too (<see cref="UI.DebugKeyPatch"/>).
-        /// </summary>
-        public static BoolSetting QuietDebugKey { get; private set; }
 
         /// <summary>Puts the panel's button in Unified UI's bar (when that is there), else on the HUD.</summary>
         public static BoolSetting UseUnifiedUI { get; private set; }
@@ -71,7 +64,7 @@ namespace RealGlass
         public static FloatSetting HudButtonX { get; private set; }
         public static FloatSetting HudButtonY { get; private set; }
 
-        // ---- F7 -> Glass ---------------------------------------------------------------------
+        // ---- F8 -> Glass ---------------------------------------------------------------------
 
         /// <summary>The master switch: off, nothing of the glass is drawn.</summary>
         public static BoolSetting GlassEnabled { get; private set; }
@@ -116,7 +109,7 @@ namespace RealGlass
         /// <summary>A check: paints what counts as glass magenta instead of drawing it.</summary>
         public static BoolSetting GlassShowMask { get; private set; }
 
-        // ---- F7 -> Reflections ---------------------------------------------------------------
+        // ---- F8 -> Reflections ---------------------------------------------------------------
 
         /// <summary>Screen-space reflections: the glass reflects what is on screen.</summary>
         public static BoolSetting SsrEnabled { get; private set; }
@@ -167,7 +160,7 @@ namespace RealGlass
         /// <summary>0..0.5: how far in from the screen's edges screen reflections fade out.</summary>
         public static FloatSetting SsrEdgeFade { get; private set; }
 
-        // ---- F7 -> Panes ---------------------------------------------------------------------
+        // ---- F8 -> Panes ---------------------------------------------------------------------
 
         /// <summary>Metres: the width of one pane of glass.</summary>
         public static FloatSetting PaneWidth { get; private set; }
@@ -200,7 +193,7 @@ namespace RealGlass
         // lit windows at night, untouched): by day a dark inside (GlassUniforms), by night the
         // game's own window.
 
-        // ---- F7 -> Rendering -----------------------------------------------------------------
+        // ---- F8 -> Rendering -----------------------------------------------------------------
 
         /// <summary>0: near buildings only. 1: near and middle distance. 2: the whole city.</summary>
         public static IntSetting GlassDistance { get; private set; }
@@ -221,7 +214,6 @@ namespace RealGlass
 
             /// <summary>The game's own language.</summary>
             public const int Language = 0;
-            public const bool QuietDebugKey = true;
             public const bool UseUnifiedUI = true;
             public const bool DetailedLogging = false;
 
@@ -233,15 +225,16 @@ namespace RealGlass
             public const bool GlassEnabled = true;
 
             /// <summary>
-            /// Custom: the author's own glass (2026-09-28, the third time his settings became the
-            /// defaults) -- Reflective blue's colour and clarity, reflecting 30% head-on instead of 20%.
+            /// Reflective blue (Solarcool Azuria's numbers): the author's own glass for the first
+            /// release (2026-09-29, the fourth time his settings became the defaults). The colour,
+            /// reflectivity and clarity below ARE the preset's (tools/test-settings.ps1).
             /// </summary>
-            public const int GlassPreset = GlassPresets.Custom;
+            public const int GlassPreset = GlassPresets.ReflectiveBlue;
             public const float GlassOwnColour = 0.30f;
 
             /// <summary>The Reflective blue preset's colour (#2E6A80): a static, because a Color32 cannot be a const.</summary>
             public static readonly Color32 GlassColor = new Color32(0x2E, 0x6A, 0x80, 255);
-            public const float GlassReflectivity = 0.30f;
+            public const float GlassReflectivity = 0.20f;
             public const float GlassGlancing = 0.80f;
             public const float GlassEdgeSilver = 1f;
             public const float GlassClarity = 0.24f;
@@ -255,7 +248,7 @@ namespace RealGlass
             public const bool ReflectFinished = true;
             public const bool ReflectNeighbours = true;
             public const int SsrQuality = 3;          // Ultra
-            public const float ReflectionBrightness = 0.5f;
+            public const float ReflectionBrightness = 0.55f;
             public const int SkyReflection = 0;       // the live sky, with the clouds
             public const bool SkyClouds = true;
             public const int OffscreenFill = 0;       // the mirrored screen
@@ -264,12 +257,12 @@ namespace RealGlass
             public const float GlassSmoothness = 1f;
             public const float SsrEdgeFade = 0.50f;
 
-            // ---- Panes ---- (the author's: every bend at the top of its slider)
+            // ---- Panes ---- (the author's: every bend at half its slider)
             public const float PaneWidth = 1.4f;
             public const float FloorHeight = 3.8f;    // an office storey
-            public const float PanePillow = 3f;
-            public const float PaneTilt = 3f;
-            public const float RollerWave = 3f;
+            public const float PanePillow = 1.5f;
+            public const float PaneTilt = 1.5f;
+            public const float RollerWave = 1.5f;
             public const bool PaneWeather = true;
             public const bool PanesFollowWindows = true;
 
@@ -346,7 +339,6 @@ namespace RealGlass
 
                 Language = new IntSetting("Language", Defaults.Language);
                 PanelKey = new SavedInputKey("PanelKey", InMemory, DefaultPanelKey, false);
-                QuietDebugKey = new BoolSetting("QuietDebugKey", Defaults.QuietDebugKey);
                 UseUnifiedUI = new BoolSetting("UseUnifiedUI", Defaults.UseUnifiedUI);
                 DetailedLogging = new BoolSetting("DetailedLogging", Defaults.DetailedLogging);
 
@@ -367,10 +359,15 @@ namespace RealGlass
             SettingsXml.Load();
         }
 
-        /// <summary>F7 (asked for). A property because SavedInputKey.Encode is a method, so it cannot be a const.</summary>
+        /// <summary>
+        /// F8 (asked for, 2026-09-29): F7 is the game's own debug-output key
+        /// (DefaultSettings.debugOuput), and the game binds no other F key but F1 (quick save) and
+        /// F12 (screenshots); the sister mods have F3, F4 and F6. A property because
+        /// SavedInputKey.Encode is a method, so it cannot be a const.
+        /// </summary>
         public static int DefaultPanelKey
         {
-            get { return SavedInputKey.Encode(KeyCode.F7, false, false, false); }
+            get { return SavedInputKey.Encode(KeyCode.F8, false, false, false); }
         }
 
         /// <summary>The live sky cube's face size in pixels, from <see cref="SkyCubeSize"/>: 64, 128 or 256.</summary>

@@ -589,7 +589,7 @@ namespace RealGlass
             {
                 int encoded;
                 if (!SettingsXmlFormat.TryParseKey(text, out encoded))
-                    return "ignored: not a key (F7, Ctrl+Shift+G, None)";
+                    return "ignored: not a key (F8, Ctrl+Shift+G, None)";
 
                 row.Key.value = encoded;
                 return null;

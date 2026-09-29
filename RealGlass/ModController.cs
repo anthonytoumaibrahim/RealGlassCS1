@@ -48,7 +48,6 @@ namespace RealGlass
             Log.ReportLevel();
             SystemReport.Write();
             SettingsCatalog.LogLayout();
-            DebugKeyPatch.Describe();
 
             CreatePanel();
 

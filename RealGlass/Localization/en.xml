@@ -57,7 +57,7 @@
 
   <String key="Key.Press">Press a key</String>
 
-  <!-- ==================== F7 panel: Glass ==================== -->
+  <!-- ==================== F8 panel: Glass ==================== -->
 
   <!-- The status line at the top of the Glass tab. {0} {1} {2}: buildings drawn with glass
        last frame, near / middle distance / far blocks. -->
@@ -117,7 +117,7 @@
   <String key="GlassShowMask.Label">Show what counts as glass</String>
   <String key="GlassShowMask.Tooltip">Paints the glass magenta, to check the settings above.</String>
 
-  <!-- ==================== F7 panel: Reflections ==================== -->
+  <!-- ==================== F8 panel: Reflections ==================== -->
 
   <String key="SsrEnabled.Label">Reflect what is on screen</String>
   <String key="SsrEnabled.Tooltip">Streets, cars and buildings in view show in the glass.</String>
@@ -164,7 +164,7 @@
   <String key="SsrEdgeFade.Label">Fade at the screen's edges</String>
   <String key="SsrEdgeFade.Tooltip">Softens reflections cut off by the edge of the screen.</String>
 
-  <!-- ==================== F7 panel: Panes ==================== -->
+  <!-- ==================== F8 panel: Panes ==================== -->
 
   <String key="PaneWidth.Label">Pane width</String>
   <String key="PaneWidth.Tooltip">Each pane bends what it mirrors on its own.</String>
@@ -189,7 +189,7 @@
   <String key="PanesFollowWindows.Label">Panes follow the windows</String>
   <String key="PanesFollowWindows.Tooltip">Up close, each pane fits a window the building painted.</String>
 
-  <!-- ==================== F7 panel: Rendering ==================== -->
+  <!-- ==================== F8 panel: Rendering ==================== -->
 
   <String key="GlassDistance.Label">Glass on</String>
   <String key="GlassDistance.Tooltip">Fewer buildings cost less frame rate in big cities.</String>
@@ -218,9 +218,6 @@
 
   <String key="PanelKey.Label">Open this panel</String>
   <String key="PanelKey.Tooltip">Click, then press a key.</String>
-
-  <String key="QuietDebugKey.Label">Keep the game's debug panel off this key</String>
-  <String key="QuietDebugKey.Tooltip">F7 is also the game's debug key. On: only this panel opens.</String>
 
   <String key="UseUnifiedUI.Label">Show icon in Unified UI</String>
   <String key="UseUnifiedUI.Tooltip">Puts the button in the Unified UI bar.</String>
@@ -294,7 +291,7 @@
   <String key="File.Readout">(slider: {0} to {1})</String>
   <String key="File.Toggle">{0}. true or false, default {1}.</String>
   <String key="File.Choice">{0}. One of {1}; default {2}.</String>
-  <String key="File.Key">{0}. A key such as F7 or Ctrl+Shift+G, or None; default {1}.</String>
+  <String key="File.Key">{0}. A key such as F8 or Ctrl+Shift+G, or None; default {1}.</String>
   <String key="File.Colour">{0}. A colour, #RRGGBB (42, 92, 120 is read too); default {1}.</String>
   <String key="File.Confirm">Switching it on here skips the question the game asks first.</String>
 

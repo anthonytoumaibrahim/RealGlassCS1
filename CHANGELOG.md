@@ -3,17 +3,18 @@
 All notable changes to Real Glass. The version is `Mod.Version` in `RealGlass/Mod.cs`, shown after
 the mod's name in the game.
 
-## 0.1.0 — unreleased
+## 1.0.0 — unreleased
 
-The first version: realistic glass on every building, at every distance.
+The first Workshop release: realistic glass on every building, at every distance.
 
 ### New
 
 - **The glass**: drawn over each building's own glass -- what the asset's author painted shiny,
   and optionally the windows it lights up at night -- near, middle-distance and far.
-- **Kinds of glass**: clear low-E, aqua, ocean and sky blue, green, bronze, grey, silver and gold
-  reflective, with real products' tints, reflectance and transmittance; or a colour of your own,
-  and as much of the building's own painted colour as you like.
+- **Kinds of glass**: reflective blue (the default), clear low-E, aqua, ocean and sky blue, green,
+  bronze, grey, silver and gold reflective, with real products' tints, reflectance and
+  transmittance; or a colour of your own, and as much of the building's own painted colour as you
+  like.
 - **Reflections**: the city on screen -- the finished picture, with its haze, clouds, lamps and
   the other glass -- the buildings around where the screen cannot show them (a map of the city's
   roof heights, walked by every ray that misses the screen: the towers across a street, not open
@@ -29,7 +30,6 @@ The first version: realistic glass on every building, at every distance.
 - **Quality in one place**: every costly part of the glass (the walk over the city, the searches
   for painted panes, the depth pyramid) takes its budget from one table of four tiers, ready for
   a quality choice; the mod runs the highest.
-- **The panel on F7** (or its Unified UI button), four tabs, every setting of the glass. F7 is
-  also the game's debug-output key: while it is this mod's key, it opens only this mod's panel in
-  a city (a switch on the options page).
+- **The panel on F8** (or its Unified UI button), four tabs, every setting of the glass. (F7, the
+  first choice, is the game's own debug-output key.)
 - **RealGlass.xml**: every setting in a file you can read and edit while the game runs.

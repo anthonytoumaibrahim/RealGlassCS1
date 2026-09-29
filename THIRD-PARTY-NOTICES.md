@@ -14,7 +14,7 @@ ecosystem.
 
 | Component | Author | Licence | Use |
 | --- | --- | --- | --- |
-| [`UnifiedUILib.dll`](https://github.com/kianzarrin/UnifiedUI) | kianzarrin | MIT | Registers the mod's button with Unified UI, and hosts the button panel itself when the Unified UI mod is not enabled |
+| [`UnifiedUILib.dll`](https://github.com/kianzarrin/UnifiedUI) | kianzarrin | MIT | Registers the mod's button with Unified UI when the Unified UI mod (or another mod's Unified UI panel) is there; otherwise the mod shows a button of its own |
 | [`CitiesHarmony.API.dll`](https://github.com/boformer/CitiesHarmony) | boformer | MIT | Bootstrap shim: waits for the Harmony mod and prompts the player to install it if it is missing |
 
 ## Code adapted into the shaders
@@ -55,7 +55,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 | Asset | Source | Licence | Use |
 | --- | --- | --- | --- |
-| `RealGlass/Resources/GlassIcon.png` | Drawn by `tools/make-icon.ps1` (System.Drawing) for this mod | MIT, as the rest | The mod's button icon, embedded in the DLL |
+| `RealGlass/Resources/GlassIcon.png` | [*Window*](https://openclipart.org/detail/173814/window) by ali2013 on Openclipart (2012), as an 80×80 PNG with a transparent background | Public domain (CC0 1.0) | The mod's button icon, embedded in the DLL. No attribution is required; this entry records where it came from, with thanks |
 
 ## Build-time only
 

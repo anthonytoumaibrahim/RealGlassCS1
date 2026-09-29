@@ -1,0 +1,109 @@
+# Release checklist — Steam Workshop (Real Glass 1.0.0)
+
+Everything that has to be true before the first upload, in the order the steps block each other.
+The facts about the game's upload flow were read from its IL for Volumetric Weather
+(`WorkshopModUploadPanel`, `PluginInfo`, `WorkshopHelper`) and hold for every mod of the game;
+that repo's `docs/RELEASE-CHECKLIST.md` has the long version.
+
+## Where each piece lives
+
+| Piece | Defined where | Notes |
+| --- | --- | --- |
+| Mod name and version in Content Manager | `Mod.DisplayName`, `Mod.Version` in `Mod.cs` | "Real Glass 1.0.0" |
+| Mod description in Content Manager | `Mod.Description` in `Localization/en.xml` | "Realistic glass on buildings" |
+| Button icon | `RealGlass/Resources/GlassIcon.png` | Embedded; 80 × 80 RGBA, transparent background (Unified UI and the HUD button draw it at 40 and 36) |
+| Workshop title | Typed into the game's Share panel | Pre-filled from the folder name `RealGlass`: type **Real Glass** |
+| Workshop description | `Workshop/Description.bbcode.txt`, pasted into the panel | BBCode; Steam caps it at 8000 characters counting each line break twice and each apostrophe as `&#39;` |
+| Change note | `Workshop/ChangeNotes/1.0.0.bbcode.txt` | Pasted into the same panel |
+| Preview image | `Workshop/PreviewImage.png`, dropped into the STAGING folder at upload | 512 × 512 PNG, under 1 MB. A copy in the mod folder is never used as the preview |
+| Screenshots | The item's Steam page, *Add/Edit images* | 5–8, 1920 × 1080 or larger, 16:9, each under 1 MB |
+| Required items, visibility, tags | The item's Steam page | Harmony `2040656402` |
+
+## 1. Code and content
+
+- [x] Panel key **F8** (2026-09-29). F7 is the game's debug-output key; the patch that kept the
+      game's debug panel off F7 is removed with its options row: FPS Booster (a PatchLoader
+      patch) renames the game's `Update()` methods to `FpsBoosterUpdate`, so the patch could not
+      find its target and wrote a WARN and an ERROR to every player's log who runs it. The game
+      binds no F key but F1, F7 and F12; the sister mods have F3, F4, F6.
+- [x] Defaults = the author's settings of 2026-09-29: Reflective blue (20% / 24%), reflection
+      brightness 55%, cushioned panes, pane tilt and ripple 150%. Detailed logging stays off.
+- [x] `Mod.Version` 1.0.0.
+- [x] Tests: `tools\test-settings.ps1` and `tools\test-localization.ps1` pass; the three shader
+      bundles carry real code for every API (`tools\bundle-apis.ps1`: D3D11 + OpenGL Core, OpenGL
+      Core, Metal + OpenGL Core). No shader changed since they were built.
+- [x] `git grep -i -E "anthony|ibrahim" -- . ":(exclude)README.md" ":(exclude)LICENSE"` is empty.
+      (The Workshop description's GitHub link carries the account name, as Volumetric Weather's.)
+- [x] Button icon (2026-09-29): Openclipart's *Window* by ali2013 (public domain, CC0 1.0),
+      80 × 80, recorded in THIRD-PARTY-NOTICES.md and README.md; `tools/make-icon.ps1`, which
+      drew the old one over this file, deleted. Still to see: how it reads at 40 px on the
+      Unified UI bar and on the HUD button.
+- [ ] `CHANGELOG.md`: date the 1.0.0 section on upload day.
+
+## 2. Verified in the game
+
+- [ ] A session on build 1.0.0.x with Detailed logging on: the log's first line says 1.0.0,
+      F8 opens the panel and F7 only the game's debug panel, and the log has no WARN or ERROR.
+- [ ] **The performance table**: city loaded, camera parked on a downtown, panel closed, then
+      `tools\benchmark.ps1` (about 2.5 minutes, hands off). Its numbers replace the TODO cells of
+      the description's table; it saves them in `docs\benchmark-<date>.txt`.
+- [ ] A true first run: move `RealGlass.xml` aside, load a city, change nothing: the defaults
+      look right, then put the file back.
+- [ ] `output_log.txt` has no exception from RealGlass.
+
+## 3. The folder that gets uploaded
+
+The Workshop uploads `%LOCALAPPDATA%\Colossal Order\Cities_Skylines\Addons\Mods\RealGlass` as it
+stands.
+
+- [x] Exactly three files: `RealGlass.dll`, `UnifiedUILib.dll`, `CitiesHarmony.API.dll` (no PDB).
+      UnifiedUILib.dll must ship: our code references its types, and the game resolves a
+      reference by NAME among the assemblies already loaded (`BuildConfig.CurrentDomain_
+      AssemblyResolve`); a player with no other mod carrying it would get "Assembly resolution
+      failure" and no glass at all. 26 installed mods ship their own copy the same way (Move It!,
+      TM:PE, Find It!...), most of them the same 2.2.12.31246 as ours. It is the library, not the
+      Unified UI mod, which stays optional.
+- [ ] The deployed build is the one tested in step 2.
+
+## 4. Images
+
+- [ ] `Workshop/PreviewImage.png`: 512 × 512, legible as a ~270 px thumbnail.
+- [ ] 5–8 screenshots in `Workshop/Screenshots/`; the first one is shown beside the description.
+      Glass towers by day, the same towers at sunset, a street-level view with the reflections,
+      night (lit windows untouched), the F8 panel.
+
+## 5. Text
+
+- [x] `Workshop/Description.bbcode.txt` (Volumetric Weather's format, edited by the author, with
+      a "For asset creators" section read from the game's importer IL: `_XYSMap.z` = 1 - `_s`,
+      `_ACIMap` = (1 - `_a`, 1 - `_c`, `_i`), a LOD without `<name>_lod_d` gets its textures
+      baked from the main model's; shortened to the author's voice; about 6,000 of 8,000
+      characters counted Steam's way). Its table waits for step 2's numbers.
+- [x] `Workshop/ChangeNotes/1.0.0.bbcode.txt`.
+
+## 6. Publish
+
+1. Content Manager → **Mods** → Real Glass → **Share**.
+2. The game makes `WorkshopStagingArea\<GUID>\` with its own `PreviewImage.png` and the mod folder
+   under `Content\`. Click the folder button and overwrite that `PreviewImage.png` with ours;
+   check the thumbnail changed on screen.
+3. Title **Real Glass**, the description, the change note. **Share**.
+
+## 7. On the Steam page, straight away
+
+- [ ] **Make the GitHub repository public**: `RealGlassCS1` (the remote `origin`) was PRIVATE on
+      2026-09-29, and the description links it.
+- [ ] *Add/Remove Required Items* → Harmony, `2040656402`.
+- [ ] Screenshots; tags beyond the automatic `Mod`; the description renders (the table, the links).
+- [ ] Visibility **Public**.
+
+## 8. After publishing
+
+- [ ] Park the local `Addons\Mods\RealGlass` (move it aside, never delete) so it cannot load
+      beside the subscribed copy.
+- [ ] Subscribe and load a city on the published copy.
+- [ ] README: replace "Not on the Workshop yet" with the item's link. CHANGELOG: the published file
+      id. Tag `v1.0.0` on the commit that was uploaded.
+- [ ] Every later update is shared from the SUBSCRIBED folder (`steamapps\workshop\content\255710\
+      <id>`), whose button reads **Update**: sharing from `Addons\Mods` creates a second item.
+      Volumetric Weather's CLAUDE.md, "Publishing an update", has the steps.

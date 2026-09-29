@@ -5,7 +5,10 @@ using UnityEngine;
 
 namespace RealGlass
 {
-    /// <summary>Loads the mod icon (drawn by tools/make-icon.ps1) out of the assembly's embedded resources.</summary>
+    /// <summary>
+    /// Loads the mod icon (Openclipart's "Window" by ali2013, public domain, 80 x 80: see
+    /// THIRD-PARTY-NOTICES.md) out of the assembly's embedded resources.
+    /// </summary>
     internal static class IconLoader
     {
         private const string ResourceName = "RealGlass.Resources.GlassIcon.png";

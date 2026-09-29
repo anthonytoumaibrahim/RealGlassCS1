@@ -6,8 +6,8 @@
 # What is covered:
 # - SettingsXmlFormat, the text of RealGlass.xml: numbers survive the trip slider -> file -> slider
 #   exactly, in any Windows culture; the spellings a hand edit may use are read (and the dangerous
-#   ones refused: "0,5", "NaN", "8" meaning Backspace); keys format and parse both ways, F7 (the
-#   panel's key) included; a written file parses back to the same values, comments included (an
+#   ones refused: "0,5", "NaN", "8" meaning Backspace); keys format and parse both ways, F8 (the
+#   panel's key, and the default the DLL carries) included; a written file parses back to the same values, comments included (an
 #   XML comment may not hold "--", and the labels do); a broken or foreign file is reported,
 #   never half-read.
 # - ColorText, the colour field's and the file's reader: #RRGGBB both ways, the other spellings.
@@ -207,9 +207,11 @@ Check "maybe"  (TryBool "maybe") "refused"
 # ---- keys -------------------------------------------------------------------------------
 
 $ctrl = 0x40000000; $shift = 0x20000000; $alt = 0x10000000
-$F7 = 288; $G = 103; $Alpha8 = 56; $Backspace = 8
+$F7 = 288; $F8 = 289; $G = 103; $Alpha8 = 56; $Backspace = 8
 
-Check "F7 (this mod's key) out"  ($fmt::FormatKey($F7)) "F7"
+Check "F8 (this mod's key) out"  ($fmt::FormatKey($F8)) "F8"
+Check "F8 in"                    (TryKey "F8") $F8
+Check "the panel key's default is F8, not the game's debug key F7" ($fmt::FormatKey($settings::DefaultPanelKey)) "F8"
 Check "F7 in"                    (TryKey "F7") $F7
 Check "Ctrl+Shift+G out"         ($fmt::FormatKey($G -bor $ctrl -bor $shift)) "Ctrl+Shift+G"
 Check "Alt+F7 out"               ($fmt::FormatKey($F7 -bor $alt)) "Alt+F7"
@@ -335,7 +337,7 @@ $list = [Activator]::CreateInstance([System.Collections.Generic.List``1].MakeGen
 $list.Add((Entry "In-game panel: Glass tab" $null "GlassEnabled" "true" "Realistic glass. true or false, default true."))
 $list.Add((Entry "In-game panel: Glass tab" "The glass" "GlassReflectivity" "12" "Reflectivity, head-on, in %. 0 to 60, default 12."))
 $list.Add((Entry "In-game panel: Glass tab" $null "GlassColor" "#2A5C78" "A label -- with a dash -- and one at the end -"))
-$list.Add((Entry "The game's options page" $null "PanelKey" "F7" "Open this panel. A key such as F7."))
+$list.Add((Entry "The game's options page" $null "PanelKey" "F8" "Open this panel. A key such as F8."))
 $list.Add((Entry "The game's options page" $null "Odd" "<&>" $null))
 $text = $fmt::Write($list, "Header line one`nHeader -- line two ends in a dash -")
 
@@ -346,7 +348,7 @@ if ($r.Values -ne $null) {
     Check "a switch"          $r.Values["GlassEnabled"] "true"
     Check "a percentage"      $r.Values["GlassReflectivity"] "12"
     Check "a colour"          $r.Values["GlassColor"] "#2A5C78"
-    Check "a key"             $r.Values["PanelKey"] "F7"
+    Check "a key"             $r.Values["PanelKey"] "F8"
     Check "escaped text"      $r.Values["Odd"] "<&>"
     Check "names ignore case" $r.Values["glassreflectivity"] "12"
     Check "five values"       $r.Values.Count 5

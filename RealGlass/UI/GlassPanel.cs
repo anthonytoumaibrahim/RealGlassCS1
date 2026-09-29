@@ -5,7 +5,7 @@ using UnityEngine;
 namespace RealGlass.UI
 {
     /// <summary>
-    /// The in-game panel (F7): every setting of the glass, judged against the city.
+    /// The in-game panel (F8): every setting of the glass, judged against the city.
     /// </summary>
     /// <remarks>
     /// Four tabs, one per <see cref="PanelPage"/>:

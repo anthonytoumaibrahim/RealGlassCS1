@@ -9,11 +9,13 @@ the building: a faint, even reflection of a fixed sky picture, the same at every
 glass is mostly dark and mostly reflective, far more so seen edge-on than straight on, and it
 mirrors what is actually around it, bent a little by every pane -- by day and by night.
 
-**Not on the Workshop yet.** Requires the **Harmony** mod (2040656402).
+**Not on the Workshop yet.** Requires the **Harmony** mod (2040656402); Unified UI is optional.
+Made and tested on Windows (Direct3D 11); the Mac (Metal) and Linux (OpenGL) builds are included
+but untested.
 
 ## Using it
 
-Open the panel with **F7** (or its Unified UI button). Everything about the glass is there, on
+Open the panel with **F8** (or its Unified UI button). Everything about the glass is there, on
 four tabs:
 
 - **Glass** -- the kind of glass (reflective blue, ocean blue, aqua blue, sky blue, green, bronze,
@@ -33,10 +35,6 @@ four tabs:
 
 The game's options page holds the mod itself: its language, the panel's key, the button,
 diagnostics and a reset.
-
-**F7 is also the game's own key** for its debug-output panel. While it is this mod's key too,
-pressing it in a city opens only this mod's panel ("Keep the game's debug panel off this key",
-on the options page, on by default). At the main menu it still opens the game's.
 
 Settings are kept in `RealGlass.xml` in the game's data folder (on Windows
 `%LOCALAPPDATA%\Colossal Order\Cities_Skylines`), which you can also edit while the game runs;
@@ -166,7 +164,8 @@ mod is provided as-is, with no warranty of any kind.
 The source is distributed under the [MIT License](LICENSE), copyright © 2026 Anthony Ibrahim. The
 screen-space ray tracer is adapted from McGuire and Mara's BSD 2-Clause code; it, the libraries
 shipped with the mod and the published techniques it builds on are credited in
-[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md). The button's icon is
+[*Window*](https://openclipart.org/detail/173814/window) by ali2013 on Openclipart, public domain.
 
 Cities: Skylines is © Colossal Order Ltd., published by Paradox Interactive AB. Unity is a
 trademark of Unity Technologies. This is an unofficial fan-made mod, not affiliated with or
