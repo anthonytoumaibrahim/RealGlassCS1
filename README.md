@@ -76,6 +76,14 @@ the log is `RealGlass.log`, next to it.
   reflections on top. By night, each window exactly as the game draws it: which windows are lit,
   how brightly and in what colour is every asset's own night texture and the game's timing, and
   the mod leaves it alone -- it only adds the reflections.
+- **Painted detail kept**: an asset whose whole facade is marked shiny -- a full-glass tower --
+  still has its floors, slab bands and frames painted in its colour map. Where that painting
+  stands out from the storey round it, the glass steps aside and the building shows as its
+  author painted it; the glass between keeps its reflections.
+- **Glass per asset**: Alt+G (rebindable) turns a building picker on, as BOB's Alt+B does; click a
+  building, and the panel's Asset tab gives its asset -- every copy of it, in every city -- a
+  strength, painted detail and kind of glass of its own, each row following the global setting
+  until it is moved. Kept in RealGlassAssets.xml next to the settings, never in a save.
 - **Panes** bend reflections the way real facades do: insulating units bow with the weather,
   toughened glass carries the furnace rollers' ripple, and no two panes are set quite alike. Up
   close, each pane is one of the windows the building painted, found between its painted mullions
@@ -144,6 +152,10 @@ Every technique here has shipped in a game or is published:
     passes behind are crossed too, as Art Tevs, Ivo Ihrke and Hans-Peter Seidel's **Maximum
     Mipmaps for Fast, Accurate, and Scalable Dynamic Height Field Rendering** (I3D 2008) bound a
     height field from both sides.
+13. The painted lines kept: unsharp masking -- each pixel against a blurred copy of the picture
+    -- after William F. Schreiber, **Wirephoto Quality Improvement by Unsharp Masking**, Pattern
+    Recognition 2(2), 1970; the blurred copy, a storey wide, is a coarser level of the asset's own
+    mipmap: Lance Williams, **Pyramidal Parametrics**, SIGGRAPH 1983.
 
 ## Building
 

@@ -95,7 +95,27 @@ public static class GlassPreview
 
         /// <summary>The city from above (the mod's CityMap, same file): every tower as its box.</summary>
         public CityMap City = new CityMap();
+
+        /// <summary>Each building's own glass (the mod's AssetTextures, same file): what "A.*" sets.</summary>
+        public AssetTextures Assets = new AssetTextures();
+
+        /// <summary>The id of the middle block's first full-glass tower: the building "A.*" gives its own glass.</summary>
+        public int FullGlassId;
     }
+
+    /// <summary>The variant's "A.Field=value": the full-glass tower's own settings (its asset's, in the mod).</summary>
+    private sealed class AssetOverride
+    {
+        public float? Strength, Detail, Reflectivity, Clarity, Own;
+        public Color? Tint;
+
+        public bool HasGlass
+        {
+            get { return Reflectivity.HasValue || Clarity.HasValue || Own.HasValue || Tint.HasValue; }
+        }
+    }
+
+    private static AssetOverride _asset;
 
     /// <summary>The variant's "Tier=near|lod|group": which of the game's three paths the glass is drawn through.</summary>
     private static string _tier = "near";
@@ -168,6 +188,7 @@ public static class GlassPreview
         s.Screen.Detach();
         s.SkyCube.Destroy();
         s.City.Destroy();
+        s.Assets.Destroy();
         s.Camera.targetTexture = null;
         UnityEngine.Object.DestroyImmediate(s.Camera.gameObject);
         UnityEngine.Object.DestroyImmediate(s.Target);
@@ -242,6 +263,7 @@ public static class GlassPreview
         BuildCity(s);
         BuildLodTiers(s);
         BuildCityMap(s);
+        s.Assets.Create(ColorMapWidth, ColorMapHeight);
         Debug.Log("RG PREVIEW: city heights " + s.City.LiveCount + " buildings, highest roof " + s.City.LiveTop.ToString("F0") + " m");
 
         // Volumetric Weather's cloud volume, as the mod finds it: a mesh renderer by that name, a
@@ -307,15 +329,34 @@ public static class GlassPreview
             int sx = (i % perRow) * slotW, sy = (i / perRow) * slotH;
             if (sy + slotH > atlasH)
                 throw new Exception("the preview's LOD atlas is full");
+
+            // Each atlas texel the AVERAGE of the facade texels it covers, as a baked LOD texture
+            // is a downsampled one: a point sample of every fourth mullion would draw moire that no
+            // game atlas has.
+            Color[] srcMain = b.Main.GetPixels(0), srcXys = b.Xys.GetPixels(0), srcAci = b.Aci.GetPixels(0);
+            int srcW = b.Main.width, srcH = b.Main.height;
             for (int y = 0; y < slotH; y++)
             {
+                int y0 = y * srcH / slotH, y1 = Mathf.Max(y0 + 1, (y + 1) * srcH / slotH);
                 for (int x = 0; x < slotW; x++)
                 {
-                    float u = (x + 0.5f) / slotW, v = (y + 0.5f) / slotH;
+                    int x0 = x * srcW / slotW, x1 = Mathf.Max(x0 + 1, (x + 1) * srcW / slotW);
+                    Color m = Color.clear, xy = Color.clear, ac = Color.clear;
+                    for (int yy = y0; yy < y1; yy++)
+                    {
+                        for (int xx = x0; xx < x1; xx++)
+                        {
+                            int j = yy * srcW + xx;
+                            m += srcMain[j];
+                            xy += srcXys[j];
+                            ac += srcAci[j];
+                        }
+                    }
+                    float n = (y1 - y0) * (x1 - x0);
                     int k = (sy + y) * atlasW + sx + x;
-                    main[k] = b.Main.GetPixelBilinear(u, v);
-                    xys[k] = b.Xys.GetPixelBilinear(u, v);
-                    aci[k] = b.Aci.GetPixelBilinear(u, v);
+                    main[k] = m / n;
+                    xys[k] = xy / n;
+                    aci[k] = ac / n;
                 }
             }
 
@@ -442,6 +483,14 @@ public static class GlassPreview
                     int id = s.Buildings.Count + 1;
                     if (kind == "curtain" && Hash(id * 3.7f, 11.3f) < 0.45f)
                         kind = "glassbox";
+
+                    // The middle block's two towers are FULL-GLASS assets: the whole facade marked
+                    // shiny, its floors painted in its colour map only (what PaintedWall is for) --
+                    // dark slab bands and light mullions; light floor lines over a painted sky.
+                    if (bx == 0 && bz == 0)
+                        kind = k == 0 ? "fullglass" : "fullglass2";
+                    if (kind == "fullglass")
+                        s.FullGlassId = id;
 
                     Building b = new Building();
                     b.Kind = kind;
@@ -570,7 +619,36 @@ public static class GlassPreview
                 Color c;
                 float spec;
                 float lit = 0f;
-                if (kind == "punched")
+                if (kind == "fullglass")
+                {
+                    // Shiny all over (spec 0.92, a little less on the slab band: 0.84, still glass
+                    // to the 70% threshold); the floors and the mullions are in the colour only.
+                    bool slab = inFloor < 0.24f;
+                    bool mull = inCol < 0.04f || inCol > 0.96f;
+                    if (mull)
+                        c = new Color(0.56f, 0.58f, 0.61f);
+                    else if (slab)
+                        c = glassColour * 0.42f;
+                    else
+                        c = glassColour * (0.9f + 0.1f * cell + 0.12f * inFloor);
+                    spec = slab ? 0.84f : 0.92f;
+                    lit = slab || mull ? 0f : illum;
+                }
+                else if (kind == "fullglass2")
+                {
+                    // A painted sky across the whole facade (lighter up high, soft clouds: what
+                    // some asset painters put on glass), thin light floor lines, no mullions,
+                    // shiny everywhere alike. The sky must stay glass; the lines must not.
+                    float up = vm / h;
+                    Color skyLow = new Color(0.22f, 0.27f, 0.32f), skyHigh = new Color(0.50f, 0.60f, 0.70f);
+                    float cloud = Mathf.Clamp01((Noise(um * 0.08f, vm * 0.05f, seed) - 0.45f) * 2.5f);
+                    c = Color.Lerp(skyLow, skyHigh, up) * (1f + 0.25f * cloud);
+                    if (inFloor < 0.05f)
+                        c = new Color(0.78f, 0.80f, 0.82f);
+                    spec = 0.95f;
+                    lit = inFloor < 0.05f ? 0f : 0.85f;
+                }
+                else if (kind == "punched")
                 {
                     bool window = inCol > 0.2f && inCol < 0.8f && inFloor > 0.3f && inFloor < 0.86f && floorIndex > 0;
                     if (window)
@@ -748,6 +826,9 @@ public static class GlassPreview
             case "nightclose": target = new Vector3(0f, 60f, 0f); yaw = 35f; pitch = 20f; dist = 260f; break;
             case "near":
             case "nightnear": target = new Vector3(0f, 50f, 0f); yaw = 35f; pitch = 12f; dist = 110f; break;
+            // The middle block's other full-glass tower, from the street on its far side.
+            case "near2":
+            case "nightnear2": target = new Vector3(0f, 50f, 0f); yaw = 215f; pitch = 12f; dist = 110f; break;
             default: target = new Vector3(0f, 70f, 0f); yaw = 30f; pitch = 32f; dist = 650f; break;
         }
         Quaternion rot = Quaternion.Euler(pitch, yaw, 0f);
@@ -767,8 +848,29 @@ public static class GlassPreview
         _quality = GlassQuality.Ultra;
         _hizOff = false;
         _budgetOverrides.Clear();
+        _asset = new AssetOverride();
         if (drawGlass)
             p = Override(p, variant);
+
+        // The full-glass tower's own settings, as the mod's AssetMap writes an asset's.
+        s.Assets.ClearAll();
+        if (_asset.Strength.HasValue || _asset.Detail.HasValue || _asset.HasGlass)
+        {
+            byte slot = AssetTextures.Global;
+            if (_asset.HasGlass)
+            {
+                Color c = _asset.Tint ?? new Color(p.TintR, p.TintG, p.TintB);
+                s.Assets.SetGlass(0, GlassUniforms.Tint(c.r, c.g, c.b), _asset.Own ?? p.OwnColour,
+                    _asset.Reflectivity ?? p.Reflectivity, _asset.Clarity ?? p.Clarity);
+                slot = 0;
+            }
+            s.Assets.Set(s.FullGlassId, new Color32(
+                _asset.Strength.HasValue ? AssetTextures.Encode(_asset.Strength.Value) : AssetTextures.Global,
+                _asset.Detail.HasValue ? AssetTextures.Encode(_asset.Detail.Value) : AssetTextures.Global,
+                slot, AssetTextures.Global));
+        }
+        s.Assets.Upload();
+        s.Assets.Bind();
         Shader.SetGlobalVector("_RGDebug", new Vector4(_debug, _debugLevel, 0f, 0f));
         GlassFrame f = new GlassFrame();
         f.SunX = toSun.x; f.SunY = toSun.y; f.SunZ = toSun.z;
@@ -928,6 +1030,32 @@ public static class GlassPreview
             {
                 // Not a setting: the GlassQuality tier (GlassParams.Quality is the screen trace's).
                 _quality = int.Parse(kv[1].Trim(), CultureInfo.InvariantCulture);
+                continue;
+            }
+            if (kv[0].Trim().StartsWith("A.", StringComparison.OrdinalIgnoreCase))
+            {
+                // The full-glass tower's own settings (its asset's): A.Strength, A.Detail,
+                // A.Reflectivity, A.Clarity, A.Own (0..1), A.Tint (#RRGGBB).
+                string key = kv[0].Trim().Substring(2).ToLowerInvariant();
+                string text = kv[1].Trim();
+                if (key == "tint")
+                {
+                    Color tint;
+                    if (!ColorUtility.TryParseHtmlString(text, out tint))
+                        throw new Exception("A.Tint: not a colour: " + text);
+                    _asset.Tint = tint;
+                    continue;
+                }
+                float number = float.Parse(text, CultureInfo.InvariantCulture);
+                switch (key)
+                {
+                    case "strength": _asset.Strength = number; break;
+                    case "detail": _asset.Detail = number; break;
+                    case "reflectivity": _asset.Reflectivity = number; break;
+                    case "clarity": _asset.Clarity = number; break;
+                    case "own": _asset.Own = number; break;
+                    default: throw new Exception("no asset setting 'A." + key + "'");
+                }
                 continue;
             }
             FieldInfo field = typeof(GlassParams).GetField(kv[0].Trim(), BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);

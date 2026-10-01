@@ -31,6 +31,13 @@ namespace RealGlass.UI
         public static readonly Color32 StatusColour = new Color32(185, 221, 254, 255);
         public static readonly Color32 WarningColour = new Color32(255, 190, 120, 255);
 
+        /// <summary>A row's name while the picked asset has a value of its own there (the Asset tab).</summary>
+        public static readonly Color32 OwnValueColour = new Color32(255, 214, 120, 255);
+        public static readonly Color32 LabelColour = new Color32(255, 255, 255, 255);
+
+        /// <summary>The width of a row's "Global" button (the Asset tab).</summary>
+        public const float GlobalButtonWidth = 62f;
+
         public static UILabel AddLabel(UIComponent parent, string text, Vector3 position, float scale)
         {
             UILabel label = parent.AddUIComponent<UILabel>();
@@ -64,16 +71,19 @@ namespace RealGlass.UI
             return heading;
         }
 
-        /// <summary>A row: name on the left, slider in the middle, live value on the right.</summary>
+        /// <summary>
+        /// A row: name on the left, slider in the middle, live value on the right -- and
+        /// <paramref name="rightReserve"/> pixels left free at the far right (a "Global" button).
+        /// </summary>
         public static UISlider AddSlider(UIComponent parent, float y, string label, float min, float max,
-            float step, float value, Func<float, string> format, Action<float> onChanged)
+            float step, float value, Func<float, string> format, Action<float> onChanged, float rightReserve = 0f)
         {
             // Wide enough for the longest of each (Volumetric Weather's measure): a label of some
             // thirty characters on the left, "Silver reflective" on the right. Both used to run
             // into the slider there.
             const float labelWidth = 196f;
             const float valueWidth = 118f;
-            float sliderWidth = parent.width - labelWidth - valueWidth - 12f;
+            float sliderWidth = parent.width - labelWidth - valueWidth - 12f - rightReserve;
 
             UILabel name = AddLabel(parent, label, new Vector3(0f, y + 8f), 0.8f);
             name.autoSize = false;
@@ -99,7 +109,7 @@ namespace RealGlass.UI
             thumb.size = new Vector2(16f, 16f);
             slider.thumbObject = thumb;
 
-            UILabel readout = AddLabel(parent, format(value), new Vector3(parent.width - valueWidth, y + 8f), 0.8f);
+            UILabel readout = AddLabel(parent, format(value), new Vector3(parent.width - valueWidth - rightReserve, y + 8f), 0.8f);
             readout.autoSize = false;
             readout.size = new Vector2(valueWidth, 20f);
             readout.textAlignment = UIHorizontalAlignment.Right;

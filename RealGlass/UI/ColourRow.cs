@@ -45,6 +45,7 @@ namespace RealGlass.UI
         private static bool _probed;
 
         private readonly Row _row;
+        private readonly UILabel _name;
         private readonly UIColorField _swatch;
         private readonly UITextField _text;
         private readonly UIButton _copy;
@@ -68,6 +69,7 @@ namespace RealGlass.UI
             name.size = new Vector2(LabelWidth, 20f);
             name.tooltip = row.Tooltip;
             _parts.Add(name);
+            _name = name;
 
             float x = LabelWidth + 4f;
 
@@ -117,11 +119,24 @@ namespace RealGlass.UI
             paste.eventClick += (component, e) => Paste();
             _parts.Add(paste);
 
-            // Right-aligned. Not in Parts: it greys out on its own rule (already the default).
-            _reset = CreateReset(parent, y);
-            _reset.tooltip = Localization.Get("Colour.Reset.Tooltip", ColorText.Format(row.DefaultColour));
+            // Right-aligned. Not in Parts: it greys out on its own rule (already the default). On the
+            // Asset tab it is "Global": the asset follows the global colour again.
+            _reset = CreateReset(parent, y, row.ClearOverride != null);
+            _reset.tooltip = row.ClearOverride != null
+                ? Localization.Get("Asset.Global.Tooltip")
+                : Localization.Get("Colour.Reset.Tooltip", ColorText.Format(row.DefaultColour));
             _reset.eventClick += (component, e) =>
             {
+                if (_row.ClearOverride != null)
+                {
+                    if (_row.Overridden == null || !_row.Overridden())
+                        return;
+
+                    _row.ClearOverride();
+                    SettingsCatalog.RefreshAllUIs();
+                    return;
+                }
+
                 if (_row.IsDefaultColour)
                     return;
 
@@ -137,6 +152,12 @@ namespace RealGlass.UI
         public IList<UIComponent> Parts
         {
             get { return _parts; }
+        }
+
+        /// <summary>The row's name (the Asset tab colours it while the asset has a colour of its own).</summary>
+        public UILabel NameLabel
+        {
+            get { return _name; }
         }
 
         private Color32 Current
@@ -223,7 +244,12 @@ namespace RealGlass.UI
         /// </summary>
         private bool ResetWanted
         {
-            get { return !_row.IsDefaultColour && _row.IsEnabled; }
+            get
+            {
+                if (_row.Overridden != null)
+                    return _row.IsEnabled && _row.Overridden();
+                return !_row.IsDefaultColour && _row.IsEnabled;
+            }
         }
 
         /// <summary>One log line per pick, and only when the colour really moved.</summary>
@@ -391,9 +417,9 @@ namespace RealGlass.UI
         /// A "Default" text button, right-aligned: Volumetric Weather's author preferred the text to
         /// an icon (the game's IconUndo sprite is not in the in-game atlas anyway).
         /// </summary>
-        private static UIButton CreateReset(UIComponent parent, float y)
+        private static UIButton CreateReset(UIComponent parent, float y, bool global)
         {
-            UIButton button = UIBuilder.AddButton(parent, Localization.Get("Colour.Reset"),
+            UIButton button = UIBuilder.AddButton(parent, Localization.Get(global ? "Asset.Global.Button" : "Colour.Reset"),
                 new Vector2(ButtonWidth, 26f), new Vector3(parent.width - ButtonWidth, y + 4f));
             button.canFocus = false;
             return button;

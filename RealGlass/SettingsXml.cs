@@ -826,12 +826,13 @@ namespace RealGlass
             try
             {
                 SettingsXml.Tick();
+                PerAsset.AssetFile.Tick();
             }
             catch (Exception e)
             {
                 // Once: this runs every frame, and a repeating error would bury the log.
                 if (!_failed)
-                    Log.Error("settings: the saver failed; changes may not reach " + SettingsXml.FileName, e);
+                    Log.Error("settings: the saver failed; changes may not reach " + SettingsXml.FileName + " or " + PerAsset.AssetFile.FileName, e);
 
                 _failed = true;
             }
@@ -840,11 +841,13 @@ namespace RealGlass
         private void OnApplicationQuit()
         {
             SettingsXml.Flush();
+            PerAsset.AssetFile.Flush();
         }
 
         private void OnDestroy()
         {
             SettingsXml.Flush();
+            PerAsset.AssetFile.Flush();
         }
     }
 }

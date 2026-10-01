@@ -22,6 +22,7 @@ namespace RealGlass.Glass
         private readonly GlassScreen _screen = new GlassScreen();
         private readonly GlassSky _sky = new GlassSky();
         private readonly CityHeights _heights = new CityHeights();
+        private readonly AssetMap _assets = new AssetMap();
         private int _loggedHiZ = -1;
 
         /// <summary>
@@ -58,6 +59,17 @@ namespace RealGlass.Glass
         public static string Status
         {
             get { return _status; }
+        }
+
+        /// <summary>
+        /// The panel changed this asset's own glass: on every copy of it now, not over the next
+        /// dozen frames.
+        /// </summary>
+        public static void RefreshAsset(BuildingInfo info)
+        {
+            GlassController c = Instance;
+            if (c != null)
+                c._assets.RefreshAsset(info, _dirty ? GlassSettings.Read() : c._params);
         }
 
         /// <summary>A layer any building asset draws on (its m_prefabDataLayer): where group meshes get glass.</summary>
@@ -248,6 +260,9 @@ namespace RealGlass.Glass
                 _heights.Update(_look, Time.realtimeSinceStartup);
             _heights.Map.Bind(p.Neighbours);
 
+            // Each building asset's own glass, on every copy of it (RealGlassAssets.xml).
+            _assets.Update(p);
+
             GlassUniforms.Apply(p, f, _quality);
             bool copied = _screen.Update(camera, _util, p.Finished, _quality.HiZLevels);
             if (!copied)
@@ -421,7 +436,8 @@ namespace RealGlass.Glass
         {
             return "glass " + (p.Enabled ? "on" : "off") + ", reflect " + Pct(p.Reflectivity) + "..." + Pct(p.Glancing) + " (silvery edge-on " + Pct(p.EdgeSilver) +
                    "), clarity " + Pct(p.Clarity) +
-                   ", tint #" + Hex(p.TintR) + Hex(p.TintG) + Hex(p.TintB) + " own " + Pct(p.OwnColour) + ", strength " + Pct(p.Strength) +
+                   ", tint #" + Hex(p.TintR) + Hex(p.TintG) + Hex(p.TintB) + " own " + Pct(p.OwnColour) + ", painted detail " + Pct(p.PaintedDetail) +
+                   ", strength " + Pct(p.Strength) +
                    ", glass above " + Pct(p.Threshold) + (p.NightWindows ? " + night windows" : "") + (p.ShowMask ? ", SHOWING THE MASK" : "") +
                    "; trace " + (p.Trace ? "q" + p.Quality : "off") + (p.Finished ? " of the finished picture" : " of the copy") +
                    (p.Neighbours ? " + city heights" : "") + (p.SteadyGlints ? ", steady glints" : "") +
@@ -450,6 +466,7 @@ namespace RealGlass.Glass
             _screen.Detach();
             _sky.Destroy();
             _heights.Destroy();
+            _assets.Destroy();
             RestoreCamera();
             foreach (Material m in new[] { _near, _lod, _group, _util })
             {

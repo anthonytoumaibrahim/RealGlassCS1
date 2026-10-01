@@ -127,16 +127,20 @@ as Unreal's Sky Light does, a top-down height map of the city round the view wal
 rays (as CRYENGINE's height-map ambient occlusion and Unreal's heightfield sky occlusion read
 such maps; Amanatides and Woo's grid traversal, 1987), specular anti-aliasing (Kaplanyan et al.
 2016, Tokuyoshi and Kaplanyan 2019, with Filament's documented constants), Schlick's Fresnel
-approximation, glass makers' published transmittance and reflectance, and the physics of
-insulating-glass pillowing and roller-wave distortion -- listed with links in `README.md`. Apart
-from the ray tracer above, the implementations were written for this mod.
+approximation, glass makers' published transmittance and reflectance, the physics of
+insulating-glass pillowing and roller-wave distortion, and unsharp masking (Schreiber 1970) over
+a mipmap level (Williams 1983) for the painted detail it keeps -- listed with links in
+`README.md`. Apart from the ray tracer above, the implementations were written for this mod.
 
 Other mods were read to understand the game's behaviour and to stay compatible with them:
 xdedss's CS_SSR (its note that the game's camera keeps no glossiness in any screen buffer), and
 Volumetric Weather, Volumetric Explosions and RealFlag, by the same author, whose foundations
 (settings, panel, logging, localization, tools) this mod's are. When Volumetric Weather runs,
 Real Glass draws that mod's own cloud volume (found by its object's name) into its reflected
-sky; nothing of it is copied. No code from any other mod is included.
+sky; nothing of it is copied. algernon's BOB was read for how its building picker works (a tool
+of the game's kind, Escape handled before the game's own) and for keeping its per-building data in
+a file of its own rather than in the save; Network Anarchy's keys, so the picker's default key
+does not clash with its grid key. No code from any other mod is included.
 
 ## Trademarks
 

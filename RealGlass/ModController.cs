@@ -18,6 +18,22 @@ namespace RealGlass
         private GlassPanel _panel;
         private ModButton _hudButton;
         private bool _hotkeyWasDown;
+        private bool _pickerKeyWasDown;
+
+        /// <summary>
+        /// Opens the panel on its Asset tab (a building was picked). Safe with no panel: the pick
+        /// stands, and the tab shows it when the panel is opened.
+        /// </summary>
+        public static void ShowAssetTab()
+        {
+            ModController c = Instance;
+            if (c == null || c._panel == null)
+                return;
+
+            c.SetPanelVisible(true);
+            c._panel.ShowPage(PanelPage.Asset);
+            GlassPanel.RefreshOpenPanel();
+        }
 
         /// <summary>Rebuilds the button after the Unified UI preference changes.</summary>
         public static void RefreshButton()
@@ -56,6 +72,10 @@ namespace RealGlass
             LocaleManager.eventLocaleChanged += OnLocaleChanged;
 
             gameObject.AddComponent<GlassController>();
+
+            // The building picker of the Asset tab (each asset's own glass).
+            PerAsset.AssetSelection.Clear();
+            PerAsset.AssetPicker.Create();
 
             BuildButton();
         }
@@ -136,30 +156,41 @@ namespace RealGlass
 
         private void Update()
         {
-            // When the button is registered, Unified UI owns the hotkey (we hand it over as
+            // Don't steal a key while a text field has focus or a modal is up, otherwise typing
+            // into a rename box toggles the panel.
+            if (UIView.HasModalInput() || UIView.HasInputFocus())
+            {
+                _hotkeyWasDown = false;
+                _pickerKeyWasDown = false;
+                return;
+            }
+
+            // The building picker's key (never Unified UI's). Not while a road tool is on: Network
+            // Anarchy's editor grid is Alt+G there (IL of NetworkAnarchy.OnGUI, 2026-10-01), and a
+            // player laying roads is not picking buildings.
+            bool pickerDown = IsHotkeyDown(Settings.PickerKey);
+            if (pickerDown && !_pickerKeyWasDown && !(ToolsModifierControl.toolController != null &&
+                                                     ToolsModifierControl.toolController.CurrentTool is NetTool))
+            {
+                PerAsset.AssetPicker.Toggle();
+            }
+            _pickerKeyWasDown = pickerDown;
+
+            // When the button is registered, Unified UI owns the panel's hotkey (we hand it over as
             // UUIHotKeys.ActivationKey). Polling it here as well would toggle the panel twice per
             // press, which looks like the key doing nothing.
             if (UUIIntegration.IsRegistered)
                 return;
 
-            // Don't steal the key while a text field has focus or a modal is up, otherwise typing
-            // into a rename box toggles the panel.
-            if (UIView.HasModalInput() || UIView.HasInputFocus())
-            {
-                _hotkeyWasDown = false;
-                return;
-            }
-
-            bool down = IsHotkeyDown();
+            bool down = IsHotkeyDown(Settings.PanelKey);
             if (down && !_hotkeyWasDown)
                 SetPanelVisible(_panel != null && !_panel.isVisible);
 
             _hotkeyWasDown = down;
         }
 
-        private static bool IsHotkeyDown()
+        private static bool IsHotkeyDown(SavedInputKey key)
         {
-            SavedInputKey key = Settings.PanelKey;
             if (key == null || key.Key == KeyCode.None)
                 return false;
 
@@ -268,6 +299,8 @@ namespace RealGlass
             LocaleManager.eventLocaleChanged -= OnLocaleChanged;
             UUIIntegration.Unregister();
             DestroyHudButton();
+            PerAsset.AssetPicker.DestroyPicker();
+            PerAsset.AssetSelection.Clear();
 
             if (_panel != null)
             {

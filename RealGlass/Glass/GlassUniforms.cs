@@ -120,7 +120,8 @@ namespace RealGlass.Glass
             float sunUp = Smooth(-0.02f, 0.06f, f.SunY);
 
             Shader.SetGlobalVector(_colorMap, new Vector4(Mathf.Max(f.ColorMapWidth, 1), Mathf.Max(f.ColorMapHeight, 1), 0f, 0f));
-            Shader.SetGlobalVector(_glass2, new Vector4(p.EdgeSilver, 0f, 0f, 0f));
+            // y how much of the asset's painted lines stay (Glass.shader, PaintedWall), z how they show.
+            Shader.SetGlobalVector(_glass2, new Vector4(p.EdgeSilver, Mathf.Clamp01(p.PaintedDetail), p.DetailMode, 0f));
             // x the buildings round in the reflections (the map itself says whether it is there:
             // _RGCityMapST.w), w steady glints.
             Shader.SetGlobalVector(_features, new Vector4(p.Neighbours ? 1f : 0f, 0f, 0f, p.SteadyGlints ? 1f : 0f));

@@ -21,10 +21,19 @@ namespace RealGlass
     {
         private static readonly List<Setting> Registry = new List<Setting>();
 
-        protected Setting(string name)
+        private readonly bool _saved;
+
+        /// <param name="saved">
+        /// False for a value that lives elsewhere and only borrows a setting's shape to be shown in
+        /// a panel row: one building asset's glass (PerAsset.AssetCatalog), kept in its own file.
+        /// Such a setting is not in <see cref="All"/> and never touches RealGlass.xml.
+        /// </param>
+        protected Setting(string name, bool saved)
         {
             this.name = name;
-            Registry.Add(this);
+            _saved = saved;
+            if (saved)
+                Registry.Add(this);
         }
 
         /// <summary>The element name in RealGlass.xml. Permanent once released.</summary>
@@ -36,9 +45,10 @@ namespace RealGlass
             get { return Registry; }
         }
 
-        protected static void Changed()
+        protected void Changed()
         {
-            SettingsXml.MarkDirty();
+            if (_saved)
+                SettingsXml.MarkDirty();
         }
     }
 
@@ -46,8 +56,8 @@ namespace RealGlass
     {
         private float _value;
 
-        public FloatSetting(string name, float value)
-            : base(name)
+        public FloatSetting(string name, float value, bool saved = true)
+            : base(name, saved)
         {
             _value = value;
         }
@@ -70,8 +80,8 @@ namespace RealGlass
     {
         private bool _value;
 
-        public BoolSetting(string name, bool value)
-            : base(name)
+        public BoolSetting(string name, bool value, bool saved = true)
+            : base(name, saved)
         {
             _value = value;
         }
@@ -94,8 +104,8 @@ namespace RealGlass
     {
         private int _value;
 
-        public IntSetting(string name, int value)
-            : base(name)
+        public IntSetting(string name, int value, bool saved = true)
+            : base(name, saved)
         {
             _value = value;
         }
@@ -123,8 +133,8 @@ namespace RealGlass
     {
         private Color32 _value;
 
-        public ColorSetting(string name, Color32 value)
-            : base(name)
+        public ColorSetting(string name, Color32 value, bool saved = true)
+            : base(name, saved)
         {
             _value = Opaque(value);
         }

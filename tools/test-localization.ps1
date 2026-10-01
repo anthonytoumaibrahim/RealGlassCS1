@@ -83,9 +83,26 @@ if ($catalog -match "public enum PanelPage \{([^}]*)\}") {
     foreach ($v in ($Matches[1] -split ',')) { $v = $v.Trim(); if ($v -and $v -ne 'None') { [void]$needed.Add("Tab.$v") } }
 }
 
+# The Asset tab's rows (PerAsset\AssetCatalog.cs, not the catalog's): each setting it shows (its
+# Label and Tooltip), each button by its Id (a Status row has no texts), its group headings.
+$assetSrc = Get-Content (Join-Path $root "PerAsset\AssetCatalog.cs") -Raw
+$assetRows = 0
+foreach ($m in [regex]::Matches($assetSrc, 'new (?:Float|Bool|Int|Color)Setting\("(\w+)"')) {
+    [void]$needed.Add($m.Groups[1].Value + ".Label"); [void]$needed.Add($m.Groups[1].Value + ".Tooltip"); $assetRows++
+}
+foreach ($m in [regex]::Matches($assetSrc, 'Kind = RowKind\.(\w+),\s*Panel = PanelPage\.Asset,\s*Id = "(\w+)"')) {
+    $assetRows++
+    if ($m.Groups[1].Value -ne 'Status') { [void]$needed.Add($m.Groups[2].Value + ".Label"); [void]$needed.Add($m.Groups[2].Value + ".Tooltip") }
+}
+foreach ($m in [regex]::Matches($assetSrc, 'Group = "(\w+)"|Percent\(_\w+, "(\w+)"')) {
+    $g = if ($m.Groups[1].Success) { $m.Groups[1].Value } else { $m.Groups[2].Value }
+    [void]$needed.Add("Group.$g")
+}
+Write-Host "      ($assetRows rows on the Asset tab)"
+
 # Key-shaped literals anywhere in the code ("Unit.Pixels", "Colour.Copy"...), including the ones
 # picked by a ?: that a Localization.Get("...") search would miss.
-$prefixes = 'Mod|Tab|Key|Status|Unit|Readout|File|Language|Group|ResetAll|Colour|GlassPreset|SsrQuality|SkyReflection|OffscreenFill|GlassDistance'
+$prefixes = 'Mod|Tab|Key|Status|Unit|Readout|File|Language|Group|ResetAll|Colour|GlassPreset|SsrQuality|SkyReflection|OffscreenFill|GlassDistance|Asset|AssetFile|Picker'
 foreach ($file in Get-ChildItem $root -Recurse -Filter *.cs | Where-Object { $_.FullName -notmatch '\\(bin|obj)\\' }) {
     foreach ($m in [regex]::Matches((Get-Content $file.FullName -Raw), "`"((?:$prefixes)\.[A-Z][A-Za-z.]*[A-Za-z])`"")) {
         [void]$needed.Add($m.Groups[1].Value)

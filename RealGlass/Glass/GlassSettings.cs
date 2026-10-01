@@ -17,6 +17,7 @@ namespace RealGlass.Glass
             p.TintG = c.g / 255f;
             p.TintB = c.b / 255f;
             p.OwnColour = Settings.GlassOwnColour.value;
+            p.PaintedDetail = Settings.GlassPaintedDetail.value;
             p.Reflectivity = Settings.GlassReflectivity.value;
             p.Glancing = Settings.GlassGlancing.value;
             p.Clarity = Settings.GlassClarity.value;

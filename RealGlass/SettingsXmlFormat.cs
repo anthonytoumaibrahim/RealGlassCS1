@@ -102,20 +102,14 @@ namespace RealGlass
         {
             version = 0;
 
-            var document = new XmlDocument();
-            document.XmlResolver = null;
+            // No DTD, no entities, nothing fetched (SafeXml); anything the parser says is the
+            // FormatException this method promises, so the caller keeps its file and its values.
+            XmlElement root;
+            string error;
+            if (!SafeXml.TryLoad(text, out root, out error))
+                throw new FormatException(error);
 
-            try
-            {
-                document.LoadXml(text ?? string.Empty);
-            }
-            catch (XmlException e)
-            {
-                throw new FormatException(e.Message, e);
-            }
-
-            XmlElement root = document.DocumentElement;
-            if (root == null || root.Name != RootName)
+            if (root.Name != RootName)
             {
                 throw new FormatException("the outermost element is <" + (root == null ? "nothing" : root.Name) +
                                           ">, not <" + RootName + ">");

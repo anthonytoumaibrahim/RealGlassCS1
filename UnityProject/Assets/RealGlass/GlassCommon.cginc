@@ -35,7 +35,7 @@
 // ---------------------------------------------------------------------------------------------
 
 float4 _RGGlass;      // x reflectance head-on (F0, the chosen glass), y reflectance edge-on, z clarity (VLT), w strength
-float4 _RGGlass2;     // x silvery edge-on 0..1, y -, z -, w -
+float4 _RGGlass2;     // x silvery edge-on 0..1, y painted detail kept 0..1, z how (0 as painted, 1 under the sheen: the preview's), w -
 float4 _RGColorMap;   // xy the game's object colour map (width, height): where a building's colour index points
 float4 _RGFinished;   // x 1 while _RGSceneFinished holds last frame's finished picture
 float4 _RGTint;       // rgb glass tint (linear, brightest channel 1), a own-colour mix 0..1
@@ -54,13 +54,21 @@ float4 _RGFeatures;   // x the buildings round in the reflections, y -, z -, w s
 float4 _RGDebug;      // x: 0 off; the GPU preview's checks (1 trace, 2 depth, 3 screen copy, 5 the finished
                       // picture reprojected, magenta off it; 6 the city walk: green a building met, blue none,
                       // red no map; 8 the painted pane found: green, its border yellow, red none; 9 the
-                      // hierarchical depth at level y, red where it is wrong). The mod never sets it.
+                      // hierarchical depth at level y, red where it is wrong; 10 the painted lines kept:
+                      // yellow, the glass blue). The mod never sets it.
 
 // The city from above (CityMap.cs): per cell the highest roof over it and whose it is.
 sampler2D _RGCityMap;         // rg the roof's world height in 1/32 m, ba the building's id (0 none): 4 m cells
 sampler2D _RGCityCoarse;      // the same for blocks of 8 x 8 cells: each block's highest roof
 float4 _RGCityMapST;          // xy the map's corner (world x, z), z metres a cell, w 1 while a map is bound
 float4 _RGCityMapInfo;        // x cells a side, y cells a block, z the highest roof in the map (world y)
+
+// Each building's own glass (AssetTextures.cs): the settings its ASSET has of its own, set by the
+// player for every copy of that asset (RealGlassAssets.xml).
+sampler2D _RGAssets;          // laid out as the object colour map, a texel per building: r strength, g painted detail
+                              // (0..254 = 0..1), b its glass's slot in _RGAssetGlass (0..254); 255: the global setting
+sampler2D _RGAssetGlass;      // 256 x 2: per slot, row 0 the tint (linear, brightest 1) and the own-colour mix,
+                              // row 1 the reflectivity and the clarity
 
 float4 _RGBudget;     // x city walk cells, y its blocks, z -, w steps each way up and down to a painted pane's edges
 float4 _RGBudget2;    // x steps each way across to a painted pane's sides, y steps of the Hi-Z trace

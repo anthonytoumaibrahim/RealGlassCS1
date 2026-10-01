@@ -30,8 +30,11 @@ namespace RealGlass.UI
         Colour,
     }
 
-    /// <summary>Which tab of the in-game (F8) panel a row appears on. None = not in it.</summary>
-    public enum PanelPage { None, Glass, Reflections, Panes, Rendering }
+    /// <summary>
+    /// Which tab of the in-game (F8) panel a row appears on. None = not in it. Asset: one building
+    /// asset's own glass (PerAsset.AssetCatalog's rows, not this catalog's).
+    /// </summary>
+    public enum PanelPage { None, Glass, Reflections, Panes, Rendering, Asset }
 
     /// <summary>General = the game's mod options page (no tabs). None = not on it.</summary>
     public enum OptionsPage { None, General }
@@ -112,6 +115,15 @@ namespace RealGlass.UI
 
         /// <summary>Greys the row out, e.g. every glass row while the glass is off.</summary>
         public Func<bool> Enabled;
+
+        /// <summary>
+        /// A row of one asset's own glass (the Asset tab): whether the asset has a value of its own
+        /// here. Null for every other row. The row then has a "Global" button (<see cref="ClearOverride"/>).
+        /// </summary>
+        public Func<bool> Overridden;
+
+        /// <summary>The asset follows the global setting here again.</summary>
+        public Action ClearOverride;
 
         /// <summary>
         /// False only for the machine (rendering cost) and housekeeping: what a future profile
@@ -391,11 +403,14 @@ namespace RealGlass.UI
                     " Reflections=" + CountForPanel(PanelPage.Reflections) +
                     " Panes=" + CountForPanel(PanelPage.Panes) +
                     " Rendering=" + CountForPanel(PanelPage.Rendering) +
+                    " Asset=" + PerAsset.AssetCatalog.Rows.Count +
                     " | options page=" + CountForOptions(OptionsPage.General) +
                     " | rows with no UI=" + nowhere);
 
             var missing = new List<string>();
-            foreach (Row row in Rows)
+            var every = new List<Row>(Rows);
+            every.AddRange(PerAsset.AssetCatalog.Rows);
+            foreach (Row row in every)
             {
                 foreach (string key in row.TextKeys())
                 {
@@ -702,6 +717,17 @@ namespace RealGlass.UI
                 Panel = PanelPage.Glass,
                 Float = Settings.GlassOwnColour,
                 DefaultFloat = Settings.Defaults.GlassOwnColour,
+                Min = 0f, Max = 100f, Step = 1f,
+                Enabled = GlassOn,
+                AfterChange = Changed,
+            });
+
+            Add(new Row
+            {
+                Kind = RowKind.Percent,
+                Panel = PanelPage.Glass,
+                Float = Settings.GlassPaintedDetail,
+                DefaultFloat = Settings.Defaults.GlassPaintedDetail,
                 Min = 0f, Max = 100f, Step = 1f,
                 Enabled = GlassOn,
                 AfterChange = Changed,
@@ -1115,6 +1141,15 @@ namespace RealGlass.UI
                 Group = "Panel",
                 Key = Settings.PanelKey,
                 DefaultKey = Settings.DefaultPanelKey,
+                Profiled = false,
+            });
+
+            Add(new Row
+            {
+                Kind = RowKind.Key,
+                Options = OptionsPage.General,
+                Key = Settings.PickerKey,
+                DefaultKey = Settings.DefaultPickerKey,
                 Profiled = false,
             });
 

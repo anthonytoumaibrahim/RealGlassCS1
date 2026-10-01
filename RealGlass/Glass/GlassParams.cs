@@ -12,6 +12,8 @@ namespace RealGlass.Glass
         public bool Enabled;
         public float TintR, TintG, TintB;   // the chosen glass colour, sRGB 0..1
         public float OwnColour;             // 0..1: how much of the building's own painted colour is kept
+        public float PaintedDetail;         // 0..1: how much of the lines the asset painted on its glass (floor bands, frames) stay
+        public int DetailMode;              // the preview's comparison: 0 the lines as painted (the glass steps aside), 1 under the glass's sheen
         public float Reflectivity;          // 0..0.6: reflectance looking straight at it (F0)
         public float Glancing;              // 0..1: reflectance edge-on
         public float Clarity;               // 0..1: visible light let through
@@ -53,6 +55,8 @@ namespace RealGlass.Glass
             p.TintG = 0xB4 / 255f;
             p.TintB = 0xBA / 255f;
             p.OwnColour = 0.30f;
+            p.PaintedDetail = 1.00f;
+            p.DetailMode = 0;
             p.Reflectivity = 0.35f;
             p.Glancing = 0.80f;
             p.Clarity = 0.20f;

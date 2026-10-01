@@ -36,7 +36,7 @@ namespace RealGlass.UI
 
         private static readonly PanelPage[] Tabs =
         {
-            PanelPage.Glass, PanelPage.Reflections, PanelPage.Panes, PanelPage.Rendering,
+            PanelPage.Glass, PanelPage.Reflections, PanelPage.Panes, PanelPage.Rendering, PanelPage.Asset,
         };
 
         /// <summary>Where to open, when replacing a panel that was already on screen. Null = centred.</summary>
@@ -77,6 +77,19 @@ namespace RealGlass.UI
             public ColourRow Colour;
             public readonly List<UIComponent> Parts = new List<UIComponent>();
             public bool Enabled = true;
+
+            /// <summary>The Asset tab's rows: the name (coloured while the asset has its own value) and "Global".</summary>
+            public UILabel Name;
+            public UIButton Global;
+            public bool? ShownOwn;
+        }
+
+        /// <summary>Opens the panel's tab for this page (the picker opens the Asset tab).</summary>
+        public void ShowPage(PanelPage page)
+        {
+            int index = System.Array.IndexOf(Tabs, page);
+            if (index >= 0 && index < _pages.Count)
+                SelectPage(index);
         }
 
         public override void Start()
@@ -143,6 +156,10 @@ namespace RealGlass.UI
         /// </summary>
         public void RefreshValues()
         {
+            // The Asset tab shows the picked asset's glass, which can change under it (the file, a
+            // global setting it follows, another pick).
+            PerAsset.AssetCatalog.Sync();
+
             _refreshing = true;
             int touched = 0;
 
@@ -210,17 +227,54 @@ namespace RealGlass.UI
             foreach (Control control in _controls)
             {
                 bool wanted = control.Source.IsEnabled;
-                if (wanted == control.Enabled)
+                if (wanted != control.Enabled)
+                {
+                    control.Enabled = wanted;
+
+                    foreach (UIComponent part in control.Parts)
+                    {
+                        part.isEnabled = wanted;
+                        part.opacity = wanted ? 1f : 0.45f;
+                    }
+                }
+
+                // The Asset tab: the row's name in colour, and "Global" usable, while the asset has a
+                // value of its own there.
+                if (control.Source.Overridden == null)
                     continue;
 
-                control.Enabled = wanted;
+                bool own = wanted && control.Source.Overridden();
+                if (control.ShownOwn == own)
+                    continue;
 
-                foreach (UIComponent part in control.Parts)
+                control.ShownOwn = own;
+                if (control.Name != null)
+                    control.Name.textColor = own ? UIBuilder.OwnValueColour : UIBuilder.LabelColour;
+                if (control.Global != null)
                 {
-                    part.isEnabled = wanted;
-                    part.opacity = wanted ? 1f : 0.45f;
+                    control.Global.isEnabled = own;
+                    control.Global.opacity = own ? 1f : 0.45f;
                 }
             }
+        }
+
+        /// <summary>A row's "Global" button (the Asset tab): the asset follows the global setting here again.</summary>
+        private static UIButton AddGlobalButton(UIPanel page, Row row, float y)
+        {
+            UIButton button = UIBuilder.AddButton(page, Localization.Get("Asset.Global.Button"),
+                new Vector2(UIBuilder.GlobalButtonWidth, 26f), new Vector3(page.width - UIBuilder.GlobalButtonWidth, y + 4f));
+            button.canFocus = false;
+            button.tooltip = Localization.Get("Asset.Global.Tooltip");
+            Row captured = row;
+            button.eventClick += (component, e) =>
+            {
+                if (captured.ClearOverride == null || captured.Overridden == null || !captured.Overridden())
+                    return;
+
+                captured.ClearOverride();
+                SettingsCatalog.RefreshAllUIs();
+            };
+            return button;
         }
 
         private void BuildTitleBar()
@@ -291,7 +345,9 @@ namespace RealGlass.UI
         {
             float y = 0f;
 
-            foreach (Row row in SettingsCatalog.Rows)
+            // The Asset tab's rows are the picked asset's, not settings of the catalog's.
+            List<Row> rows = which == PanelPage.Asset ? PerAsset.AssetCatalog.Rows : SettingsCatalog.Rows;
+            foreach (Row row in rows)
             {
                 if (row.Panel != which)
                     continue;
@@ -378,6 +434,7 @@ namespace RealGlass.UI
                 {
                     control.Colour = new ColourRow(page, y, row);
                     control.Parts.AddRange(control.Colour.Parts);
+                    control.Name = control.Colour.NameLabel;
                     break;
                 }
 
@@ -403,11 +460,12 @@ namespace RealGlass.UI
 
                             captured.Int.value = captured.ChoiceValues[index];
                             Changed(captured);
-                        });
+                        }, GlobalReserve(row));
                     slider.tooltip = row.Tooltip;
                     control.Slider = slider;
                     control.Parts.Add(slider);
                     AddSiblings(page, control, slider);
+                    AddGlobal(page, control, row, y);
                     break;
                 }
 
@@ -424,18 +482,33 @@ namespace RealGlass.UI
 
                             captured.Store(v);
                             Changed(captured);
-                        });
+                        }, GlobalReserve(row));
                     slider.tooltip = row.Tooltip;
                     control.Slider = slider;
                     control.Parts.Add(slider);
 
                     // The label and the readout are siblings of the slider, not children of it.
                     AddSiblings(page, control, slider);
+                    AddGlobal(page, control, row, y);
                     break;
                 }
             }
 
             return control;
+        }
+
+        /// <summary>Room at a row's right for its "Global" button: the Asset tab's rows.</summary>
+        private static float GlobalReserve(Row row)
+        {
+            return row.ClearOverride != null ? UIBuilder.GlobalButtonWidth + 6f : 0f;
+        }
+
+        private static void AddGlobal(UIPanel page, Control control, Row row, float y)
+        {
+            if (row.ClearOverride == null)
+                return;
+
+            control.Global = AddGlobalButton(page, row, y);
         }
 
         /// <summary>
@@ -474,7 +547,10 @@ namespace RealGlass.UI
 
             UILabel name = page.components[index - 1] as UILabel;
             if (name != null)
+            {
                 control.Parts.Add(name);
+                control.Name = name;
+            }
 
             if (index + 1 < page.components.Count)
             {

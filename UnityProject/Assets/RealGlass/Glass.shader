@@ -182,6 +182,36 @@ Shader "RealGlass/Glass"
             }
 #endif
 
+            // The lines the asset painted on its glass: a floor slab's band, a mullion, a frame --
+            // where its colour, or its shine, stands out from the storey round it. A whole facade
+            // marked shiny (a full-glass tower) still says where its floors are in its colour map.
+            // Unsharp masking (Schreiber 1970): the pixel against a storey-wide average of the same
+            // map, which is a coarser mip of it (Williams 1983) -- the pixel's own level biased by
+            // how many of its footprints a storey spans, so no texture size is needed. Far away
+            // the pixel's own level reaches the storey's and nothing stands out: no shimmer.
+            // 0 glass .. 1 the asset's own painting. Top level only: the bias needs derivatives.
+            float PaintedWall(float2 uv, float footprint, float3 albedo, float specHere)
+            {
+                float bias = clamp(log2(_RGPane2.z / footprint), 0.0, 12.0);
+                float3 around = tex2Dbias(_MainTex, float4(uv, 0.0, bias)).rgb;
+                float specAround = 1.0 - tex2Dbias(_XYSMap, float4(uv, 0.0, bias)).z;
+
+                // Only where the storey round is as shiny as this pixel: where the asset's shine map
+                // already parts glass from wall (punched windows, spandrels painted dull) it has
+                // said what is glass, and a pane darker than the wall round it is still a pane.
+                float allGlass = 1.0 - smoothstep(0.03, 0.08, specHere - specAround);
+
+                // Darker than round it by a fifth and more: a slab band, a shadowed frame. Lighter
+                // by over half: a light frame or line. (Glass between dark bands is a little lighter
+                // than their average, and a painted sky drifts slowly: neither is a line.)
+                float tone = log2((Luma(albedo) + 0.03) / (Luma(around) + 0.03));
+                float stroke = max(smoothstep(0.35, 0.75, -tone), smoothstep(0.70, 1.10, tone));
+
+                // Duller than round it, though shiny enough to count as glass: a spandrel.
+                float duller = smoothstep(0.06, 0.18, specAround - specHere);
+                return max(stroke * allGlass, duller);
+            }
+
             v2f vert(appdata v)
             {
                 v2f o;
@@ -262,6 +292,14 @@ Shader "RealGlass/Glass"
                 if (_RGMask.z > 0.5)
                     return float4(1.0, 0.0, 1.0, max(mask, 0.35));
 
+                // This building's own settings: its asset's, where the player gave it some
+                // (AssetTextures.cs, at the colour index every tier carries); 255 in a channel is
+                // the global setting. Strength 0: nothing of ours on it at all.
+                float4 asset = tex2Dlod(_RGAssets, float4(i.building, 0.0, 0.0));
+                float strength = asset.r < 0.999 ? asset.r * (255.0 / 254.0) : _RGGlass.w;
+                float detailKept = asset.g < 0.999 ? asset.g * (255.0 / 254.0) : _RGGlass2.y;
+                clip(strength - 0.004);
+
                 float3 P = i.worldPos.xyz;
                 float baseY = i.worldPos.w;
                 float3 n = normalize(i.worldNormal.xyz);
@@ -276,6 +314,16 @@ Shader "RealGlass/Glass"
                 float4 uvPerMetre = UvPerMetre(uv, P, t);
                 float F0 = _RGGlass.x;
                 float clarity = _RGGlass.z;
+                float4 tintOwn = _RGTint;
+                if (asset.b < 0.999)
+                {
+                    // The asset's own glass: slot k = b x 255, the centre of texel k of 256.
+                    float u = asset.b * (255.0 / 256.0) + 0.5 / 256.0;
+                    tintOwn = tex2Dlod(_RGAssetGlass, float4(u, 0.25, 0.0, 0.0));
+                    float4 numbers = tex2Dlod(_RGAssetGlass, float4(u, 0.75, 0.0, 0.0));
+                    F0 = numbers.r;
+                    clarity = numbers.g;
+                }
                 float4 painted = float4(0.0, 0.0, 0.0, 0.0);   // the painted pane: left, right (along t), bottom, top
 #if defined(RG_NEAR)
                 if (_RGBudget2.x > 0.5 && footprint < 0.5)   // where a pane is a few pixels wide
@@ -295,8 +343,13 @@ Shader "RealGlass/Glass"
                 // LUMINOUS (visible light transmittance / reflectance, eye-weighted), so both
                 // filters are scaled to a luminance of 1: "clarity 24%" lets 24% of the light
                 // through, whatever the colour; "reflectivity 20%" reflects 20%.
-                float3 own = NormaliseTint(tex2D(_MainTex, uv).rgb);
-                float3 tint = NormaliseTint(lerp(_RGTint.rgb, own, _RGTint.a));
+                float3 albedo = tex2D(_MainTex, uv).rgb;
+                float3 own = NormaliseTint(albedo);
+                float3 tint = NormaliseTint(lerp(tintOwn.rgb, own, tintOwn.a));
+                float lines = PaintedWall(uv, footprint, albedo, 1.0 - xys.z);
+                float wall = lines * detailKept;
+                if (_RGDebug.x > 9.5 && _RGDebug.x < 10.5)
+                    return float4(lerp(float3(0.05, 0.15, 0.6), float3(1.0, 0.85, 0.2), lines), 1.0);   // 10: the painted lines (yellow) on the glass (blue)
                 float3 filter = lerp(float3(1.0, 1.0, 1.0), tint, 0.6);
                 filter /= max(Luma(filter), 0.05);
                 float3 coat = lerp(float3(1.0, 1.0, 1.0), tint, _RGMask.w);
@@ -448,12 +501,23 @@ Shader "RealGlass/Glass"
                 // brightly and in what colour is each asset's own night texture and the game's
                 // timing -- nothing of ours. The reflections go on top either way.
                 float daylight = _RGLight.x;
-                float3 inside = _RGAmbSky.rgb * _RGLight.y * (clarity * filter) * (1.0 - Fs);
+                float3 through = (clarity * filter) * (1.0 - Fs);
+                float3 inside = _RGAmbSky.rgb * _RGLight.y * through;
+
+                // The asset's painted lines (PaintedWall): the glass steps aside there and the
+                // building shows as its author painted it. (_RGGlass2.z, the preview's other way:
+                // the reflection kept over them, the painting under it instead of the dark inside.)
+                float coverage = mask * strength;
+                if (_RGGlass2.z > 0.5)
+                    inside = lerp(inside, gamePixel * (1.0 - Fs), wall);
+                else
+                    coverage *= 1.0 - wall;
+
                 float3 L = F * refl * _RGRefl.x
                          + lerp(gamePixel, inside, daylight)
                          + SunGlint(np, V, Fs, rough) * (F / max(Fs, 1e-4));
 
-                return float4(L, mask * _RGGlass.w);
+                return float4(L, coverage);
             }
             ENDCG
         }

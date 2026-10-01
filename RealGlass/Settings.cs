@@ -47,6 +47,12 @@ namespace RealGlass
         /// <summary>Opens and closes the in-game panel. F8 by default.</summary>
         public static SavedInputKey PanelKey { get; private set; }
 
+        /// <summary>
+        /// Turns the building picker on and off (PerAsset.AssetPicker): click a building, and the
+        /// panel's Asset tab gives its asset glass of its own. Alt+G by default.
+        /// </summary>
+        public static SavedInputKey PickerKey { get; private set; }
+
         /// <summary>Puts the panel's button in Unified UI's bar (when that is there), else on the HUD.</summary>
         public static BoolSetting UseUnifiedUI { get; private set; }
 
@@ -78,6 +84,13 @@ namespace RealGlass
 
         /// <summary>0..1: how much of the building's own painted glass colour is kept (1 = all of it).</summary>
         public static FloatSetting GlassOwnColour { get; private set; }
+
+        /// <summary>
+        /// 0..1: how much of the lines an asset painted on its glass stay -- floor bands, mullions,
+        /// frames: where its colour map stands out from the storey round it. A full-glass tower
+        /// (its whole facade marked shiny) keeps its floors.
+        /// </summary>
+        public static FloatSetting GlassPaintedDetail { get; private set; }
 
         /// <summary>The glass's tint (sRGB), where the building's own colour is not kept.</summary>
         public static ColorSetting GlassColor { get; private set; }
@@ -232,6 +245,9 @@ namespace RealGlass
             public const int GlassPreset = GlassPresets.SilverReflective;
             public const float GlassOwnColour = 0.30f;
 
+            /// <summary>All of them: the asset's own floors are what a player expects to see (2026-10-01).</summary>
+            public const float GlassPaintedDetail = 1f;
+
             /// <summary>The Silver reflective preset's colour (#A9B4BA): a static, because a Color32 cannot be a const.</summary>
             public static readonly Color32 GlassColor = new Color32(0xA9, 0xB4, 0xBA, 255);
             public const float GlassReflectivity = 0.35f;
@@ -301,6 +317,7 @@ namespace RealGlass
                 GlassEnabled = new BoolSetting("GlassEnabled", Defaults.GlassEnabled);
                 GlassPreset = new IntSetting("GlassPreset", Defaults.GlassPreset);
                 GlassOwnColour = new FloatSetting("GlassOwnColour", Defaults.GlassOwnColour);
+                GlassPaintedDetail = new FloatSetting("GlassPaintedDetail", Defaults.GlassPaintedDetail);
                 GlassColor = new ColorSetting("GlassColor", Defaults.GlassColor);
                 GlassReflectivity = new FloatSetting("GlassReflectivity", Defaults.GlassReflectivity);
                 GlassGlancing = new FloatSetting("GlassGlancing", Defaults.GlassGlancing);
@@ -339,6 +356,7 @@ namespace RealGlass
 
                 Language = new IntSetting("Language", Defaults.Language);
                 PanelKey = new SavedInputKey("PanelKey", InMemory, DefaultPanelKey, false);
+                PickerKey = new SavedInputKey("PickerKey", InMemory, DefaultPickerKey, false);
                 UseUnifiedUI = new BoolSetting("UseUnifiedUI", Defaults.UseUnifiedUI);
                 DetailedLogging = new BoolSetting("DetailedLogging", Defaults.DetailedLogging);
 
@@ -357,6 +375,10 @@ namespace RealGlass
             }
 
             SettingsXml.Load();
+
+            // Each building asset's own glass (RealGlassAssets.xml): after the settings, whose
+            // global values every asset falls back on.
+            PerAsset.AssetFile.Load();
         }
 
         /// <summary>
@@ -368,6 +390,17 @@ namespace RealGlass
         public static int DefaultPanelKey
         {
             get { return SavedInputKey.Encode(KeyCode.F8, false, false, false); }
+        }
+
+        /// <summary>
+        /// Alt+G (asked for, 2026-10-01, as BOB's Alt+B): the game binds nothing to it (no default of
+        /// DefaultSettings uses Alt at all), and of the 141 mod assemblies installed here only Network
+        /// Anarchy does -- its editor grid, while its road tools are on -- so the key is not taken while
+        /// a road tool is (ModController). Ctrl+Alt+G and Alt+Shift+G are bound by no one.
+        /// </summary>
+        public static int DefaultPickerKey
+        {
+            get { return SavedInputKey.Encode(KeyCode.G, false, false, true); }
         }
 
         /// <summary>The live sky cube's face size in pixels, from <see cref="SkyCubeSize"/>: 64, 128 or 256.</summary>

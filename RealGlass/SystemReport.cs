@@ -57,6 +57,7 @@ namespace RealGlass
                         " | preset=" + GlassPresets.LogName(Int(Settings.GlassPreset, Settings.Defaults.GlassPreset)) +
                         " colour=" + Hex(Settings.GlassColor, Settings.Defaults.GlassColor) +
                         " ownColour=" + Percent(Settings.GlassOwnColour, Settings.Defaults.GlassOwnColour) +
+                        " paintedDetail=" + Percent(Settings.GlassPaintedDetail, Settings.Defaults.GlassPaintedDetail) +
                         " reflectivity=" + Percent(Settings.GlassReflectivity, Settings.Defaults.GlassReflectivity) +
                         " glancing=" + Percent(Settings.GlassGlancing, Settings.Defaults.GlassGlancing) +
                         " silveryEdgeOn=" + Percent(Settings.GlassEdgeSilver, Settings.Defaults.GlassEdgeSilver) +
@@ -78,7 +79,10 @@ namespace RealGlass
                         " followWindows=" + On(Settings.PanesFollowWindows, Settings.Defaults.PanesFollowWindows));
 
                 Log.Msg("panel key: " + (Settings.PanelKey != null ? SettingsXmlFormat.FormatKey(Settings.PanelKey.value) : "?") +
-                        ", Unified UI wanted=" + On(Settings.UseUnifiedUI, Settings.Defaults.UseUnifiedUI));
+                        ", Unified UI wanted=" + On(Settings.UseUnifiedUI, Settings.Defaults.UseUnifiedUI) +
+                        " | building picker key: " + (Settings.PickerKey != null ? SettingsXmlFormat.FormatKey(Settings.PickerKey.value) : "?") +
+                        " | " + PerAsset.AssetFile.Count + " building asset" + (PerAsset.AssetFile.Count == 1 ? "" : "s") +
+                        " with glass of their own (" + PerAsset.AssetFile.FileName + ")");
 
                 // Asked here, not inside: the method names Harmony's types, and without the Harmony
                 // mod merely compiling it would fail (IsPatched names none).

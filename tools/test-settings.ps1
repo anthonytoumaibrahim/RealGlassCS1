@@ -379,6 +379,175 @@ Check "an empty file is refused" ($r.Error -is [System.FormatException]) "True"
 $r = Parse "<RealGlass><!-- a -- b --><A>1</A></RealGlass>"
 Check "a '--' in a hand-written comment is refused, not half-read" ($r.Error -is [System.FormatException]) "True"
 
+# ---- the assets file (RealGlassAssets.xml) ----------------------------------------------------
+# Each building asset's own glass: written and read back exactly, ranges pulled in and said, a
+# kind of glass by number or by name, nothing half-read from a broken file.
+
+$recType = $asm.GetType('RealGlass.PerAsset.AssetRecord', $true)
+$assetFmt = $asm.GetType('RealGlass.PerAsset.AssetFileFormat', $true)
+$recList = [System.Collections.Generic.List``1].MakeGenericType($recType)
+
+function NewRecord([string]$name) { return [Activator]::CreateInstance($recType, [object[]]@($name)) }
+
+# Parse never throws: Error is null when the whole file was read, else why not (and Records what
+# was salvaged). Thrown is anything that escaped it anyway -- always a failure.
+function ParseAssets([string]$text) {
+    $version = 0
+    $errorText = $null
+    $problems = New-Object 'System.Collections.Generic.List[string]'
+    try {
+        $records = $assetFmt::Parse($text, [ref]$version, $problems, [ref]$errorText)
+        return @{ Records = @($records); Version = $version; Problems = $problems; Error = $errorText; Thrown = $null }
+    }
+    catch {
+        return @{ Records = @(); Version = 0; Problems = $problems; Error = "thrown"; Thrown = $_.Exception }
+    }
+}
+
+$green = [Activator]::CreateInstance($color32)
+$green.r = 0x6E; $green.g = 0x9C; $green.b = 0x7C; $green.a = 255
+$a = NewRecord "123456789.Glass Tower 42_Data"
+$a.Title = 'Glass Tower <42> & "co"'
+$a.Strength = [TestHelp]::Div(47, 100)
+$a.PaintedDetail = [single]0
+$a.Preset = 5
+$a.Colour = $green
+$a.Reflectivity = [TestHelp]::Div(24, 100)
+$a.Clarity = [TestHelp]::Div(27, 100)
+$a.OwnColour = [TestHelp]::Div(30, 100)
+$b = NewRecord "Tower B"
+$b.Strength = [TestHelp]::Div(60, 100)
+$empty = NewRecord "Follows everything"
+$list = [Activator]::CreateInstance($recList)
+$list.Add($b); $list.Add($empty); $list.Add($a)
+$text = $assetFmt::Write($list, "Header line one`nHeader -- line two")
+
+$r = ParseAssets $text
+Check "the assets file parses back" ($r.Error -eq $null) "True"
+if ($r.Records -ne $null) {
+    Check "  an asset that follows everything is not written" $r.Records.Count 2
+    Check "  sorted by name" (($r.Records | ForEach-Object { $_.Name }) -join " | ") "123456789.Glass Tower 42_Data | Tower B"
+    $back = $r.Records[0]
+    Check "  the title, escaped and back" $back.Title 'Glass Tower <42> & "co"'
+    Check "  strength exactly" ($back.Strength -eq $a.Strength) "True"
+    # PowerShell hands a Nullable over as its value, or $null.
+    Check "  painted detail 0 is kept (not 'follows')" ("" + ($back.PaintedDetail -ne $null) + " " + $back.PaintedDetail) "True 0"
+    Check "  kind of glass" $back.Preset 5
+    Check "  colour" ($colorText::Format($back.Colour)) "#6E9C7C"
+    Check "  reflectivity, clarity, own colour exactly" ("" + ($back.Reflectivity -eq $a.Reflectivity) + ($back.Clarity -eq $a.Clarity) + ($back.OwnColour -eq $a.OwnColour)) "TrueTrueTrue"
+    Check "  what it does not set stays unset" ("" + ($r.Records[1].Preset -eq $null) + ($r.Records[1].Colour -eq $null) + ($r.Records[1].PaintedDetail -eq $null)) "TrueTrueTrue"
+    Check "  no problems" ($r.Problems -join "; ") ""
+    Check "  version" $r.Version 1
+}
+Check "  written as the sliders show it" ($text -match "<GlassStrength>47</GlassStrength>" -and $text -match "<GlassReflectivity>24</GlassReflectivity>") "True"
+Check "  the root is <RealGlassAssets>" ($text -match "<RealGlassAssets version=`"1`">") "True"
+
+$r = ParseAssets ("<RealGlassAssets version=`"1`"><Asset name=`"X`"><GlassStrength>150</GlassStrength><GlassReflectivity>70%</GlassReflectivity>" +
+                  "<GlassClarity>abc</GlassClarity><GlassPreset>Silver reflective</GlassPreset><Foo>1</Foo></Asset>" +
+                  "<Thing/><Asset><GlassStrength>5</GlassStrength></Asset></RealGlassAssets>")
+$x = $r.Records[0]
+Check "out of range: pulled in" ("" + $x.Strength + " " + $x.Reflectivity) "1 0.6"
+Check "  a value that cannot be read is left out" ($x.Clarity -eq $null) "True"
+Check "  a kind of glass by its English name" $x.Preset 8
+Check "  six problems said (two ranges, a number, an unknown name, an unknown element, a nameless asset)" $r.Problems.Count 6
+Write-Host "      (the problems: $($r.Problems -join ' / '))"
+
+$preset = 0
+Check "kind of glass: Custom by name" ($assetFmt::TryPreset("custom", [ref]$preset)) "True"
+Check "kind of glass: an unknown number refused" ($assetFmt::TryPreset("42", [ref]$preset)) "False"
+Check "kind of glass: every number of a preset" ((1..10 | Where-Object { $assetFmt::TryPreset("$_", [ref]$preset) }).Count) 10
+
+$r = ParseAssets "<RealGlassAssets><Asset name=`"A`"><GlassStrength>10</GlassStrength></Asset><Asset name=`"A`"><GlassStrength>20</GlassStrength></Asset></RealGlassAssets>"
+Check "an asset twice: the last one" ("" + $r.Records.Count + " " + $r.Records[0].Strength) "1 0.2"
+Check "  and it is said" ($r.Problems -join "") "A: written twice, the last one taken"
+
+# ---- fool-proofing: a hand-edited file never throws, and loses only what cannot be read --------
+
+$good = "<RealGlassAssets version=`"1`">`r`n  <Asset name=`"A`">`r`n    <GlassStrength>10</GlassStrength>`r`n  </Asset>`r`n" +
+        "  <Asset name=`"B`">`r`n    <GlassStrength>20</GlassStrength>`r`n  </Asset>`r`n" +
+        "  <Asset name=`"C`">`r`n    <GlassStrength>30</GlassStrength>`r`n  </Asset>`r`n</RealGlassAssets>`r`n"
+
+$r = ParseAssets ($good.Substring(0, $good.IndexOf("</Asset>", $good.IndexOf("name=`"B`""))))
+Check "cut short: said, not thrown" ("" + ($r.Thrown -eq $null) + " " + ($r.Error -ne $null)) "True True"
+Check "  every asset before the cut, and the cut one" (($r.Records | ForEach-Object { $_.Name + "=" + $_.Strength }) -join " ") "A=0.1 B=0.2"
+
+$r = ParseAssets ($good.Replace("<Asset name=`"B`">", "<Asset name=`"B>"))
+Check "a broken asset in the middle: the others read" (($r.Records | ForEach-Object { $_.Name }) -join " ") "A C"
+Check "  and which one, by its line" (@($r.Problems | Where-Object { $_ -match "line 5" }).Count) 1
+
+$r = ParseAssets ($good.Replace("</GlassStrength>`r`n  </Asset>`r`n  <Asset name=`"C`">", "</GlassStrength>`r`n  <Asset name=`"C`">"))
+Check "an asset without its end tag: still read" (($r.Records | ForEach-Object { $_.Name + "=" + $_.Strength }) -join " ") "A=0.1 B=0.2 C=0.3"
+
+$r = ParseAssets "<RealGlassAssets><Asset name=`"A`">"
+Check "a file cut inside its first asset: that asset, nothing thrown" ("" + ($r.Thrown -eq $null) + " " + $r.Records.Count + " " + ($r.Error -ne $null)) "True 1 True"
+$r = ParseAssets "<RealGlass><Asset name=`"A`"><GlassStrength>5</GlassStrength></Asset></RealGlass>"
+Check "another root: said, its assets still taken" ("" + ($r.Error -ne $null) + " " + $r.Records.Count) "True 1"
+$r = ParseAssets "<RealGlass><GlassStrength>5</GlassStrength></RealGlass>"
+Check "the settings file pasted here: nothing taken" ("" + ($r.Error -ne $null) + " " + $r.Records.Count) "True 0"
+$r = ParseAssets "glass, please"
+Check "not XML at all: said, nothing taken, nothing thrown" ("" + ($r.Thrown -eq $null) + " " + ($r.Error -ne $null) + " " + $r.Records.Count) "True True 0"
+$r = ParseAssets ""
+Check "an empty file: read in full, no assets" ("" + ($r.Error -eq $null) + " " + $r.Records.Count) "True 0"
+$r = ParseAssets "  `r`n  "
+Check "a blank file: the same" ("" + ($r.Error -eq $null) + " " + $r.Records.Count) "True 0"
+$r = ParseAssets ([string]$null)
+Check "no text at all: the same" ("" + ($r.Thrown -eq $null) + " " + $r.Records.Count) "True 0"
+$bomb = "<!DOCTYPE r [<!ENTITY a `"aaaaaaaaaa`"><!ENTITY b `"&a;&a;&a;&a;&a;&a;&a;&a;&a;&a;`">]>" +
+        "<RealGlassAssets><Asset name=`"&b;`"><GlassStrength>5</GlassStrength></Asset></RealGlassAssets>"
+$r = ParseAssets $bomb
+Check "a DTD is refused, its entities never expanded" ("" + ($r.Thrown -eq $null) + " " + ($r.Error -ne $null) + " " + (@($r.Records | Where-Object { $_.Name -match "aaaa" }).Count)) "True True 0"
+$r = ParseAssets "<RealGlassAssets><Asset name=`"A`"><GlassStrength>5</GlassStrength></Asset><!-- a -- b --></RealGlassAssets>"
+Check "a bad comment: the asset before it still read" (($r.Records | ForEach-Object { $_.Name }) -join " ") "A"
+Check "a kind of glass written 5.0" ($assetFmt::TryPreset("5.0", [ref]$preset)) "True"
+Check "  but not 5.5" ($assetFmt::TryPreset("5.5", [ref]$preset)) "False"
+
+# Every cut of a real file, and a thousand random corruptions of it: never an exception.
+$full = $assetFmt::Write($list, "Header line one`nHeader -- line two")
+$thrown = 0; $read = 0
+for ($n = 0; $n -le $full.Length; $n += 3) {
+    $r = ParseAssets $full.Substring(0, $n)
+    if ($r.Thrown -ne $null) { $thrown++; if ($thrown -le 3) { Write-Host "   cut at $n threw $($r.Thrown.GetType().Name): $($r.Thrown.Message)" } }
+    $read += $r.Records.Count
+}
+Check "every cut of a written file ($([int]($full.Length / 3) + 1) cuts): nothing thrown" $thrown 0
+$rand = New-Object System.Random 20261001
+$junk = '<', '>', '/', '"', '&', '=', ' ', 'x', '!', '-', [char]0, [char]0x1F, [char]0xD800, 'Asset', '</Asset>', '<Asset name="Z">', ']]>', '<![CDATA[', '&amp;', '&#0;'
+$thrown = 0
+for ($k = 0; $k -lt 1000; $k++) {
+    $chars = New-Object System.Text.StringBuilder $full
+    for ($m = 0; $m -lt 1 + $rand.Next(6); $m++) {
+        $at = $rand.Next($chars.Length)
+        if ($rand.Next(3) -eq 0) { [void]$chars.Remove($at, [Math]::Min($rand.Next(1, 40), $chars.Length - $at)) }
+        else { [void]$chars.Insert($at, [string]$junk[$rand.Next($junk.Count)]) }
+    }
+    $r = ParseAssets $chars.ToString()
+    if ($r.Thrown -ne $null) { $thrown++; if ($thrown -le 3) { Write-Host "   corruption $k threw $($r.Thrown.GetType().Name): $($r.Thrown.Message)" } }
+}
+Check "a thousand random corruptions: nothing thrown" $thrown 0
+
+# What the mod writes, it reads back: a title with characters XML forbids is cleaned, not written.
+$odd = NewRecord "Odd"
+$odd.Title = "Tower" + [char]1 + [char]0x1F + " B" + [char]0xD800 + "`t2"
+$odd.Strength = [TestHelp]::Div(50, 100)
+$oddList = [Activator]::CreateInstance($recList)
+$oddList.Add($odd)
+$r = ParseAssets ($assetFmt::Write($oddList, ""))
+Check "a title with control characters: written so it reads back" ("" + ($r.Error -eq $null) + " '" + $r.Records[0].Title + "'") "True 'Tower B 2'"
+
+# "Give this asset the Glass tab's settings again": nothing of its own is left, so its entry goes.
+$fileType = $asm.GetType('RealGlass.PerAsset.AssetFile', $true)
+$kept = NewRecord "Reset me"
+$kept.Strength = [TestHelp]::Div(40, 100)
+$fileType::Put($kept)
+$before = $fileType::Count
+$fileType::Put((NewRecord "Reset me"))
+$afterList = [Activator]::CreateInstance($recList)
+foreach ($rec in $fileType::All) { $afterList.Add($rec) }
+Check "back to the global settings: the asset's entry is gone" ("" + $before + " " + $fileType::Count + " " + ($fileType::Get("Reset me") -eq $null) + " " + ($assetFmt::Write($afterList, "") -match "Reset me")) "1 0 True False"
+
+$r = ParseAssets "<RealGlass><Asset name=`"A`"/></RealGlass>"
+Check "the settings file is not an assets file" ($r.Error -ne $null) "True"
+
 # ---- the renderer's own copy of the defaults ------------------------------------------------
 # GlassParams.Default() (Glass\GlassParams.cs) is what the GPU preview draws with; it must be
 # what the mod ships (Settings.Defaults), or the preview's pictures are of another look.
@@ -386,7 +555,7 @@ Check "a '--' in a hand-written comment is refused, not half-read" ($r.Error -is
 $paramsType = $asm.GetType('RealGlass.Glass.GlassParams', $true)
 $gp = $paramsType.GetMethod('Default').Invoke($null, @())
 $pairs = @(
-    @('Enabled', 'GlassEnabled'), @('OwnColour', 'GlassOwnColour'), @('Reflectivity', 'GlassReflectivity'),
+    @('Enabled', 'GlassEnabled'), @('OwnColour', 'GlassOwnColour'), @('PaintedDetail', 'GlassPaintedDetail'), @('Reflectivity', 'GlassReflectivity'),
     @('Glancing', 'GlassGlancing'), @('Clarity', 'GlassClarity'), @('Strength', 'GlassStrength'),
     @('Threshold', 'GlassThreshold'), @('NightWindows', 'GlassNightWindows'), @('ShowMask', 'GlassShowMask'),
     @('Trace', 'SsrEnabled'), @('Quality', 'SsrQuality'), @('ReflectionBrightness', 'ReflectionBrightness'),
