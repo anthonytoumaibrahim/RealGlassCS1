@@ -248,6 +248,12 @@
   <String key="AssetGlassOwnColour.Label">Keep the building's colour</String>
   <String key="AssetGlassOwnColour.Tooltip">How much of the colour the asset's own glass has stays.</String>
 
+  <String key="AssetGlassThreshold.Label">Shininess needed</String>
+  <String key="AssetGlassThreshold.Tooltip">Lower: more of this asset counts as glass. Check with the mask view.</String>
+
+  <String key="AssetGlassNightWindows.Label">Windows lit at night are glass</String>
+  <String key="AssetGlassNightWindows.Tooltip">Windows this asset lights at night count as glass too.</String>
+
   <String key="Asset.Global.Button">Global</String>
   <String key="Asset.Global.Tooltip">Follow the Glass tab's setting again.</String>
 
@@ -356,8 +362,9 @@
     \n
     One Asset element per asset, holding only what it does not take from RealGlass.xml, under
     the same names and in the same units:\n
-    - a percentage the way its slider shows it: 47 means 47%;\n
-    - GlassColor as #RRGGBB;\n
+    - a percentage the way its slider shows it: 47 means 47%; GlassThreshold goes from 10 to 95
+    (lower than in RealGlass.xml: it is this asset's alone);\n
+    - GlassColor as #RRGGBB; GlassNightWindows as true or false;\n
     - GlassPreset as the number of a kind of glass (0 Custom, 1 to 10, as in RealGlass.xml);
     a kind of glass alone gives its colour, reflectivity and clarity.\n
     \n

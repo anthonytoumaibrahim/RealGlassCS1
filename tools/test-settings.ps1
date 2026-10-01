@@ -415,6 +415,8 @@ $a.Colour = $green
 $a.Reflectivity = [TestHelp]::Div(24, 100)
 $a.Clarity = [TestHelp]::Div(27, 100)
 $a.OwnColour = [TestHelp]::Div(30, 100)
+$a.Threshold = [TestHelp]::Div(15, 100)
+$a.NightWindows = $false
 $b = NewRecord "Tower B"
 $b.Strength = [TestHelp]::Div(60, 100)
 $empty = NewRecord "Follows everything"
@@ -435,11 +437,18 @@ if ($r.Records -ne $null) {
     Check "  kind of glass" $back.Preset 5
     Check "  colour" ($colorText::Format($back.Colour)) "#6E9C7C"
     Check "  reflectivity, clarity, own colour exactly" ("" + ($back.Reflectivity -eq $a.Reflectivity) + ($back.Clarity -eq $a.Clarity) + ($back.OwnColour -eq $a.OwnColour)) "TrueTrueTrue"
+    Check "  shininess needed 15% (below the global row's 40)" ($back.Threshold -eq $a.Threshold) "True"
+    Check "  lit windows switched OFF is kept (not 'follows')" ("" + ($back.NightWindows -ne $null) + " " + $back.NightWindows) "True False"
     Check "  what it does not set stays unset" ("" + ($r.Records[1].Preset -eq $null) + ($r.Records[1].Colour -eq $null) + ($r.Records[1].PaintedDetail -eq $null)) "TrueTrueTrue"
     Check "  no problems" ($r.Problems -join "; ") ""
     Check "  version" $r.Version 1
 }
-Check "  written as the sliders show it" ($text -match "<GlassStrength>47</GlassStrength>" -and $text -match "<GlassReflectivity>24</GlassReflectivity>") "True"
+Check "  written as the sliders show it" ($text -match "<GlassStrength>47</GlassStrength>" -and $text -match "<GlassReflectivity>24</GlassReflectivity>" -and
+                                         $text -match "<GlassThreshold>15</GlassThreshold>" -and $text -match "<GlassNightWindows>false</GlassNightWindows>") "True"
+
+$r = ParseAssets "<RealGlassAssets><Asset name=`"T`"><GlassThreshold>5</GlassThreshold><GlassNightWindows>maybe</GlassNightWindows></Asset><Asset name=`"U`"><GlassThreshold>99</GlassThreshold><GlassNightWindows> ON </GlassNightWindows></Asset></RealGlassAssets>"
+Check "shininess needed: pulled into 10..95" ("" + $r.Records[0].Threshold + " " + $r.Records[1].Threshold) "0.1 0.95"
+Check "  lit windows: on/off spellings, nonsense refused and said" ("" + ($r.Records[0].NightWindows -eq $null) + " " + $r.Records[1].NightWindows + " " + $r.Problems.Count) "True True 3"
 Check "  the root is <RealGlassAssets>" ($text -match "<RealGlassAssets version=`"1`">") "True"
 
 $r = ParseAssets ("<RealGlassAssets version=`"1`"><Asset name=`"X`"><GlassStrength>150</GlassStrength><GlassReflectivity>70%</GlassReflectivity>" +

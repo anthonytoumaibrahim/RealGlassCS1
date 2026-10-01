@@ -158,6 +158,8 @@ namespace RealGlass.PerAsset
             if (r.Reflectivity.HasValue) s += "reflectivity " + Pct(r.Reflectivity.Value) + ", ";
             if (r.Clarity.HasValue) s += "clarity " + Pct(r.Clarity.Value) + ", ";
             if (r.OwnColour.HasValue) s += "own colour " + Pct(r.OwnColour.Value) + ", ";
+            if (r.Threshold.HasValue) s += "glass above " + Pct(r.Threshold.Value) + ", ";
+            if (r.NightWindows.HasValue) s += "lit windows " + (r.NightWindows.Value ? "are glass" : "are not glass") + ", ";
             return s.Length > 0 ? s.Substring(0, s.Length - 2) : "nothing of its own";
         }
 

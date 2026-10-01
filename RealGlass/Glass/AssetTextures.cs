@@ -13,8 +13,10 @@ namespace RealGlass.Glass
     /// <remarks>
     /// A building texel: r strength, g painted detail (0..254 = 0..100%), b the glass slot
     /// (0..254), a - ; <see cref="Global"/> (255) in a channel: the global setting. A glass slot is two
-    /// texels of the table: row 0 the tint (linear, brightest channel 1) and the own-colour mix, row 1
-    /// the reflectivity and the clarity (0..255 = 0..1).
+    /// texels of the table, every value resolved (the asset's own, else its kind of glass's, else the
+    /// global): row 0 the tint (linear, brightest channel 1) and the own-colour mix, row 1 the
+    /// reflectivity, the clarity, the shininess needed to count as glass (0..255 = 0..1) and whether
+    /// the windows lit at night count too (0 or 255).
     /// </remarks>
     public sealed class AssetTextures
     {
@@ -115,13 +117,14 @@ namespace RealGlass.Glass
         /// One glass of the table. tint: the shader's tint (linear, brightest channel 1, as
         /// GlassUniforms.Tint makes it); the rest 0..1.
         /// </summary>
-        public void SetGlass(int slot, Vector3 tint, float ownColour, float reflectivity, float clarity)
+        public void SetGlass(int slot, Vector3 tint, float ownColour, float reflectivity, float clarity, float threshold,
+                             bool nightWindows)
         {
             if (_tablePixels == null || slot < 0 || slot >= GlassSlots)
                 return;
 
             _tablePixels[slot] = new Color32(Byte(tint.x), Byte(tint.y), Byte(tint.z), Byte(ownColour));
-            _tablePixels[TableWidth + slot] = new Color32(Byte(reflectivity), Byte(clarity), 0, 255);
+            _tablePixels[TableWidth + slot] = new Color32(Byte(reflectivity), Byte(clarity), Byte(threshold), (byte)(nightWindows ? 255 : 0));
             _tableDirty = true;
         }
 

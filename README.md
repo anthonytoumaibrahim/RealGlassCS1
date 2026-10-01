@@ -82,8 +82,9 @@ the log is `RealGlass.log`, next to it.
   author painted it; the glass between keeps its reflections.
 - **Glass per asset**: Alt+G (rebindable) turns a building picker on, as BOB's Alt+B does; click a
   building, and the panel's Asset tab gives its asset -- every copy of it, in every city -- a
-  strength, painted detail and kind of glass of its own, each row following the global setting
-  until it is moved. Kept in RealGlassAssets.xml next to the settings, never in a save.
+  strength, painted detail, kind of glass and its own say on what counts as glass (the shininess
+  needed, and whether its lit windows count), each row following the global setting until it is
+  moved. Kept in RealGlassAssets.xml next to the settings, never in a save.
 - **Panes** bend reflections the way real facades do: insulating units bow with the weather,
   toughened glass carries the furnace rollers' ripple, and no two panes are set quite alike. Up
   close, each pane is one of the windows the building painted, found between its painted mullions

@@ -35,9 +35,17 @@ namespace RealGlass.PerAsset
         public const string ReflectivityName = "GlassReflectivity";
         public const string ClarityName = "GlassClarity";
         public const string OwnColourName = "GlassOwnColour";
+        public const string ThresholdName = "GlassThreshold";
+        public const string NightWindowsName = "GlassNightWindows";
 
         /// <summary>The sliders' ranges, as the file writes them: the global rows' (UI/SettingsCatalog.cs).</summary>
         public const float StrengthMax = 100f, DetailMax = 100f, ReflectivityMax = 60f, ClarityMax = 100f, OwnColourMax = 100f;
+
+        /// <summary>
+        /// Shininess needed, per asset: lower than the global row's 40 (an asset's glass may be
+        /// painted dull, and the walls it pulls in are that asset's alone) -- the Asset tab's slider.
+        /// </summary>
+        public const float ThresholdMin = 10f, ThresholdMax = 95f;
 
         private const string NewLine = "\r\n";
 
@@ -84,6 +92,10 @@ namespace RealGlass.PerAsset
                     Element(text, ClarityName, SettingsXmlFormat.FormatNumber(record.Clarity.Value * 100f));
                 if (record.OwnColour.HasValue)
                     Element(text, OwnColourName, SettingsXmlFormat.FormatNumber(record.OwnColour.Value * 100f));
+                if (record.Threshold.HasValue)
+                    Element(text, ThresholdName, SettingsXmlFormat.FormatNumber(record.Threshold.Value * 100f));
+                if (record.NightWindows.HasValue)
+                    Element(text, NightWindowsName, SettingsXmlFormat.FormatBool(record.NightWindows.Value));
 
                 text.Append("  </").Append(AssetElement).Append('>').Append(NewLine);
             }
@@ -275,6 +287,16 @@ namespace RealGlass.PerAsset
                 record.Clarity = Percent(value, ClarityMax, where, problems);
             else if (Is(name, OwnColourName))
                 record.OwnColour = Percent(value, OwnColourMax, where, problems);
+            else if (Is(name, ThresholdName))
+                record.Threshold = Percent(value, ThresholdMin, ThresholdMax, where, problems);
+            else if (Is(name, NightWindowsName))
+            {
+                bool on;
+                if (SettingsXmlFormat.TryParseBool(value, out on))
+                    record.NightWindows = on;
+                else
+                    Problem(problems, where + "ignored: not true or false");
+            }
             else if (Is(name, ColourName))
             {
                 Color32 colour;
@@ -294,8 +316,8 @@ namespace RealGlass.PerAsset
             else
             {
                 Problem(problems, record.Name + ": <" + name + "> ignored: an asset can have " + StrengthName + ", " + DetailName +
-                                  ", " + PresetName + ", " + ColourName + ", " + ReflectivityName + ", " + ClarityName + " and " +
-                                  OwnColourName);
+                                  ", " + PresetName + ", " + ColourName + ", " + ReflectivityName + ", " + ClarityName + ", " +
+                                  OwnColourName + ", " + ThresholdName + " and " + NightWindowsName);
             }
         }
 
@@ -345,6 +367,12 @@ namespace RealGlass.PerAsset
         /// <summary>A percentage as the slider shows it (0..max), stored as a fraction; null when unreadable.</summary>
         private static float? Percent(string value, float max, string where, List<string> problems)
         {
+            return Percent(value, 0f, max, where, problems);
+        }
+
+        /// <summary>A percentage as the slider shows it (min..max), stored as a fraction; null when unreadable.</summary>
+        private static float? Percent(string value, float min, float max, string where, List<string> problems)
+        {
             double number;
             if (!SettingsXmlFormat.TryParseNumber(value, out number))
             {
@@ -352,11 +380,11 @@ namespace RealGlass.PerAsset
                 return null;
             }
 
-            if (number < 0.0 || number > max)
+            if (number < min || number > max)
             {
-                double clamped = Math.Max(0.0, Math.Min(max, number));
-                Problem(problems, where + "pulled into its range 0 to " + SettingsXmlFormat.FormatNumber(max) + ": " +
-                                  SettingsXmlFormat.FormatNumber(clamped));
+                double clamped = Math.Max(min, Math.Min(max, number));
+                Problem(problems, where + "pulled into its range " + SettingsXmlFormat.FormatNumber(min) + " to " +
+                                  SettingsXmlFormat.FormatNumber(max) + ": " + SettingsXmlFormat.FormatNumber(clamped));
                 number = clamped;
             }
 

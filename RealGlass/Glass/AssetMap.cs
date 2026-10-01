@@ -56,7 +56,7 @@ namespace RealGlass.Glass
                 _textures.Create(RenderManager.OBJECT_COLORMAP_WIDTH, RenderManager.OBJECT_COLORMAP_HEIGHT);
 
             ulong globalKey = GlassKey(GlassUniforms.Tint(global.TintR, global.TintG, global.TintB), global.OwnColour,
-                                       global.Reflectivity, global.Clarity);
+                                       global.Reflectivity, global.Clarity, global.Threshold, global.NightWindows);
             if (AssetFile.Version != _seenVersion || globalKey != _seenGlobal)
             {
                 bool first = _seenVersion < 0;
@@ -164,9 +164,10 @@ namespace RealGlass.Glass
                 if (record.HasGlass)
                 {
                     Vector3 tint;
-                    float own, reflectivity, clarity;
-                    Glass(record, global, out tint, out own, out reflectivity, out clarity);
-                    ulong key = GlassKey(tint, own, reflectivity, clarity);
+                    float own, reflectivity, clarity, threshold;
+                    bool nightWindows;
+                    Glass(record, global, out tint, out own, out reflectivity, out clarity, out threshold, out nightWindows);
+                    ulong key = GlassKey(tint, own, reflectivity, clarity, threshold, nightWindows);
                     int found;
                     if (!_slotOf.TryGetValue(key, out found))
                     {
@@ -174,7 +175,7 @@ namespace RealGlass.Glass
                         {
                             found = slots++;
                             _slotOf[key] = found;
-                            _textures.SetGlass(found, tint, own, reflectivity, clarity);
+                            _textures.SetGlass(found, tint, own, reflectivity, clarity, threshold, nightWindows);
                         }
                         else
                         {
@@ -198,10 +199,14 @@ namespace RealGlass.Glass
 
         /// <summary>
         /// The asset's glass in full: each number its own, else its kind of glass's (when it chose
-        /// one), else the global one.
+        /// one), else the global one; what counts as its glass, its own else the global.
         /// </summary>
-        public static void Glass(AssetRecord record, GlassParams global, out Vector3 tint, out float own, out float reflectivity, out float clarity)
+        public static void Glass(AssetRecord record, GlassParams global, out Vector3 tint, out float own, out float reflectivity,
+                                 out float clarity, out float threshold, out bool nightWindows)
         {
+            threshold = record.Threshold ?? global.Threshold;
+            nightWindows = record.NightWindows ?? global.NightWindows;
+
             GlassPreset preset = default(GlassPreset);
             bool hasPreset = record.Preset.HasValue && GlassPresets.TryGet(record.Preset.Value, out preset);
 
@@ -231,11 +236,11 @@ namespace RealGlass.Glass
             clarity = record.Clarity ?? (hasPreset ? preset.Clarity : global.Clarity);
         }
 
-        /// <summary>A glass as the texture holds it (8 bits a number): equal keys, one slot.</summary>
-        private static ulong GlassKey(Vector3 tint, float own, float reflectivity, float clarity)
+        /// <summary>A glass as the texture holds it (8 bits a number, all eight in 64): equal keys, one slot.</summary>
+        private static ulong GlassKey(Vector3 tint, float own, float reflectivity, float clarity, float threshold, bool nightWindows)
         {
-            return Byte(tint.x) | (ulong)Byte(tint.y) << 8 | (ulong)Byte(tint.z) << 16 | (ulong)Byte(own) << 24 |
-                   (ulong)Byte(reflectivity) << 32 | (ulong)Byte(clarity) << 40;
+            return Byte(tint.x) | Byte(tint.y) << 8 | Byte(tint.z) << 16 | Byte(own) << 24 |
+                   Byte(reflectivity) << 32 | Byte(clarity) << 40 | Byte(threshold) << 48 | (nightWindows ? 255UL : 0UL) << 56;
         }
 
         private static ulong Byte(float value)

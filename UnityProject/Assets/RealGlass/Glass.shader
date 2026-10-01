@@ -99,11 +99,11 @@ Shader "RealGlass/Glass"
             // looked for on a fixed grid of world heights (so every pixel of one window finds the
             // same edges), _RGBudget.w steps (0.25 m) each way. (bottom, top), world y; 0, 0 when
             // none was found (or a window under 0.9 m or over 7 m: not a pane).
-            float2 PaintedWindow(float2 uv, float3 P, float2 upUV)
+            float2 PaintedWindow(float2 uv, float3 P, float2 upUV, float glassThreshold)
             {
                 const float stepM = 0.25;
                 float y0 = floor(P.y / stepM) * stepM;
-                float threshold = _RGMask.x - 0.08;
+                float threshold = glassThreshold - 0.08;
                 float top = 0.0, bottom = 0.0;
                 bool up = false, down = false;
                 [loop]
@@ -143,11 +143,11 @@ Shader "RealGlass/Glass"
             // facade (x = metres along t), on a fixed 0.1 m grid (painted mullions are thin: 0.25 m
             // steps walked over them), _RGBudget2.x steps each way. (left, right), or 0, 0 when
             // either side has none within reach.
-            float2 PaintedPaneSpan(float2 uv, float x, float2 alongUV)
+            float2 PaintedPaneSpan(float2 uv, float x, float2 alongUV, float glassThreshold)
             {
                 const float stepM = 0.1;
                 float x0 = floor(x / stepM) * stepM;
-                float threshold = _RGMask.x - 0.08;
+                float threshold = glassThreshold - 0.08;
                 float right = 0.0, left = 0.0;
                 bool r = false, l = false;
                 [loop]
@@ -286,18 +286,38 @@ Shader "RealGlass/Glass"
 #endif
                 float4 xys = tex2D(_XYSMap, uv);
                 float4 aci = tex2D(_ACIMap, uv);
-                float mask = GlassMask(xys, aci) * i.worldNormal.w;
+
+                // This building's own settings: its asset's, where the player gave it some
+                // (AssetTextures.cs, at the colour index every tier carries); 255 in a channel is
+                // the global setting. Its glass slot (b) holds the rest, resolved: the glass, and
+                // what counts as glass -- read first, the mask needs it.
+                float4 asset = tex2Dlod(_RGAssets, float4(i.building, 0.0, 0.0));
+                float strength = asset.r < 0.999 ? asset.r * (255.0 / 254.0) : _RGGlass.w;
+                float detailKept = asset.g < 0.999 ? asset.g * (255.0 / 254.0) : _RGGlass2.y;
+                float F0 = _RGGlass.x;
+                float clarity = _RGGlass.z;
+                float4 tintOwn = _RGTint;
+                float glassThreshold = _RGMask.x;
+                float nightWindows = _RGMask.y;
+                if (asset.b < 0.999)
+                {
+                    // Slot k = b x 255, the centre of texel k of 256.
+                    float u = asset.b * (255.0 / 256.0) + 0.5 / 256.0;
+                    tintOwn = tex2Dlod(_RGAssetGlass, float4(u, 0.25, 0.0, 0.0));
+                    float4 numbers = tex2Dlod(_RGAssetGlass, float4(u, 0.75, 0.0, 0.0));
+                    F0 = numbers.r;
+                    clarity = numbers.g;
+                    glassThreshold = numbers.b;
+                    nightWindows = numbers.a;
+                }
+
+                float mask = GlassMask(xys, aci, glassThreshold, nightWindows) * i.worldNormal.w;
                 clip(mask - 0.004);
 
                 if (_RGMask.z > 0.5)
                     return float4(1.0, 0.0, 1.0, max(mask, 0.35));
 
-                // This building's own settings: its asset's, where the player gave it some
-                // (AssetTextures.cs, at the colour index every tier carries); 255 in a channel is
-                // the global setting. Strength 0: nothing of ours on it at all.
-                float4 asset = tex2Dlod(_RGAssets, float4(i.building, 0.0, 0.0));
-                float strength = asset.r < 0.999 ? asset.r * (255.0 / 254.0) : _RGGlass.w;
-                float detailKept = asset.g < 0.999 ? asset.g * (255.0 / 254.0) : _RGGlass2.y;
+                // Strength 0: nothing of ours on this building at all.
                 clip(strength - 0.004);
 
                 float3 P = i.worldPos.xyz;
@@ -312,26 +332,14 @@ Shader "RealGlass/Glass"
                 // Close up, the pane the building painted round this pixel: its top and bottom, then
                 // its sides. (The derivatives outside every branch.)
                 float4 uvPerMetre = UvPerMetre(uv, P, t);
-                float F0 = _RGGlass.x;
-                float clarity = _RGGlass.z;
-                float4 tintOwn = _RGTint;
-                if (asset.b < 0.999)
-                {
-                    // The asset's own glass: slot k = b x 255, the centre of texel k of 256.
-                    float u = asset.b * (255.0 / 256.0) + 0.5 / 256.0;
-                    tintOwn = tex2Dlod(_RGAssetGlass, float4(u, 0.25, 0.0, 0.0));
-                    float4 numbers = tex2Dlod(_RGAssetGlass, float4(u, 0.75, 0.0, 0.0));
-                    F0 = numbers.r;
-                    clarity = numbers.g;
-                }
                 float4 painted = float4(0.0, 0.0, 0.0, 0.0);   // the painted pane: left, right (along t), bottom, top
 #if defined(RG_NEAR)
                 if (_RGBudget2.x > 0.5 && footprint < 0.5)   // where a pane is a few pixels wide
                 {
-                    float2 glassSpan = PaintedWindow(uv, P, uvPerMetre.zw);
+                    float2 glassSpan = PaintedWindow(uv, P, uvPerMetre.zw, glassThreshold);
                     if (glassSpan.y > glassSpan.x)
                     {
-                        float2 across = PaintedPaneSpan(uv, dot(P, t), uvPerMetre.xy);
+                        float2 across = PaintedPaneSpan(uv, dot(P, t), uvPerMetre.xy, glassThreshold);
                         if (across.y > across.x)
                             painted = float4(across, glassSpan);
                     }

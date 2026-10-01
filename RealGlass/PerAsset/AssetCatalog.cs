@@ -22,9 +22,10 @@ namespace RealGlass.PerAsset
         private static List<Row> _rows;
 
         // What the rows show: the picked asset's glass.
-        private static FloatSetting _strength, _detail, _reflectivity, _clarity, _own;
+        private static FloatSetting _strength, _detail, _reflectivity, _clarity, _own, _threshold;
         private static IntSetting _preset;
         private static ColorSetting _colour;
+        private static BoolSetting _nightWindows;
 
         public static List<Row> Rows
         {
@@ -57,6 +58,8 @@ namespace RealGlass.PerAsset
             _reflectivity = new FloatSetting("AssetGlassReflectivity", Settings.Defaults.GlassReflectivity, false);
             _clarity = new FloatSetting("AssetGlassClarity", Settings.Defaults.GlassClarity, false);
             _own = new FloatSetting("AssetGlassOwnColour", Settings.Defaults.GlassOwnColour, false);
+            _threshold = new FloatSetting("AssetGlassThreshold", Settings.Defaults.GlassThreshold, false);
+            _nightWindows = new BoolSetting("AssetGlassNightWindows", Settings.Defaults.GlassNightWindows, false);
 
             var rows = new List<Row>();
 
@@ -158,11 +161,36 @@ namespace RealGlass.PerAsset
 
             rows.Add(Percent(_own, null, 100f, r => r.OwnColour.HasValue, (r, v) => r.OwnColour = v, r => r.OwnColour = null, "own colour"));
 
+            // What counts as this asset's glass: further down than the global row (40%), for glass
+            // painted dull; the walls a low value pulls in are this asset's alone. The mask view
+            // ("Show what counts as glass", Glass tab) shows it per asset.
+            rows.Add(Percent(_threshold, "WhatIsGlass", AssetFileFormat.ThresholdMin, AssetFileFormat.ThresholdMax,
+                r => r.Threshold.HasValue, (r, v) => r.Threshold = v, r => r.Threshold = null, "shininess needed"));
+
+            rows.Add(new Row
+            {
+                Kind = RowKind.Toggle,
+                Panel = PanelPage.Asset,
+                Bool = _nightWindows,
+                DefaultBool = Settings.Defaults.GlassNightWindows,
+                Enabled = Editable,
+                Overridden = () => Has(r => r.NightWindows.HasValue),
+                ClearOverride = () => Change(r => r.NightWindows = null, "lit windows back to the global setting"),
+                AfterChange = () => Change(r => r.NightWindows = _nightWindows.value,
+                    "lit-at-night windows count as glass: " + (_nightWindows.value ? "yes" : "no")),
+            });
+
             _rows = rows;
             Sync();
         }
 
         private static Row Percent(FloatSetting setting, string group, float max, Func<AssetRecord, bool> has,
+                                   Action<AssetRecord, float> set, Action<AssetRecord> clear, string what)
+        {
+            return Percent(setting, group, 0f, max, has, set, clear, what);
+        }
+
+        private static Row Percent(FloatSetting setting, string group, float min, float max, Func<AssetRecord, bool> has,
                                    Action<AssetRecord, float> set, Action<AssetRecord> clear, string what)
         {
             return new Row
@@ -171,7 +199,7 @@ namespace RealGlass.PerAsset
                 Panel = PanelPage.Asset,
                 Group = group,
                 Float = setting,
-                Min = 0f, Max = max, Step = 1f,
+                Min = min, Max = max, Step = 1f,
                 Enabled = Editable,
                 Overridden = () => Has(has),
                 ClearOverride = () => Change(clear, what + " back to the global one"),
@@ -213,6 +241,8 @@ namespace RealGlass.PerAsset
             _strength.value = r != null && r.Strength.HasValue ? r.Strength.Value : Settings.GlassStrength.value;
             _detail.value = r != null && r.PaintedDetail.HasValue ? r.PaintedDetail.Value : Settings.GlassPaintedDetail.value;
             _own.value = r != null && r.OwnColour.HasValue ? r.OwnColour.Value : Settings.GlassOwnColour.value;
+            _threshold.value = r != null && r.Threshold.HasValue ? r.Threshold.Value : Settings.GlassThreshold.value;
+            _nightWindows.value = r != null && r.NightWindows.HasValue ? r.NightWindows.Value : Settings.GlassNightWindows.value;
 
             _colour.value = r != null && r.Colour.HasValue ? r.Colour.Value : (hasPreset ? preset.Colour : Settings.GlassColor.value);
             _reflectivity.value = r != null && r.Reflectivity.HasValue ? r.Reflectivity.Value

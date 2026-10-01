@@ -106,12 +106,13 @@ public static class GlassPreview
     /// <summary>The variant's "A.Field=value": the full-glass tower's own settings (its asset's, in the mod).</summary>
     private sealed class AssetOverride
     {
-        public float? Strength, Detail, Reflectivity, Clarity, Own;
+        public float? Strength, Detail, Reflectivity, Clarity, Own, Threshold;
+        public bool? Night;
         public Color? Tint;
 
         public bool HasGlass
         {
-            get { return Reflectivity.HasValue || Clarity.HasValue || Own.HasValue || Tint.HasValue; }
+            get { return Reflectivity.HasValue || Clarity.HasValue || Own.HasValue || Tint.HasValue || Threshold.HasValue || Night.HasValue; }
         }
     }
 
@@ -861,7 +862,8 @@ public static class GlassPreview
             {
                 Color c = _asset.Tint ?? new Color(p.TintR, p.TintG, p.TintB);
                 s.Assets.SetGlass(0, GlassUniforms.Tint(c.r, c.g, c.b), _asset.Own ?? p.OwnColour,
-                    _asset.Reflectivity ?? p.Reflectivity, _asset.Clarity ?? p.Clarity);
+                    _asset.Reflectivity ?? p.Reflectivity, _asset.Clarity ?? p.Clarity, _asset.Threshold ?? p.Threshold,
+                    _asset.Night ?? p.NightWindows);
                 slot = 0;
             }
             s.Assets.Set(s.FullGlassId, new Color32(
@@ -1035,7 +1037,7 @@ public static class GlassPreview
             if (kv[0].Trim().StartsWith("A.", StringComparison.OrdinalIgnoreCase))
             {
                 // The full-glass tower's own settings (its asset's): A.Strength, A.Detail,
-                // A.Reflectivity, A.Clarity, A.Own (0..1), A.Tint (#RRGGBB).
+                // A.Reflectivity, A.Clarity, A.Own, A.Threshold (0..1), A.Night (0/1), A.Tint (#RRGGBB).
                 string key = kv[0].Trim().Substring(2).ToLowerInvariant();
                 string text = kv[1].Trim();
                 if (key == "tint")
@@ -1046,6 +1048,11 @@ public static class GlassPreview
                     _asset.Tint = tint;
                     continue;
                 }
+                if (key == "night")
+                {
+                    _asset.Night = text == "1" || text.Equals("true", StringComparison.OrdinalIgnoreCase);
+                    continue;
+                }
                 float number = float.Parse(text, CultureInfo.InvariantCulture);
                 switch (key)
                 {
@@ -1054,6 +1061,7 @@ public static class GlassPreview
                     case "reflectivity": _asset.Reflectivity = number; break;
                     case "clarity": _asset.Clarity = number; break;
                     case "own": _asset.Own = number; break;
+                    case "threshold": _asset.Threshold = number; break;
                     default: throw new Exception("no asset setting 'A." + key + "'");
                 }
                 continue;

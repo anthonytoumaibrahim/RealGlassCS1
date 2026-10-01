@@ -126,11 +126,12 @@ namespace RealGlass.UI
             return slider;
         }
 
+        /// <summary>A checkbox and its name; <paramref name="rightReserve"/> pixels left free at the right (a "Global" button).</summary>
         public static UICheckBox AddCheckbox(UIComponent parent, float y, string label, bool value,
-            Action<bool> onChanged)
+            Action<bool> onChanged, float rightReserve = 0f)
         {
             UICheckBox box = parent.AddUIComponent<UICheckBox>();
-            box.size = new Vector2(parent.width, 22f);
+            box.size = new Vector2(parent.width - rightReserve, 22f);
             box.relativePosition = new Vector3(0f, y + 6f);
 
             UISprite background = box.AddUIComponent<UISprite>();

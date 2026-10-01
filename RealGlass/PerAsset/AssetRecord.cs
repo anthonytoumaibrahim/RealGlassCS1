@@ -37,6 +37,16 @@ namespace RealGlass.PerAsset
         /// <summary>0..1: how much of the asset's own painted glass colour is kept (GlassOwnColour).</summary>
         public float? OwnColour;
 
+        /// <summary>
+        /// 0.10..0.95: how shiny a part of this asset must be to count as glass (GlassThreshold). Lower
+        /// than the global row goes (0.40): an asset whose glass is painted dull still gets glass, and
+        /// the walls a low threshold pulls in are this asset's alone.
+        /// </summary>
+        public float? Threshold;
+
+        /// <summary>The windows this asset lights at night count as glass too (GlassNightWindows).</summary>
+        public bool? NightWindows;
+
         public AssetRecord(string name)
         {
             Name = name;
@@ -48,10 +58,18 @@ namespace RealGlass.PerAsset
             get { return !Strength.HasValue && !PaintedDetail.HasValue && !HasGlass; }
         }
 
-        /// <summary>The glass itself is the asset's own, in part or whole.</summary>
+
+        /// <summary>
+        /// The glass itself, or what counts as glass, is the asset's own in part or whole: it needs a
+        /// slot of the glass table (AssetTextures), which holds all of these, resolved.
+        /// </summary>
         public bool HasGlass
         {
-            get { return Preset.HasValue || Colour.HasValue || Reflectivity.HasValue || Clarity.HasValue || OwnColour.HasValue; }
+            get
+            {
+                return Preset.HasValue || Colour.HasValue || Reflectivity.HasValue || Clarity.HasValue || OwnColour.HasValue ||
+                       Threshold.HasValue || NightWindows.HasValue;
+            }
         }
 
         public AssetRecord Clone()
@@ -67,7 +85,7 @@ namespace RealGlass.PerAsset
 
             return Strength == other.Strength && PaintedDetail == other.PaintedDetail && Preset == other.Preset &&
                    SameColour(Colour, other.Colour) && Reflectivity == other.Reflectivity && Clarity == other.Clarity &&
-                   OwnColour == other.OwnColour;
+                   OwnColour == other.OwnColour && Threshold == other.Threshold && NightWindows == other.NightWindows;
         }
 
         private static bool SameColour(Color32? a, Color32? b)

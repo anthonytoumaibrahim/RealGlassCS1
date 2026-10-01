@@ -415,10 +415,12 @@ namespace RealGlass.UI
                                 return;
 
                             SettingsCatalog.ApplyToggle(captured, isChecked);
-                        });
+                        }, GlobalReserve(row));
                     box.tooltip = row.Tooltip;
                     control.Check = box;
                     control.Parts.Add(box);
+                    control.Name = box.label;
+                    AddGlobal(page, control, row, y);
                     break;
                 }
 

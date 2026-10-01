@@ -68,7 +68,7 @@ float4 _RGCityMapInfo;        // x cells a side, y cells a block, z the highest 
 sampler2D _RGAssets;          // laid out as the object colour map, a texel per building: r strength, g painted detail
                               // (0..254 = 0..1), b its glass's slot in _RGAssetGlass (0..254); 255: the global setting
 sampler2D _RGAssetGlass;      // 256 x 2: per slot, row 0 the tint (linear, brightest 1) and the own-colour mix,
-                              // row 1 the reflectivity and the clarity
+                              // row 1 the reflectivity, the clarity, the shininess needed, the lit windows (0/1)
 
 float4 _RGBudget;     // x city walk cells, y its blocks, z -, w steps each way up and down to a painted pane's edges
 float4 _RGBudget2;    // x steps each way across to a painted pane's sides, y steps of the Hi-Z trace
@@ -135,15 +135,17 @@ float IdOf(float2 colourIndex)
 // ---------------------------------------------------------------------------------------------
 // What counts as glass: the asset's own specular map, read the way the game reads it
 // (spec = 1 - _XYSMap.z), plus -- optionally -- the windows it lights at night (_ACIMap.b > 0.48).
-// _ACIMap.r is the asset's cut-out: where the game discards, so do we.
+// _ACIMap.r is the asset's cut-out: where the game discards, so do we. threshold (the shininess
+// needed) and nightWindows (1: the lit windows count) are the building's: its asset's own, or the
+// global _RGMask.x / .y (Glass.shader).
 // ---------------------------------------------------------------------------------------------
 
-float GlassMask(float4 xys, float4 aci)
+float GlassMask(float4 xys, float4 aci, float threshold, float nightWindows)
 {
     float spec = 1.0 - xys.z;
-    float t = _RGMask.x;
+    float t = threshold;
     float m = smoothstep(t - 0.04, t + 0.04, spec);
-    float night = smoothstep(0.46, 0.56, aci.b) * _RGMask.y;
+    float night = smoothstep(0.46, 0.56, aci.b) * nightWindows;
     m = max(m, night * smoothstep(t - 0.35, t - 0.1, spec));
     return m * step(aci.r, 0.5);
 }
