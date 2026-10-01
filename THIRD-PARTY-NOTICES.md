@@ -128,8 +128,10 @@ rays (as CRYENGINE's height-map ambient occlusion and Unreal's heightfield sky o
 such maps; Amanatides and Woo's grid traversal, 1987), specular anti-aliasing (Kaplanyan et al.
 2016, Tokuyoshi and Kaplanyan 2019, with Filament's documented constants), Schlick's Fresnel
 approximation, glass makers' published transmittance and reflectance, the physics of
-insulating-glass pillowing and roller-wave distortion, and unsharp masking (Schreiber 1970) over
-a mipmap level (Williams 1983) for the painted detail it keeps -- listed with links in
+insulating-glass pillowing and roller-wave distortion, unsharp masking (Schreiber 1970) over
+a mipmap level (Williams 1983) for the painted detail it keeps, and an anti-aliased glass edge
+(RenderMan's filterstep, Apodaca and Gritz 1999; Golus 2017; Direct3D 11's standard 4x sample
+pattern) -- listed with links in
 `README.md`. Apart from the ray tracer above, the implementations were written for this mod.
 
 Other mods were read to understand the game's behaviour and to stay compatible with them:

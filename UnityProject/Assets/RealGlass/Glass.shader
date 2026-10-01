@@ -274,15 +274,44 @@ Shader "RealGlass/Glass"
                 return o;
             }
 
+            // How much of the pixel is shiny enough to be glass, 0..1. The asset's shine against the
+            // threshold is an alpha test: a hard edge, and a painted frame thinner than a pixel blinks
+            // in and out of it whenever the view moves by a fraction of a pixel -- which TAA does every
+            // frame. So the shine is read four times across the pixel (Direct3D's standard 4x rotated
+            // grid, each read at the detail of half the pixel: tex2Dgrad), each read passes the
+            // threshold over a filtered step a pixel wide -- smoothstep over +-0.75 of the shine's own
+            // change across the pixel has the slope of a one-pixel ramp at its middle (RenderMan's
+            // filterstep; Golus 2017) -- and the four are averaged: a thin frame covers its share of
+            // the pixel, steadily. Close up, where a texel spans many pixels, the four agree and the
+            // edge is the old one (+-0.04). spec: the shine at the pixel's centre (_XYSMap read
+            // there). lo, hi: where the reads must stay (an asset's atlas rectangle, LOD and far).
+            float GlassShine(float2 uv, float2 dx, float2 dy, float2 lo, float2 hi, float threshold, float spec)
+            {
+                float w = max(0.04, fwidth(spec) * 0.75);
+                float2 gx = dx * 0.5, gy = dy * 0.5;
+                float4 shine = 1.0 - float4(
+                    tex2Dgrad(_XYSMap, clamp(uv + 0.125 * dx + 0.375 * dy, lo, hi), gx, gy).z,
+                    tex2Dgrad(_XYSMap, clamp(uv + 0.375 * dx - 0.125 * dy, lo, hi), gx, gy).z,
+                    tex2Dgrad(_XYSMap, clamp(uv - 0.125 * dx - 0.375 * dy, lo, hi), gx, gy).z,
+                    tex2Dgrad(_XYSMap, clamp(uv - 0.375 * dx + 0.125 * dy, lo, hi), gx, gy).z);
+                return dot(smoothstep(threshold - w, threshold + w, shine), float4(0.25, 0.25, 0.25, 0.25));
+            }
+
             float4 frag(v2f i) : SV_Target
             {
                 float2 uv = i.uv;
+                // The pixel's footprint in the maps (GlassShine reads across it), and where reads must
+                // stay: anywhere in an asset's own maps (near), inside its atlas rectangle (LOD, far).
+                float2 uvDx = ddx(i.uv), uvDy = ddy(i.uv);
+                float2 uvLo = float2(-1e6, -1e6), uvHi = float2(1e6, 1e6);
 #if !defined(RG_NEAR)
                 // Stay inside this asset's rectangle of the atlas, as the game does, so a coarse
                 // mip never reads the neighbouring asset.
-                float2 fp = max(abs(ddx(uv)), abs(ddy(uv)));
+                float2 fp = max(abs(uvDx), abs(uvDy));
                 fp = min(fp, i.rect.zw * 0.25);
-                uv = clamp(uv, i.rect.xy + fp, i.rect.xy + i.rect.zw - fp);
+                uvLo = i.rect.xy + fp;
+                uvHi = i.rect.xy + i.rect.zw - fp;
+                uv = clamp(uv, uvLo, uvHi);
 #endif
                 float4 xys = tex2D(_XYSMap, uv);
                 float4 aci = tex2D(_ACIMap, uv);
@@ -311,7 +340,8 @@ Shader "RealGlass/Glass"
                     nightWindows = numbers.a;
                 }
 
-                float mask = GlassMask(xys, aci, glassThreshold, nightWindows) * i.worldNormal.w;
+                float shine = GlassShine(uv, uvDx, uvDy, uvLo, uvHi, glassThreshold, 1.0 - xys.z);
+                float mask = GlassMask(shine, 1.0 - xys.z, aci, glassThreshold, nightWindows) * i.worldNormal.w;
                 clip(mask - 0.004);
 
                 if (_RGMask.z > 0.5)

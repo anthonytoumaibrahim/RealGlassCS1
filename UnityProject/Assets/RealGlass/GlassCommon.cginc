@@ -22,6 +22,10 @@
 //  - The buildings round, off screen: a top-down height map of the city round the view (as
 //    CRYENGINE's height-map ambient occlusion and Unreal's heightfield sky occlusion of
 //    reflections read one), walked cell by cell (Amanatides & Woo, Eurographics 1987): CityHit.
+//  - The glass's edge (GlassShine, Glass.shader): the shine threshold anti-aliased as an alpha test
+//    is -- a filtered step a pixel wide (RenderMan's filterstep, Apodaca & Gritz, Advanced
+//    RenderMan 1999; Golus, "Anti-aliased Alpha Test", 2017) over four reads in Direct3D 11's
+//    standard 4x rotated grid.
 //  - Steady glints: specular anti-aliasing (Kaplanyan et al. 2016; Tokuyoshi & Kaplanyan 2019),
 //    Filament's constants.
 
@@ -135,18 +139,18 @@ float IdOf(float2 colourIndex)
 // ---------------------------------------------------------------------------------------------
 // What counts as glass: the asset's own specular map, read the way the game reads it
 // (spec = 1 - _XYSMap.z), plus -- optionally -- the windows it lights at night (_ACIMap.b > 0.48).
-// _ACIMap.r is the asset's cut-out: where the game discards, so do we. threshold (the shininess
-// needed) and nightWindows (1: the lit windows count) are the building's: its asset's own, or the
-// global _RGMask.x / .y (Glass.shader).
+// shine: the share of the pixel at or over the threshold, its edge anti-aliased (GlassShine,
+// Glass.shader); spec, aci: the maps at the pixel's centre. _ACIMap.r is the asset's cut-out:
+// where the game discards, so do we -- at the centre, as the game tests it. threshold (the
+// shininess needed) and nightWindows (1: the lit windows count) are the building's: its asset's
+// own, or the global _RGMask.x / .y (Glass.shader).
 // ---------------------------------------------------------------------------------------------
 
-float GlassMask(float4 xys, float4 aci, float threshold, float nightWindows)
+float GlassMask(float shine, float spec, float4 aci, float threshold, float nightWindows)
 {
-    float spec = 1.0 - xys.z;
     float t = threshold;
-    float m = smoothstep(t - 0.04, t + 0.04, spec);
     float night = smoothstep(0.46, 0.56, aci.b) * nightWindows;
-    m = max(m, night * smoothstep(t - 0.35, t - 0.1, spec));
+    float m = max(shine, night * smoothstep(t - 0.35, t - 0.1, spec));
     return m * step(aci.r, 0.5);
 }
 

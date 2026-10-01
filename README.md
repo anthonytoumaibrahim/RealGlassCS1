@@ -157,6 +157,14 @@ Every technique here has shipped in a game or is published:
     -- after William F. Schreiber, **Wirephoto Quality Improvement by Unsharp Masking**, Pattern
     Recognition 2(2), 1970; the blurred copy, a storey wide, is a coarser level of the asset's own
     mipmap: Lance Williams, **Pyramidal Parametrics**, SIGGRAPH 1983.
+14. A steady edge where the glass meets the painted frames: the asset's shine against the glass
+    threshold is anti-aliased as an alpha test is -- a filtered step a pixel wide, RenderMan's
+    `filterstep` (Anthony A. Apodaca and Larry Gritz, **Advanced RenderMan: Creating CGI for
+    Motion Pictures**, Morgan Kaufmann 1999, "Shader Antialiasing") and Ben Golus,
+    **Anti-aliased Alpha Test: The Esoteric Alpha To Coverage** (2017,
+    [article](https://bgolus.medium.com/anti-aliased-alpha-test-the-esoteric-alpha-to-coverage-8b177335ae4f))
+    -- over four reads of the pixel placed as Direct3D 11's standard 4x multisample pattern
+    ([documentation](https://learn.microsoft.com/en-us/windows/win32/api/d3d11/ne-d3d11-d3d11_standard_multisample_quality_levels)).
 
 ## Building
 
