@@ -16,6 +16,12 @@ namespace RealGlass.Glass
         /// <summary>Set by GlassController each frame: glass is on, the materials exist, no info view is open.</summary>
         public static bool Active;
 
+        /// <summary>
+        /// A patch threw (<see cref="Fail"/>): the glass stays off for the rest of this city, so the
+        /// game's own drawing never meets the same error again. Cleared with the next city (Reset).
+        /// </summary>
+        public static bool Failed;
+
         public static Material Near, Lod, Group;
 
         // Per second, for the detail log line.
@@ -181,6 +187,28 @@ namespace RealGlass.Glass
             return s.Length > 0 ? s : "none yet";
         }
 
+        /// <summary>
+        /// A patch caught an exception inside the game's rendering: the glass stops at once (one
+        /// log line, not one per building per frame) and stays off for this city -- whatever it
+        /// was, the game's buildings must go on being drawn.
+        /// </summary>
+        public static void Fail(string where, System.Exception e)
+        {
+            Active = false;
+            if (Failed)
+                return;
+
+            Failed = true;
+            try
+            {
+                Log.Error("glass: " + where + " failed; the glass is off until the next city is loaded", e);
+            }
+            catch
+            {
+                // the log itself failed: nothing more to do, the glass is off
+            }
+        }
+
         /// <summary>Forget every cached material and layer (a city unloads, or the atlas changed).</summary>
         public static void Reset()
         {
@@ -190,6 +218,7 @@ namespace RealGlass.Glass
             ShaderCounts.Clear();
             NearDraws = LodDraws = GroupDraws = NearSkipped = 0;
             Active = false;
+            Failed = false;
         }
     }
 }

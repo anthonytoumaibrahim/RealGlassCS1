@@ -165,11 +165,22 @@ namespace RealGlass.Glass
             }
             catch (Exception e)
             {
-                Log.Error("glass: frame failed; the glass is off until the next change", e);
-                GlassDraw.Active = false;
-                _screen.Detach();
-                _dirty = false;
+                // Off for the rest of this city, and everything the glass holds given back, as when
+                // it is switched off: nothing of ours left on the camera.
+                GlassDraw.Fail("the frame", e);
                 enabled = false;
+                _status = Localization.Get("Status.Failed");
+                try
+                {
+                    _screen.Detach();
+                    _sky.Release();
+                    RestoreCamera();
+                }
+                catch (Exception cleanup)
+                {
+                    Log.Warn("glass: cleaning up after the error: " + cleanup.Message);
+                }
+                _wasOn = false;
             }
         }
 
@@ -193,10 +204,11 @@ namespace RealGlass.Glass
             Camera camera = Camera.main;
             bool infoView = Singleton<InfoManager>.exists && Singleton<InfoManager>.instance.CurrentMode != InfoManager.InfoMode.None;
             bool snapshot = IsTakingSnapshots();
-            bool on = p.Enabled && camera != null && _near != null && !infoView && !snapshot;
+            bool failed = GlassDraw.Failed;
+            bool on = p.Enabled && camera != null && _near != null && !infoView && !snapshot && !failed;
 
-            string state = !p.Enabled ? "off" : (camera == null ? "no camera" : (infoView ? "an info view is open" :
-                (snapshot ? "the Snapshot tool is in use" : "on")));
+            string state = failed ? "stopped after an error (above)" : !p.Enabled ? "off" : (camera == null ? "no camera" :
+                (infoView ? "an info view is open" : (snapshot ? "the Snapshot tool is in use" : "on")));
             if (state != _lastState)
             {
                 Log.Msg("glass: " + state);
@@ -219,7 +231,8 @@ namespace RealGlass.Glass
                     RestoreCamera();
                     _wasOn = false;
                 }
-                _status = Localization.Get(p.Enabled ? (infoView ? "Status.InfoView" : (snapshot ? "Status.Snapshot" : "Status.Waiting")) : "Status.Off");
+                _status = Localization.Get(failed ? "Status.Failed" : p.Enabled ? (infoView ? "Status.InfoView" :
+                    (snapshot ? "Status.Snapshot" : "Status.Waiting")) : "Status.Off");
 
                 // The frame time without the glass, for the same line with it: what the glass costs.
                 if (Log.Detailed && Time.realtimeSinceStartup >= _nextDetail)

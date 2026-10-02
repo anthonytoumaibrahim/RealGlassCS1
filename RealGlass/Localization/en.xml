@@ -66,6 +66,7 @@
   <String key="Status.Off">The glass is off.</String>
   <String key="Status.Waiting">Waiting for the city's camera.</String>
   <String key="Status.InfoView">Paused while an info view is open.</String>
+  <String key="Status.Failed">The glass stopped after an error and comes back with the next city. RealGlass.log says why.</String>
   <String key="Status.Snapshot">Paused while the Snapshot tool is in use: pictures show the asset as the game draws it.</String>
 
   <String key="GlassEnabled.Label">Realistic glass</String>

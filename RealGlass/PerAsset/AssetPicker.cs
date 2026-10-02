@@ -243,11 +243,20 @@ namespace RealGlass.PerAsset
     {
         public static bool Prefix()
         {
-            if (!AssetPicker.IsActive)
-                return true;
+            // Whatever goes wrong here, the game's Escape must still work.
+            try
+            {
+                if (!AssetPicker.IsActive)
+                    return true;
 
-            AssetPicker.TurnOff("Escape");
-            return false;
+                AssetPicker.TurnOff("Escape");
+                return false;
+            }
+            catch (Exception e)
+            {
+                Log.Warn("assets: Escape with the building picker: " + e.Message);
+                return true;
+            }
         }
     }
 }

@@ -1,42 +1,28 @@
-Makes the glass on your buildings, especially skyscrapers, look real, with [b]screen space reflections[/b] of the city around them and a live sky.
-Tested only on my Windows 11 PC and MacBook. If anything looks wrong or runs badly, let me know in the comments.
-
-[hr][/hr]
-[h1]Requirements[/h1]
-[list]
-[*][url=https://steamcommunity.com/sharedfiles/filedetails/?id=2040656402]Harmony[/url] ([b]required[/b])
-[*][url=https://steamcommunity.com/sharedfiles/filedetails/?id=2966990700]Unified UI[/url] (optional)
-[/list]
+Makes the glass on your buildings and skyscrapers look real, with [b]screen space reflections (SSR)[/b] of the city around them and a live sky (reflecting the clouds in [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3805863507]Volumetric Weather[/url]).
+Tested only on my Windows 11 PC and Macbook. If anything looks wrong or runs badly, let me know in the comments.
 
 [hr][/hr]
 [h1]How to use[/h1]
-Load a city (or the Asset or Scenario Editor) and press [b]F8[/b] for every setting. The defaults are tested with LUTs and [b]Render It![/b]; [i]Options → Real Glass[/i] has the key and [i]Reset all settings to defaults[/i].
+[olist]
+[*][b]Subscribe[/b] to [url=https://steamcommunity.com/sharedfiles/filedetails/?id=2040656402]Harmony[/url] and then this mod, make sure both are enabled. If you use Skyve, make sure the mod is enabled in it.
+[*][b]Load a savegame or into the editor[/b].
+[*][b]Press F8[/b] (or click the mod's button) to open the in-game panel, or press [b]Alt+G[/b] to customize an individual building.
+[/olist]
 
 [hr][/hr]
 [h1]Features[/h1]
 [list]
-[*][b]Glass[/b]: ten kinds of real architectural glass or your own color, and what counts as glass
-[*][b]Reflections[/b]: the city on screen, the buildings around, a live sky with [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3805863507]Volumetric Weather[/url]'s clouds, the sun's glint
-[*][b]Panes[/b]: their size, and how they bend the reflections like real facades
-[*][b]Rendering[/b]: how far the glass is drawn, and the sky's detail
+[*][b]Glass[/b]: customizable color and reflection intensity. You can also retain a building's details under the glass, or reduce the glass opacity.
+[*][b]Per-building customization[/b] (press Alt+G)
 [/list]
 
 [hr][/hr]
-[h1]Performance[/h1]
-Measured on my PC (RTX 5070 Ti, 4K, on large vanilla city):
-[table]
-[tr][th]Setting[/th][th]FPS[/th][th]Frame time[/th][/tr]
-[tr][td]Glass off[/td][td]49[/td][td]20.6 ms[/td][/tr]
-[tr][td]Glass on, default settings (the whole city, reflection quality Ultra)[/td][td]47[/td][td]21.4 ms[/td][/tr]
-[/table]
-
-[hr][/hr]
 [h1]Compatibility[/h1]
-Works with any building asset, no setup. No conflicts found with Volumetric Weather, Render It!, AD Cloud Replacer, Move It!, TM:PE or FPS Booster. Mac and Linux versions included (Linux untested). Safe to remove as it saves nothing in your cities.
+Works with (most) vanilla and custom building asset. No conflicts found with Volumetric Weather, Render It!, AD Cloud Replacer, Move It!, TM:PE or FPS Booster. Mac and Linux versions included (Linux untested). Safe to remove as it saves nothing in your cities.
 
 [hr][/hr]
 [h1]For asset creators[/h1]
-Anything 70% or brighter in your specular map ([i]_s[/i]) is glass, so keep shiny metal below that, and give your own LOD textures an [i]_lod_s[/i] too. Check it in the Asset Editor with [i]Show what counts as glass[/i] (Glass tab).
+Anything 70% (default value) or brighter in your specular map is glass, so keep shiny metal below that, and give your own LOD textures a specular too. Check it in the Asset Editor with [i]Show what counts as glass[/i] (Glass tab).
 
 [hr][/hr]
 [h1]Source code[/h1]

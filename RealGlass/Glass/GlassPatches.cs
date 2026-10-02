@@ -1,3 +1,4 @@
+using System;
 using ColossalFramework;
 using HarmonyLib;
 using UnityEngine;
@@ -16,6 +17,10 @@ namespace RealGlass.Glass
     // copies the original's IL into the patched method, so its starg writes the very slot the
     // postfix loads (probed with Harmony 2.0.4 on Unity 5.6's Mono, 2026-09-28). Of the methods
     // below, only the sub-mesh RenderMesh reassigns an argument.
+    //
+    // Every patch body is inside a try: these run in the middle of the game's own drawing, and an
+    // exception there would come back every frame for every building. One is caught, logged once,
+    // and the glass is off for the rest of the city (GlassDraw.Fail); the game draws on.
 
     /// <summary>
     /// A near building: when CheckRenderDistance(instance.m_position, info.m_minLodDistance) holds,
@@ -31,13 +36,23 @@ namespace RealGlass.Glass
     {
         public static void Postfix(RenderManager.CameraInfo cameraInfo, BuildingInfo info, ref RenderManager.Instance instance)
         {
-            if (!GlassDraw.Active || info == null || info.m_mesh == null || info.m_overrideMainRenderer != null)
-                return;
-            if (!cameraInfo.CheckRenderDistance(instance.m_position, info.m_minLodDistance))
+            if (!GlassDraw.Active)
                 return;
 
-            GlassDraw.DrawNear(info.m_mesh, instance.m_dataMatrix1, info.m_material, info.m_prefabDataLayer, instance.m_dataVector0,
-                instance.m_dataVector3);
+            try
+            {
+                if (info == null || info.m_mesh == null || info.m_overrideMainRenderer != null)
+                    return;
+                if (!cameraInfo.CheckRenderDistance(instance.m_position, info.m_minLodDistance))
+                    return;
+
+                GlassDraw.DrawNear(info.m_mesh, instance.m_dataMatrix1, info.m_material, info.m_prefabDataLayer, instance.m_dataVector0,
+                    instance.m_dataVector3);
+            }
+            catch (Exception e)
+            {
+                GlassDraw.Fail("a near building's glass", e);
+            }
         }
     }
 
@@ -59,13 +74,23 @@ namespace RealGlass.Glass
         public static void Postfix(RenderManager.CameraInfo cameraInfo, BuildingInfo info, BuildingInfoBase subInfo, Matrix4x4 matrix,
                                    ref RenderManager.Instance instance)
         {
-            if (!GlassDraw.Active || subInfo == null || subInfo.m_mesh == null || info == null)
-                return;
-            if (!cameraInfo.CheckRenderDistance(instance.m_position, subInfo.m_minLodDistance))
+            if (!GlassDraw.Active)
                 return;
 
-            GlassDraw.DrawNear(subInfo.m_mesh, matrix, subInfo.m_material, info.m_prefabDataLayer, instance.m_dataVector0,
-                instance.m_dataVector3);
+            try
+            {
+                if (subInfo == null || subInfo.m_mesh == null || info == null)
+                    return;
+                if (!cameraInfo.CheckRenderDistance(instance.m_position, subInfo.m_minLodDistance))
+                    return;
+
+                GlassDraw.DrawNear(subInfo.m_mesh, matrix, subInfo.m_material, info.m_prefabDataLayer, instance.m_dataVector0,
+                    instance.m_dataVector3);
+            }
+            catch (Exception e)
+            {
+                GlassDraw.Fail("a near sub-mesh's glass", e);
+            }
         }
     }
 
@@ -79,7 +104,15 @@ namespace RealGlass.Glass
     {
         public static void Prefix(BuildingInfoBase info, out int __state)
         {
-            __state = info != null ? info.m_lodCount : 0;
+            // A prefix that threw would keep the game's own draw from running: never.
+            try
+            {
+                __state = info != null ? info.m_lodCount : 0;
+            }
+            catch
+            {
+                __state = 0;
+            }
         }
 
         public static void Postfix(BuildingInfoBase info, int __state)
@@ -87,7 +120,14 @@ namespace RealGlass.Glass
             if (!GlassDraw.Active || __state <= 0)
                 return;
 
-            GlassDraw.DrawLod(info, __state, Singleton<BuildingManager>.instance.m_materialBlock);
+            try
+            {
+                GlassDraw.DrawLod(info, __state, Singleton<BuildingManager>.instance.m_materialBlock);
+            }
+            catch (Exception e)
+            {
+                GlassDraw.Fail("the middle distance's glass", e);
+            }
         }
     }
 
@@ -100,10 +140,17 @@ namespace RealGlass.Glass
             if (!GlassDraw.Active || GlassDraw.Tiers < 2 || layer == null)
                 return;
 
-            for (RenderGroup.MeshWrapper w = layer.m_mesh; w != null; w = w.m_next)
+            try
             {
-                if (w.m_mesh != null)
-                    GlassDraw.DrawGroup(w.m_mesh, __instance.m_matrix, layer.m_layer, layer.m_renderMaterial);
+                for (RenderGroup.MeshWrapper w = layer.m_mesh; w != null; w = w.m_next)
+                {
+                    if (w.m_mesh != null)
+                        GlassDraw.DrawGroup(w.m_mesh, __instance.m_matrix, layer.m_layer, layer.m_renderMaterial);
+                }
+            }
+            catch (Exception e)
+            {
+                GlassDraw.Fail("the far city's glass", e);
             }
         }
     }
@@ -132,21 +179,28 @@ namespace RealGlass.Glass
             if (!GlassDraw.Active || cameraInfo == null || info == null)
                 return;
 
-            Matrix4x4 matrix = Matrix4x4.TRS(Position, Quaternion.identity, Vector3.one);
-            Vector4 objectIndex = RenderManager.GetColorLocation(0);
-            Draw(cameraInfo, info, matrix, info.m_prefabDataLayer, objectIndex);
-
-            BuildingInfo.MeshInfo[] subMeshes = info.m_subMeshes;
-            if (subMeshes == null)
-                return;
-
-            for (int i = 0; i < subMeshes.Length; i++)
+            try
             {
-                BuildingInfo.MeshInfo sub = subMeshes[i];
-                if (sub == null || sub.m_subInfo == null || !BuildingDecoration.IsSubMeshRendered(sub.m_subInfo))
-                    continue;
+                Matrix4x4 matrix = Matrix4x4.TRS(Position, Quaternion.identity, Vector3.one);
+                Vector4 objectIndex = RenderManager.GetColorLocation(0);
+                Draw(cameraInfo, info, matrix, info.m_prefabDataLayer, objectIndex);
 
-                Draw(cameraInfo, sub.m_subInfo, matrix * sub.m_matrix, info.m_prefabDataLayer, objectIndex);
+                BuildingInfo.MeshInfo[] subMeshes = info.m_subMeshes;
+                if (subMeshes == null)
+                    return;
+
+                for (int i = 0; i < subMeshes.Length; i++)
+                {
+                    BuildingInfo.MeshInfo sub = subMeshes[i];
+                    if (sub == null || sub.m_subInfo == null || !BuildingDecoration.IsSubMeshRendered(sub.m_subInfo))
+                        continue;
+
+                    Draw(cameraInfo, sub.m_subInfo, matrix * sub.m_matrix, info.m_prefabDataLayer, objectIndex);
+                }
+            }
+            catch (Exception e)
+            {
+                GlassDraw.Fail("the asset editor's glass", e);
             }
         }
 
@@ -168,7 +222,14 @@ namespace RealGlass.Glass
             if (!GlassDraw.Active || GlassDraw.Tiers < 2 || layer == null || layer.m_mesh == null)
                 return;
 
-            GlassDraw.DrawGroup(layer.m_mesh, __instance.m_matrix, layer.m_layer, layer.m_renderMaterial);
+            try
+            {
+                GlassDraw.DrawGroup(layer.m_mesh, __instance.m_matrix, layer.m_layer, layer.m_renderMaterial);
+            }
+            catch (Exception e)
+            {
+                GlassDraw.Fail("the farthest city's glass", e);
+            }
         }
     }
 }
