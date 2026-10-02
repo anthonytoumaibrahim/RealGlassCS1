@@ -277,8 +277,10 @@ Shader "RealGlass/Glass"
             // How much of the pixel is shiny enough to be glass, 0..1. The asset's shine against the
             // threshold is an alpha test: a hard edge, and a painted frame thinner than a pixel blinks
             // in and out of it whenever the view moves by a fraction of a pixel -- which TAA does every
-            // frame. So the shine is read four times across the pixel (Direct3D's standard 4x rotated
-            // grid, each read at the detail of half the pixel: tex2Dgrad), each read passes the
+            // frame. So the shine is read four times round the pixel (Direct3D's standard 4x rotated
+            // grid, spread twice as wide -- +-0.75 px: a window grid finer than a pixel or two is
+            // filtered, not resolved; each read at the detail of half the pixel, tex2Dgrad, so each
+            // still tells glass from wall and the share stays true), each read passes the
             // threshold over a filtered step a pixel wide -- smoothstep over +-0.75 of the shine's own
             // change across the pixel has the slope of a one-pixel ramp at its middle (RenderMan's
             // filterstep; Golus 2017) -- and the four are averaged: a thin frame covers its share of
@@ -289,11 +291,12 @@ Shader "RealGlass/Glass"
             {
                 float w = max(0.04, fwidth(spec) * 0.75);
                 float2 gx = dx * 0.5, gy = dy * 0.5;
+                float2 ox = dx * 2.0, oy = dy * 2.0;
                 float4 shine = 1.0 - float4(
-                    tex2Dgrad(_XYSMap, clamp(uv + 0.125 * dx + 0.375 * dy, lo, hi), gx, gy).z,
-                    tex2Dgrad(_XYSMap, clamp(uv + 0.375 * dx - 0.125 * dy, lo, hi), gx, gy).z,
-                    tex2Dgrad(_XYSMap, clamp(uv - 0.125 * dx - 0.375 * dy, lo, hi), gx, gy).z,
-                    tex2Dgrad(_XYSMap, clamp(uv - 0.375 * dx + 0.125 * dy, lo, hi), gx, gy).z);
+                    tex2Dgrad(_XYSMap, clamp(uv + 0.125 * ox + 0.375 * oy, lo, hi), gx, gy).z,
+                    tex2Dgrad(_XYSMap, clamp(uv + 0.375 * ox - 0.125 * oy, lo, hi), gx, gy).z,
+                    tex2Dgrad(_XYSMap, clamp(uv - 0.125 * ox - 0.375 * oy, lo, hi), gx, gy).z,
+                    tex2Dgrad(_XYSMap, clamp(uv - 0.375 * ox + 0.125 * oy, lo, hi), gx, gy).z);
                 return dot(smoothstep(threshold - w, threshold + w, shine), float4(0.25, 0.25, 0.25, 0.25));
             }
 

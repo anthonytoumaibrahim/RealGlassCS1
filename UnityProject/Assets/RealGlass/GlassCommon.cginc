@@ -206,13 +206,16 @@ float3 PaneNormal(float3 n, float3 t, float3 P, float baseY, float footprint, fl
     const float PI = 3.14159265;
     float su = sin(PI * f.x), cu = cos(PI * f.x);
     float sv = sin(PI * f.y), cv = cos(PI * f.y);
-    // A pane that covers less than ~3 pixels bends nothing you could see: fade the slope out.
-    float pillowVis = saturate(min(w, h) / max(footprint * 3.0, 1e-4) - 1.0);
+    // A pane a few pixels wide bends nothing you could see -- only speckle that flickers as the
+    // view moves by a fraction of a pixel (TAA, every frame): the pillow fades out from 12 pixels
+    // down to 6, the tilt below from 8 to 4. A large facade far away is one calm sheet.
+    float pillowVis = saturate(min(w, h) / max(footprint * 6.0, 1e-4) - 1.0);
     float du = w0 * PI / w * cu * sv * pillowVis;   // dw / dx (x along t)
     float dv = w0 * PI / h * su * cv * pillowVis;   // dw / dy
 
-    // Install tilt: a few tenths of a degree, the reason a neighbour's edge steps at every pane.
-    float tiltVis = saturate(min(w, h) / max(footprint * 2.0, 1e-4));
+    // Install tilt: a few tenths of a degree, the reason a neighbour's edge steps at every pane
+    // (faded with the pane's size on screen, above).
+    float tiltVis = saturate(min(w, h) / max(footprint * 4.0, 1e-4) - 1.0);
     du += (r2.x * 2.0 - 1.0) * _RGPane.z * tiltVis;
     dv += (r2.y * 2.0 - 1.0) * _RGPane.z * tiltVis;
 
