@@ -36,7 +36,7 @@ namespace RealGlass.UI
 
         private static readonly PanelPage[] Tabs =
         {
-            PanelPage.Glass, PanelPage.Reflections, PanelPage.Panes, PanelPage.Rendering, PanelPage.Asset,
+            PanelPage.Glass, PanelPage.Reflections, PanelPage.Panes, PanelPage.Rendering, PanelPage.Water, PanelPage.Asset,
         };
 
         /// <summary>Where to open, when replacing a panel that was already on screen. Null = centred.</summary>

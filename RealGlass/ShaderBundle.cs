@@ -29,6 +29,12 @@ namespace RealGlass
         /// <summary>The glass's helpers: full-screen copies, the city colour, the hierarchical depth.</summary>
         public const string GlassUtil = "RealGlass/GlassUtil";
 
+        /// <summary>The Water tab: the theme's sky x real water's reflectance, drawn into the water's cube.</summary>
+        public const string WaterCube = "RealGlass/WaterCube";
+
+        /// <summary>The Water tab: the city in the map's water.</summary>
+        public const string CityReflection = "RealGlass/CityReflection";
+
         /// <summary>
         /// "RealGlass.Resources.realglass-win.bundle" and so on: the csproj's LogicalName for each
         /// bundle, with the name from <see cref="BundleFor"/> in between.

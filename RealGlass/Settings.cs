@@ -217,6 +217,35 @@ namespace RealGlass
         /// <summary>1..6: faces of the live sky cube rendered a frame (6 = the whole cube every frame).</summary>
         public static IntSetting SkyCubeRate { get; private set; }
 
+        // ---- F8 -> Water (Water/WaterController.cs; off by default, the author 2026-10-03) ------
+
+        /// <summary>The Water tab's switch: off, the map's water is the game's and the theme's.</summary>
+        public static BoolSetting WaterEnabled { get; private set; }
+
+        /// <summary>0.25..4: the water's own colour x this (1 = the map theme's).</summary>
+        public static FloatSetting WaterBrightness { get; private set; }
+
+        /// <summary>The water reflects the theme's sky with real water's reflectance, not the same share at every angle.</summary>
+        public static BoolSetting WaterRealSky { get; private set; }
+
+        /// <summary>0..3: that reflection x this (1 = real water).</summary>
+        public static FloatSetting WaterSky { get; private set; }
+
+        /// <summary>The city on screen is reflected in the water (screen-space), day and night.</summary>
+        public static BoolSetting WaterCity { get; private set; }
+
+        /// <summary>0..3: the city's reflection by day (1 = real water).</summary>
+        public static FloatSetting WaterCityDay { get; private set; }
+
+        /// <summary>0..3: the city's reflection by night (1 = real water).</summary>
+        public static FloatSetting WaterCityNight { get; private set; }
+
+        /// <summary>0..5: a blur over the city's reflection, the same every way.</summary>
+        public static FloatSetting WaterCityBlur { get; private set; }
+
+        /// <summary>0..3: the waves stretch the city's reflection up and down (1 = a light breeze).</summary>
+        public static FloatSetting WaterCityStreaks { get; private set; }
+
         /// <summary>
         /// Every default, in one place. A new one reaches only new installs and a Reset: a player's
         /// file already lists every row.
@@ -286,6 +315,17 @@ namespace RealGlass
             public const int GlassDistance = 2;       // the whole city
             public const int SkyCubeSize = 2;         // 256 px
             public const int SkyCubeRate = 6;
+
+            // ---- Water ---- (off; inside it, RealLight's defaults: real water everywhere)
+            public const bool WaterEnabled = false;
+            public const float WaterBrightness = 1f;
+            public const bool WaterRealSky = true;
+            public const float WaterSky = 1f;
+            public const bool WaterCity = true;
+            public const float WaterCityDay = 1f;
+            public const float WaterCityNight = 1f;
+            public const float WaterCityBlur = 1f;
+            public const float WaterCityStreaks = 1f;
         }
 
         private static bool _initialised;
@@ -353,6 +393,16 @@ namespace RealGlass
                 GlassDistance = new IntSetting("GlassDistance", Defaults.GlassDistance);
                 SkyCubeSize = new IntSetting("SkyCubeSize", Defaults.SkyCubeSize);
                 SkyCubeRate = new IntSetting("SkyCubeRate", Defaults.SkyCubeRate);
+
+                WaterEnabled = new BoolSetting("WaterEnabled", Defaults.WaterEnabled);
+                WaterBrightness = new FloatSetting("WaterBrightness", Defaults.WaterBrightness);
+                WaterRealSky = new BoolSetting("WaterRealSky", Defaults.WaterRealSky);
+                WaterSky = new FloatSetting("WaterSky", Defaults.WaterSky);
+                WaterCity = new BoolSetting("WaterCity", Defaults.WaterCity);
+                WaterCityDay = new FloatSetting("WaterCityDay", Defaults.WaterCityDay);
+                WaterCityNight = new FloatSetting("WaterCityNight", Defaults.WaterCityNight);
+                WaterCityBlur = new FloatSetting("WaterCityBlur", Defaults.WaterCityBlur);
+                WaterCityStreaks = new FloatSetting("WaterCityStreaks", Defaults.WaterCityStreaks);
 
                 Language = new IntSetting("Language", Defaults.Language);
                 PanelKey = new SavedInputKey("PanelKey", InMemory, DefaultPanelKey, false);

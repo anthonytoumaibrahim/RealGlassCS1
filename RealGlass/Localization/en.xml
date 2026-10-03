@@ -211,6 +211,42 @@
   <String key="SkyCubeRate.Label">Sky updates</String>
   <String key="SkyCubeRate.Tooltip">Sides redrawn each frame. 6: the whole sky, every frame.</String>
 
+  <!-- ==================== F8 panel: Water ==================== -->
+  <!-- The map's water: its brightness, the sky in it, the city in it. Off by default. -->
+
+  <String key="Tab.Water">Water</String>
+
+  <String key="WaterEnabled.Label">Water controls</String>
+  <String key="WaterEnabled.Tooltip">Off: the game's own water, as the map theme has it.</String>
+
+  <String key="WaterBrightness.Label">Water brightness</String>
+  <String key="WaterBrightness.Tooltip">The water's own colour, lighter or darker. 100%: the map theme's.</String>
+
+  <String key="Group.WaterSky">The sky in the water</String>
+
+  <String key="WaterRealSky.Label">Reflect the sky like real water</String>
+  <String key="WaterRealSky.Tooltip">Little sky looking down, much toward the horizon.</String>
+
+  <String key="WaterSky.Label">Sky reflection</String>
+  <String key="WaterSky.Tooltip">100%: real water.</String>
+
+  <String key="Group.WaterCity">The city in the water</String>
+
+  <String key="WaterCity.Label">Water reflects the city</String>
+  <String key="WaterCity.Tooltip">Buildings and lights in the sea, only what's on screen.</String>
+
+  <String key="WaterCityDay.Label">City reflection by day</String>
+  <String key="WaterCityDay.Tooltip">100%: real water -- faint from above, strong across the water.</String>
+
+  <String key="WaterCityNight.Label">City reflection by night</String>
+  <String key="WaterCityNight.Tooltip">The city's lights in the water. Dusk blends the two.</String>
+
+  <String key="WaterCityBlur.Label">City reflection blur</String>
+  <String key="WaterCityBlur.Tooltip">Softens the reflection, the same every way. 0%: sharp.</String>
+
+  <String key="WaterCityStreaks.Label">City reflection streaks</String>
+  <String key="WaterCityStreaks.Tooltip">Waves stretch it up and down. 0%: none, 100%: a light breeze.</String>
+
   <!-- ==================== F8 panel: Asset ==================== -->
   <!-- One building asset's own glass: every copy of it, in every city. -->
 

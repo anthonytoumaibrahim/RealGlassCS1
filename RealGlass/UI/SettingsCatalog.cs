@@ -34,7 +34,7 @@ namespace RealGlass.UI
     /// Which tab of the in-game (F8) panel a row appears on. None = not in it. Asset: one building
     /// asset's own glass (PerAsset.AssetCatalog's rows, not this catalog's).
     /// </summary>
-    public enum PanelPage { None, Glass, Reflections, Panes, Rendering, Asset }
+    public enum PanelPage { None, Glass, Reflections, Panes, Rendering, Asset, Water }
 
     /// <summary>General = the game's mod options page (no tabs). None = not on it.</summary>
     public enum OptionsPage { None, General }
@@ -403,6 +403,7 @@ namespace RealGlass.UI
                     " Reflections=" + CountForPanel(PanelPage.Reflections) +
                     " Panes=" + CountForPanel(PanelPage.Panes) +
                     " Rendering=" + CountForPanel(PanelPage.Rendering) +
+                    " Water=" + CountForPanel(PanelPage.Water) +
                     " Asset=" + PerAsset.AssetCatalog.Rows.Count +
                     " | options page=" + CountForOptions(OptionsPage.General) +
                     " | rows with no UI=" + nowhere);
@@ -639,6 +640,27 @@ namespace RealGlass.UI
             return GlassOn() && (Settings.SkyReflection == null || Settings.SkyReflection.value == 0);
         }
 
+        private static bool WaterOn()
+        {
+            return Settings.WaterEnabled != null && Settings.WaterEnabled.value;
+        }
+
+        private static bool WaterSkyOn()
+        {
+            return WaterOn() && (Settings.WaterRealSky == null || Settings.WaterRealSky.value);
+        }
+
+        private static bool WaterCityOn()
+        {
+            return WaterOn() && (Settings.WaterCity == null || Settings.WaterCity.value);
+        }
+
+        /// <summary>A water row's hook: the water controller reads the settings every frame, so only the log needs telling.</summary>
+        private static Action WaterState(string what, Func<string> value)
+        {
+            return () => Log.Msg("setting: " + what + " = " + value());
+        }
+
         // ---- the catalog ----------------------------------------------------------------------
 
         private static void Build()
@@ -656,6 +678,7 @@ namespace RealGlass.UI
             BuildReflections();
             BuildPanes();
             BuildRendering();
+            BuildWater();
             BuildGeneralOptions();
             BuildHidden();
         }
@@ -1109,6 +1132,101 @@ namespace RealGlass.UI
                 Profiled = false,
                 Enabled = LiveSkyOn,
                 AfterChange = Changed,
+            });
+        }
+
+        /// <summary>F8 -> Water: the map's water (Water/WaterController.cs), off by default, apart from the glass.</summary>
+        private static void BuildWater()
+        {
+            Add(new Row
+            {
+                Kind = RowKind.Toggle,
+                Panel = PanelPage.Water,
+                Bool = Settings.WaterEnabled,
+                DefaultBool = Settings.Defaults.WaterEnabled,
+                AfterChange = WaterState("water controls", OnOff(Settings.WaterEnabled)),
+            });
+
+            Add(new Row
+            {
+                Kind = RowKind.Percent,
+                Panel = PanelPage.Water,
+                Float = Settings.WaterBrightness,
+                DefaultFloat = Settings.Defaults.WaterBrightness,
+                Min = 25f, Max = 400f, Step = 5f,
+                Enabled = WaterOn,
+            });
+
+            Add(new Row
+            {
+                Kind = RowKind.Toggle,
+                Panel = PanelPage.Water,
+                Group = "WaterSky",
+                Bool = Settings.WaterRealSky,
+                DefaultBool = Settings.Defaults.WaterRealSky,
+                Enabled = WaterOn,
+                AfterChange = WaterState("water reflects the sky like real water", OnOff(Settings.WaterRealSky)),
+            });
+
+            Add(new Row
+            {
+                Kind = RowKind.Percent,
+                Panel = PanelPage.Water,
+                Float = Settings.WaterSky,
+                DefaultFloat = Settings.Defaults.WaterSky,
+                Min = 0f, Max = 300f, Step = 5f,
+                Enabled = WaterSkyOn,
+            });
+
+            Add(new Row
+            {
+                Kind = RowKind.Toggle,
+                Panel = PanelPage.Water,
+                Group = "WaterCity",
+                Bool = Settings.WaterCity,
+                DefaultBool = Settings.Defaults.WaterCity,
+                Enabled = WaterOn,
+                AfterChange = WaterState("water reflects the city", OnOff(Settings.WaterCity)),
+            });
+
+            Add(new Row
+            {
+                Kind = RowKind.Percent,
+                Panel = PanelPage.Water,
+                Float = Settings.WaterCityDay,
+                DefaultFloat = Settings.Defaults.WaterCityDay,
+                Min = 0f, Max = 300f, Step = 5f,
+                Enabled = WaterCityOn,
+            });
+
+            Add(new Row
+            {
+                Kind = RowKind.Percent,
+                Panel = PanelPage.Water,
+                Float = Settings.WaterCityNight,
+                DefaultFloat = Settings.Defaults.WaterCityNight,
+                Min = 0f, Max = 300f, Step = 5f,
+                Enabled = WaterCityOn,
+            });
+
+            Add(new Row
+            {
+                Kind = RowKind.Percent,
+                Panel = PanelPage.Water,
+                Float = Settings.WaterCityBlur,
+                DefaultFloat = Settings.Defaults.WaterCityBlur,
+                Min = 0f, Max = 500f, Step = 5f,
+                Enabled = WaterCityOn,
+            });
+
+            Add(new Row
+            {
+                Kind = RowKind.Percent,
+                Panel = PanelPage.Water,
+                Float = Settings.WaterCityStreaks,
+                DefaultFloat = Settings.Defaults.WaterCityStreaks,
+                Min = 0f, Max = 300f, Step = 5f,
+                Enabled = WaterCityOn,
             });
         }
 

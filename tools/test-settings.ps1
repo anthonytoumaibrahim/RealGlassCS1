@@ -584,5 +584,37 @@ $c = Default 'GlassColor'
 $tint = "{0:F4} {1:F4} {2:F4}" -f $paramsType.GetField('TintR').GetValue($gp), $paramsType.GetField('TintG').GetValue($gp), $paramsType.GetField('TintB').GetValue($gp)
 Check "  and the glass colour" $tint ("{0:F4} {1:F4} {2:F4}" -f ($c.r / 255.0), ($c.g / 255.0), ($c.b / 255.0))
 
+# ---- the water (Water\WaterOptics.cs) ------------------------------------------------------
+# The rough sea's reflectance table both water shaders read (_RGSeaTable), and the constants the
+# Water tab's controller hands them.
+
+$optics = $asm.GetType('RealGlass.Water.WaterOptics', $true)
+$rho = $optics::BuildTable($optics::SlopeVariance(5.0))
+Check "the table has 33 entries" $rho.Length 33
+Check "F0 of water is 0.0204" ("{0:F4}" -f $optics::F0) "0.0204"
+$down = $rho[32]
+Check "looking straight down: about 2% (F0, a little more on a rough sea)" ($down -gt 0.020 -and $down -lt 0.03) "True"
+Check "at the horizon: much more, under a smooth surface's 100% (waves)" ($rho[0] -gt 0.2 -and $rho[0] -lt 0.9) "True"
+$bad = 0
+for ($i = 1; $i -lt 33; $i++) { if ($rho[$i] -gt $rho[$i - 1] + 1e-9) { $bad++ } }
+Check "less reflection the steeper one looks, all the way" $bad 0
+Check "the lookup at the entries is the table" ("{0:F6}" -f $optics::Lookup($rho, 0.25)) ("{0:F6}" -f $rho[16])
+Check "the lookup clamps below the level" ("{0:F6}" -f $optics::Lookup($rho, -1)) ("{0:F6}" -f $rho[0])
+Write-Host ("   rho: {0:P1} looking down, {1:P1} at 1/64, {2:P1} at the horizon" -f $down, $rho[4], $rho[0])
+Check "the cube's gain divides out the game's 0.5" $optics::CubeGain(1.0) 2
+Check "  and a negative slider is none" $optics::CubeGain(-1.0) 0
+Check "daylight: night below -0.10" $optics::Daylight(-0.2) 0
+Check "  day above 0.10" $optics::Daylight(0.2) 1
+Check "  half at the horizon" $optics::Daylight(0.0) 0.5
+$across = 0.0; $up = 0.0
+$optics::BlurSigmas(1.0, 0.0, 0.1, 45.0, 16.0 / 9.0, [ref]$across, [ref]$up)
+Check "blur 100%, no streaks: 0.5% of the height, round" ("{0:F6} {1:F6}" -f $across, $up) ("{0:F6} {1:F6}" -f (0.005 * 9.0 / 16.0), 0.005)
+$optics::BlurSigmas(0.0, 1.0, 0.1, 90.0, 1.0, [ref]$across, [ref]$up)
+Check "streaks only: up and down only, the spread over the view (fov 90: 0.05 uv)" ("{0:F6} {1:F6}" -f $across, $up) ("{0:F6} {1:F6}" -f 0.0, 0.05)
+Check "the city's streaks: 2 x the slope in one plane" ("{0:F6}" -f $optics::Spread(0.02)) ("{0:F6}" -f 0.2)
+
+# The Water tab is off by default (the author, 2026-10-03).
+Check "the water controls are off by default" (Default 'WaterEnabled') "False"
+
 Write-Host ""
 if ($failed -eq 0) { Write-Host "all passed" } else { Write-Host "$failed FAILED"; exit 1 }

@@ -73,6 +73,9 @@ namespace RealGlass
 
             gameObject.AddComponent<GlassController>();
 
+            // The Water tab (the map's water; off by default, apart from the glass).
+            gameObject.AddComponent<Water.WaterController>();
+
             // The building picker of the Asset tab (each asset's own glass).
             PerAsset.AssetSelection.Clear();
             PerAsset.AssetPicker.Create();

@@ -131,13 +131,16 @@ approximation, glass makers' published transmittance and reflectance, the physic
 insulating-glass pillowing and roller-wave distortion, unsharp masking (Schreiber 1970) over
 a mipmap level (Williams 1983) for the painted detail it keeps, and an anti-aliased glass edge
 (RenderMan's filterstep, Apodaca and Gritz 1999; Golus 2017; Direct3D 11's standard 4x sample
-pattern) -- listed with links in
+pattern), and for the water tab a rough sea's reflectance (Cox and Munk's wave slopes, 1954;
+Mobley's sea-surface reflectance factor, 1999) with the city traced through the depth buffer and
+blurred by normalized convolution (Knutsson and Westin, 1993) -- listed with links in
 `README.md`. Apart from the ray tracer above, the implementations were written for this mod.
 
 Other mods were read to understand the game's behaviour and to stay compatible with them:
 xdedss's CS_SSR (its note that the game's camera keeps no glossiness in any screen buffer), and
 Volumetric Weather, Volumetric Explosions and RealFlag, by the same author, whose foundations
-(settings, panel, logging, localization, tools) this mod's are. When Volumetric Weather runs,
+(settings, panel, logging, localization, tools) this mod's are; the Water tab is ported from
+RealLight, by the same author, and stands in for it on the map's water while on. When Volumetric Weather runs,
 Real Glass draws that mod's own cloud volume (found by its object's name) into its reflected
 sky; nothing of it is copied. algernon's BOB was read for how its building picker works (a tool
 of the game's kind, Escape handled before the game's own) and for keeping its per-building data in

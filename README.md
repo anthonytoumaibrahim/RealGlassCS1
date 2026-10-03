@@ -68,6 +68,14 @@ the log is `RealGlass.log`, next to it.
   them), with its floors by day.
 - **Steady glints**: where a pane's bend changes within a pixel far away, its glint and its
   reflection widen to match (specular anti-aliasing) instead of sparkling as the camera moves.
+- **The water** (its own tab, off unless switched on): the game's water adds the map theme's sky
+  at the same strength from every angle, so a white sky turns the sea white. With the tab on, the
+  water's sky follows real water's reflectance instead -- about 2% looking straight down, about
+  half toward the horizon, worked out for a breeze-roughened sea -- its colour can be made lighter
+  or darker, and the city on screen is mirrored in it, by day and by night: each reflected ray
+  followed through the depth buffer from the flat sea, softened and stretched up and down by the
+  waves. Only the map's water and the game's own lighting of it are touched; buildings keep the
+  theme's sky.
 - **Fresnel**: glass reflects little straight on and nearly everything edge-on (Schlick's
   approximation), capped by a setting, because a city-builder camera sees facades edge-on. The
   rise is the same for every colour, so a coated pane's tint gives way to silver edge-on.
@@ -165,6 +173,15 @@ Every technique here has shipped in a game or is published:
     [article](https://bgolus.medium.com/anti-aliased-alpha-test-the-esoteric-alpha-to-coverage-8b177335ae4f))
     -- over four reads of the pixel placed as Direct3D 11's standard 4x multisample pattern
     ([documentation](https://learn.microsoft.com/en-us/windows/win32/api/d3d11/ne-d3d11-d3d11_standard_multisample_quality_levels)).
+15. The water's reflectance: the sea surface's slopes, Charles Cox and Walter Munk,
+    **Measurement of the Roughness of the Sea Surface from Photographs of the Sun's Glitter**,
+    Journal of the Optical Society of America 44(11), 1954 (mean square slope 0.003 + 0.00512 U
+    for a wind of U m/s); the sky's light reflected by such a sea, Curtis D. Mobley,
+    **Estimation of the Remote-Sensing Reflectance from Above-Surface Measurements**, Applied
+    Optics 38(36), 1999; Schlick's Fresnel (6) with water's index, 1.333. The city in the water
+    is traced through the depth buffer as in (3); its blur is a separable Gaussian weighted so
+    only water is averaged -- normalized convolution, Hans Knutsson and Carl-Fredrik Westin,
+    **Normalized and Differential Convolution**, CVPR 1993.
 
 ## Building
 

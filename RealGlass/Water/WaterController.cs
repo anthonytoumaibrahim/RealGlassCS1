@@ -1,0 +1,216 @@
+using System;
+using ColossalFramework;
+using UnityEngine;
+
+namespace RealGlass.Water
+{
+    /// <summary>
+    /// The F8 panel's Water tab, for one city (on ModController's GameObject, beside the glass;
+    /// independent of the glass's switch): the map's water's brightness, its sky with real water's
+    /// reflectance (<see cref="WaterSurface"/>) and the city in it (<see cref="WaterCityReflection"/>).
+    /// Off by default (the author, 2026-10-03). Off means nothing is held: the theme's water, and
+    /// _RGWaterHeld = 0 so RealLight's copy of these controls may take it.
+    /// </summary>
+    public sealed class WaterController : MonoBehaviour
+    {
+        private static readonly int IdTable = Shader.PropertyToID("_RGSeaTable");
+
+        private WaterSurface _surface;
+        private WaterCityReflection _city;
+        private Vector4[] _table;
+        private readonly double _spread = WaterOptics.Spread(WaterOptics.SlopeVariance(WaterOptics.CityWind));
+        private bool _failed;
+        private string _cityState = "";
+
+        private void Start()
+        {
+            try
+            {
+                double[] rho = WaterOptics.BuildTable(WaterOptics.SlopeVariance(WaterOptics.SkyWind));
+                _table = new Vector4[WaterOptics.TableSize];
+                for (int i = 0; i < _table.Length; i++)
+                    _table[i] = new Vector4((float)rho[i], 0f, 0f, 0f);
+
+                _surface = WaterSurface.Create();
+                _city = WaterCityReflection.Create();
+                Log.Msg("water: ready (cube " + (_surface != null ? "yes" : "NO SHADER") + ", city reflection " + (_city != null ? "yes" : "NO SHADER") +
+                        "; reflectance " + (rho[WaterOptics.TableSize - 1] * 100.0).ToString("F1") + "% looking down, " + (rho[4] * 100.0).ToString("F0") +
+                        "% at 1 deg); " + Describe());
+            }
+            catch (Exception e)
+            {
+                Log.Error("water: could not start", e);
+                _failed = true;
+            }
+        }
+
+        /// <summary>The Water tab's settings, for the log.</summary>
+        public static string Describe()
+        {
+            if (!On(Settings.WaterEnabled))
+                return "water controls off";
+            return "water controls ON: brightness " + Pct(Settings.WaterBrightness) + ", real sky " + (On(Settings.WaterRealSky) ? Pct(Settings.WaterSky) : "off") +
+                   ", city " + (On(Settings.WaterCity) ? Pct(Settings.WaterCityDay) + " day / " + Pct(Settings.WaterCityNight) + " night, blur " +
+                   Pct(Settings.WaterCityBlur) + ", streaks " + Pct(Settings.WaterCityStreaks) : "off");
+        }
+
+        private static bool On(BoolSetting s)
+        {
+            return s != null && s.value;
+        }
+
+        private static float Value(FloatSetting s, float fallback)
+        {
+            return s != null ? s.value : fallback;
+        }
+
+        private static string Pct(FloatSetting s)
+        {
+            return s != null ? Mathf.RoundToInt(s.value * 100f) + "%" : "?";
+        }
+
+        private void LateUpdate()
+        {
+            if (_failed)
+                return;
+
+            try
+            {
+                Frame();
+            }
+            catch (Exception e)
+            {
+                Log.Error("water: frame failed; the water is given back and stays the game's until the city is reloaded", e);
+                _failed = true;
+                Release();
+            }
+        }
+
+        private void Frame()
+        {
+            if (!On(Settings.WaterEnabled))
+            {
+                Release();
+                return;
+            }
+
+            Shader.SetGlobalVectorArray(IdTable, _table);
+
+            if (_surface != null)
+            {
+                _surface.HoldColour(Value(Settings.WaterBrightness, Settings.Defaults.WaterBrightness));
+                if (On(Settings.WaterRealSky))
+                    _surface.HoldCube(Value(Settings.WaterSky, Settings.Defaults.WaterSky));
+                else
+                    _surface.ReleaseCube();
+            }
+
+            CityFrame();
+        }
+
+        private void CityFrame()
+        {
+            if (_city == null)
+                return;
+
+            Camera camera = Camera.main;
+            string why = null;
+            float level = float.NaN;
+            if (!On(Settings.WaterCity))
+                why = "switched off";
+            else if (camera == null)
+                why = "no camera";
+            else if (Singleton<InfoManager>.exists && Singleton<InfoManager>.instance.CurrentMode != InfoManager.InfoMode.None)
+                why = "an info view is open";
+            else if (ToolsModifierControl.toolController != null && ToolsModifierControl.toolController.CurrentTool is SnapshotTool)
+                why = "the snapshot tool";
+            else
+            {
+                TerrainManager terrain = Singleton<TerrainManager>.exists ? Singleton<TerrainManager>.instance : null;
+                if (terrain != null && terrain.WaterSimulation != null)
+                    level = terrain.WaterSimulation.m_currentSeaLevel;
+                if (float.IsNaN(level) || float.IsInfinity(level))
+                    why = "no sea level";
+                else if (camera.transform.position.y - level <= 1f)
+                    why = "the camera is at the water";
+            }
+
+            if (why != null)
+            {
+                if (_city.Attached)
+                    _city.Detach();
+                CityState("off (" + why + ")");
+                return;
+            }
+
+            // The sun and the sky's light, as the glass reads them (GlassController.ReadFrame).
+            Vector3 toSun = Vector3.down;
+            Color sun = Color.black;
+            DayNightProperties dn = DayNightProperties.instance;
+            if (dn != null && dn.m_SunLight != null)
+            {
+                toSun = -dn.m_SunLight.forward;
+                Light light = dn.m_SunLight.GetComponent<Light>();
+                if (light != null && light.enabled)
+                    sun = light.color.linear * light.intensity;
+            }
+            Color lit = sun * Mathf.Max(0f, toSun.y) + RenderSettings.ambientSkyColor.linear;
+
+            float day = (float)WaterOptics.Daylight(toSun.y);
+            float dayStrength = Value(Settings.WaterCityDay, Settings.Defaults.WaterCityDay);
+            float nightStrength = Value(Settings.WaterCityNight, Settings.Defaults.WaterCityNight);
+            float strength = nightStrength + (dayStrength - nightStrength) * day;
+            float skyShare = _surface != null && _surface.CubeHeld ? Value(Settings.WaterSky, Settings.Defaults.WaterSky) : 0f;
+
+            double aspect = camera.pixelHeight > 0 ? (double)camera.pixelWidth / camera.pixelHeight : 16.0 / 9.0;
+            double across, up;
+            WaterOptics.BlurSigmas(Value(Settings.WaterCityBlur, Settings.Defaults.WaterCityBlur), Value(Settings.WaterCityStreaks, Settings.Defaults.WaterCityStreaks),
+                                   _spread, camera.fieldOfView, aspect, out across, out up);
+            _city.SetUniforms(level, strength, skyShare, WaterSurface.ThemeCube(), lit, across, up, camera.farClipPlane);
+            _city.Attach(camera);
+            CityState("on (sea level " + level.ToString("F1") + " m)");
+        }
+
+        /// <summary>One line whenever the city reflection's state changes.</summary>
+        private void CityState(string state)
+        {
+            if (state == _cityState)
+                return;
+            // The sea level moves with the tide of a tsunami: not a state of its own.
+            if (state.StartsWith("on", StringComparison.Ordinal) && _cityState.StartsWith("on", StringComparison.Ordinal))
+                return;
+            _cityState = state;
+            Log.Msg("water: city reflection " + state);
+        }
+
+        private void Release()
+        {
+            if (_city != null && _city.Attached)
+                _city.Detach();
+            if (_surface != null)
+                _surface.GiveBack();
+            else
+                Shader.SetGlobalFloat("_RGWaterHeld", 0f);
+            _cityState = "";
+        }
+
+        private void OnDestroy()
+        {
+            try
+            {
+                if (_city != null)
+                    _city.Destroy();
+                if (_surface != null)
+                    _surface.Destroy();
+                Shader.SetGlobalFloat("_RGWaterHeld", 0f);
+            }
+            catch (Exception e)
+            {
+                Log.Error("water: could not give the water back", e);
+            }
+
+            _city = null;
+            _surface = null;
+        }
+    }
+}

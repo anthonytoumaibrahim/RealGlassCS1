@@ -24,6 +24,8 @@ public static class BundleBuilder
     {
         "Assets/RealGlass/Glass.shader",
         "Assets/RealGlass/GlassUtil.shader",
+        "Assets/RealGlass/WaterCube.shader",
+        "Assets/RealGlass/CityReflection.shader",
     };
 
     /// <summary>
