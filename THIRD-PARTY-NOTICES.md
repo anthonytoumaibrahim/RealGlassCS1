@@ -139,8 +139,7 @@ blurred by normalized convolution (Knutsson and Westin, 1993) -- listed with lin
 Other mods were read to understand the game's behaviour and to stay compatible with them:
 xdedss's CS_SSR (its note that the game's camera keeps no glossiness in any screen buffer), and
 Volumetric Weather, Volumetric Explosions and RealFlag, by the same author, whose foundations
-(settings, panel, logging, localization, tools) this mod's are; the Water tab is ported from
-RealLight, by the same author, and stands in for it on the map's water while on. When Volumetric Weather runs,
+(settings, panel, logging, localization, tools) this mod's are. When Volumetric Weather runs,
 Real Glass draws that mod's own cloud volume (found by its object's name) into its reflected
 sky; nothing of it is copied. algernon's BOB was read for how its building picker works (a tool
 of the game's kind, Escape handled before the game's own) and for keeping its per-building data in

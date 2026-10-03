@@ -96,19 +96,46 @@ namespace RealGlass.Water
 
             Shader.SetGlobalVectorArray(IdTable, _table);
 
+            Vector3 toSun;
+            Color light = WaterLight(out toSun);
+
             if (_surface != null)
             {
                 _surface.HoldColour(Value(Settings.WaterBrightness, Settings.Defaults.WaterBrightness));
                 if (On(Settings.WaterRealSky))
-                    _surface.HoldCube(Value(Settings.WaterSky, Settings.Defaults.WaterSky));
+                    _surface.HoldCube(Value(Settings.WaterSky, Settings.Defaults.WaterSky), light);
                 else
                     _surface.ReleaseCube();
             }
 
-            CityFrame();
+            CityFrame(light, toSun);
         }
 
-        private void CityFrame()
+        /// <summary>
+        /// The light the game's water lights its cube with (linear; the sun as the glass reads it,
+        /// GlassController.ReadFrame): the sun on the level + the sky's ambient, each channel floored
+        /// (<see cref="WaterOptics.FloorLight"/>).
+        /// </summary>
+        private static Color WaterLight(out Vector3 toSun)
+        {
+            toSun = Vector3.down;
+            Color sun = Color.black;
+            DayNightProperties dn = DayNightProperties.instance;
+            if (dn != null && dn.m_SunLight != null)
+            {
+                toSun = -dn.m_SunLight.forward;
+                Light light = dn.m_SunLight.GetComponent<Light>();
+                if (light != null && light.enabled)
+                    sun = light.color.linear * light.intensity;
+            }
+
+            Color lit = sun * Mathf.Max(0f, toSun.y) + RenderSettings.ambientSkyColor.linear;
+            double r = lit.r, g = lit.g, b = lit.b;
+            WaterOptics.FloorLight(ref r, ref g, ref b);
+            return new Color((float)r, (float)g, (float)b, 1f);
+        }
+
+        private void CityFrame(Color lit, Vector3 toSun)
         {
             if (_city == null)
                 return;
@@ -142,19 +169,6 @@ namespace RealGlass.Water
                 CityState("off (" + why + ")");
                 return;
             }
-
-            // The sun and the sky's light, as the glass reads them (GlassController.ReadFrame).
-            Vector3 toSun = Vector3.down;
-            Color sun = Color.black;
-            DayNightProperties dn = DayNightProperties.instance;
-            if (dn != null && dn.m_SunLight != null)
-            {
-                toSun = -dn.m_SunLight.forward;
-                Light light = dn.m_SunLight.GetComponent<Light>();
-                if (light != null && light.enabled)
-                    sun = light.color.linear * light.intensity;
-            }
-            Color lit = sun * Mathf.Max(0f, toSun.y) + RenderSettings.ambientSkyColor.linear;
 
             float day = (float)WaterOptics.Daylight(toSun.y);
             float dayStrength = Value(Settings.WaterCityDay, Settings.Defaults.WaterCityDay);

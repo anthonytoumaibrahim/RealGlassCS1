@@ -49,6 +49,12 @@ public static class CityReflectionTest
                     table[int.Parse(p[1], CultureInfo.InvariantCulture)] = new Vector4(F(p[2]), 0f, 0f, 0f);
                 else if (p[0] == "theme")
                     theme = new Color(F(p[1]), F(p[2]), F(p[3]), 1f);
+                else if (p[0] == "realsky")
+                {
+                    // A published real sky (one colour) and its weight.
+                    Shader.SetGlobalTexture("_RLSkyLightCube", Cube(new Color(F(p[1]), F(p[2]), F(p[3]), 1f)));
+                    Shader.SetGlobalFloat("_RLSkyLightCubeWeight", F(p[4]));
+                }
                 else if (p[0] == "eye")
                     eye = new Vector3(F(p[1]), F(p[2]), F(p[3]));
                 else if (p[0] == "look")
@@ -68,15 +74,8 @@ public static class CityReflectionTest
 
             Shader.SetGlobalVectorArray("_RGSeaTable", table);
 
-            // The theme's sky: one colour every way (linear, float: read back exactly).
-            var cube = new Cubemap(8, TextureFormat.RGBAFloat, false);
-            var face = new Color[64];
-            for (int i = 0; i < face.Length; i++)
-                face[i] = theme;
-            foreach (CubemapFace f in new[] { CubemapFace.PositiveX, CubemapFace.NegativeX, CubemapFace.PositiveY, CubemapFace.NegativeY, CubemapFace.PositiveZ, CubemapFace.NegativeZ })
-                cube.SetPixels(face, f);
-            cube.Apply(false);
-            material.SetTexture("_RGWaterTheme", cube);
+            // The theme's sky: one colour every way.
+            material.SetTexture("_RGWaterTheme", Cube(theme));
 
             RenderSettings.skybox = new Material(Shader.Find("Skybox/Procedural"));
             var lightObject = new GameObject("test sun");
@@ -157,6 +156,19 @@ public static class CityReflectionTest
         }
 
         File.WriteAllText(Path.Combine(dir, "reflection-test-output.txt"), output.ToString());
+    }
+
+    /// <summary>A float cube of one colour every way (linear: read back exactly).</summary>
+    private static Cubemap Cube(Color colour)
+    {
+        var cube = new Cubemap(8, TextureFormat.RGBAFloat, false);
+        var face = new Color[64];
+        for (int i = 0; i < face.Length; i++)
+            face[i] = colour;
+        foreach (CubemapFace f in new[] { CubemapFace.PositiveX, CubemapFace.NegativeX, CubemapFace.PositiveY, CubemapFace.NegativeY, CubemapFace.PositiveZ, CubemapFace.NegativeZ })
+            cube.SetPixels(face, f);
+        cube.Apply(false);
+        return cube;
     }
 
     private static RenderTexture Target(int size, bool mips)

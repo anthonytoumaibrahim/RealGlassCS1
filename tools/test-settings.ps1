@@ -613,6 +613,16 @@ $optics::BlurSigmas(0.0, 1.0, 0.1, 90.0, 1.0, [ref]$across, [ref]$up)
 Check "streaks only: up and down only, the spread over the view (fov 90: 0.05 uv)" ("{0:F6} {1:F6}" -f $across, $up) ("{0:F6} {1:F6}" -f 0.0, 0.05)
 Check "the city's streaks: 2 x the slope in one plane" ("{0:F6}" -f $optics::Spread(0.02)) ("{0:F6}" -f 0.2)
 
+$r = 1.2; $g = 1.1; $b = 1.0
+$optics::FloorLight([ref]$r, [ref]$g, [ref]$b)
+Check "the water's light: an ordinary light untouched" ("{0} {1} {2}" -f $r, $g, $b) "1.2 1.1 1"
+$r = 0.8; $g = 0.2; $b = 0.0
+$optics::FloorLight([ref]$r, [ref]$g, [ref]$b)
+Check "  a deep-red dusk: blue floored at 5% of the luminance" ("{0:F5}" -f $b) ("{0:F5}" -f ((0.2126 * 0.8 + 0.7152 * 0.2) * 0.05))
+$r = 0.0; $g = 0.0; $b = 0.0
+$optics::FloorLight([ref]$r, [ref]$g, [ref]$b)
+Check "  no light at all: 1e-3 each (never a division by 0)" ("{0} {1} {2}" -f $r, $g, $b) "0.001 0.001 0.001"
+
 # The Water tab is off by default (the author, 2026-10-03).
 Check "the water controls are off by default" (Default 'WaterEnabled') "False"
 

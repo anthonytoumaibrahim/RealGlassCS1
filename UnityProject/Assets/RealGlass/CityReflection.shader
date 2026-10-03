@@ -192,7 +192,7 @@ Shader "RealGlass/CityReflection"
 
         float3 c = tex2Dlod(_RGWaterFrame, float4(at.xy, 0.0, 0.0)).rgb;
         if (_RGWaterGeom.z > 0.0)
-            c -= _RGWaterGeom.z * texCUBElod(_RGWaterTheme, float4(r, _RGWaterGeom.w)).rgb * _RGWaterLight.rgb;
+            c -= _RGWaterGeom.z * RGSkyLight(texCUBElod(_RGWaterTheme, float4(r, _RGWaterGeom.w)).rgb * _RGWaterLight.rgb, r);
         return float4(c * (k * fade), 1.0);
     }
 

@@ -31,6 +31,11 @@ Shader "RealGlass/WaterCube"
             // whose texels are this cube's.
             float4 _RGWaterGain;
 
+            // rgb: the light the game's water lights its cube with (linear: the sun on the level +
+            // the sky's ambient, floored). A real sky is light already: it is divided by this, so
+            // that the game's lighting gives it back.
+            float4 _RGWaterLight;
+
             struct v2f
             {
                 float4 pos : SV_POSITION;
@@ -48,7 +53,9 @@ Shader "RealGlass/WaterCube"
             float4 frag(v2f i) : SV_Target
             {
                 float3 d = normalize(i.dir);
-                float3 sky = _RGWaterGain.y > 0.5 ? texCUBElod(_RGWaterTheme, float4(d, _RGWaterGain.z)).rgb : float3(0.0, 0.0, 0.0);
+                float3 theme = _RGWaterGain.y > 0.5 ? texCUBElod(_RGWaterTheme, float4(d, _RGWaterGain.z)).rgb : float3(0.0, 0.0, 0.0);
+                // In light (the theme's cube as the game lights it), then back to what the game lights.
+                float3 sky = RGSkyLight(theme * _RGWaterLight.rgb, d) / _RGWaterLight.rgb;
                 float rho = RGSeaRho(max(d.y, 0.0));
                 return float4(sky * (rho * _RGWaterGain.x), 1.0);
             }

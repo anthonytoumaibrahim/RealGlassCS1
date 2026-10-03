@@ -34,6 +34,14 @@ namespace RealGlass.Water
         private static readonly int IdHeld = Shader.PropertyToID("_RGWaterHeld");
         private static readonly int IdTheme = Shader.PropertyToID("_RGWaterTheme");
         private static readonly int IdGain = Shader.PropertyToID("_RGWaterGain");
+        private static readonly int IdLight = Shader.PropertyToID("_RGWaterLight");
+
+        // A real sky another mod may publish (the author's own RealLight, internal; see WaterCommon.cginc).
+        private static readonly int IdRealSky = Shader.PropertyToID("_RLSkyLightCube");
+        private static readonly int IdRealSkyWeight = Shader.PropertyToID("_RLSkyLightCubeWeight");
+
+        /// <summary>Seconds between redraws while a real sky is published (it is redrawn every 0.25 s itself).</summary>
+        public const float RealSkyInterval = 0.25f;
 
         private readonly Material _material;
         private readonly RenderTexture _cube;
@@ -45,6 +53,8 @@ namespace RealGlass.Water
         private bool _cubeHeld, _colourHeld;
         private Texture _drawnTheme;
         private float _drawnGain = -1f;
+        private float _drawnWeight;
+        private float _nextRealSky;
 
         private WaterSurface(Shader shader)
         {
@@ -93,21 +103,44 @@ namespace RealGlass.Water
             return Shader.GetGlobalTexture(IdCube);
         }
 
-        /// <summary>The cube of real water's reflectance on the water's materials, re-drawn when the slider or the theme's cube changed.</summary>
-        public void HoldCube(float skySlider)
+        /// <summary>A published real sky's weight now (0..1; 0 when none is published: an unset global reads 0).</summary>
+        public static float RealSkyWeight()
+        {
+            if (Shader.GetGlobalTexture(IdRealSky) == null)
+                return 0f;
+            float w = Shader.GetGlobalFloat(IdRealSkyWeight);
+            return float.IsNaN(w) ? 0f : Mathf.Clamp01(w);
+        }
+
+        /// <summary>
+        /// The cube of real water's reflectance on the water's materials. Re-drawn when the slider or
+        /// the theme's cube changed; and while a real sky is published (the author's own RealLight,
+        /// internal, only while we hold the water), every <see cref="RealSkyInterval"/> s, as that sky
+        /// and the light it is divided by change.
+        /// </summary>
+        /// <param name="light">The light the game's water lights the cube with (linear, floored: <see cref="WaterOptics.FloorLight"/>).</param>
+        public void HoldCube(float skySlider, Color light)
         {
             if (!Take())
                 return;
 
             Texture theme = ThemeCube();
             float gain = (float)WaterOptics.CubeGain(skySlider);
-            if (theme != _drawnTheme || Mathf.Abs(gain - _drawnGain) > 1e-4f || !_cubeHeld)
+            float weight = RealSkyWeight();
+            float now = Time.realtimeSinceStartup;
+            bool realSkyDue = (weight > 0f || _drawnWeight > 0f) && now >= _nextRealSky;
+            if (theme != _drawnTheme || Mathf.Abs(gain - _drawnGain) > 1e-4f || !_cubeHeld || realSkyDue)
             {
+                _nextRealSky = now + RealSkyInterval;
                 // The theme's cube read at the mip whose texels are this cube's (64 px): no aliasing.
                 int themeSize = theme != null ? Mathf.Max(theme.width, Size) : Size;
                 _material.SetTexture(IdTheme, theme);
                 _material.SetVector(IdGain, new Vector4(gain, theme != null ? 1f : 0f, Mathf.Log(themeSize / (float)Size, 2f), 0f));
+                _material.SetVector(IdLight, new Vector4(light.r, light.g, light.b, 0f));
                 _capture.RenderToCubemap(_cube);
+                if ((weight > 0f) != (_drawnWeight > 0f))
+                    Log.Msg("water: " + (weight > 0f ? "a real sky is published: the water reflects it (weight " + weight.ToString("F2") + ")" : "no real sky now: the water reflects the theme's"));
+                _drawnWeight = weight;
                 if (theme != _drawnTheme || !_cubeHeld)
                 {
                     Log.Msg("water: the map's water reflects the theme's sky (" + (theme != null ? "'" + theme.name + "' " + theme.width + " px" : "none") +
@@ -158,6 +191,7 @@ namespace RealGlass.Water
 
             _cubeHeld = false;
             _drawnTheme = null;
+            _drawnWeight = 0f;
             if (_water != null)
             {
                 Texture theme = ThemeCube();

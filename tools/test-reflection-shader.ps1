@@ -49,6 +49,8 @@ $spread = $optics::Spread($optics::SlopeVariance($optics::CityWind))
 # The theme's sky and the light the water lights it with: one colour each.
 $theme = [double[]]@(0.30, 0.45, 0.70)
 $light = [double[]]@(1.2, 1.1, 1.0)
+# A published real sky (light already: not multiplied by the light).
+$realSky = [double[]]@(0.25, 0.40, 0.90)
 
 # A point on the water seen this far below the level, at this azimuth (from +x toward +z).
 function WaterPoint([double]$below, [double]$azimuth) {
@@ -78,6 +80,7 @@ $points = @(
 $cases = @(
     @{ Name = "sharp, no sky share"; Share = 0.0; Water = "0.05 0.12 0.15"; Blur = 0.0; Streaks = 0.0 },
     @{ Name = "sharp, sky share 100%"; Share = 1.0; Water = "0.6 0.9 1.0"; Blur = 0.0; Streaks = 0.0 },
+    @{ Name = "sharp, sky share 100%, a real sky at 60%"; Share = 1.0; Water = "0.6 0.9 1.0"; Blur = 0.0; Streaks = 0.0; Real = 0.6 },
     @{ Name = "blur 300%"; Share = 0.0; Water = "0.05 0.12 0.15"; Blur = 3.0; Streaks = 0.0 },
     @{ Name = "streaks 100%"; Share = 0.0; Water = "0.05 0.12 0.15"; Blur = 0.0; Streaks = 1.0 }
 )
@@ -95,6 +98,8 @@ foreach ($case in $cases) {
     $lines.Add("_RGWaterLight " + (N $light[0]) + " " + (N $light[1]) + " " + (N $light[2]) + " 0")
     foreach ($i in 0..32) { $lines.Add("table " + $i + " " + (N $tbl[$i])) }
     $lines.Add("theme " + (N $theme[0]) + " " + (N $theme[1]) + " " + (N $theme[2]))
+    $real = if ($case.Real) { [double]$case.Real } else { 0.0 }
+    if ($real -gt 0.0) { $lines.Add("realsky " + (N $realSky[0]) + " " + (N $realSky[1]) + " " + (N $realSky[2]) + " " + (N $real)) }
     $lines.Add("level " + (N $level))
     $lines.Add("water " + $case.Water)
     $lines.Add("eye " + (N $eye[0]) + " " + (N $eye[1]) + " " + (N $eye[2]))
@@ -138,7 +143,8 @@ foreach ($case in $cases) {
         $want = [double[]]@(0.0, 0.0, 0.0)
         $add = [double[]]@(0.0, 0.0, 0.0)
         foreach ($k in 0..2) {
-            $add[$k] = $rho * ($wallColour[$k] - $case.Share * $theme[$k] * $light[$k])
+            $sky = $theme[$k] * $light[$k] * (1.0 - $real) + $realSky[$k] * $real
+            $add[$k] = $rho * ($wallColour[$k] - $case.Share * $sky)
             $want[$k] = $plain[$k] + [Math]::Max($add[$k], -0.98 * $plain[$k])
         }
         $w = Worst $shader $want
@@ -173,5 +179,67 @@ else { Check "every case came back" $false ("{0} of {1}" -f $results.Count, $cas
 
 Remove-Item (Join-Path $project "reflection-test-output.txt") -ErrorAction SilentlyContinue
 Remove-Item (Join-Path $project "reflection-test-input.txt") -ErrorAction SilentlyContinue
+
+# ---- the water's sky cube (UnityProject\Assets\Editor\WaterCubeTest.cs) ----------------------
+# Drawn as the mod draws it (a hidden camera's skybox, RenderToCubemap); each face's centre against
+# rho(max(d.y, 0)) x gain x lerp(theme x light, real sky, weight) / light. Faces +X -X +Y -Y +Z -Z;
+# one colour per face in each cube, so a face read back names its direction.
+$faceUp = @(0.0, 0.0, 1.0, -1.0, 0.0, 0.0)
+$themeFaces = @(@(0.30, 0.45, 0.70), @(0.20, 0.30, 0.40), @(0.50, 0.60, 0.90), @(0.10, 0.10, 0.10), @(0.35, 0.40, 0.60), @(0.25, 0.35, 0.55))
+$realFaces = @(@(0.80, 1.10, 2.00), @(0.60, 0.80, 1.40), @(1.50, 2.00, 3.50), @(0.20, 0.20, 0.30), @(0.70, 1.00, 1.90), @(0.65, 0.90, 1.70))
+$cubeLight = [double[]]@(1.6, 1.4, 1.1)
+$slider = 1.0
+$gain = $optics::CubeGain($slider)
+$cubeCases = @(
+    @{ Name = "no real sky published (RealGlass alone)"; Publish = $false; Weight = 0.0 },
+    @{ Name = "a real sky published at weight 0 (night)"; Publish = $true; Weight = 0.0 },
+    @{ Name = "a real sky at weight 0.5 (dusk)"; Publish = $true; Weight = 0.5 },
+    @{ Name = "a real sky at weight 1 (day)"; Publish = $true; Weight = 1.0 }
+)
+foreach ($case in $cubeCases) {
+    $lines = New-Object System.Collections.Generic.List[string]
+    foreach ($i in 0..32) { $lines.Add("table " + $i + " " + (N $tbl[$i])) }
+    $lines.Add("_RGWaterGain " + (N $gain) + " 1 0 0")
+    $lines.Add("_RGWaterLight " + (N $cubeLight[0]) + " " + (N $cubeLight[1]) + " " + (N $cubeLight[2]) + " 0")
+    foreach ($f in 0..5) {
+        $lines.Add("theme " + $f + " " + (N $themeFaces[$f][0]) + " " + (N $themeFaces[$f][1]) + " " + (N $themeFaces[$f][2]))
+        if ($case.Publish) { $lines.Add("real " + $f + " " + (N $realFaces[$f][0]) + " " + (N $realFaces[$f][1]) + " " + (N $realFaces[$f][2])) }
+    }
+    $lines.Add("weight " + (N $case.Weight))
+    [System.IO.File]::WriteAllLines((Join-Path $project "cube-test-input.txt"), $lines)
+
+    $out = Join-Path $project "cube-test-output.txt"
+    if (Test-Path $out) { Remove-Item $out -Force }
+    $proc = Start-Process -FilePath $Unity -WindowStyle Hidden -Wait -PassThru -ArgumentList @(
+        "-batchmode", "-quit", "-projectPath", "`"$project`"", "-executeMethod", "WaterCubeTest.Run",
+        "-logFile", "`"$(Join-Path $project 'cube-test.log')`"")
+    if (-not (Test-Path $out)) { Write-Host "FAIL  Unity wrote no output (exit $($proc.ExitCode)); see UnityProject\cube-test.log"; exit 1 }
+    $got = Get-Content $out
+    Write-Host ("cube, {0}: {1}; {2}" -f $case.Name, $got[0], $got[1])
+    $got | Where-Object { $_ -like "EXCEPTION*" } | ForEach-Object { Write-Host $_; $script:failed++ }
+    $worst = 0.0; $detail = ""
+    foreach ($line in ($got | Where-Object { $_ -like "face *" })) {
+        $q = $line.Split(' ')
+        $f = [int]$q[1]
+        $shader = Three $q 2
+        # The four centre texels read back lie half a texel off the axis: on a side face two look
+        # 0.9 deg up, two 0.9 deg down, and rho changes fast near the horizon -- averaged as read.
+        $half = 1.0 / 64.0
+        $n = [Math]::Sqrt(1.0 + 2.0 * $half * $half)
+        $ys = if ($faceUp[$f] -ne 0.0) { @(($faceUp[$f] / $n)) * 4 } else { @(($half / $n), ($half / $n), (-$half / $n), (-$half / $n)) }
+        $rho = 0.0
+        foreach ($y in $ys) { $rho += $optics::Lookup($tbl, [Math]::Max($y, 0.0)) / 4.0 }
+        $want = [double[]]@(0.0, 0.0, 0.0)
+        foreach ($k in 0..2) {
+            $sky = $themeFaces[$f][$k] * $cubeLight[$k] * (1.0 - $case.Weight) + $realFaces[$f][$k] * $case.Weight
+            $want[$k] = $rho * $gain * $sky / $cubeLight[$k]
+        }
+        $w = Worst $shader $want
+        if ($w -gt $worst) { $worst = $w; $detail = "face {0}: shader {1} model {2}" -f $f, (Show $shader), (Show $want) }
+    }
+    Check ("  every face = rho x gain x the sky blended / light") ($worst -lt 0.005) ("worst {0:P2} ({1})" -f $worst, $detail)
+}
+Remove-Item (Join-Path $project "cube-test-output.txt") -ErrorAction SilentlyContinue
+Remove-Item (Join-Path $project "cube-test-input.txt") -ErrorAction SilentlyContinue
 Write-Host ""
 if ($failed -eq 0) { Write-Host "all passed" } else { Write-Host "$failed FAILED"; exit 1 }

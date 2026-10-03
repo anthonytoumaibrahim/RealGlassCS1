@@ -128,6 +128,20 @@ namespace RealGlass.Water
             return Math.Max(0.0, skySlider) / GameReflectivity;
         }
 
+        /// <summary>
+        /// The light the game's water lights its cube with, per channel, made safe to divide by: a
+        /// published real sky (light already) is divided by it in the cube, so that the game's
+        /// lighting gives it back. Each channel at least 5% of the light's luminance (and 1e-3):
+        /// a deep-red dusk does not blow the blue up. Returned in place.
+        /// </summary>
+        public static void FloorLight(ref double r, ref double g, ref double b)
+        {
+            double floor = Math.Max(1e-3, (0.2126 * r + 0.7152 * g + 0.0722 * b) * 0.05);
+            r = Math.Max(floor, r);
+            g = Math.Max(floor, g);
+            b = Math.Max(floor, b);
+        }
+
         /// <summary>One standard deviation of the reflected rays' height about the mirror ray, radians: 2 x the slope's in one plane.</summary>
         public static double Spread(double slopeVariance)
         {

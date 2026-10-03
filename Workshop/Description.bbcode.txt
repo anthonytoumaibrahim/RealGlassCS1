@@ -1,11 +1,12 @@
-Makes the glass on your buildings and skyscrapers look real, with [b]screen space reflections (SSR)[/b] of the city around them and a live sky (reflecting the clouds in [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3805863507]Volumetric Weather[/url]).
+Breathe life into your city's skyscrapers -- especially the ugly vanilla ones.
+Adds a glass shader on all buildings with [b]screen space reflections (SSR)[/b] of the city around them and a live sky (reflecting the clouds in [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3805863507]Volumetric Weather[/url]).
 Tested only on my Windows 11 PC and Macbook. If anything looks wrong or runs badly, let me know in the comments.
 
 [hr][/hr]
 [h1]How to use[/h1]
 [olist]
 [*][b]Subscribe[/b] to [url=https://steamcommunity.com/sharedfiles/filedetails/?id=2040656402]Harmony[/url] and then this mod, make sure both are enabled. If you use Skyve, make sure the mod is enabled in it.
-[*][b]Load a savegame or into the editor[/b].
+[*][b]Load a savegame[/b] (or the editors).
 [*][b]Press F8[/b] (or click the mod's button) to open the in-game panel, or press [b]Alt+G[/b] to customize an individual building.
 [/olist]
 
@@ -13,24 +14,30 @@ Tested only on my Windows 11 PC and Macbook. If anything looks wrong or runs bad
 [h1]Features[/h1]
 [list]
 [*][b]Glass[/b]: customizable color and reflection intensity. You can also retain a building's details under the glass, or reduce the glass opacity.
-[*][b]Per-building customization[/b] (press Alt+G)
+[*][b]Per-building customization[/b] (press Alt+G): useful in instances where the asset textures
+[*][b]Better Water[/b] (press Alt+G): useful in instances where the asset textures
 [/list]
 
 [hr][/hr]
 [h1]Compatibility[/h1]
-Works with (most) vanilla and custom building asset. No conflicts found with Volumetric Weather, Render It!, AD Cloud Replacer, Move It!, TM:PE or FPS Booster. Mac and Linux versions included (Linux untested). Safe to remove as it saves nothing in your cities.
+Works with (most) vanilla and custom building asset. No conflicts found with Render It!, AD Cloud Replacer, Move It!, TM:PE, FPS Booster and more. Safe to remove as it saves nothing in your cities.
 
 [hr][/hr]
 [h1]For asset creators[/h1]
 Anything 70% (default value) or brighter in your specular map is glass, so keep shiny metal below that, and give your own LOD textures a specular too. Check it in the Asset Editor with [i]Show what counts as glass[/i] (Glass tab).
 
 [hr][/hr]
+[h1]Known issues / limitations[/h1]
+[list]
+[*][b]Glass flickering[/b]: this happens due to using TAA.
+[*][b]Reflections are not accurate:[/b] this uses SSR, ray tracing is not supported by the game to provide accurate reflections.
+[/list]
+
+[hr][/hr]
 [h1]Source code[/h1]
 Open source (MIT) on [url=https://github.com/anthonytoumaibrahim/RealGlassCS1]GitHub[/url]. Includes UnifiedUILib by kianzarrin and CitiesHarmony.API by boformer, thanks to both.
+This mod was made with substantial help from AI. I set the goals, made the design decisions, and did all of the in-game testing and tuning.
 
 [hr][/hr]
 [h1]Reporting a bug[/h1]
 Tick [i]Detailed logging[/i] (Options → Real Glass), make the problem happen again, then post [i]RealGlass.log[/i] (in [i]%LOCALAPPDATA%\Colossal Order\Cities_Skylines[/i]), the game's [i]output_log.txt[/i] and a screenshot in the comments. Both logs reset at every launch.
-
-[hr][/hr]
-This mod was made with substantial help from AI. I set the goals, made the design decisions, and did all of the in-game testing and tuning.
