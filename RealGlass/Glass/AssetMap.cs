@@ -34,6 +34,10 @@ namespace RealGlass.Glass
         private readonly AssetTextures _textures = new AssetTextures();
         private readonly Dictionary<BuildingInfo, Color32> _texelOf = new Dictionary<BuildingInfo, Color32>();
         private readonly Dictionary<ulong, int> _slotOf = new Dictionary<ulong, int>();
+        private readonly Dictionary<ulong, int> _keep = new Dictionary<ulong, int>();
+        private readonly List<ResolvedAsset> _resolved = new List<ResolvedAsset>();
+        private readonly bool[] _taken = new bool[AssetTextures.GlassSlots];
+        private int _nextSlot;
         private int _seenVersion = -1;
         private ulong _seenGlobal = ulong.MaxValue;
         private int _next = 1;
@@ -145,13 +149,20 @@ namespace RealGlass.Glass
                 _passLeft -= budget;
         }
 
-        /// <summary>Each asset's texel, from its own settings and, where it has none, the global ones.</summary>
+        /// <summary>
+        /// Each asset's texel, from its own settings and, where it has none, the global ones.
+        /// </summary>
+        /// <remarks>
+        /// SLOTS STAY PUT: a glass that is still in use keeps its slot, a new one takes the free slot
+        /// least recently given out. The texels of buildings the pass has not reached yet still name
+        /// the old slots: renumbering the table from 0 (as before 2026-10-03) showed the glass being
+        /// edited on other assets' buildings for a moment, every step of a slider.
+        /// </remarks>
         private void Resolve(GlassParams global)
         {
             _texelOf.Clear();
-            _slotOf.Clear();
+            _resolved.Clear();
             LoadedAssets = 0;
-            int slots = 0;
 
             foreach (AssetRecord record in AssetFile.All)
             {
@@ -160,22 +171,47 @@ namespace RealGlass.Glass
                     continue;
                 LoadedAssets++;
 
-                byte slot = AssetTextures.Global;
+                var r = new ResolvedAsset { Info = info, Record = record };
                 if (record.HasGlass)
                 {
-                    Vector3 tint;
-                    float own, reflectivity, clarity, threshold;
-                    bool nightWindows;
-                    Glass(record, global, out tint, out own, out reflectivity, out clarity, out threshold, out nightWindows);
-                    ulong key = GlassKey(tint, own, reflectivity, clarity, threshold, nightWindows);
+                    Glass(record, global, out r.Tint, out r.Own, out r.Reflectivity, out r.Clarity, out r.Threshold, out r.NightWindows);
+                    r.Key = GlassKey(r.Tint, r.Own, r.Reflectivity, r.Clarity, r.Threshold, r.NightWindows);
+                }
+                _resolved.Add(r);
+            }
+
+            // The glasses still in use keep their slots.
+            _keep.Clear();
+            for (int i = 0; i < _resolved.Count; i++)
+            {
+                int slot;
+                if (_resolved[i].Record.HasGlass && _slotOf.TryGetValue(_resolved[i].Key, out slot))
+                    _keep[_resolved[i].Key] = slot;
+            }
+            _slotOf.Clear();
+            for (int i = 0; i < _taken.Length; i++)
+                _taken[i] = false;
+            foreach (KeyValuePair<ulong, int> kept in _keep)
+            {
+                _slotOf[kept.Key] = kept.Value;
+                _taken[kept.Value] = true;
+            }
+
+            for (int i = 0; i < _resolved.Count; i++)
+            {
+                ResolvedAsset r = _resolved[i];
+                byte slot = AssetTextures.Global;
+                if (r.Record.HasGlass)
+                {
                     int found;
-                    if (!_slotOf.TryGetValue(key, out found))
+                    if (!_slotOf.TryGetValue(r.Key, out found))
                     {
-                        if (slots < AssetTextures.GlassSlots)
+                        found = FreeSlot();
+                        if (found >= 0)
                         {
-                            found = slots++;
-                            _slotOf[key] = found;
-                            _textures.SetGlass(found, tint, own, reflectivity, clarity, threshold, nightWindows);
+                            _slotOf[r.Key] = found;
+                            _taken[found] = true;
+                            _textures.SetGlass(found, r.Tint, r.Own, r.Reflectivity, r.Clarity, r.Threshold, r.NightWindows);
                         }
                         else
                         {
@@ -190,11 +226,41 @@ namespace RealGlass.Glass
                     slot = (byte)found;
                 }
 
-                _texelOf[info] = new Color32(
-                    record.Strength.HasValue ? AssetTextures.Encode(record.Strength.Value) : AssetTextures.Global,
-                    record.PaintedDetail.HasValue ? AssetTextures.Encode(record.PaintedDetail.Value) : AssetTextures.Global,
+                _texelOf[r.Info] = new Color32(
+                    r.Record.Strength.HasValue ? AssetTextures.Encode(r.Record.Strength.Value) : AssetTextures.Global,
+                    r.Record.PaintedDetail.HasValue ? AssetTextures.Encode(r.Record.PaintedDetail.Value) : AssetTextures.Global,
                     slot, AssetTextures.Global);
             }
+
+            _resolved.Clear();
+        }
+
+        /// <summary>
+        /// The next slot no glass holds now, going round the table: a slot just let go is the last
+        /// to be written over, so buildings still naming it keep their glass until the pass reaches
+        /// them. -1 when every slot is taken.
+        /// </summary>
+        private int FreeSlot()
+        {
+            for (int k = 0; k < _taken.Length; k++)
+            {
+                int slot = _nextSlot;
+                _nextSlot = _nextSlot + 1 < _taken.Length ? _nextSlot + 1 : 0;
+                if (!_taken[slot])
+                    return slot;
+            }
+
+            return -1;
+        }
+
+        private struct ResolvedAsset
+        {
+            public BuildingInfo Info;
+            public AssetRecord Record;
+            public ulong Key;
+            public Vector3 Tint;
+            public float Own, Reflectivity, Clarity, Threshold;
+            public bool NightWindows;
         }
 
         /// <summary>
@@ -273,6 +339,7 @@ namespace RealGlass.Glass
             _textures.Destroy();
             _texelOf.Clear();
             _slotOf.Clear();
+            _nextSlot = 0;
             _seenVersion = -1;
         }
     }
