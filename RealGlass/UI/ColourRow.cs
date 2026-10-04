@@ -26,10 +26,7 @@ namespace RealGlass.UI
     /// </remarks>
     internal sealed class ColourRow
     {
-        private const float LabelWidth = 196f;
         private const float SwatchSize = 26f;
-        private const float TextWidth = 116f;
-        private const float ButtonWidth = 62f;
         private const float Gap = 6f;
 
         private const string LineTemplate = "LineTemplate";
@@ -58,27 +55,27 @@ namespace RealGlass.UI
         private float _invalidUntil = -1f;
         private float _copiedUntil = -1f;
 
-        public ColourRow(UIComponent parent, float y, Row row)
+        public ColourRow(UIComponent parent, float y, Row row, RowLayout layout)
         {
             _row = row;
             _shown = Current;
             _logged = ColorText.Format(_shown);
 
+            float buttonWidth = layout.ColourButtonWidth;
+
             UILabel name = UIBuilder.AddLabel(parent, row.Label, new Vector3(0f, y + 8f), 0.8f);
             name.autoSize = false;
-            name.size = new Vector2(LabelWidth, 20f);
-            name.tooltip = row.Tooltip;
+            name.size = new Vector2(layout.LabelWidth, 20f);
             _parts.Add(name);
             _name = name;
 
-            float x = LabelWidth + 4f;
+            float x = layout.LabelWidth + 4f;
 
             _swatch = CreateSwatch(parent, new Vector3(x, y + 4f));
             if (_swatch != null)
             {
                 // The clone still holds the template's colour; Refresh only writes on a change.
                 _swatch.selectedColor = _shown;
-                _swatch.tooltip = row.Tooltip;
                 _swatch.eventSelectedColorChanged += (component, colour) =>
                 {
                     if (!_refreshing)
@@ -97,34 +94,30 @@ namespace RealGlass.UI
 
             x += SwatchSize + Gap;
 
-            _text = CreateText(parent, new Vector3(x, y + 4f));
+            _text = CreateText(parent, new Vector3(x, y + 4f), layout.ColourTextWidth);
             _text.text = ColorText.Format(_shown);
-            _text.tooltip = Localization.Get("Colour.Field.Tooltip");
             _text.eventTextSubmitted += (component, text) => Submit(text);
             _text.eventTextCancelled += (component, text) => ShowValid();
             _parts.Add(_text);
 
-            x += TextWidth + Gap;
+            x += layout.ColourTextWidth + Gap;
 
-            _copy = UIBuilder.AddButton(parent, Localization.Get("Colour.Copy"), new Vector2(ButtonWidth, 26f), new Vector3(x, y + 4f));
+            _copy = UIBuilder.AddButton(parent, Localization.Get("Colour.Copy"), new Vector2(buttonWidth, 26f), new Vector3(x, y + 4f));
             _copy.canFocus = false;
             _copy.eventClick += (component, e) => Copy();
             _parts.Add(_copy);
 
-            x += ButtonWidth + Gap;
+            x += buttonWidth + Gap;
 
-            UIButton paste = UIBuilder.AddButton(parent, Localization.Get("Colour.Paste"), new Vector2(ButtonWidth, 26f), new Vector3(x, y + 4f));
+            UIButton paste = UIBuilder.AddButton(parent, Localization.Get("Colour.Paste"), new Vector2(buttonWidth, 26f), new Vector3(x, y + 4f));
             paste.canFocus = false;
-            paste.tooltip = Localization.Get("Colour.Paste.Tooltip");
             paste.eventClick += (component, e) => Paste();
             _parts.Add(paste);
 
-            // Right-aligned. Not in Parts: it greys out on its own rule (already the default). On the
-            // Asset tab it is "Global": the asset follows the global colour again.
-            _reset = CreateReset(parent, y, row.ClearOverride != null);
-            _reset.tooltip = row.ClearOverride != null
-                ? Localization.Get("Asset.Global.Tooltip")
-                : Localization.Get("Colour.Reset.Tooltip", ColorText.Format(row.DefaultColour));
+            // Right-aligned. Not in Parts: it greys out on its own rule (already the default). In the
+            // building window it is "Global": the asset follows the global colour again.
+            _reset = CreateReset(parent, y, row.ClearOverride != null,
+                row.ClearOverride != null ? UIBuilder.GlobalButtonWidth : buttonWidth);
             _reset.eventClick += (component, e) =>
             {
                 if (_row.ClearOverride != null)
@@ -154,7 +147,7 @@ namespace RealGlass.UI
             get { return _parts; }
         }
 
-        /// <summary>The row's name (the Asset tab colours it while the asset has a colour of its own).</summary>
+        /// <summary>The row's name (the building window colours it while the asset has a colour of its own).</summary>
         public UILabel NameLabel
         {
             get { return _name; }
@@ -195,8 +188,6 @@ namespace RealGlass.UI
                     _copy.text = Localization.Get("Colour.Copy");
                 }
 
-                string hex = ColorText.Format(current);
-                _copy.tooltip = Localization.Get("Colour.Copy.Tooltip", hex);
                 _reset.isEnabled = ResetWanted;
             }
             finally
@@ -329,7 +320,6 @@ namespace RealGlass.UI
             _invalidUntil = -1f;
             _text.text = ColorText.Format(_shown);
             _text.textColor = TextColour;
-            _text.tooltip = Localization.Get("Colour.Field.Tooltip");
         }
 
         /// <summary>What could not be read stays on show in red for a moment, then goes back.</summary>
@@ -341,15 +331,14 @@ namespace RealGlass.UI
 
             _text.text = shown;
             _text.textColor = InvalidColour;
-            _text.tooltip = Localization.Get("Colour.Invalid", shown);
             _invalidUntil = Time.realtimeSinceStartup + InvalidShownFor;
         }
 
-        private static UITextField CreateText(UIComponent parent, Vector3 position)
+        private static UITextField CreateText(UIComponent parent, Vector3 position, float width)
         {
             UITextField field = parent.AddUIComponent<UITextField>();
             field.atlas = UIBuilder.Atlas;
-            field.size = new Vector2(TextWidth, 26f);
+            field.size = new Vector2(width, 26f);
             field.relativePosition = position;
             field.normalBgSprite = "TextFieldPanelHovered";
             field.hoveredBgSprite = "TextFieldPanelHovered";
@@ -417,10 +406,10 @@ namespace RealGlass.UI
         /// A "Default" text button, right-aligned: Volumetric Weather's author preferred the text to
         /// an icon (the game's IconUndo sprite is not in the in-game atlas anyway).
         /// </summary>
-        private static UIButton CreateReset(UIComponent parent, float y, bool global)
+        private static UIButton CreateReset(UIComponent parent, float y, bool global, float width)
         {
             UIButton button = UIBuilder.AddButton(parent, Localization.Get(global ? "Asset.Global.Button" : "Colour.Reset"),
-                new Vector2(ButtonWidth, 26f), new Vector3(parent.width - ButtonWidth, y + 4f));
+                new Vector2(width, 26f), new Vector3(parent.width - width, y + 4f));
             button.canFocus = false;
             return button;
         }

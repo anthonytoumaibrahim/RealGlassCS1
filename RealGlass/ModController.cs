@@ -16,23 +16,24 @@ namespace RealGlass
         public static ModController Instance { get; private set; }
 
         private GlassPanel _panel;
+        private AssetPanel _assetPanel;
         private ModButton _hudButton;
         private bool _hotkeyWasDown;
         private bool _pickerKeyWasDown;
 
         /// <summary>
-        /// Opens the panel on its Asset tab (a building was picked). Safe with no panel: the pick
-        /// stands, and the tab shows it when the panel is opened.
+        /// Opens the building window on the picked asset (a building was picked). Safe with no
+        /// window: the pick stands.
         /// </summary>
-        public static void ShowAssetTab()
+        public static void ShowAssetWindow()
         {
             ModController c = Instance;
-            if (c == null || c._panel == null)
+            if (c == null || c._assetPanel == null)
                 return;
 
-            c.SetPanelVisible(true);
-            c._panel.ShowPage(PanelPage.Asset);
-            GlassPanel.RefreshOpenPanel();
+            c._assetPanel.Show();
+            c._assetPanel.BringToFront();
+            AssetPanel.RefreshOpenPanel();
         }
 
         /// <summary>Rebuilds the button after the Unified UI preference changes.</summary>
@@ -76,7 +77,7 @@ namespace RealGlass
             // The Water tab (the map's water; off by default, apart from the glass).
             gameObject.AddComponent<Water.WaterController>();
 
-            // The building picker of the Asset tab (each asset's own glass).
+            // The building picker of the building window (each asset's own glass).
             PerAsset.AssetSelection.Clear();
             PerAsset.AssetPicker.Create();
 
@@ -124,6 +125,37 @@ namespace RealGlass
 
             // The old panel was unhooked before it went, so Unified UI heard nothing; tell it.
             UUIIntegration.SetPressed(wasVisible);
+
+            CreateAssetPanel();
+        }
+
+        /// <summary>The building window, replacing the one that exists: where it stood, open if it was.</summary>
+        private void CreateAssetPanel()
+        {
+            bool wasVisible = false;
+            Vector3? position = null;
+
+            if (_assetPanel != null)
+            {
+                wasVisible = _assetPanel.isVisible;
+                position = _assetPanel.relativePosition;
+                Destroy(_assetPanel.gameObject);
+            }
+
+            _assetPanel = UIView.GetAView().AddUIComponent(typeof(AssetPanel)) as AssetPanel;
+            if (_assetPanel == null)
+                return;
+
+            _assetPanel.InitialPosition = position;
+            if (wasVisible)
+            {
+                _assetPanel.Show();
+                KeepModalOnTop();
+            }
+            else
+            {
+                _assetPanel.Hide();
+            }
         }
 
         /// <summary>
@@ -309,6 +341,12 @@ namespace RealGlass
             {
                 Destroy(_panel.gameObject);
                 _panel = null;
+            }
+
+            if (_assetPanel != null)
+            {
+                Destroy(_assetPanel.gameObject);
+                _assetPanel = null;
             }
 
             if (Instance == this)

@@ -4,7 +4,8 @@
 // Bloom, so reflected lights glow as the lights do. Only on the map's water at the sea's level: the
 // pixels whose depth lies at that plane or beyond it (the water or its bed). Four passes:
 //   0 TRACE (a cube round the camera, into a half-size buffer with mips): the mirror ray from the
-//     plane followed through the depth texture; where it meets the city, the city's colour (a
+//     plane (its slope divided by the Length slider: the reflection drawn longer) followed through
+//     the depth texture; where it meets the city, the city's colour (a
 //     half-size copy of the frame) in place of the sky the water's cube already shows, x the rough
 //     sea's reflectance at the view's angle. rgb = that x a, a = 1 on the water (0 elsewhere).
 //   1, 2 BLUR (Blits): a Gaussian across, then up and down -- sigma = the Blur slider's, and up and
@@ -53,7 +54,8 @@ Shader "RealGlass/CityReflection"
     float4 _RGWaterGeom;
 
     // x: how far a ray is followed (m); y: the least thickness of a surface (m); z: the screen's
-    // edge fade (share).
+    // edge fade (share); w: the reflection's length (1 = a mirror: WaterOptics.MirrorSlope; below 1,
+    // unset included, read as 1).
     float4 _RGWaterMarch;
 
     // x: the blur's sigma across (uv); y: up and down (uv); z, w: a texel of the half-size buffers
@@ -144,7 +146,10 @@ Shader "RealGlass/CityReflection"
 
         float k = RGSeaRho(-d.y) * _RGWaterGeom.y;
         float3 p = float3(_WorldSpaceCameraPos.x + d.x * tFlat, _RGWaterGeom.x, _WorldSpaceCameraPos.z + d.z * tFlat);
-        float3 r = float3(d.x, -d.y, d.z);
+        // The mirror ray, and the one followed: its slope divided by the length (the reflection drawn
+        // that many times as long). The sky the city replaces is the mirror's: the water's cube.
+        float3 mirror = float3(d.x, -d.y, d.z);
+        float3 r = normalize(float3(d.x, -d.y / max(_RGWaterMarch.w, 1.0), d.z));
 
         // The mirror ray through the depth texture: geometric steps, then bisection.
         float tMax = _RGWaterMarch.x;
@@ -192,7 +197,7 @@ Shader "RealGlass/CityReflection"
 
         float3 c = tex2Dlod(_RGWaterFrame, float4(at.xy, 0.0, 0.0)).rgb;
         if (_RGWaterGeom.z > 0.0)
-            c -= _RGWaterGeom.z * RGSkyLight(texCUBElod(_RGWaterTheme, float4(r, _RGWaterGeom.w)).rgb * _RGWaterLight.rgb, r);
+            c -= _RGWaterGeom.z * RGSkyLight(texCUBElod(_RGWaterTheme, float4(mirror, _RGWaterGeom.w)).rgb * _RGWaterLight.rgb, mirror);
         return float4(c * (k * fade), 1.0);
     }
 

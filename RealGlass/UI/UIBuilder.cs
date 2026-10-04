@@ -6,6 +6,39 @@ using UnityEngine;
 namespace RealGlass.UI
 {
     /// <summary>
+    /// How wide a row's parts are: the F8 panel's, and the building window's narrower ones (its rows
+    /// also keep room for a "Global" button).
+    /// </summary>
+    public sealed class RowLayout
+    {
+        public float LabelWidth;
+
+        /// <summary>A slider's live value, right-aligned: wide enough for "Silver reflective".</summary>
+        public float ValueWidth;
+
+        /// <summary>A colour row's #RRGGBB field.</summary>
+        public float ColourTextWidth;
+
+        /// <summary>A colour row's Copy, Paste and Default buttons.</summary>
+        public float ColourButtonWidth;
+
+        /// <summary>
+        /// Wide enough for the longest of each (Volumetric Weather's measure): a label of some thirty
+        /// characters on the left, "Silver reflective" on the right. Both used to run into the slider.
+        /// </summary>
+        public static readonly RowLayout Panel = new RowLayout
+        {
+            LabelWidth = 196f, ValueWidth = 118f, ColourTextWidth = 116f, ColourButtonWidth = 62f,
+        };
+
+        /// <summary>The building window: a label of some twenty-five characters, the same value width.</summary>
+        public static readonly RowLayout Compact = new RowLayout
+        {
+            LabelWidth = 166f, ValueWidth = 112f, ColourTextWidth = 84f, ColourButtonWidth = 56f,
+        };
+    }
+
+    /// <summary>
     /// Builds the panel's controls out of the game's own UI components.
     /// </summary>
     /// <remarks>
@@ -31,11 +64,11 @@ namespace RealGlass.UI
         public static readonly Color32 StatusColour = new Color32(185, 221, 254, 255);
         public static readonly Color32 WarningColour = new Color32(255, 190, 120, 255);
 
-        /// <summary>A row's name while the picked asset has a value of its own there (the Asset tab).</summary>
+        /// <summary>A row's name while the picked asset has a value of its own there (the building window).</summary>
         public static readonly Color32 OwnValueColour = new Color32(255, 214, 120, 255);
         public static readonly Color32 LabelColour = new Color32(255, 255, 255, 255);
 
-        /// <summary>The width of a row's "Global" button (the Asset tab).</summary>
+        /// <summary>The width of a row's "Global" button (the building window).</summary>
         public const float GlobalButtonWidth = 62f;
 
         public static UILabel AddLabel(UIComponent parent, string text, Vector3 position, float scale)
@@ -76,13 +109,10 @@ namespace RealGlass.UI
         /// <paramref name="rightReserve"/> pixels left free at the far right (a "Global" button).
         /// </summary>
         public static UISlider AddSlider(UIComponent parent, float y, string label, float min, float max,
-            float step, float value, Func<float, string> format, Action<float> onChanged, float rightReserve = 0f)
+            float step, float value, Func<float, string> format, Action<float> onChanged, float rightReserve, RowLayout layout)
         {
-            // Wide enough for the longest of each (Volumetric Weather's measure): a label of some
-            // thirty characters on the left, "Silver reflective" on the right. Both used to run
-            // into the slider there.
-            const float labelWidth = 196f;
-            const float valueWidth = 118f;
+            float labelWidth = layout.LabelWidth;
+            float valueWidth = layout.ValueWidth;
             float sliderWidth = parent.width - labelWidth - valueWidth - 12f - rightReserve;
 
             UILabel name = AddLabel(parent, label, new Vector3(0f, y + 8f), 0.8f);

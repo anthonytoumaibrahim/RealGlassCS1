@@ -6,14 +6,15 @@
   fr.xml, ko.xml, pl.xml, pt.xml, ru.xml, zh.xml), set code and name below, and translate the
   text between the tags. Leave the keys alone.
 
+  American English.
+
   - {0}, {1}... are filled in by the mod (a number, a name). Keep every one of them.
   - A long text can be wrapped over several lines here: the break reads as one space.
   - \n is a real line break (used in the dialogs).
   - A key missing from a translation shows in English, so a partial translation works.
 
-  Tooltips: as few words as possible, never more than one short line (a long one runs out of
-  the game's tooltip box). Say only what the label leaves out. Everyday words, no rendering
-  terms (shader, screen-space, raymarch, cubemap, Fresnel).
+  No tooltips: a label says what its row does. Everyday words, no rendering terms (shader,
+  screen-space, raymarch, cubemap, Fresnel).
 -->
 <Language code="en" name="English">
 
@@ -35,7 +36,7 @@
     launch option that changes its graphics (Steam: right-click the game, Properties, Launch
     Options), remove it and restart the game.\n\n
     The Windows version of the game runs the mod through Proton: Steam, right-click the game,
-    Properties, Compatibility, tick "Force the use of a specific Steam Play compatibility tool"
+    Properties, Compatibility, check "Force the use of a specific Steam Play compatibility tool"
     and pick a Proton version.
   </String>
   <String key="Mod.UnsupportedWindows">
@@ -53,8 +54,7 @@
   <String key="Tab.Glass">Glass</String>
   <String key="Tab.Reflections">Reflections</String>
   <String key="Tab.Panes">Panes</String>
-  <String key="Tab.Rendering">Rendering</String>
-  <String key="Tab.Asset">Asset</String>
+  <String key="Tab.Water">Water</String>
 
   <String key="Key.Press">Press a key</String>
 
@@ -70,12 +70,10 @@
   <String key="Status.Snapshot">Paused while the Snapshot tool is in use: pictures show the asset as the game draws it.</String>
 
   <String key="GlassEnabled.Label">Realistic glass</String>
-  <String key="GlassEnabled.Tooltip">Off: the game's own windows, untouched.</String>
 
   <String key="Group.TheGlass">The glass</String>
 
   <String key="GlassPreset.Label">Kind of glass</String>
-  <String key="GlassPreset.Tooltip">Real glass products. Sets the colour, reflectivity and clarity.</String>
   <String key="GlassPreset.ReflectiveBlue">Reflective blue</String>
   <String key="GlassPreset.ClearLowE">Clear low-E</String>
   <String key="GlassPreset.AquaBlue">Aqua blue</String>
@@ -83,216 +81,149 @@
   <String key="GlassPreset.SkyBlue">Sky blue</String>
   <String key="GlassPreset.Green">Green</String>
   <String key="GlassPreset.Bronze">Bronze</String>
-  <String key="GlassPreset.Grey">Grey</String>
+  <String key="GlassPreset.Grey">Gray</String>
   <String key="GlassPreset.SilverReflective">Silver reflective</String>
   <String key="GlassPreset.GoldReflective">Gold reflective</String>
   <String key="GlassPreset.Custom">Custom</String>
 
-  <String key="GlassOwnColour.Label">Keep the building's colour</String>
-  <String key="GlassOwnColour.Tooltip">How much of the colour the building's own glass has stays.</String>
+  <String key="GlassOwnColour.Label">Keep the building's color</String>
 
   <String key="GlassPaintedDetail.Label">Keep the painted detail</String>
-  <String key="GlassPaintedDetail.Tooltip">Floor lines and frames the building painted stay visible.</String>
 
-  <String key="GlassColor.Label">Glass colour</String>
-  <String key="GlassColor.Tooltip">The tint of the glass. Picking one makes the kind Custom.</String>
+  <String key="GlassColor.Label">Glass color</String>
 
   <String key="GlassReflectivity.Label">Reflectivity, head-on</String>
-  <String key="GlassReflectivity.Tooltip">How much it mirrors seen straight on. Real glass: 8 to 40%.</String>
 
   <String key="GlassGlancing.Label">Reflectivity, at an angle</String>
-  <String key="GlassGlancing.Tooltip">The most it mirrors seen edge-on. Lower it if towers glare.</String>
 
   <String key="GlassEdgeSilver.Label">Silvery edge-on</String>
-  <String key="GlassEdgeSilver.Tooltip">Seen edge-on, coated glass loses its colour and turns silvery.</String>
 
   <String key="GlassClarity.Label">Clarity</String>
-  <String key="GlassClarity.Tooltip">How much light gets through: lower, and the glass looks darker.</String>
 
   <String key="GlassStrength.Label">Strength</String>
-  <String key="GlassStrength.Tooltip">0%: the game's own windows. 100%: all new glass.</String>
 
   <String key="Group.WhatIsGlass">What counts as glass</String>
 
   <String key="GlassThreshold.Label">Shininess needed</String>
-  <String key="GlassThreshold.Tooltip">Lower: more of a building counts as glass, walls too.</String>
 
   <String key="GlassNightWindows.Label">Windows lit at night are glass</String>
-  <String key="GlassNightWindows.Tooltip">Windows a building lights at night count as glass too.</String>
 
   <String key="GlassShowMask.Label">Show what counts as glass</String>
-  <String key="GlassShowMask.Tooltip">Paints the glass magenta, to check the settings above.</String>
 
   <!-- ==================== F8 panel: Reflections ==================== -->
 
   <String key="SsrEnabled.Label">Reflect what is on screen</String>
-  <String key="SsrEnabled.Tooltip">Streets, cars and buildings in view show in the glass.</String>
 
   <String key="ReflectFinished.Label">Reflect fog, clouds and lights</String>
-  <String key="ReflectFinished.Tooltip">The glass mirrors the finished picture: haze, clouds, lamps, glass.</String>
 
   <String key="ReflectNeighbours.Label">Reflect the buildings around</String>
-  <String key="ReflectNeighbours.Tooltip">The towers across the street show in the glass, not open sky.</String>
 
   <String key="SsrQuality.Label">Reflection quality</String>
-  <String key="SsrQuality.Tooltip">Higher: sharper, with fewer gaps. Costs frame rate.</String>
   <String key="SsrQuality.Low">Low</String>
   <String key="SsrQuality.Medium">Medium</String>
   <String key="SsrQuality.High">High</String>
   <String key="SsrQuality.Ultra">Ultra</String>
 
   <String key="ReflectionBrightness.Label">Reflection brightness</String>
-  <String key="ReflectionBrightness.Tooltip">Everything the glass mirrors, brighter or darker.</String>
 
   <String key="SkyReflection.Label">Sky in the glass</String>
-  <String key="SkyReflection.Tooltip">The live sky follows the time of day and the weather.</String>
   <String key="SkyReflection.Live">Live sky</String>
   <String key="SkyReflection.Game">The game's own</String>
 
   <String key="SkyClouds.Label">Clouds in the live sky</String>
-  <String key="SkyClouds.Tooltip">The clouds Volumetric Weather draws show in the glass too.</String>
 
   <String key="OffscreenFill.Label">Below the horizon</String>
-  <String key="OffscreenFill.Tooltip">What the glass shows where nothing on screen is mirrored.</String>
   <String key="OffscreenFill.Mirror">Mirrored screen</String>
-  <String key="OffscreenFill.City">City colour</String>
+  <String key="OffscreenFill.City">City color</String>
   <String key="OffscreenFill.Sky">Sky only</String>
 
   <String key="SunGlint.Label">Sun glint</String>
-  <String key="SunGlint.Tooltip">The sun's flash off the panes.</String>
 
   <String key="SteadyGlints.Label">Steady glints</String>
-  <String key="SteadyGlints.Tooltip">Glints and reflections on far glass stop flickering.</String>
 
   <String key="GlassSmoothness.Label">Smoothness</String>
-  <String key="GlassSmoothness.Tooltip">Lower: softer, blurrier reflections.</String>
 
   <String key="SsrEdgeFade.Label">Fade at the screen's edges</String>
-  <String key="SsrEdgeFade.Tooltip">Softens reflections cut off by the edge of the screen.</String>
 
   <!-- ==================== F8 panel: Panes ==================== -->
 
   <String key="PaneWidth.Label">Pane width</String>
-  <String key="PaneWidth.Tooltip">Each pane bends what it mirrors on its own.</String>
 
-  <String key="FloorHeight.Label">Storey height</String>
-  <String key="FloorHeight.Tooltip">A pane is a storey tall; so are the floors of mirrored buildings.</String>
+  <String key="FloorHeight.Label">Story height</String>
 
   <String key="Group.Distortion">How the panes bend the reflections</String>
 
   <String key="PanePillow.Label">Cushioned panes</String>
-  <String key="PanePillow.Tooltip">Panes bow in or out like cushions: round distortions.</String>
 
   <String key="PaneTilt.Label">Pane tilt</String>
-  <String key="PaneTilt.Tooltip">Each pane set at a slightly different angle.</String>
 
   <String key="RollerWave.Label">Ripple</String>
-  <String key="RollerWave.Tooltip">The faint waves of toughened glass.</String>
 
   <String key="PaneWeather.Label">Panes follow the weather</String>
-  <String key="PaneWeather.Tooltip">They bulge on hot days and sink on cold ones.</String>
 
   <String key="PanesFollowWindows.Label">Panes follow the windows</String>
-  <String key="PanesFollowWindows.Tooltip">Up close, each pane fits a window the building painted.</String>
-
-  <!-- ==================== F8 panel: Rendering ==================== -->
-
-  <String key="GlassDistance.Label">Glass on</String>
-  <String key="GlassDistance.Tooltip">Fewer buildings cost less frame rate in big cities.</String>
-  <String key="GlassDistance.Near">Near buildings</String>
-  <String key="GlassDistance.Middle">Near and middle</String>
-  <String key="GlassDistance.City">The whole city</String>
-
-  <String key="Group.LiveSky">The live sky in the glass</String>
-
-  <String key="SkyCubeSize.Label">Sky detail</String>
-  <String key="SkyCubeSize.Tooltip">The size of the live sky's picture.</String>
-
-  <String key="SkyCubeRate.Label">Sky updates</String>
-  <String key="SkyCubeRate.Tooltip">Sides redrawn each frame. 6: the whole sky, every frame.</String>
 
   <!-- ==================== F8 panel: Water ==================== -->
   <!-- The map's water: its brightness, the sky in it, the city in it. Off by default. -->
 
-  <String key="Tab.Water">Water</String>
-
   <String key="WaterEnabled.Label">Water controls</String>
-  <String key="WaterEnabled.Tooltip">Off: the game's own water, as the map theme has it.</String>
 
   <String key="WaterBrightness.Label">Water brightness</String>
-  <String key="WaterBrightness.Tooltip">The water's own colour, lighter or darker. 100%: the map theme's.</String>
 
   <String key="Group.WaterSky">The sky in the water</String>
 
   <String key="WaterRealSky.Label">Reflect the sky like real water</String>
-  <String key="WaterRealSky.Tooltip">Little sky looking down, much toward the horizon.</String>
 
   <String key="WaterSky.Label">Sky reflection</String>
-  <String key="WaterSky.Tooltip">100%: real water.</String>
 
   <String key="Group.WaterCity">The city in the water</String>
 
   <String key="WaterCity.Label">Water reflects the city</String>
-  <String key="WaterCity.Tooltip">Buildings and lights in the sea, only what's on screen.</String>
 
   <String key="WaterCityDay.Label">City reflection by day</String>
-  <String key="WaterCityDay.Tooltip">100%: real water -- faint from above, strong across the water.</String>
 
   <String key="WaterCityNight.Label">City reflection by night</String>
-  <String key="WaterCityNight.Tooltip">The city's lights in the water. Dusk blends the two.</String>
 
   <String key="WaterCityBlur.Label">City reflection blur</String>
-  <String key="WaterCityBlur.Tooltip">Softens the reflection, the same every way. 0%: sharp.</String>
 
   <String key="WaterCityStreaks.Label">City reflection streaks</String>
-  <String key="WaterCityStreaks.Tooltip">Waves stretch it up and down. 0%: none, 100%: a light breeze.</String>
 
-  <!-- ==================== F8 panel: Asset ==================== -->
-  <!-- One building asset's own glass: every copy of it, in every city. -->
+  <String key="WaterCityLength.Label">City reflection length</String>
 
-  <!-- The tab's first line with nothing picked. {0}: the key that turns the building picker on. -->
+  <!-- ==================== The building window ==================== -->
+  <!-- One building asset's own glass: every copy of it, in every city. Opened by clicking a
+       building with the building picker. Its title is the asset's name. -->
+
+  <!-- The status line with nothing picked. {0}: the key that turns the building picker on. -->
   <String key="Asset.None">Press {0} and click a building to give its asset glass of its own.</String>
-  <!-- {0}: the asset's name as the game shows it. {1}: how many of it stand in this city. -->
-  <String key="Asset.Own">{0}: {1} in this city. Its own glass, on every copy, in every city.</String>
-  <String key="Asset.Global">{0}: {1} in this city. It follows the Glass tab.</String>
+  <!-- {0}: how many of the asset stand in this city. -->
+  <String key="Asset.Own">{0} in this city. Its own glass, on every copy, in every city.</String>
+  <String key="Asset.Global">{0} in this city. It follows the Glass tab.</String>
 
-  <String key="AssetPick.Label">Pick a building</String>
-  <String key="AssetPick.Tooltip">Click a building to pick its asset. Right-click or Esc: stop.</String>
-
-  <String key="AssetUseGlobal.Label">Give this asset the Glass tab's settings again</String>
-  <String key="AssetUseGlobal.Tooltip">Every row below follows the Glass tab again.</String>
+  <String key="Asset.Pick">Pick another building</String>
+  <String key="Asset.UseGlobal">Use the Glass tab's settings</String>
 
   <String key="Group.AssetGlass">This asset's glass: its own where a name is gold, else the Glass tab's</String>
 
   <String key="AssetGlassStrength.Label">Strength</String>
-  <String key="AssetGlassStrength.Tooltip">0%: this asset's own windows. 100%: all new glass.</String>
 
   <String key="AssetGlassPaintedDetail.Label">Keep the painted detail</String>
-  <String key="AssetGlassPaintedDetail.Tooltip">Floor lines and frames this asset painted stay visible.</String>
 
   <String key="AssetGlassPreset.Label">Kind of glass</String>
-  <String key="AssetGlassPreset.Tooltip">Real glass products. Sets the colour, reflectivity and clarity.</String>
 
-  <String key="AssetGlassColor.Label">Glass colour</String>
-  <String key="AssetGlassColor.Tooltip">The tint of this asset's glass.</String>
+  <String key="AssetGlassColor.Label">Glass color</String>
 
   <String key="AssetGlassReflectivity.Label">Reflectivity, head-on</String>
-  <String key="AssetGlassReflectivity.Tooltip">How much it mirrors seen straight on. Real glass: 8 to 40%.</String>
 
   <String key="AssetGlassClarity.Label">Clarity</String>
-  <String key="AssetGlassClarity.Tooltip">How much light gets through: lower, and the glass looks darker.</String>
 
-  <String key="AssetGlassOwnColour.Label">Keep the building's colour</String>
-  <String key="AssetGlassOwnColour.Tooltip">How much of the colour the asset's own glass has stays.</String>
+  <String key="AssetGlassOwnColour.Label">Keep the building's color</String>
 
   <String key="AssetGlassThreshold.Label">Shininess needed</String>
-  <String key="AssetGlassThreshold.Tooltip">Lower: more of this asset counts as glass. Check with the mask view.</String>
 
   <String key="AssetGlassNightWindows.Label">Windows lit at night are glass</String>
-  <String key="AssetGlassNightWindows.Tooltip">Windows this asset lights at night count as glass too.</String>
 
   <String key="Asset.Global.Button">Global</String>
-  <String key="Asset.Global.Tooltip">Follow the Glass tab's setting again.</String>
 
   <!-- By the cursor while the building picker is on. {0}: the building's asset, as the game names it. -->
   <String key="Picker.Building">{0}\nClick: its glass. Right-click: stop.</String>
@@ -303,32 +234,39 @@
   <String key="Group.Language">Language</String>
 
   <String key="Language.Label">Show this mod in</String>
-  <String key="Language.Tooltip">Language of this mod's panels.</String>
   <String key="Language.Game">Same as the game</String>
 
-  <String key="Group.Panel">The in-game panel (every setting of the glass is there)</String>
+  <String key="Group.Panel">The in-game panel</String>
 
   <String key="PanelKey.Label">Open this panel</String>
-  <String key="PanelKey.Tooltip">Click, then press a key.</String>
 
   <String key="PickerKey.Label">Pick a building: its asset's own glass</String>
-  <String key="PickerKey.Tooltip">Click, then press a key.</String>
 
   <String key="UseUnifiedUI.Label">Show icon in Unified UI</String>
-  <String key="UseUnifiedUI.Tooltip">Puts the button in the Unified UI bar.</String>
+
+  <String key="Group.Rendering">Rendering</String>
+
+  <String key="GlassDistance.Label">Glass on</String>
+  <String key="GlassDistance.Near">Near buildings</String>
+  <String key="GlassDistance.Middle">Near and middle</String>
+  <String key="GlassDistance.City">The whole city</String>
+
+  <String key="Group.LiveSky">The live sky in the glass</String>
+
+  <String key="SkyCubeSize.Label">Sky detail</String>
+
+  <String key="SkyCubeRate.Label">Sky updates</String>
 
   <String key="Group.Diagnostics">Diagnostics</String>
 
   <String key="DetailedLogging.Label">Detailed logging</String>
-  <String key="DetailedLogging.Tooltip">For bug reports. Leave off normally.</String>
 
   <String key="Group.StartingOver">Starting over</String>
 
   <String key="ResetAll.Label">Reset all settings to defaults</String>
-  <String key="ResetAll.Tooltip">Every setting back to how the mod comes.</String>
   <String key="ResetAll.Confirm">
     Put every setting back to how the mod comes?\n\n
-    This throws away everything you have tuned, including the glass colour and the changes
+    This throws away everything you have tuned, including the glass color and the changes
     made in the in-game panel.
   </String>
 
@@ -337,24 +275,19 @@
   <String key="HudButtonX.Label">The mod's button (without Unified UI): distance from the left edge</String>
   <String key="HudButtonY.Label">The mod's button (without Unified UI): distance from the top edge</String>
 
-  <!-- ==================== The colour row ==================== -->
+  <!-- ==================== The color row ==================== -->
 
-  <String key="Colour.Field.Tooltip">Type a colour and press Enter.</String>
-  <String key="Colour.Invalid">Not a colour: {0}. Try #2A5C78.</String>
   <String key="Colour.Copy">Copy</String>
   <String key="Colour.Copied">Copied</String>
-  <String key="Colour.Copy.Tooltip">Copy {0}.</String>
   <String key="Colour.Paste">Paste</String>
-  <String key="Colour.Paste.Tooltip">Paste a colour.</String>
   <String key="Colour.Reset">Default</String>
-  <String key="Colour.Reset.Tooltip">Back to {0}.</String>
 
   <!-- ==================== Slider readouts ==================== -->
 
   <String key="Unit.Percent">{0}%</String>
   <String key="Unit.Metres">{0} m</String>
   <String key="Unit.Pixels">{0} px</String>
-  <String key="Unit.FacesPerFrame">{0} a frame</String>
+  <String key="Unit.FacesPerFrame">{0} per frame</String>
 
   <!-- ==================== The settings file (RealGlass.xml) ==================== -->
   <!-- Comments the mod writes into the player's settings file. The names of the settings in
@@ -387,7 +320,7 @@
   <String key="File.Toggle">{0}. true or false, default {1}.</String>
   <String key="File.Choice">{0}. One of {1}; default {2}.</String>
   <String key="File.Key">{0}. A key such as F8 or Ctrl+Shift+G, or None; default {1}.</String>
-  <String key="File.Colour">{0}. A colour, #RRGGBB (42, 92, 120 is read too); default {1}.</String>
+  <String key="File.Colour">{0}. A color, #RRGGBB (42, 92, 120 is read too); default {1}.</String>
   <String key="File.Confirm">Switching it on here skips the question the game asks first.</String>
 
   <!-- ==================== The assets file (RealGlassAssets.xml) ==================== -->
@@ -403,12 +336,12 @@
     (lower than in RealGlass.xml: it is this asset's alone);\n
     - GlassColor as #RRGGBB; GlassNightWindows as true or false;\n
     - GlassPreset as the number of a kind of glass (0 Custom, 1 to 10, as in RealGlass.xml);
-    a kind of glass alone gives its colour, reflectivity and clarity.\n
+    a kind of glass alone gives its color, reflectivity and clarity.\n
     \n
-    The F8 panel's Asset tab writes this file (pick a building with the picker key). You can
-    edit it while the game is running too: the mod reads it again within a second. Take an
-    asset's element out, or delete the file with the game closed, and it has the global glass
-    again.
+    The building window writes this file (press the building picker's key and click a
+    building). You can edit it while the game is running too: the mod reads it again within a
+    second. Take an asset's element out, or delete the file with the game closed, and it has
+    the global glass again.
   </String>
 
 </Language>

@@ -10,6 +10,8 @@
 #     untouched;
 #   - BLUR 300%: the middle of the reflection as sharp; at its side edge and its top edge, part way;
 #   - STREAKS 100%: at the side edge as sharp (up and down only); at the top edge, part way.
+#   - LENGTH 150% (the ray's slope 2/3 of the mirror's): water whose mirror ray passes over the wall
+#     now meets it (rho x the wall, sharp), water that met it still does, the rest untouched.
 # Run after build-bundle.ps1 (the shader compiles) and a DLL build:
 #
 #   powershell -NoProfile -ExecutionPolicy Bypass -File tools\test-reflection-shader.ps1
@@ -82,7 +84,8 @@ $cases = @(
     @{ Name = "sharp, sky share 100%"; Share = 1.0; Water = "0.6 0.9 1.0"; Blur = 0.0; Streaks = 0.0 },
     @{ Name = "sharp, sky share 100%, a real sky at 60%"; Share = 1.0; Water = "0.6 0.9 1.0"; Blur = 0.0; Streaks = 0.0; Real = 0.6 },
     @{ Name = "blur 300%"; Share = 0.0; Water = "0.05 0.12 0.15"; Blur = 3.0; Streaks = 0.0 },
-    @{ Name = "streaks 100%"; Share = 0.0; Water = "0.05 0.12 0.15"; Blur = 0.0; Streaks = 1.0 }
+    @{ Name = "streaks 100%"; Share = 0.0; Water = "0.05 0.12 0.15"; Blur = 0.0; Streaks = 1.0 },
+    @{ Name = "length 150%"; Share = 0.0; Water = "0.05 0.12 0.15"; Blur = 0.0; Streaks = 0.0; Length = 1.5 }
 )
 $results = @{}
 
@@ -92,7 +95,8 @@ foreach ($case in $cases) {
 
     $lines = New-Object System.Collections.Generic.List[string]
     $lines.Add("_RGWaterGeom " + (N $level) + " 1 " + (N $case.Share) + " 0")
-    $lines.Add("_RGWaterMarch " + (N $optics::MaxDistance) + " " + (N $optics::Thickness) + " " + (N $optics::EdgeFade) + " 0")
+    $length = if ($case.Length) { [double]$case.Length } else { 1.0 }
+    $lines.Add("_RGWaterMarch " + (N $optics::MaxDistance) + " " + (N $optics::Thickness) + " " + (N $optics::EdgeFade) + " " + (N $length))
     # The half-size buffers of the 257 px test: 128 texels.
     $lines.Add("_RGWaterBlur " + (N $sx) + " " + (N $sy) + " " + (N (1.0 / 128.0)) + " " + (N (1.0 / 128.0)))
     $lines.Add("_RGWaterLight " + (N $light[0]) + " " + (N $light[1]) + " " + (N $light[2]) + " 0")
@@ -123,7 +127,7 @@ foreach ($case in $cases) {
     if ($rows.Count -ne $points.Count) { Check "every point came back" $false ("{0} of {1}" -f $rows.Count, $points.Count); continue }
     $results[$case.Name] = $rows
 
-    if ($case.Blur -gt 0.0 -or $case.Streaks -gt 0.0) { continue }
+    if ($case.Blur -gt 0.0 -or $case.Streaks -gt 0.0 -or $case.Length) { continue }
 
     # SHARP: pixel by pixel against the model.
     $wallColour = Three $rows["wall"] 10
@@ -174,6 +178,22 @@ if ($results.Count -eq $cases.Count) {
     Check "streaks: up and down only -- the side's edge as sharp" ([Math]::Abs($streakSide - $sharpSide) -lt 0.1 * $sideRef) ("{0:F4} vs {1:F4} sharp" -f $streakSide, $sharpSide)
     $streakTop = (AddedAt "streaks 100%" "edgeTop") / (AddedAt "sharp, no sky share" "nearTop")
     Check "  the top's edge stretched (part way)" ($streakTop -gt 0.15 -and $streakTop -lt 0.85) ("{0:P0} of the sharp reflection 1.5 deg below" -f $streakTop)
+
+    # Water 16 deg down: its mirror ray passes over the wall (60 m) at 1:1; at 150% its slope is
+    # tan 16 / 1.5 and it meets the wall some 54 m up -- the reflection drawn longer.
+    $q = $results["length 150%"]["overTop"]
+    $ray = Three $q 6; $plain = Three $q 10; $shader = Three $q 14
+    $wallColour = Three $results["sharp, no sky share"]["wall"] 10
+    $rho = $optics::Lookup($tbl, -$ray[1])
+    $want = [double[]]@(0.0, 0.0, 0.0)
+    foreach ($k in 0..2) { $want[$k] = $plain[$k] + $rho * $wallColour[$k] }
+    $w = Worst $shader $want
+    Check "length 150%: water whose mirror passed over the wall now meets it" ($w -lt 0.015) ("shader {0}  model {1}  (without {2})  worst {3:P2}" -f (Show $shader), (Show $want), (Show $plain), $w)
+    Check "  at 100% the same water had nothing" ([Math]::Abs((AddedAt "sharp, no sky share" "overTop")) -lt 1e-4) ""
+    $mid = (AddedAt "length 150%" "water8") / (AddedAt "sharp, no sky share" "water8")
+    Check "  water that met the wall still does, as brightly" ([Math]::Abs($mid - 1.0) -lt 0.015) ("{0:P1} of the mirror's" -f $mid)
+    Check "  the wall, the sky and water beside the wall: untouched" ((AddedAt "length 150%" "wall") -eq 0.0 -and (AddedAt "length 150%" "sky") -eq 0.0 -and
+        [Math]::Abs((AddedAt "length 150%" "miss")) -lt 1e-4) ""
 }
 else { Check "every case came back" $false ("{0} of {1}" -f $results.Count, $cases.Count) }
 

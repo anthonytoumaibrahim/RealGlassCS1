@@ -15,7 +15,7 @@ but untested.
 
 ## Using it
 
-Open the panel with **F8** (or its Unified UI button). Everything about the glass is there, on
+Open the panel with **F8** (or its Unified UI button). Everything about the look is there, on
 four tabs:
 
 - **Glass** -- the kind of glass (silver reflective, the default; reflective blue, ocean blue, aqua
@@ -31,10 +31,14 @@ four tabs:
 - **Panes** -- the panes' width and height (a storey), and how they bend what they mirror:
   cushioned (insulating glass bowing in or out), tilted, rippled (toughened glass); up close,
   fitted to the windows each building painted.
-- **Rendering** -- how far out the glass is drawn, and what the live sky costs.
+- **Water** (off until switched on) -- the map's water: its brightness, the sky in it with real
+  water's reflectance, and the city in it, with its blur, its streaks and how long it is drawn.
 
-The game's options page holds the mod itself: its language, the panel's key, the button,
-diagnostics and a reset.
+**Alt+G** turns the building picker on: click a building, and a small window of its own gives its
+asset its own glass.
+
+The game's options page holds the mod itself: its language, the keys, the button, how far out the
+glass is drawn and what the live sky costs, diagnostics and a reset.
 
 Settings are kept in `RealGlass.xml` in the game's data folder (on Windows
 `%LOCALAPPDATA%\Colossal Order\Cities_Skylines`), which you can also edit while the game runs;
@@ -89,7 +93,7 @@ the log is `RealGlass.log`, next to it.
   stands out from the storey round it, the glass steps aside and the building shows as its
   author painted it; the glass between keeps its reflections.
 - **Glass per asset**: Alt+G (rebindable) turns a building picker on, as BOB's Alt+B does; click a
-  building, and the panel's Asset tab gives its asset -- every copy of it, in every city -- a
+  building, and the building window gives its asset -- every copy of it, in every city -- a
   strength, painted detail, kind of glass and its own say on what counts as glass (the shininess
   needed, and whether its lit windows count), each row following the global setting until it is
   moved. Kept in RealGlassAssets.xml next to the settings, never in a save.

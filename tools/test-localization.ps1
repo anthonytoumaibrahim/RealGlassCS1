@@ -6,11 +6,12 @@
 # LocalizationFile.cs has no Unity dependency, so its SOURCE is compiled here and reads the real
 # Localization\*.xml. Then:
 #   - every file parses, with no key written twice and every {n} well-formed;
-#   - English has every key the code asks for: the rows of SettingsCatalog.cs (Label, Tooltip,
-#     Note, Confirm, Group, choice names, choice units -- read from the source, as the in-game
-#     check reads them from the built rows), the tab names, and every key-shaped string literal
-#     in *.cs (Glass\ included);
-#   - English has no key nothing asks for (dead text a translator would translate for nothing);
+#   - English has every key the code asks for: the rows of SettingsCatalog.cs (Label, Note,
+#     Confirm, Group, choice names, choice units -- read from the source, as the in-game check
+#     reads them from the built rows), the tab names, the building window's rows, and every
+#     key-shaped string literal in *.cs (Glass\ included);
+#   - English has no key nothing asks for (dead text a translator would translate for nothing),
+#     and no tooltip (the author, 2026-10-04: none, the labels say it);
 #   - a translation has no key English lacks, and says which English keys it has not done yet;
 #   - wrapped texts come out as one line, \n as a real break.
 # The same key check runs in the game at startup (SettingsCatalog.LogLayout), from the real rows.
@@ -62,12 +63,8 @@ foreach ($b in $blocks) {
     if ($b -match '(?:Float|Bool|Int|Key|Colour) = Settings\.(\w+)') { $name = $nameOf[$Matches[1]] }
     if ($b -match 'Id = "(\w+)"') { $name = $Matches[1] }
     if (-not $name) { Write-Host "FAIL  a row with neither a setting nor an Id:`n$b"; $failed++; continue }
-    $shown = ($b -match 'Panel = PanelPage\.') -or ($b -match 'Options = OptionsPage\.')
 
-    if ($kind -ne 'Status') {
-        [void]$needed.Add("$name.Label")
-        if ($shown) { [void]$needed.Add("$name.Tooltip") }
-    }
+    if ($kind -ne 'Status') { [void]$needed.Add("$name.Label") }
     if ($b -match 'HasNote = true') { [void]$needed.Add("$name.Note") }
     if ($b -match 'Confirm = true') { [void]$needed.Add("$name.Confirm") }
     if ($b -match 'Group = "(\w+)"') { [void]$needed.Add("Group." + $Matches[1]) }
@@ -83,22 +80,18 @@ if ($catalog -match "public enum PanelPage \{([^}]*)\}") {
     foreach ($v in ($Matches[1] -split ',')) { $v = $v.Trim(); if ($v -and $v -ne 'None') { [void]$needed.Add("Tab.$v") } }
 }
 
-# The Asset tab's rows (PerAsset\AssetCatalog.cs, not the catalog's): each setting it shows (its
-# Label and Tooltip), each button by its Id (a Status row has no texts), its group headings.
+# The building window's rows (PerAsset\AssetCatalog.cs, not the catalog's): each setting it shows
+# (its Label), its group headings. Its status line and buttons are key-shaped literals ("Asset.Pick").
 $assetSrc = Get-Content (Join-Path $root "PerAsset\AssetCatalog.cs") -Raw
 $assetRows = 0
 foreach ($m in [regex]::Matches($assetSrc, 'new (?:Float|Bool|Int|Color)Setting\("(\w+)"')) {
-    [void]$needed.Add($m.Groups[1].Value + ".Label"); [void]$needed.Add($m.Groups[1].Value + ".Tooltip"); $assetRows++
-}
-foreach ($m in [regex]::Matches($assetSrc, 'Kind = RowKind\.(\w+),\s*Panel = PanelPage\.Asset,\s*Id = "(\w+)"')) {
-    $assetRows++
-    if ($m.Groups[1].Value -ne 'Status') { [void]$needed.Add($m.Groups[2].Value + ".Label"); [void]$needed.Add($m.Groups[2].Value + ".Tooltip") }
+    [void]$needed.Add($m.Groups[1].Value + ".Label"); $assetRows++
 }
 foreach ($m in [regex]::Matches($assetSrc, 'Group = "(\w+)"|Percent\(_\w+, "(\w+)"')) {
     $g = if ($m.Groups[1].Success) { $m.Groups[1].Value } else { $m.Groups[2].Value }
     [void]$needed.Add("Group.$g")
 }
-Write-Host "      ($assetRows rows on the Asset tab)"
+Write-Host "      ($assetRows rows in the building window)"
 
 # Key-shaped literals anywhere in the code ("Unit.Pixels", "Colour.Copy"...), including the ones
 # picked by a ?: that a Localization.Get("...") search would miss.
@@ -127,10 +120,9 @@ foreach ($key in $en.Table.Keys) {
 }
 Check "every English text is non-empty with well-formed {n}" ($bad -join "; ") ""
 
-# Tooltips: one short line in the game's tooltip box (Volumetric Weather's rule of thumb: ~70 characters).
-$long = @($en.Table.Keys | Where-Object { $_ -match '\.Tooltip$' -and $en.Table[$_].Length -gt 70 } | Sort-Object |
-    ForEach-Object { "$_ ($($en.Table[$_].Length))" })
-Check "every tooltip fits one line (70 characters)" ($long -join ", ") ""
+# No tooltips: the labels say what a row does (the author, 2026-10-04).
+$tips = @($en.Table.Keys | Where-Object { $_ -match '\.Tooltip$' } | Sort-Object)
+Check "no tooltips" ($tips -join ", ") ""
 
 Check "a wrapped text is one line" ($en.Table["Mod.Unsupported"] -match "switched itself off: nothing in this city") "True"
 Check "\n is a real break, no stray spaces" ($en.Table["ResetAll.Confirm"] -match "how the mod comes\?`n`nThis throws away") "True"

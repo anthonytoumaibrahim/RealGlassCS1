@@ -6,16 +6,17 @@ using UnityEngine;
 namespace RealGlass.PerAsset
 {
     /// <summary>
-    /// The rows of the F8 panel's Asset tab: the picked asset's own glass (<see cref="AssetSelection"/>).
-    /// Each row shows the value the asset has -- its own, or the global one it follows -- and moving it
-    /// gives the asset that value of its own, for every copy of it in every city (RealGlassAssets.xml).
-    /// "Global" puts a row back to following the global setting.
+    /// The rows of the building window (UI.AssetPanel): the picked asset's own glass
+    /// (<see cref="AssetSelection"/>). Each row shows the value the asset has -- its own, or the global
+    /// one it follows -- and moving it gives the asset that value of its own, for every copy of it in
+    /// every city (RealGlassAssets.xml). "Global" puts a row back to following the global setting.
     /// </summary>
     /// <remarks>
     /// The rows are the panel's ordinary rows over settings that are NOT saved (Setting's saved =
-    /// false): they only hold what is shown, re-read from the asset before every refresh of the panel
+    /// false): they only hold what is shown, re-read from the asset before every refresh of the window
     /// (<see cref="Sync"/>). What is kept is the asset's record. Not in SettingsCatalog: RealGlass.xml
-    /// and "Reset all settings" never see them.
+    /// and "Reset all settings" never see them. The window's status line and its two buttons are the
+    /// window's own.
     /// </remarks>
     public static class AssetCatalog
     {
@@ -63,43 +64,12 @@ namespace RealGlass.PerAsset
 
             var rows = new List<Row>();
 
-            rows.Add(new Row
-            {
-                Kind = RowKind.Status,
-                Panel = PanelPage.Asset,
-                Id = "AssetStatus",
-                StatusText = AssetSelection.StatusText,
-                Profiled = false,
-            });
-
-            rows.Add(new Row
-            {
-                Kind = RowKind.Button,
-                Panel = PanelPage.Asset,
-                Id = "AssetPick",
-                OnClick = AssetPicker.Toggle,
-                Enabled = () => AssetPicker.Instance != null,
-                Profiled = false,
-            });
-
-            rows.Add(new Row
-            {
-                Kind = RowKind.Button,
-                Panel = PanelPage.Asset,
-                Id = "AssetUseGlobal",
-                OnClick = AssetSelection.UseGlobal,
-                Enabled = () => Editable() && AssetSelection.Record != null,
-                Profiled = false,
-            });
-
             rows.Add(Percent(_strength, "AssetGlass", 100f, r => r.Strength.HasValue, (r, v) => r.Strength = v, r => r.Strength = null, "strength"));
             rows.Add(Percent(_detail, null, 100f, r => r.PaintedDetail.HasValue, (r, v) => r.PaintedDetail = v, r => r.PaintedDetail = null, "painted detail"));
 
             rows.Add(new Row
             {
-                Kind = RowKind.Choice,
-                Panel = PanelPage.Asset,
-                Int = _preset,
+                Kind = RowKind.Choice,                Int = _preset,
                 DefaultInt = Settings.Defaults.GlassPreset,
                 // The global row's choices, in its order (SettingsCatalog): Custom last.
                 ChoiceKeys = new[]
@@ -133,9 +103,7 @@ namespace RealGlass.PerAsset
 
             rows.Add(new Row
             {
-                Kind = RowKind.Colour,
-                Panel = PanelPage.Asset,
-                Colour = _colour,
+                Kind = RowKind.Colour,                Colour = _colour,
                 DefaultColour = Settings.Defaults.GlassColor,
                 Enabled = Editable,
                 Overridden = () => Has(r => r.Colour.HasValue),
@@ -169,9 +137,7 @@ namespace RealGlass.PerAsset
 
             rows.Add(new Row
             {
-                Kind = RowKind.Toggle,
-                Panel = PanelPage.Asset,
-                Bool = _nightWindows,
+                Kind = RowKind.Toggle,                Bool = _nightWindows,
                 DefaultBool = Settings.Defaults.GlassNightWindows,
                 Enabled = Editable,
                 Overridden = () => Has(r => r.NightWindows.HasValue),
@@ -195,9 +161,7 @@ namespace RealGlass.PerAsset
         {
             return new Row
             {
-                Kind = RowKind.Percent,
-                Panel = PanelPage.Asset,
-                Group = group,
+                Kind = RowKind.Percent,                Group = group,
                 Float = setting,
                 Min = min, Max = max, Step = 1f,
                 Enabled = Editable,

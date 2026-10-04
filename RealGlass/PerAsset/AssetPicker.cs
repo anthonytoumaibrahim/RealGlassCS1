@@ -8,8 +8,10 @@ namespace RealGlass.PerAsset
 {
     /// <summary>
     /// The building picker (Alt+G by default, as BOB's Alt+B): while it is on, the building under
-    /// the cursor is outlined, and a click on it opens the F8 panel's Asset tab on its asset. It stays
-    /// on for the next building; the key again, a right-click or Escape turns it off.
+    /// the cursor is outlined, and a click on it opens the building window (UI.AssetPanel) on its
+    /// asset and turns the picker off, giving the player's cursor back (the author, 2026-10-04). The
+    /// key again, a right-click or Escape turns it off without a pick; the window's "Pick another
+    /// building" turns it on again.
     /// </summary>
     /// <remarks>
     /// A DefaultTool, as BOB's BOBTool is (IL of BOB 2197863850 and of the game, 2026-10-01): the
@@ -93,7 +95,7 @@ namespace RealGlass.PerAsset
             Instance = null;
         }
 
-        /// <summary>On, or off if it is on: the key and the Asset tab's button.</summary>
+        /// <summary>On, or off if it is on: the key and the building window's "Pick another building".</summary>
         public static void Toggle()
         {
             if (Instance == null)
@@ -218,9 +220,13 @@ namespace RealGlass.PerAsset
             if (building == 0)
                 return;
 
+            // The click is ours: the default tool, current again from here on, opens a building's info
+            // panel on a mouse-down (DefaultTool.OnToolGUI, IL 2026-10-04) and must not see this one.
             UIInput.MouseUsed();
+            e.Use();
             AssetSelection.Select(building);
-            ModController.ShowAssetTab();
+            TurnOff("a building was picked");
+            ModController.ShowAssetWindow();
         }
 
         public override void RenderOverlay(RenderManager.CameraInfo cameraInfo)

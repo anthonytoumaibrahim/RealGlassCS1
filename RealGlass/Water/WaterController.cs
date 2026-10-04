@@ -51,7 +51,7 @@ namespace RealGlass.Water
                 return "water controls off";
             return "water controls ON: brightness " + Pct(Settings.WaterBrightness) + ", real sky " + (On(Settings.WaterRealSky) ? Pct(Settings.WaterSky) : "off") +
                    ", city " + (On(Settings.WaterCity) ? Pct(Settings.WaterCityDay) + " day / " + Pct(Settings.WaterCityNight) + " night, blur " +
-                   Pct(Settings.WaterCityBlur) + ", streaks " + Pct(Settings.WaterCityStreaks) : "off");
+                   Pct(Settings.WaterCityBlur) + ", streaks " + Pct(Settings.WaterCityStreaks) + ", length " + Pct(Settings.WaterCityLength) : "off");
         }
 
         private static bool On(BoolSetting s)
@@ -64,9 +64,10 @@ namespace RealGlass.Water
             return s != null ? s.value : fallback;
         }
 
+        /// <summary>To a tenth where there is one: "0.5%", "100%".</summary>
         private static string Pct(FloatSetting s)
         {
-            return s != null ? Mathf.RoundToInt(s.value * 100f) + "%" : "?";
+            return s != null ? (Math.Round(s.value * 1000.0) / 10.0).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) + "%" : "?";
         }
 
         private void LateUpdate()
@@ -180,7 +181,8 @@ namespace RealGlass.Water
             double across, up;
             WaterOptics.BlurSigmas(Value(Settings.WaterCityBlur, Settings.Defaults.WaterCityBlur), Value(Settings.WaterCityStreaks, Settings.Defaults.WaterCityStreaks),
                                    _spread, camera.fieldOfView, aspect, out across, out up);
-            _city.SetUniforms(level, strength, skyShare, WaterSurface.ThemeCube(), lit, across, up, camera.farClipPlane);
+            _city.SetUniforms(level, strength, skyShare, WaterSurface.ThemeCube(), lit, across, up,
+                              Value(Settings.WaterCityLength, Settings.Defaults.WaterCityLength), camera.farClipPlane);
             _city.Attach(camera);
             CityState("on (sea level " + level.ToString("F1") + " m)");
         }

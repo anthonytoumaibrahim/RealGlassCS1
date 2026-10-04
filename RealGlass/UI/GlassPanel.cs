@@ -5,7 +5,7 @@ using UnityEngine;
 namespace RealGlass.UI
 {
     /// <summary>
-    /// The in-game panel (F8): every setting of the glass, judged against the city.
+    /// The in-game panel (F8): every setting of the look, judged against the city.
     /// </summary>
     /// <remarks>
     /// Four tabs, one per <see cref="PanelPage"/>:
@@ -13,9 +13,10 @@ namespace RealGlass.UI
     ///                  and what counts as glass. A status line at the top says what is drawn.
     ///   Reflections -- what the glass mirrors: the finished picture, the sky and its clouds, the sun.
     ///   Panes       -- the panes: their size, and how they bend the reflections.
-    ///   Rendering   -- how far the glass reaches, and the sky reflection's cost.
-    /// The mod itself (language, key, button, diagnostics, reset) is on the options page
-    /// (<see cref="OptionsUI"/>) alone: Row.Options == General.
+    ///   Water       -- the map's water: its brightness, the sky and the city in it.
+    /// The mod itself (language, keys, button, what the glass may cost, diagnostics, reset) is on the
+    /// options page (<see cref="OptionsUI"/>) alone: Row.Options == General. One building asset's own
+    /// glass has a window of its own (<see cref="AssetPanel"/>), opened by the building picker.
     ///
     /// Both UIs are drawn from <see cref="SettingsCatalog"/>, so where a row lives is a one-word
     /// edit rather than a second copy of the row. (Volumetric Weather's CloudsPanel, with these
@@ -29,14 +30,11 @@ namespace RealGlass.UI
         private const float TabHeight = 28f;
         private const float Margin = 14f;
 
-        private const float HeadingHeight = 24f;
-        private const float NoteHeight = 32f;
-
         private const float MinContentHeight = PanelHeight - TitleBarHeight - TabHeight - 2f * Margin;
 
         private static readonly PanelPage[] Tabs =
         {
-            PanelPage.Glass, PanelPage.Reflections, PanelPage.Panes, PanelPage.Rendering, PanelPage.Water, PanelPage.Asset,
+            PanelPage.Glass, PanelPage.Reflections, PanelPage.Panes, PanelPage.Water,
         };
 
         /// <summary>Where to open, when replacing a panel that was already on screen. Null = centred.</summary>
@@ -45,17 +43,10 @@ namespace RealGlass.UI
         private readonly List<UIButton> _tabs = new List<UIButton>();
         private readonly List<UIPanel> _pages = new List<UIPanel>();
         private readonly List<float> _contentHeights = new List<float>();
-        private readonly List<Control> _controls = new List<Control>();
+        private readonly RowList _rows = new RowList(RowLayout.Panel);
 
         private const float RefreshInterval = 0.25f;
         private float _nextRefreshTime;
-
-        /// <summary>
-        /// Guards the refresh against its own callbacks: writing a UISlider's value fires
-        /// eventValueChanged, which would write the setting straight back -- quantised to the
-        /// slider's step, and with every AfterChange fired for a change nobody made.
-        /// </summary>
-        private bool _refreshing;
 
         private static GlassPanel _instance;
 
@@ -64,32 +55,6 @@ namespace RealGlass.UI
         {
             if (_instance != null)
                 _instance.RefreshValues();
-        }
-
-        /// <summary>One built row: whatever components it made, so they can be refreshed and greyed.</summary>
-        private class Control
-        {
-            public Row Source;
-            public UISlider Slider;
-            public UICheckBox Check;
-            public UILabel Readout;
-            public UILabel Status;
-            public ColourRow Colour;
-            public readonly List<UIComponent> Parts = new List<UIComponent>();
-            public bool Enabled = true;
-
-            /// <summary>The Asset tab's rows: the name (coloured while the asset has its own value) and "Global".</summary>
-            public UILabel Name;
-            public UIButton Global;
-            public bool? ShownOwn;
-        }
-
-        /// <summary>Opens the panel's tab for this page (the picker opens the Asset tab).</summary>
-        public void ShowPage(PanelPage page)
-        {
-            int index = System.Array.IndexOf(Tabs, page);
-            if (index >= 0 && index < _pages.Count)
-                SelectPage(index);
         }
 
         public override void Start()
@@ -107,7 +72,7 @@ namespace RealGlass.UI
             BuildTitleBar();
 
             foreach (PanelPage page in Tabs)
-                _contentHeights.Add(BuildPage(AddPage(SettingsCatalog.TabName(page)), page));
+                _contentHeights.Add(_rows.Build(AddPage(SettingsCatalog.TabName(page)), RowsOn(page)));
 
             LayoutTabs();
             SelectPage(0);
@@ -123,7 +88,16 @@ namespace RealGlass.UI
                     RefreshValues();
             };
 
-            Log.Msg("panel built: " + _controls.Count + " controls over " + _pages.Count + " tabs");
+            Log.Msg("panel built: " + _rows.Count + " controls over " + _pages.Count + " tabs");
+        }
+
+        private static IEnumerable<Row> RowsOn(PanelPage page)
+        {
+            foreach (Row row in SettingsCatalog.Rows)
+            {
+                if (row.Panel == page)
+                    yield return row;
+            }
         }
 
         /// <summary>
@@ -140,141 +114,16 @@ namespace RealGlass.UI
                 return;
 
             _nextRefreshTime = Time.time + RefreshInterval;
-
-            foreach (Control control in _controls)
-            {
-                if (control.Status != null && control.Source.StatusText != null)
-                    control.Status.text = control.Source.StatusText();
-            }
-
+            _rows.UpdateStatus();
             RefreshValues();
         }
 
-        /// <summary>
-        /// Re-reads every control from its setting. Cheap enough to run four times a second: a
-        /// comparison per control, and a write only where something really changed.
-        /// </summary>
+        /// <summary>Re-reads every control from its setting.</summary>
         public void RefreshValues()
         {
-            // The Asset tab shows the picked asset's glass, which can change under it (the file, a
-            // global setting it follows, another pick).
-            PerAsset.AssetCatalog.Sync();
-
-            _refreshing = true;
-            int touched = 0;
-
-            try
-            {
-                foreach (Control control in _controls)
-                {
-                    Row row = control.Source;
-
-                    if (control.Slider != null)
-                    {
-                        float display = row.Kind == RowKind.Choice
-                            ? row.ChoiceIndex
-                            : Mathf.Clamp(row.Display, row.Min, row.Max);
-
-                        if (!Mathf.Approximately(control.Slider.value, display))
-                        {
-                            control.Slider.value = display;
-                            touched++;
-
-                            if (control.Readout != null)
-                                control.Readout.text = ReadoutText(row, display);
-                        }
-                    }
-
-                    // Not while its confirmation is open: the value is still the old one, and this
-                    // would untick the box the player has just ticked.
-                    if (control.Check != null && row.Bool != null && !row.Pending
-                        && control.Check.isChecked != row.Bool.value)
-                    {
-                        control.Check.isChecked = row.Bool.value;
-                        touched++;
-                    }
-
-                    // It keeps its own guard: its swatch fires events when set.
-                    if (control.Colour != null)
-                        control.Colour.Refresh();
-                }
-            }
-            finally
-            {
-                _refreshing = false;
-            }
-
-            RefreshEnabled();
-
+            int touched = _rows.RefreshValues();
             if (touched > 0 && Log.Detailed)
-                Log.Detail("panel: refreshed " + _controls.Count + " controls, " + touched + " had changed");
-        }
-
-        private static string ReadoutText(Row row, float display)
-        {
-            if (row.Kind != RowKind.Choice)
-                return row.FormatDisplay(display);
-
-            int index = Mathf.RoundToInt(display);
-            return row.Choices != null && index >= 0 && index < row.Choices.Length
-                ? row.Choices[index]
-                : string.Empty;
-        }
-
-        /// <summary>Greys the rows whose switch is off, e.g. every glass row while the glass is off.</summary>
-        private void RefreshEnabled()
-        {
-            foreach (Control control in _controls)
-            {
-                bool wanted = control.Source.IsEnabled;
-                if (wanted != control.Enabled)
-                {
-                    control.Enabled = wanted;
-
-                    foreach (UIComponent part in control.Parts)
-                    {
-                        part.isEnabled = wanted;
-                        part.opacity = wanted ? 1f : 0.45f;
-                    }
-                }
-
-                // The Asset tab: the row's name in colour, and "Global" usable, while the asset has a
-                // value of its own there.
-                if (control.Source.Overridden == null)
-                    continue;
-
-                bool own = wanted && control.Source.Overridden();
-                if (control.ShownOwn == own)
-                    continue;
-
-                control.ShownOwn = own;
-                if (control.Name != null)
-                    control.Name.textColor = own ? UIBuilder.OwnValueColour : UIBuilder.LabelColour;
-                if (control.Global != null)
-                {
-                    control.Global.isEnabled = own;
-                    control.Global.opacity = own ? 1f : 0.45f;
-                }
-            }
-        }
-
-        /// <summary>A row's "Global" button (the Asset tab): the asset follows the global setting here again.</summary>
-        private static UIButton AddGlobalButton(UIPanel page, Row row, float y)
-        {
-            UIButton button = UIBuilder.AddButton(page, Localization.Get("Asset.Global.Button"),
-                new Vector2(UIBuilder.GlobalButtonWidth, 26f), new Vector3(page.width - UIBuilder.GlobalButtonWidth, y + 4f));
-            button.canFocus = false;
-            button.tooltip = Localization.Get("Asset.Global.Tooltip");
-            Row captured = row;
-            button.eventClick += (component, e) =>
-            {
-                if (captured.ClearOverride == null || captured.Overridden == null || !captured.Overridden())
-                    return;
-
-                captured.ClearOverride();
-                SettingsCatalog.RefreshAllUIs();
-            };
-            return button;
+                Log.Detail("panel: refreshed " + _rows.Count + " controls, " + touched + " had changed");
         }
 
         private void BuildTitleBar()
@@ -338,231 +187,6 @@ namespace RealGlass.UI
             float content = Mathf.Max(MinContentHeight, _contentHeights[index]);
             _pages[index].height = content;
             height = TitleBarHeight + TabHeight + 2f * Margin + content;
-        }
-
-        /// <summary>Draws every catalog row that belongs on this tab, in catalog order.</summary>
-        private float BuildPage(UIPanel page, PanelPage which)
-        {
-            float y = 0f;
-
-            // The Asset tab's rows are the picked asset's, not settings of the catalog's.
-            List<Row> rows = which == PanelPage.Asset ? PerAsset.AssetCatalog.Rows : SettingsCatalog.Rows;
-            foreach (Row row in rows)
-            {
-                if (row.Panel != which)
-                    continue;
-
-                if (row.Group != null)
-                {
-                    UIBuilder.AddHeading(page, row.GroupTitle, y + 4f);
-                    y += HeadingHeight;
-                }
-
-                Control control = Build(page, row, y);
-                _controls.Add(control);
-                y += UIBuilder.RowHeight;
-
-                if (row.Note != null)
-                {
-                    UILabel note = UIBuilder.AddNote(page, row.Note, y - 4f, NoteHeight, UIBuilder.WarningColour);
-                    control.Parts.Add(note);
-                    y += NoteHeight;
-                }
-            }
-
-            return y;
-        }
-
-        private Control Build(UIPanel page, Row row, float y)
-        {
-            Control control = new Control { Source = row };
-
-            switch (row.Kind)
-            {
-                case RowKind.Status:
-                    control.Status = UIBuilder.AddLabel(page,
-                        row.StatusText != null ? row.StatusText() : string.Empty, new Vector3(0f, y + 8f), 0.8f);
-                    control.Status.autoSize = false;
-                    control.Status.size = new Vector2(page.width, 20f);
-                    control.Status.textColor = UIBuilder.StatusColour;
-                    break;
-
-                case RowKind.Button:
-                {
-                    UIButton button = UIBuilder.AddButton(page, row.Label, new Vector2(page.width, 26f),
-                        new Vector3(0f, y + 4f));
-                    button.tooltip = row.Tooltip;
-                    Row captured = row;
-                    button.eventClick += (component, e) =>
-                    {
-                        if (captured.OnClick == null)
-                            return;
-
-                        captured.OnClick();
-                        SettingsCatalog.RefreshAllUIs();
-                    };
-                    control.Parts.Add(button);
-                    break;
-                }
-
-                case RowKind.Toggle:
-                {
-                    Row captured = row;
-                    UICheckBox box = UIBuilder.AddCheckbox(page, y, row.Label,
-                        row.Bool != null && row.Bool.value, isChecked =>
-                        {
-                            if (_refreshing)
-                                return;
-
-                            SettingsCatalog.ApplyToggle(captured, isChecked);
-                        }, GlobalReserve(row));
-                    box.tooltip = row.Tooltip;
-                    control.Check = box;
-                    control.Parts.Add(box);
-                    control.Name = box.label;
-                    AddGlobal(page, control, row, y);
-                    break;
-                }
-
-                case RowKind.Key:
-                {
-                    UIButton button = UIBuilder.AddKeyBinding(page, y, row.Label, row.Key);
-                    button.tooltip = row.Tooltip;
-                    control.Parts.Add(button);
-                    break;
-                }
-
-                case RowKind.Colour:
-                {
-                    control.Colour = new ColourRow(page, y, row);
-                    control.Parts.AddRange(control.Colour.Parts);
-                    control.Name = control.Colour.NameLabel;
-                    break;
-                }
-
-                case RowKind.Choice:
-                {
-                    // A slider over the choices, with the choice's name as the readout. A dropdown
-                    // would need sprite names nobody has read out of the atlas; this needs none, and
-                    // a handful of positions drag perfectly well.
-                    Row captured = row;
-                    int count = row.Choices != null ? row.Choices.Length : 1;
-
-                    UISlider slider = UIBuilder.AddSlider(page, y, row.Label, 0f, Mathf.Max(1, count - 1), 1f,
-                        row.ChoiceIndex,
-                        v => ReadoutText(captured, v),
-                        v =>
-                        {
-                            if (_refreshing || captured.Int == null || captured.ChoiceValues == null)
-                                return;
-
-                            int index = Mathf.Clamp(Mathf.RoundToInt(v), 0, captured.ChoiceValues.Length - 1);
-                            if (captured.Int.value == captured.ChoiceValues[index])
-                                return;
-
-                            captured.Int.value = captured.ChoiceValues[index];
-                            Changed(captured);
-                        }, GlobalReserve(row));
-                    slider.tooltip = row.Tooltip;
-                    control.Slider = slider;
-                    control.Parts.Add(slider);
-                    AddSiblings(page, control, slider);
-                    AddGlobal(page, control, row, y);
-                    break;
-                }
-
-                default:
-                {
-                    Row captured = row;
-                    UISlider slider = UIBuilder.AddSlider(page, y, row.Label, row.Min, row.Max, row.Step,
-                        Mathf.Clamp(row.Display, row.Min, row.Max),
-                        row.FormatDisplay,
-                        v =>
-                        {
-                            if (_refreshing)
-                                return;
-
-                            captured.Store(v);
-                            Changed(captured);
-                        }, GlobalReserve(row));
-                    slider.tooltip = row.Tooltip;
-                    control.Slider = slider;
-                    control.Parts.Add(slider);
-
-                    // The label and the readout are siblings of the slider, not children of it.
-                    AddSiblings(page, control, slider);
-                    AddGlobal(page, control, row, y);
-                    break;
-                }
-            }
-
-            return control;
-        }
-
-        /// <summary>Room at a row's right for its "Global" button: the Asset tab's rows.</summary>
-        private static float GlobalReserve(Row row)
-        {
-            return row.ClearOverride != null ? UIBuilder.GlobalButtonWidth + 6f : 0f;
-        }
-
-        private static void AddGlobal(UIPanel page, Control control, Row row, float y)
-        {
-            if (row.ClearOverride == null)
-                return;
-
-            control.Global = AddGlobalButton(page, row, y);
-        }
-
-        /// <summary>
-        /// After a slider stored its value. A row with a live-apply hook may have changed OTHER rows
-        /// (the glass preset writes three of them; moving one of those three flips the preset to
-        /// Custom), so both UIs look again. Rows without one change nothing but themselves, and are
-        /// left alone -- this runs on every tick of a drag.
-        /// </summary>
-        private static void Changed(Row row)
-        {
-            if (row.AfterChange == null)
-                return;
-
-            row.AfterChange();
-            SettingsCatalog.RefreshAllUIs();
-        }
-
-        /// <summary>
-        /// Picks the name label and the value readout out of the page so the whole row greys out
-        /// together. AddSlider makes exactly three components, in that order.
-        /// </summary>
-        private static void AddSiblings(UIPanel page, Control control, UISlider slider)
-        {
-            int index = -1;
-            for (int i = 0; i < page.components.Count; i++)
-            {
-                if (page.components[i] == slider)
-                {
-                    index = i;
-                    break;
-                }
-            }
-
-            if (index <= 0)
-                return;
-
-            UILabel name = page.components[index - 1] as UILabel;
-            if (name != null)
-            {
-                control.Parts.Add(name);
-                control.Name = name;
-            }
-
-            if (index + 1 < page.components.Count)
-            {
-                UILabel readout = page.components[index + 1] as UILabel;
-                if (readout != null)
-                {
-                    control.Readout = readout;
-                    control.Parts.Add(readout);
-                }
-            }
         }
 
         private void CenterOnScreen()

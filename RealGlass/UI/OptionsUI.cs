@@ -8,9 +8,9 @@ using UnityEngine;
 namespace RealGlass.UI
 {
     /// <summary>
-    /// The mod's page in the game's own options: the mod itself (language, the panel's key, the
-    /// button, diagnostics, the reset). Every setting of the GLASS is in the in-game panel
-    /// (<see cref="GlassPanel"/>, F8), where it can be judged against the city.
+    /// The mod's page in the game's own options: the mod itself (language, the keys, the button,
+    /// what the glass may cost, diagnostics, the reset). Every setting of the LOOK is in the
+    /// in-game panel (<see cref="GlassPanel"/>, F8), where it can be judged against the city.
     /// </summary>
     /// <remarks>
     /// (Volumetric Weather's options page.) Two things about this page decide how it has to be
@@ -163,7 +163,6 @@ namespace RealGlass.UI
                     if (box == null)
                         return null;
 
-                    box.tooltip = row.Tooltip;
                     control.Check = box;
                     control.Grey = box;
                     break;
@@ -184,7 +183,6 @@ namespace RealGlass.UI
                     if (button == null)
                         return null;
 
-                    button.tooltip = row.Tooltip;
                     control.Button = button;
                     control.Grey = button;
                     break;
@@ -219,7 +217,6 @@ namespace RealGlass.UI
                     if (drop == null)
                         return null;
 
-                    drop.tooltip = row.Tooltip;
                     control.Drop = drop;
                     control.Grey = RowPanel(drop, groupPanel);
                     break;
@@ -251,7 +248,6 @@ namespace RealGlass.UI
                     if (slider == null)
                         return null;
 
-                    slider.tooltip = row.Tooltip;
                     control.Slider = slider;
                     control.Readout = FindSliderLabel(slider, row);
                     control.Grey = RowPanel(slider, groupPanel);
@@ -338,8 +334,6 @@ namespace RealGlass.UI
                 () => { }) as UIButton;
             if (button == null)
                 return null;
-
-            button.tooltip = row.Tooltip;
 
             bool editing = false;
 

@@ -11,6 +11,17 @@ Tested only on my Windows 11 PC and Macbook. If anything looks wrong or runs bad
 [/olist]
 
 [hr][/hr]
+[h1]The panel (F8)[/h1]
+[list]
+[*][b]Glass[/b]: turn the glass on or off, pick a real kind of glass (or your own color, reflectivity and clarity), and choose what counts as glass.
+[*][b]Reflections[/b]: what the glass mirrors -- the city on screen, the buildings around, fog and clouds, the live sky -- plus sun glint and smoothness.
+[*][b]Panes[/b]: pane size and story height, and how the panes bend reflections (cushioned panes, tilt, ripple).
+[*][b]Water[/b] (off by default): the water's brightness, and the sky and city reflected in it (blur, streaks, reflection length).
+[/list]
+[b]Alt+G[/b] picks a building and opens a small window for its asset's own glass, on every copy in every city.
+The mod's options page (Options → Real Glass) holds the keys and the [b]Rendering[/b] settings: how far the glass reaches (near, middle or the whole city) and the live sky's detail, to trade looks for frame rate.
+
+[hr][/hr]
 [h1]Features[/h1]
 [list]
 [*][b]Glass[/b]: customizable color and reflection intensity. You can also retain a building's details under the glass, or reduce the glass opacity.

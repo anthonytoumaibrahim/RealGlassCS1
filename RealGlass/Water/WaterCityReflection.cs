@@ -24,6 +24,8 @@ namespace RealGlass.Water
     /// - WHAT IT REPLACES: where the ray meets the city, the city takes the place of the sky the
     ///   water's cube shows: added = rho x strength x (city - skyShare x the theme's sky x its light),
     ///   skyShare the Sky slider while our cube is on the water, 0 otherwise.
+    /// - HOW LONG: the ray's slope is the mirror's divided by the Length slider
+    ///   (<see cref="WaterOptics.MirrorSlope"/>); the sky it replaces is still the mirror's.
     /// Three Unity 5.6 facts from RealLight's editor test: CommandBuffer.Blit binds its source only
     /// when the shader declares _MainTex in Properties; _MainTex_TexelSize read 0 (the texel size is a
     /// uniform); the blurred buffer must be bound with the buffer's own SetGlobalTexture.
@@ -214,12 +216,14 @@ namespace RealGlass.Water
         /// <param name="skyShare">The Sky slider while our cube is on the water, else 0.</param>
         /// <param name="theme">The theme's cube (what the water shows of the sky).</param>
         /// <param name="light">The light the game's water lights the cube with (linear): the sun on the level + the sky's ambient.</param>
-        public void SetUniforms(float level, float strength, float skyShare, Texture theme, Color light, double sigmaAcross, double sigmaUp, float farPlane)
+        /// <param name="length">The Length slider: the reflection this many times as long as the city is tall (<see cref="WaterOptics.MirrorSlope"/>).</param>
+        public void SetUniforms(float level, float strength, float skyShare, Texture theme, Color light, double sigmaAcross, double sigmaUp,
+                                float length, float farPlane)
         {
             float reach = Mathf.Min((float)WaterOptics.MaxDistance, 0.9f * farPlane);
             int themeSize = theme != null ? Mathf.Max(theme.width, 1) : 1;
             _material.SetVector(IdGeom, new Vector4(level, strength, theme != null ? skyShare : 0f, Mathf.Max(0f, Mathf.Log(themeSize / 64f, 2f))));
-            _material.SetVector(IdMarch, new Vector4(reach, (float)WaterOptics.Thickness, (float)WaterOptics.EdgeFade, 0f));
+            _material.SetVector(IdMarch, new Vector4(reach, (float)WaterOptics.Thickness, (float)WaterOptics.EdgeFade, Mathf.Max(1f, length)));
             float texelX = _trace != null ? 1f / _trace.width : 0f, texelY = _trace != null ? 1f / _trace.height : 0f;
             _material.SetVector(IdBlur, new Vector4((float)sigmaAcross, (float)sigmaUp, texelX, texelY));
             if (theme != null)

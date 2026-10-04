@@ -31,10 +31,10 @@ namespace RealGlass.UI
     }
 
     /// <summary>
-    /// Which tab of the in-game (F8) panel a row appears on. None = not in it. Asset: one building
-    /// asset's own glass (PerAsset.AssetCatalog's rows, not this catalog's).
+    /// Which tab of the in-game (F8) panel a row appears on. None = not in it. (One building asset's
+    /// own glass is the building window's: PerAsset.AssetCatalog's rows, not this catalog's.)
     /// </summary>
-    public enum PanelPage { None, Glass, Reflections, Panes, Rendering, Asset, Water }
+    public enum PanelPage { None, Glass, Reflections, Panes, Water }
 
     /// <summary>General = the game's mod options page (no tabs). None = not on it.</summary>
     public enum OptionsPage { None, General }
@@ -44,9 +44,10 @@ namespace RealGlass.UI
     /// </summary>
     /// <remarks>
     /// A row holds no words. Its texts are in Localization/en.xml (and its translations) under its
-    /// <see cref="Name"/>: "FloorHeight.Label", "FloorHeight.Tooltip", and so on, read in the
-    /// player's language every time a UI asks. <see cref="SettingsCatalog.LogLayout"/> checks at
-    /// startup that English has every key a row needs. (Volumetric Weather's catalog row.)
+    /// <see cref="Name"/>: "FloorHeight.Label", and so on, read in the player's language every time
+    /// a UI asks. No tooltips (the author, 2026-10-04: "the labels are already pretty descriptive").
+    /// <see cref="SettingsCatalog.LogLayout"/> checks at startup that English has every key a row
+    /// needs. (Volumetric Weather's catalog row.)
     /// </remarks>
     public class Row
     {
@@ -63,7 +64,7 @@ namespace RealGlass.UI
         /// <summary>Non-null starts a new group here. Its title is "Group.&lt;Group&gt;" in the language files.</summary>
         public string Group;
 
-        /// <summary>A line of text under the row ("&lt;Name&gt;.Note"), for the warnings a tooltip would hide.</summary>
+        /// <summary>A line of text under the row ("&lt;Name&gt;.Note"), for a warning the label cannot carry.</summary>
         public bool HasNote;
 
         /// <summary>Toggles: ask "&lt;Name&gt;.Confirm" before switching ON. Never asked when switching off.</summary>
@@ -117,8 +118,8 @@ namespace RealGlass.UI
         public Func<bool> Enabled;
 
         /// <summary>
-        /// A row of one asset's own glass (the Asset tab): whether the asset has a value of its own
-        /// here. Null for every other row. The row then has a "Global" button (<see cref="ClearOverride"/>).
+        /// A row of one asset's own glass (the building window): whether the asset has a value of its
+        /// own here. Null for every other row. The row then has a "Global" button (<see cref="ClearOverride"/>).
         /// </summary>
         public Func<bool> Overridden;
 
@@ -156,11 +157,6 @@ namespace RealGlass.UI
         public string Label
         {
             get { return Localization.Get(Name + ".Label"); }
-        }
-
-        public string Tooltip
-        {
-            get { return Localization.Get(Name + ".Tooltip"); }
         }
 
         /// <summary>Null when the row has none.</summary>
@@ -216,9 +212,6 @@ namespace RealGlass.UI
                 yield break;
 
             yield return Name + ".Label";
-
-            if (Panel != PanelPage.None || Options != OptionsPage.None)
-                yield return Name + ".Tooltip";
 
             if (HasNote)
                 yield return Name + ".Note";
@@ -320,11 +313,11 @@ namespace RealGlass.UI
     /// factories), and keeping two imperative lists in step is how they drift. Reset-to-defaults
     /// walks this list, and so does RealGlass.xml: a setting with no row is never saved.
     ///
-    /// The split: everything about the GLASS is in the panel (Row.Panel, five tabs); the options
-    /// page has only the mod itself (Row.Options == General).
+    /// The split: the look is in the panel (Row.Panel, four tabs); the options page has the mod
+    /// itself and what the glass may cost (Row.Options == General).
     ///
     /// The words are in Localization/en.xml, in the same order as the rows here: a new row needs
-    /// its Label and Tooltip there (the log says at startup if one is missing, and
+    /// its Label there (the log says at startup if one is missing, and
     /// tools/test-localization.ps1 checks it offline). Every glass row's AfterChange ends in
     /// <see cref="GlassController.SettingsChanged"/>.
     /// </remarks>
@@ -402,10 +395,9 @@ namespace RealGlass.UI
             Log.Msg("settings catalog: " + Rows.Count + " rows | panel Glass=" + CountForPanel(PanelPage.Glass) +
                     " Reflections=" + CountForPanel(PanelPage.Reflections) +
                     " Panes=" + CountForPanel(PanelPage.Panes) +
-                    " Rendering=" + CountForPanel(PanelPage.Rendering) +
                     " Water=" + CountForPanel(PanelPage.Water) +
-                    " Asset=" + PerAsset.AssetCatalog.Rows.Count +
                     " | options page=" + CountForOptions(OptionsPage.General) +
+                    " | building window=" + PerAsset.AssetCatalog.Rows.Count +
                     " | rows with no UI=" + nowhere);
 
             var missing = new List<string>();
@@ -520,8 +512,9 @@ namespace RealGlass.UI
         }
 
         /// <summary>
-        /// Re-reads every control in both UIs: either can be open while the other changes a
-        /// setting, and a preset changes rows the player did not touch.
+        /// Re-reads every control in every UI: any can be open while another changes a setting, a
+        /// preset changes rows the player did not touch, and the building window shows the global
+        /// values its asset follows.
         /// </summary>
         public static void RefreshAllUIs()
         {
@@ -529,6 +522,7 @@ namespace RealGlass.UI
                 OptionsUI.Instance.RefreshValues();
 
             GlassPanel.RefreshOpenPanel();
+            AssetPanel.RefreshOpenPanel();
         }
 
         /// <summary>
@@ -618,6 +612,12 @@ namespace RealGlass.UI
             return value.ToString("F0");
         }
 
+        /// <summary>A percentage to a tenth: "0.5%".</summary>
+        private static string PercentTenths(float value)
+        {
+            return Localization.Get("Unit.Percent", value.ToString("F1"));
+        }
+
         private static string CubeSize(int value)
         {
             return Localization.Get("Unit.Pixels", Settings.CubePixels(value).ToString(CultureInfo.InvariantCulture));
@@ -677,9 +677,14 @@ namespace RealGlass.UI
             BuildGlass();
             BuildReflections();
             BuildPanes();
-            BuildRendering();
             BuildWater();
+
+            // The options page, top to bottom: the mod, what the glass may cost, then diagnostics
+            // and the reset last.
             BuildGeneralOptions();
+            BuildRendering();
+            BuildHousekeeping();
+
             BuildHidden();
         }
 
@@ -1091,13 +1096,18 @@ namespace RealGlass.UI
             });
         }
 
-        /// <summary>F8 -> Rendering: how far the glass reaches, and what the live sky costs. The machine, not the look.</summary>
+        /// <summary>
+        /// Options page -> Rendering: how far the glass reaches, and what the live sky costs. The
+        /// machine, not the look (the F8 panel's Rendering tab until 2026-10-04: the author moved it
+        /// here).
+        /// </summary>
         private static void BuildRendering()
         {
             Add(new Row
             {
                 Kind = RowKind.Choice,
-                Panel = PanelPage.Rendering,
+                Options = OptionsPage.General,
+                Group = "Rendering",
                 Int = Settings.GlassDistance,
                 DefaultInt = Settings.Defaults.GlassDistance,
                 ChoiceKeys = new[] { "GlassDistance.Near", "GlassDistance.Middle", "GlassDistance.City" },
@@ -1110,7 +1120,7 @@ namespace RealGlass.UI
             Add(new Row
             {
                 Kind = RowKind.Choice,
-                Panel = PanelPage.Rendering,
+                Options = OptionsPage.General,
                 Group = "LiveSky",
                 Int = Settings.SkyCubeSize,
                 DefaultInt = Settings.Defaults.SkyCubeSize,
@@ -1124,7 +1134,7 @@ namespace RealGlass.UI
             Add(new Row
             {
                 Kind = RowKind.Choice,
-                Panel = PanelPage.Rendering,
+                Options = OptionsPage.General,
                 Int = Settings.SkyCubeRate,
                 DefaultInt = Settings.Defaults.SkyCubeRate,
                 ChoiceValues = new[] { 1, 2, 3, 4, 5, 6 },
@@ -1219,13 +1229,27 @@ namespace RealGlass.UI
                 Enabled = WaterCityOn,
             });
 
+            // In tenths of a percent (the author, 2026-10-04: 5%, then the first step, was already too
+            // long): 100% is the waves of a light breeze, a smear of a fifth of the screen.
             Add(new Row
             {
                 Kind = RowKind.Percent,
                 Panel = PanelPage.Water,
                 Float = Settings.WaterCityStreaks,
                 DefaultFloat = Settings.Defaults.WaterCityStreaks,
-                Min = 0f, Max = 300f, Step = 5f,
+                Min = 0f, Max = 10f, Step = 0.1f,
+                Format = PercentTenths,
+                Enabled = WaterCityOn,
+            });
+
+            // How much longer than the city its reflection is drawn (WaterOptics.MirrorSlope).
+            Add(new Row
+            {
+                Kind = RowKind.Percent,
+                Panel = PanelPage.Water,
+                Float = Settings.WaterCityLength,
+                DefaultFloat = Settings.Defaults.WaterCityLength,
+                Min = 100f, Max = 300f, Step = 5f,
                 Enabled = WaterCityOn,
             });
         }
@@ -1280,7 +1304,11 @@ namespace RealGlass.UI
                 Profiled = false,
                 AfterChange = ModController.RefreshButton,
             });
+        }
 
+        /// <summary>The options page's last groups: diagnostics, and the reset.</summary>
+        private static void BuildHousekeeping()
+        {
             Add(new Row
             {
                 Kind = RowKind.Toggle,

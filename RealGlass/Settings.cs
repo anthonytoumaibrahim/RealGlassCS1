@@ -49,7 +49,7 @@ namespace RealGlass
 
         /// <summary>
         /// Turns the building picker on and off (PerAsset.AssetPicker): click a building, and the
-        /// panel's Asset tab gives its asset glass of its own. Alt+G by default.
+        /// building window gives its asset glass of its own. Alt+G by default.
         /// </summary>
         public static SavedInputKey PickerKey { get; private set; }
 
@@ -206,7 +206,7 @@ namespace RealGlass
         // lit windows at night, untouched): by day a dark inside (GlassUniforms), by night the
         // game's own window.
 
-        // ---- F8 -> Rendering -----------------------------------------------------------------
+        // ---- Options page -> Rendering (the F8 panel's tab until 2026-10-04) ---------------
 
         /// <summary>0: near buildings only. 1: near and middle distance. 2: the whole city.</summary>
         public static IntSetting GlassDistance { get; private set; }
@@ -243,8 +243,11 @@ namespace RealGlass
         /// <summary>0..5: a blur over the city's reflection, the same every way.</summary>
         public static FloatSetting WaterCityBlur { get; private set; }
 
-        /// <summary>0..3: the waves stretch the city's reflection up and down (1 = a light breeze).</summary>
+        /// <summary>0..0.1: the waves smear the city's reflection up and down (1 would be a light breeze's).</summary>
         public static FloatSetting WaterCityStreaks { get; private set; }
+
+        /// <summary>1..3: the city's reflection drawn this many times as long as the city is tall (1 = a mirror).</summary>
+        public static FloatSetting WaterCityLength { get; private set; }
 
         /// <summary>
         /// Every default, in one place. A new one reaches only new installs and a Reset: a player's
@@ -325,7 +328,12 @@ namespace RealGlass
             public const float WaterCityDay = 1f;
             public const float WaterCityNight = 1f;
             public const float WaterCityBlur = 1f;
-            public const float WaterCityStreaks = 1f;
+
+            /// <summary>1%: a light breeze's 100% smeared a fifth of the screen, and 5% was still too long (the author, 2026-10-04).</summary>
+            public const float WaterCityStreaks = 0.01f;
+
+            /// <summary>A mirror: the city's own height.</summary>
+            public const float WaterCityLength = 1f;
         }
 
         private static bool _initialised;
@@ -390,10 +398,6 @@ namespace RealGlass
                 PaneWeather = new BoolSetting("PaneWeather", Defaults.PaneWeather);
                 PanesFollowWindows = new BoolSetting("PanesFollowWindows", Defaults.PanesFollowWindows);
 
-                GlassDistance = new IntSetting("GlassDistance", Defaults.GlassDistance);
-                SkyCubeSize = new IntSetting("SkyCubeSize", Defaults.SkyCubeSize);
-                SkyCubeRate = new IntSetting("SkyCubeRate", Defaults.SkyCubeRate);
-
                 WaterEnabled = new BoolSetting("WaterEnabled", Defaults.WaterEnabled);
                 WaterBrightness = new FloatSetting("WaterBrightness", Defaults.WaterBrightness);
                 WaterRealSky = new BoolSetting("WaterRealSky", Defaults.WaterRealSky);
@@ -403,11 +407,17 @@ namespace RealGlass
                 WaterCityNight = new FloatSetting("WaterCityNight", Defaults.WaterCityNight);
                 WaterCityBlur = new FloatSetting("WaterCityBlur", Defaults.WaterCityBlur);
                 WaterCityStreaks = new FloatSetting("WaterCityStreaks", Defaults.WaterCityStreaks);
+                WaterCityLength = new FloatSetting("WaterCityLength", Defaults.WaterCityLength);
 
                 Language = new IntSetting("Language", Defaults.Language);
                 PanelKey = new SavedInputKey("PanelKey", InMemory, DefaultPanelKey, false);
                 PickerKey = new SavedInputKey("PickerKey", InMemory, DefaultPickerKey, false);
                 UseUnifiedUI = new BoolSetting("UseUnifiedUI", Defaults.UseUnifiedUI);
+
+                GlassDistance = new IntSetting("GlassDistance", Defaults.GlassDistance);
+                SkyCubeSize = new IntSetting("SkyCubeSize", Defaults.SkyCubeSize);
+                SkyCubeRate = new IntSetting("SkyCubeRate", Defaults.SkyCubeRate);
+
                 DetailedLogging = new BoolSetting("DetailedLogging", Defaults.DetailedLogging);
 
                 HudButtonX = new FloatSetting("HudButtonX", Defaults.HudButtonX);

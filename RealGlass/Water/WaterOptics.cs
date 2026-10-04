@@ -17,6 +17,9 @@ namespace RealGlass.Water
     ///   projected area towards the eye. 2% looking down, about half toward the horizon.
     /// - THE CITY'S STREAKS: a facet tilted by a in the plane of the view turns the reflected ray by
     ///   2a in height, so the waves stretch a reflection up and down by <see cref="Spread"/>.
+    /// - THE REFLECTION'S LENGTH (<see cref="MirrorSlope"/>): the mod's own stretch, not a model --
+    ///   the city's reflection drawn longer than the city is tall, as reflections on open water look
+    ///   drawn out toward the viewer (the author, 2026-10-04).
     /// </remarks>
     public static class WaterOptics
     {
@@ -161,6 +164,18 @@ namespace RealGlass.Water
             double streak = Math.Max(0.0, streaks) * spread * perRadian;
             across = round / Math.Max(aspect, 1e-3);
             up = Math.Sqrt(round * round + streak * streak);
+        }
+
+        /// <summary>
+        /// The slope (rise over run) of the ray the city's reflection follows from water seen at
+        /// <paramref name="viewSlope"/> below the level: the mirror's, divided by the Length slider (1 =
+        /// a mirror; less is taken as 1). Water seen at slope s then shows what stands at s / length
+        /// above it, so everything is reflected length times as far below the level (in slope) as it
+        /// stands above it: a tower's reflection is length times as long, its foot where it was.
+        /// </summary>
+        public static double MirrorSlope(double viewSlope, double length)
+        {
+            return viewSlope / Math.Max(1.0, length);
         }
 
         /// <summary>By day 1, by night 0, smooth through dusk: the glass's daylight (GlassUniforms), from the sun's height (y of the unit vector to it).</summary>

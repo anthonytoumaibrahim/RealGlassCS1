@@ -612,6 +612,10 @@ Check "blur 100%, no streaks: 0.5% of the height, round" ("{0:F6} {1:F6}" -f $ac
 $optics::BlurSigmas(0.0, 1.0, 0.1, 90.0, 1.0, [ref]$across, [ref]$up)
 Check "streaks only: up and down only, the spread over the view (fov 90: 0.05 uv)" ("{0:F6} {1:F6}" -f $across, $up) ("{0:F6} {1:F6}" -f 0.0, 0.05)
 Check "the city's streaks: 2 x the slope in one plane" ("{0:F6}" -f $optics::Spread(0.02)) ("{0:F6}" -f 0.2)
+Check "the reflection's length 150%: the ray's slope 2/3 of the mirror's" ("{0:F6}" -f $optics::MirrorSlope(0.3, 1.5)) ("{0:F6}" -f 0.2)
+Check "  length 100%: the mirror" ("{0:F6}" -f $optics::MirrorSlope(0.3, 1.0)) ("{0:F6}" -f 0.3)
+Check "  below 100% (or unset, 0): read as the mirror" ("{0:F6}" -f $optics::MirrorSlope(0.3, 0.0)) ("{0:F6}" -f 0.3)
+Check "the streaks' default is 1%, the length's 100%" ("{0} {1}" -f (Default 'WaterCityStreaks'), (Default 'WaterCityLength')) "0.01 1"
 
 $r = 1.2; $g = 1.1; $b = 1.0
 $optics::FloorLight([ref]$r, [ref]$g, [ref]$b)

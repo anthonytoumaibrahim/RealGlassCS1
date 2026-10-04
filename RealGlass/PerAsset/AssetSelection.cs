@@ -6,7 +6,7 @@ using UnityEngine;
 namespace RealGlass.PerAsset
 {
     /// <summary>
-    /// The building asset the F8 panel's Asset tab is about: picked by clicking one of its copies
+    /// The building asset the building window (UI.AssetPanel) is about: picked by clicking one of its copies
     /// (<see cref="AssetPicker"/>). A building of a complex picks its main building's asset -- what
     /// the glass of the whole complex follows (AssetMap).
     /// </summary>
@@ -113,7 +113,10 @@ namespace RealGlass.PerAsset
             Store(new AssetRecord(Info.name), "back to the global settings");
         }
 
-        /// <summary>The status line of the Asset tab, kept current (the copies are recounted now and then).</summary>
+        /// <summary>
+        /// The building window's status line, kept current (the copies are recounted now and then).
+        /// The asset's name is the window's title.
+        /// </summary>
         public static string StatusText()
         {
             if (Info == null)
@@ -128,7 +131,7 @@ namespace RealGlass.PerAsset
                 Copies = AssetMap.CountCopies(Info);
             }
 
-            return Localization.Get(Record != null ? "Asset.Own" : "Asset.Global", Title, Copies);
+            return Localization.Get(Record != null ? "Asset.Own" : "Asset.Global", Copies);
         }
 
         /// <summary>The asset's title as the game shows it; its name where it has none.</summary>
