@@ -24,9 +24,9 @@ The mod's options page (Options → Real Glass) holds the keys and the [b]Render
 [hr][/hr]
 [h1]Features[/h1]
 [list]
-[*][b]Glass[/b]: customizable color and reflection intensity. You can also retain a building's details under the glass, or reduce the glass opacity.
-[*][b]Per-building customization[/b] (press Alt+G): useful in instances where the asset textures
-[*][b]Better Water[/b] (press Alt+G): useful in instances where the asset textures
+[*][b]Glass[/b]: customizable color and reflection intensity. You can also retain a building's details under the glass, or reduce the glass opacity. These are global settings which can be overwritten per building.
+[*][b]Per-building customization[/b] (press Alt+G)
+[*][b]Water Reflections[/b]
 [/list]
 
 [hr][/hr]
@@ -35,20 +35,30 @@ Works with (most) vanilla and custom building asset. No conflicts found with Ren
 
 [hr][/hr]
 [h1]For asset creators[/h1]
-Anything 70% (default value) or brighter in your specular map is glass, so keep shiny metal below that, and give your own LOD textures a specular too. Check it in the Asset Editor with [i]Show what counts as glass[/i] (Glass tab).
+Anything 70% (default value) or brighter in your specular map is glass, so keep any other specular below that, and give your own LOD textures a specular too. Check it in the Asset Editor with [i]Show what counts as glass[/i] (Glass tab).
 
 [hr][/hr]
 [h1]Known issues / limitations[/h1]
 [list]
-[*][b]Glass flickering[/b]: this happens due to using TAA.
-[*][b]Reflections are not accurate:[/b] this uses SSR, ray tracing is not supported by the game to provide accurate reflections.
+[*][b]Glass flickering[/b]: this happens due to using TAA. If it's too distracting, try changing your anti-aliasing method.
+[*][b]Reflections are not accurate:[/b] this uses SSR which is approximate, ray tracing is not supported by the game to provide accurate reflections.
+[*][b]Some distant buildings are showing glass in the wrong places:[/b] unfortunately this is not within my control; some buildings don't have proper specular textures for LODs.
 [/list]
 
 [hr][/hr]
 [h1]Source code[/h1]
 Open source (MIT) on [url=https://github.com/anthonytoumaibrahim/RealGlassCS1]GitHub[/url]. Includes UnifiedUILib by kianzarrin and CitiesHarmony.API by boformer, thanks to both.
 This mod was made with substantial help from AI. I set the goals, made the design decisions, and did all of the in-game testing and tuning.
+[h3][url=https://github.com/anthonytoumaibrahim/RealGlassCS1]Open on GitHub[/url][/h3]
 
 [hr][/hr]
 [h1]Reporting a bug[/h1]
-Tick [i]Detailed logging[/i] (Options → Real Glass), make the problem happen again, then post [i]RealGlass.log[/i] (in [i]%LOCALAPPDATA%\Colossal Order\Cities_Skylines[/i]), the game's [i]output_log.txt[/i] and a screenshot in the comments. Both logs reset at every launch.
+Please include the following:
+[olist]
+[*][b]The game's log[/b], [i]output_log.txt[/i]. In Steam, right-click Cities: Skylines → [i]Manage → Browse local files[/i], then open the [i]Cities_Data[/i] folder. On a Mac it is [i]~/Library/Logs/Unity/Player.log[/i], on Linux [i]~/.config/unity3d/Colossal Order/Cities_Skylines/Player.log[/i].
+[*][b]The mod's own log[/b], [i]RealGlass.log[/i]. Tick [i]Detailed logging[/i] (Options → Real Glass) first, then make the problem happen again. To find it, paste this into File Explorer's address bar:
+[code]%LOCALAPPDATA%\Colossal Order\Cities_Skylines[/code]
+On a Mac it is in [i]~/Library/Application Support/Colossal Order/Cities_Skylines[/i], on Linux in [i]~/.local/share/Colossal Order/Cities_Skylines[/i].
+[*][b]What happened[/b]: what you did and expected, screenshots, your graphics card and your other mods.
+[/olist]
+Both logs start fresh at every launch, so copy them before restarting, upload them (Google Drive, Pastebin...) and post the link in the comments.

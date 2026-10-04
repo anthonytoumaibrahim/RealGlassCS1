@@ -74,11 +74,11 @@ namespace RealGlass.PerAsset
                 // The global row's choices, in its order (SettingsCatalog): Custom last.
                 ChoiceKeys = new[]
                 {
-                    "GlassPreset.SilverReflective", "GlassPreset.ReflectiveBlue", "GlassPreset.OceanBlue", "GlassPreset.AquaBlue",
+                    "GlassPreset.ReflectiveBlue", "GlassPreset.SilverReflective", "GlassPreset.OceanBlue", "GlassPreset.AquaBlue",
                     "GlassPreset.SkyBlue", "GlassPreset.Green", "GlassPreset.Bronze", "GlassPreset.Grey", "GlassPreset.ClearLowE",
                     "GlassPreset.GoldReflective", "GlassPreset.Custom",
                 },
-                ChoiceValues = new[] { 8, 10, 3, 2, 4, 5, 6, 7, 1, 9, 0 },
+                ChoiceValues = new[] { 10, 8, 3, 2, 4, 5, 6, 7, 1, 9, 0 },
                 Enabled = Editable,
                 Overridden = () => Has(r => r.Preset.HasValue || r.Colour.HasValue || r.Reflectivity.HasValue || r.Clarity.HasValue),
                 ClearOverride = () => Change(r =>

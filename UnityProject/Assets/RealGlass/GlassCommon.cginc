@@ -43,7 +43,7 @@ float4 _RGGlass2;     // x silvery edge-on 0..1, y painted detail kept 0..1, z h
 float4 _RGColorMap;   // xy the game's object colour map (width, height): where a building's colour index points
 float4 _RGFinished;   // x 1 while _RGSceneFinished holds last frame's finished picture
 float4 _RGTint;       // rgb glass tint (linear, brightest channel 1), a own-colour mix 0..1
-float4 _RGMask;       // x shininess threshold, y night-window weight, z show mask (1), w coat tint mix
+float4 _RGMask;       // x shininess threshold, y night-window weight, z show mask (1), w -
 float4 _RGRefl;       // x reflection brightness, y roughness 0..1, z sun glint, w screen-edge fade 0..0.5
 float4 _RGTrace;      // x trace on (1), y max steps, z stride (px), w thickness scale
 float4 _RGFill;       // x off-screen fill (0 mirrored screen, 1 city colour, 2 sky), y ground level (world y), z cube mips, w -

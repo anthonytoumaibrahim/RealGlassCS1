@@ -20,9 +20,6 @@ namespace RealGlass.Glass
         public const float RollerAt100 = 0.00006f; // m, half the peak-to-valley of a roller wave
         public const float RollerLength = 0.35f;   // m, the furnace's roller pitch
 
-        /// <summary>How much of the glass colour the reflection takes (a coating reflects tinted).</summary>
-        public const float CoatTint = 0.6f;
-
         /// <summary>
         /// The inside of a building seen through the glass by day, as a share of the sky's light: dark
         /// -- indoor light is a few percent of daylight. 10% is where the author had the rooms by day
@@ -128,7 +125,7 @@ namespace RealGlass.Glass
 
             Shader.SetGlobalVector(_glass, new Vector4(p.Reflectivity, p.Glancing, p.Clarity, p.Enabled ? p.Strength : 0f));
             Shader.SetGlobalVector(_tint, new Vector4(tint.x, tint.y, tint.z, p.OwnColour));
-            Shader.SetGlobalVector(_mask, new Vector4(p.Threshold, p.NightWindows ? 1f : 0f, p.ShowMask ? 1f : 0f, CoatTint));
+            Shader.SetGlobalVector(_mask, new Vector4(p.Threshold, p.NightWindows ? 1f : 0f, p.ShowMask ? 1f : 0f, 0f));
             Shader.SetGlobalVector(_refl, new Vector4(p.ReflectionBrightness, rough, p.SunGlint, Mathf.Max(p.EdgeFade, 0.001f)));
             Shader.SetGlobalVector(_trace, new Vector4(p.Trace ? 1f : 0f, StepCount(p.Quality), Stride(p.Quality, f.ScreenHeight), 1f));
             Shader.SetGlobalVector(_fill, new Vector4(p.OffscreenFill, f.GroundY, Mathf.Max(f.CubeMips - 1, 0), 0f));

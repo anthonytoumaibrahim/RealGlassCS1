@@ -26,10 +26,10 @@ that repo's `docs/RELEASE-CHECKLIST.md` has the long version.
       patch) renames the game's `Update()` methods to `FpsBoosterUpdate`, so the patch could not
       find its target and wrote a WARN and an ERROR to every player's log who runs it. The game
       binds no F key but F1, F7 and F12; the sister mods have F3, F4, F6.
-- [x] Defaults = the author's settings of 2026-09-29: Silver reflective (#A9B4BA, 35% / 20%;
-      "I love the silver look", the evening session -- Reflective blue until then), reflection
+- [x] Defaults = the author's settings of 2026-09-29, the glass changed 2026-10-04: Reflective
+      blue (#2E6A80, 20% / 24%; Silver reflective 2026-09-29..10-04), reflection
       brightness 55%, cushioned panes, pane tilt and ripple 150%. Detailed logging stays off.
-      The "Kind of glass" row lists Silver reflective first (the default first, Custom last).
+      The "Kind of glass" row lists Reflective blue first (the default first, Custom last).
 - [x] `Mod.Version` 1.0.0.
 - [x] Tests: `tools\test-settings.ps1` and `tools\test-localization.ps1` pass; the three shader
       bundles carry real code for every API (`tools\bundle-apis.ps1`: D3D11 + OpenGL Core, OpenGL

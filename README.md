@@ -18,7 +18,7 @@ but untested.
 Open the panel with **F8** (or its Unified UI button). Everything about the look is there, on
 four tabs:
 
-- **Glass** -- the kind of glass (silver reflective, the default; reflective blue, ocean blue, aqua
+- **Glass** -- the kind of glass (reflective blue, the default; silver reflective, ocean blue, aqua
   blue, sky blue, green, bronze, grey, clear low-E, gold reflective: real products' tints,
   reflectance and transmittance), or your own colour;
   how much of the building's own painted colour to keep; how much it reflects head-on and at an
@@ -83,6 +83,10 @@ the log is `RealGlass.log`, next to it.
 - **Fresnel**: glass reflects little straight on and nearly everything edge-on (Schlick's
   approximation), capped by a setting, because a city-builder camera sees facades edge-on. The
   rise is the same for every colour, so a coated pane's tint gives way to silver edge-on.
+- **The glass's colour in what it mirrors**: a tinted tower's reflective coating sits behind its
+  tinted pane, so the sky and the city it mirrors come back through the tint twice, and only the
+  outer surface's own 4% comes back untinted -- bronze glass mirrors a bronze sky, as real bronze
+  towers do, from above and from the street.
 - **Behind the glass**: by day, the dark inside of a building -- indoor light is a few percent of
   daylight -- seen through the glass's colour and clarity: the glass's own shade, with the
   reflections on top. By night, each window exactly as the game draws it: which windows are lit,
@@ -130,6 +134,12 @@ Every technique here has shipped in a game or is published:
    Solarcool Reflective Glasses*, product data sheet, 2017
    ([PDF](https://www.vitroglazings.com/media/ljwdoown/vitro_vc-sc_datasheet_20981vitro7161_feb2017_1.pdf)),
    and [its blue-green tinted glasses](https://www.vitroglazings.com/media/eshbl2wn/vitro-blue-green-datasheet.pdf).
+   The colour of a coated, tinted lite's reflection -- the coating's share through the tint
+   twice, the outer surface's 4% untinted -- is the reflectance of a lite with a coating on its
+   inner face as the glazing standards work it out: **EN 410**, *Glass in building --
+   Determination of luminous and solar characteristics of glazing*, and **ISO 9050**, *Glass in
+   building -- Determination of light transmittance, solar direct transmittance, total solar
+   energy transmittance, ultraviolet transmittance and related glazing factors*.
 7. Why real facades warp reflections: insulating glass units "pillow" with pressure and
    temperature ([research](https://www.researchgate.net/publication/335891891)); heat-treated
    glass carries roller wave distortion ([Lerch Bates](https://www.lerchbates.com/news/minimizing-roller-wave-distortion-in-heat-treated-glass/),

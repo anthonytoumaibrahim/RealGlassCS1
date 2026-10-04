@@ -268,7 +268,7 @@ $presetValues = @()
 if ($catalog -match 'Int = Settings\.GlassPreset,[\s\S]*?ChoiceValues = new\[\] \{([^}]*)\}') {
     $presetValues = @($Matches[1] -split ',' | ForEach-Object { [int]$_.Trim() })
 }
-Check "the GlassPreset row offers every preset and Custom, the default first, Custom last" (($presetValues | ForEach-Object { "$_" }) -join ",") "8,10,3,2,4,5,6,7,1,9,0"
+Check "the GlassPreset row offers every preset and Custom, the default first, Custom last" (($presetValues | ForEach-Object { "$_" }) -join ",") "10,8,3,2,4,5,6,7,1,9,0"
 Check "  every preset value once" (($presetValues | Sort-Object | ForEach-Object { "$_" }) -join ",") "0,1,2,3,4,5,6,7,8,9,10"
 
 $bad = @()

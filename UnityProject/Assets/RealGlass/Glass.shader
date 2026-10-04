@@ -391,10 +391,18 @@ Shader "RealGlass/Glass"
                 float wall = lines * detailKept;
                 if (_RGDebug.x > 9.5 && _RGDebug.x < 10.5)
                     return float4(lerp(float3(0.05, 0.15, 0.6), float3(1.0, 0.85, 0.2), lines), 1.0);   // 10: the painted lines (yellow) on the glass (blue)
-                float3 filter = lerp(float3(1.0, 1.0, 1.0), tint, 0.6);
-                filter /= max(Luma(filter), 0.05);
-                float3 coat = lerp(float3(1.0, 1.0, 1.0), tint, _RGMask.w);
-                coat /= max(Luma(coat), 0.05);
+                // Through the glass the light takes its colour once. The reflection, twice: a
+                // reflective coating sits behind the tinted lite (Solarcool on the second surface,
+                // every tinted preset), so what it mirrors crosses the tint going in and coming
+                // out; only the outer surface's own 4% comes back untinted (EN 410 / ISO 9050's
+                // reflectance of a coated lite). With the colour at 60% and once, a blue sky
+                // outweighed it: bronze glass mirrored a blue-grey sky (2026-10-04).
+                float3 filter = tint / max(Luma(tint), 0.05);
+                float3 twice = tint * tint;
+                twice /= max(Luma(twice), 0.05);
+                float outer = saturate(0.04 / max(F0, 1e-4));
+                // coat = the head-on reflectance's colour (F0 x coat), no channel above 1.
+                float3 coat = min(outer + (1.0 - outer) * twice, 1.0 / max(F0, 1e-4));
 
                 float2 paneCell;
                 float3 np = PaneNormal(n, t, P, baseY, footprint, painted, paneCell);
@@ -542,7 +550,7 @@ Shader "RealGlass/Glass"
                 // brightly and in what colour is each asset's own night texture and the game's
                 // timing -- nothing of ours. The reflections go on top either way.
                 float daylight = _RGLight.x;
-                float3 through = (clarity * filter) * (1.0 - Fs);
+                float3 through = min(clarity * filter, 1.0) * (1.0 - Fs);
                 float3 inside = _RGAmbSky.rgb * _RGLight.y * through;
 
                 // The asset's painted lines (PaintedWall): the glass steps aside there and the

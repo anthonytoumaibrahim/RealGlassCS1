@@ -127,7 +127,8 @@ as Unreal's Sky Light does, a top-down height map of the city round the view wal
 rays (as CRYENGINE's height-map ambient occlusion and Unreal's heightfield sky occlusion read
 such maps; Amanatides and Woo's grid traversal, 1987), specular anti-aliasing (Kaplanyan et al.
 2016, Tokuyoshi and Kaplanyan 2019, with Filament's documented constants), Schlick's Fresnel
-approximation, glass makers' published transmittance and reflectance, the physics of
+approximation, glass makers' published transmittance and reflectance, a coated tinted lite's
+reflectance as EN 410 / ISO 9050 work it out (the tint crossed twice), the physics of
 insulating-glass pillowing and roller-wave distortion, unsharp masking (Schreiber 1970) over
 a mipmap level (Williams 1983) for the painted detail it keeps, and an anti-aliased glass edge
 (RenderMan's filterstep, Apodaca and Gritz 1999; Golus 2017; Direct3D 11's standard 4x sample
