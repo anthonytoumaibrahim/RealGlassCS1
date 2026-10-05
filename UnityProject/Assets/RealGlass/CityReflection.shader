@@ -192,13 +192,13 @@ Shader "RealGlass/CityReflection"
         }
 
         float3 at = Project(p + r * hi);
-        float fade = saturate(min(min(at.x, 1.0 - at.x), min(at.y, 1.0 - at.y)) / _RGWaterMarch.z);
+        float fade = saturate(min(min(at.x, 1.0 - at.x), min(at.y, 1.0 - at.y)) / max(_RGWaterMarch.z, 1e-4));
         fade *= 1.0 - smoothstep(0.7 * tMax, tMax, hi);
 
-        float3 c = tex2Dlod(_RGWaterFrame, float4(at.xy, 0.0, 0.0)).rgb;
+        float3 c = Finite(tex2Dlod(_RGWaterFrame, float4(at.xy, 0.0, 0.0)).rgb);
         if (_RGWaterGeom.z > 0.0)
             c -= _RGWaterGeom.z * RGSkyLight(texCUBElod(_RGWaterTheme, float4(mirror, _RGWaterGeom.w)).rgb * _RGWaterLight.rgb, mirror);
-        return float4(c * (k * fade), 1.0);
+        return float4(FiniteSigned(c * (k * fade)), 1.0);
     }
 
     // One direction of the Gaussian: 2 x RG_BLUR + 1 taps over +-3 sigma, from the mip whose texels
@@ -243,10 +243,10 @@ Shader "RealGlass/CityReflection"
         float4 c = tex2Dlod(_RGWaterBlurred, float4(uv, 0.0, 0.0));
         if (c.a <= 1e-3)
             return float4(0.0, 0.0, 0.0, 0.0);
-        float3 added = c.rgb / c.a;
+        float3 added = FiniteSigned(c.rgb / c.a);
 
         // Never below black (by day a dark building over a bright sky takes light away).
-        float3 base = tex2Dlod(_RGWaterFrame, float4(uv, 0.0, 0.0)).rgb;
+        float3 base = Finite(tex2Dlod(_RGWaterFrame, float4(uv, 0.0, 0.0)).rgb);
         return float4(max(added, -0.98 * base), 0.0);
     }
     ENDCG

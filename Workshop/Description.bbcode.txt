@@ -1,6 +1,8 @@
 Breathe life into your city's skyscrapers -- especially the ugly vanilla ones.
 Adds a glass shader on all buildings with [b]screen space reflections (SSR)[/b] of the city around them and a live sky (reflecting the clouds in [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3805863507]Volumetric Weather[/url]).
-Tested only on my Windows 11 PC and Macbook. If anything looks wrong or runs badly, let me know in the comments.
+Tested on my Windows 11 PC and an M1 MacBook. Not tested on Linux. If anything looks wrong or runs badly, let me know in the comments.
+
+[b]Mac users:[/b] on my MacBook the glass sometimes flickers for a moment back to the game's own glass, then returns. It's rare and harmless, but I couldn't find the cause yet. If you see it, please report it with your logs (see [i]Reporting a bug[/i] below).
 
 [hr][/hr]
 [h1]How to use[/h1]
@@ -40,6 +42,7 @@ Anything 70% (default value) or brighter in your specular map is glass, so keep 
 [hr][/hr]
 [h1]Known issues / limitations[/h1]
 [list]
+[*][b]Glass briefly disappearing on Mac[/b]: all the glass can flicker back to the game's own glass for a moment. Under investigation.
 [*][b]Glass flickering[/b]: this happens due to using TAA. If it's too distracting, try changing your anti-aliasing method.
 [*][b]Reflections are not accurate:[/b] this uses SSR which is approximate, ray tracing is not supported by the game to provide accurate reflections.
 [*][b]Some distant buildings are showing glass in the wrong places:[/b] unfortunately this is not within my control; some buildings don't have proper specular textures for LODs.

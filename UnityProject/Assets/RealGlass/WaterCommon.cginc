@@ -2,6 +2,8 @@
 #ifndef RG_WATER_COMMON
 #define RG_WATER_COMMON
 
+#include "Finite.cginc"   // what the water adds to the frame is a number, on every API
+
 // The rough sea's reflectance of the sky (Cox & Munk slopes, Schlick's Fresnel for water): entry i
 // at x = i / 32, mu = x^2, mu the sine of how far below the level one looks. x: rho.
 float4 _RGSeaTable[33];

@@ -22,16 +22,9 @@ Shader "RealGlass/GlassUtil"
 
     CGINCLUDE
     #include "UnityCG.cginc"
+    #include "Finite.cginc"   // Finite: NaN and negatives to 0, infinities to 1000, on every API
 
     sampler2D _MainTex;
-
-    // NaN and negatives to 0, infinities to a ceiling no light in the game comes near. Exact on
-    // Direct3D 11, whose min and max return the other operand for a NaN (IEEE 754-2008 minNum /
-    // maxNum); what GPUs do elsewhere.
-    float3 Finite(float3 c)
-    {
-        return min(max(c, 0.0), 1000.0);
-    }
     ENDCG
 
     SubShader
@@ -107,7 +100,7 @@ Shader "RealGlass/GlassUtil"
             float4 frag(v2f_img i) : SV_Target
             {
                 float d = LinearEyeDepth(SAMPLE_DEPTH_TEXTURE_LOD(_CameraDepthTexture, float4(i.uv, 0.0, 0.0)));
-                d = min(max(d, 0.0), 60000.0);
+                d = FiniteIn(d, 0.0, 60000.0);
                 return float4(d, d, 0.0, 0.0);
             }
             ENDCG

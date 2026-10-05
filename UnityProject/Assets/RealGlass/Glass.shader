@@ -355,7 +355,7 @@ Shader "RealGlass/Glass"
 
                 float3 P = i.worldPos.xyz;
                 float baseY = i.worldPos.w;
-                float3 n = normalize(i.worldNormal.xyz);
+                float3 n = SafeNormalize(i.worldNormal.xyz, float3(0.0, 1.0, 0.0));   // a degenerate mesh normal
                 float3 toP = P - _WorldSpaceCameraPos;
                 float dist = length(toP);
                 float3 V = toP / max(dist, 1e-3);
@@ -425,7 +425,7 @@ Shader "RealGlass/Glass"
                 rough = sqrt(sqrt(saturate(alpha * alpha + kernel)));
 
                 float2 suv = i.screenPos.xy / i.screenPos.w;
-                float3 gamePixel = tex2Dlod(_RGScene, float4(suv, 0.0, 0.0)).rgb;
+                float3 gamePixel = Finite(tex2Dlod(_RGScene, float4(suv, 0.0, 0.0)).rgb);
 
                 // What the glass reflects: the screen where the ray finds something, else the
                 // ground at the building's feet (below the horizon) or the sky.
@@ -455,7 +455,7 @@ Shader "RealGlass/Glass"
                         // haze), blurred; the city's average where it is off screen.
                         bool finishedPicture = _RGFinished.x > 0.5;
                         float2 hitScreen;
-                        float3 seen = tex2Dlod(_RGCity, float4(0.5, 0.5, 0.0, 0.0)).rgb;
+                        float3 seen = CityColour();
                         if (ScreenUV(hitPoint, finishedPicture, hitScreen) && all(hitScreen > 0.0) && all(hitScreen < 1.0))
                             seen = MirroredPicture(hitScreen, 2.5 + rough * 3.0, finishedPicture);
                         fallback = NeighbourRadiance(hitPoint, R, hitN, span, rough, seen);
@@ -566,7 +566,11 @@ Shader "RealGlass/Glass"
                          + lerp(gamePixel, inside, daylight)
                          + SunGlint(np, V, Fs, rough) * (F / max(Fs, 1e-4));
 
-                return float4(L, coverage);
+                // The last guard, on every API (Finite.cginc): whatever slipped through, the pixel
+                // is light that is a number, and a coverage that is not one is none -- the game's
+                // own glass shows there instead of a NaN reaching the frame (and, through the
+                // finished picture, next frame's reflections).
+                return float4(Finite(L), FiniteAlpha(coverage));
             }
             ENDCG
         }

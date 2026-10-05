@@ -9,6 +9,8 @@
 #   ... -Variants "vanilla|glass|glass:Trace=0"         one column each; "glass:" takes GlassParams
 #                                                       overrides (Field=value;Field=value)
 #   ... -Width 640 -Height 360 -Sun 1.3 -Exposure 0.6 -Name sheet
+#   ... -Api glcore                                     the OpenGL Core shaders (Linux's, and the Mac's
+#                                                       fallback) on this GPU instead of Direct3D 11
 
 param(
     [int]$Width = 480,
@@ -18,6 +20,8 @@ param(
     [double]$Sun = 2.7,
     [double]$Exposure = 0.4,
     [string]$Name = "gpu",
+    [ValidateSet("d3d11", "glcore")]
+    [string]$Api = "d3d11",
     [string]$Unity = "C:\Program Files\Unity\Editor\Unity.exe"
 )
 
@@ -47,11 +51,13 @@ $env:RG_EXPOSURE = $Exposure.ToString($inv)
 
 if (Test-Path $log) { Remove-Item $log -Force }
 $sw = [Diagnostics.Stopwatch]::StartNew()
-$p = Start-Process -FilePath $Unity -WindowStyle Hidden -Wait -PassThru -ArgumentList @(
+$unityArgs = @(
     "-batchmode", "-quit",
     "-projectPath", "`"$project`"",
     "-executeMethod", "GlassPreview.Render",
     "-logFile", "`"$log`"")
+if ($Api -eq "glcore") { $unityArgs += "-force-glcore" }
+$p = Start-Process -FilePath $Unity -WindowStyle Hidden -Wait -PassThru -ArgumentList $unityArgs
 "Unity ran for $([int]$sw.Elapsed.TotalSeconds) s, exit code $($p.ExitCode)"
 
 $lines = Get-Content $log

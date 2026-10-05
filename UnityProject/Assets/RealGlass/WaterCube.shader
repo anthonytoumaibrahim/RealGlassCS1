@@ -57,7 +57,7 @@ Shader "RealGlass/WaterCube"
                 // In light (the theme's cube as the game lights it), then back to what the game lights.
                 float3 sky = RGSkyLight(theme * _RGWaterLight.rgb, d) / _RGWaterLight.rgb;
                 float rho = RGSeaRho(max(d.y, 0.0));
-                return float4(sky * (rho * _RGWaterGain.x), 1.0);
+                return float4(Finite(sky * (rho * _RGWaterGain.x)), 1.0);
             }
             ENDCG
         }

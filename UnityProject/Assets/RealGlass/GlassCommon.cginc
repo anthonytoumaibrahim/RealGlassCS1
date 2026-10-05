@@ -33,6 +33,7 @@
 #define REALGLASS_COMMON_INCLUDED
 
 #include "UnityCG.cginc"
+#include "Finite.cginc"   // Finite / FiniteAlpha / SafeNormalize / SafeDiv: no NaN on any API
 
 // ---------------------------------------------------------------------------------------------
 // Uniforms. GlassUniforms.cs is the one place that writes them.
@@ -243,7 +244,11 @@ float3 PaneNormal(float3 n, float3 t, float3 P, float baseY, float footprint, fl
 
 float3 GlassFresnel(float cosTheta, float F0, float3 coat, out float Fs)
 {
-    float f = pow(1.0 - saturate(cosTheta), 5.0);
+    // (1 - cos)^5 by products: pow is exp2(5 log2(x)), and log2(0) -- a pane seen exactly head-on
+    // -- is -inf, which fast math (Metal's default) need not carry through to 0.
+    float m = 1.0 - saturate(cosTheta);
+    float m2 = m * m;
+    float f = m2 * m2 * m;
     float Fmax = max(_RGGlass.y, F0);
     Fs = F0 + (Fmax - F0) * f;
     float3 physical = F0 * coat + (Fmax - F0 * coat) * f;
@@ -283,14 +288,15 @@ bool TraceScreenRay(float3 csOrig, float3 csDir, float jitter, out float2 hitUV,
     float maxDistance = 3000.0;
     float nearPlaneZ = -_ProjectionParams.y;
 
-    // Clip to the near plane.
+    // Clip to the near plane. (The divisions of both traces are kept off zero: an edge case's
+    // 0 / 0 is a NaN that fast math need not keep out of the min()s below.)
     float rayLength = ((csOrig.z + csDir.z * maxDistance) > nearPlaneZ) ?
-        (nearPlaneZ - csOrig.z) / csDir.z : maxDistance;
+        clamp(SafeDiv(nearPlaneZ - csOrig.z, csDir.z), 0.0, maxDistance) : maxDistance;
     float3 csEnd = csOrig + csDir * rayLength;
 
     float4 H0 = ToPixelH(csOrig);
     float4 H1 = ToPixelH(csEnd);
-    float k0 = 1.0 / H0.w, k1 = 1.0 / H1.w;
+    float k0 = 1.0 / max(H0.w, 1e-4), k1 = 1.0 / max(H1.w, 1e-4);
     float3 Q0 = csOrig * k0, Q1 = csEnd * k1;
     float2 P0 = H0.xy * k0, P1 = H1.xy * k1;
 
@@ -299,10 +305,10 @@ bool TraceScreenRay(float3 csOrig, float3 csDir, float jitter, out float2 hitUV,
     float2 lo = float2(0.5, 0.5), hi = _ScreenParams.xy - 0.5;
     float2 dP = P1 - P0;
     float alpha = 1.0;
-    if (P1.x > hi.x) alpha = min(alpha, (hi.x - P0.x) / dP.x);
-    if (P1.x < lo.x) alpha = min(alpha, (lo.x - P0.x) / dP.x);
-    if (P1.y > hi.y) alpha = min(alpha, (hi.y - P0.y) / dP.y);
-    if (P1.y < lo.y) alpha = min(alpha, (lo.y - P0.y) / dP.y);
+    if (P1.x > hi.x) alpha = min(alpha, SafeDiv(hi.x - P0.x, dP.x));
+    if (P1.x < lo.x) alpha = min(alpha, SafeDiv(lo.x - P0.x, dP.x));
+    if (P1.y > hi.y) alpha = min(alpha, SafeDiv(hi.y - P0.y, dP.y));
+    if (P1.y < lo.y) alpha = min(alpha, SafeDiv(lo.y - P0.y, dP.y));
     alpha = saturate(alpha);
     clipped = alpha < 0.999;
     P1 = lerp(P0, P1, alpha);
@@ -422,7 +428,7 @@ bool TraceHiZ(float3 csOrig, float3 csDir, float jitter, out float2 hitUV, out f
     float maxDistance = 3000.0;
     float nearPlaneZ = -_ProjectionParams.y;
     float rayLength = ((csOrig.z + csDir.z * maxDistance) > nearPlaneZ) ?
-        (nearPlaneZ - csOrig.z) / csDir.z : maxDistance;
+        clamp(SafeDiv(nearPlaneZ - csOrig.z, csDir.z), 0.0, maxDistance) : maxDistance;
     float3 csEnd = csOrig + csDir * rayLength;
 
     // The ray on screen in the pyramid's pixels, and 1 / eye depth along it (a perspective
@@ -430,17 +436,17 @@ bool TraceHiZ(float3 csOrig, float3 csDir, float jitter, out float2 hitUV, out f
     float2 toPyramid = _RGHiZInfo.yz / _ScreenParams.xy;
     float4 H0 = ToPixelH(csOrig);
     float4 H1 = ToPixelH(csEnd);
-    float k0 = 1.0 / H0.w, k1 = 1.0 / H1.w;
+    float k0 = 1.0 / max(H0.w, 1e-4), k1 = 1.0 / max(H1.w, 1e-4);
     float2 P0 = H0.xy * k0 * toPyramid, P1 = H1.xy * k1 * toPyramid;
 
     // Clipped to the screen, as the plain trace.
     float2 lo = float2(0.5, 0.5), hi = _RGHiZInfo.yz - 0.5;
     float2 dP = P1 - P0;
     float alpha = 1.0;
-    if (P1.x > hi.x) alpha = min(alpha, (hi.x - P0.x) / dP.x);
-    if (P1.x < lo.x) alpha = min(alpha, (lo.x - P0.x) / dP.x);
-    if (P1.y > hi.y) alpha = min(alpha, (hi.y - P0.y) / dP.y);
-    if (P1.y < lo.y) alpha = min(alpha, (lo.y - P0.y) / dP.y);
+    if (P1.x > hi.x) alpha = min(alpha, SafeDiv(hi.x - P0.x, dP.x));
+    if (P1.x < lo.x) alpha = min(alpha, SafeDiv(lo.x - P0.x, dP.x));
+    if (P1.y > hi.y) alpha = min(alpha, SafeDiv(hi.y - P0.y, dP.y));
+    if (P1.y < lo.y) alpha = min(alpha, SafeDiv(lo.y - P0.y, dP.y));
     alpha = saturate(alpha);
     bool leaves = alpha < 0.999;
     P1 = lerp(P0, P1, alpha);
@@ -488,14 +494,15 @@ bool TraceHiZ(float3 csOrig, float3 csDir, float jitter, out float2 hitUV, out f
         }
         else if (level > 0.5)
         {
+            // (A depth of 0 -- the pyramid's floor -- would be 1 / 0.)
             if (dk < 0.0 && zIn < range.x)
-                t = max(t, (1.0 / range.x - k0) / dk);
+                t = max(t, (1.0 / max(range.x, 1e-3) - k0) / dk);
             level -= 1.0;
         }
         else
         {
             hit = true;
-            tHit = abs(dk) > 1e-12 ? clamp((1.0 / range.x - k0) / dk, t, tOut) : t;
+            tHit = abs(dk) > 1e-12 ? clamp((1.0 / max(range.x, 1e-3) - k0) / dk, t, tOut) : t;
             break;
         }
     }
@@ -537,9 +544,18 @@ float2 MirrorUV(float2 uv)
     return 1.0 - m;
 }
 
+// Every picture the glass reads -- the sky cube (another camera's render, Volumetric Weather's
+// clouds in it), the copies, last frame's finished picture, the city colour -- is read through
+// Finite: a bad texel there stays one bad reflection, never a NaN in the glass.
 float3 SkyRadiance(float3 R, float roughness)
 {
-    return texCUBElod(_RGSky, float4(R, roughness * _RGFill.z)).rgb;
+    return Finite(texCUBElod(_RGSky, float4(R, roughness * _RGFill.z)).rgb);
+}
+
+// The city's average colour (1x1).
+float3 CityColour()
+{
+    return Finite(tex2Dlod(_RGCity, float4(0.5, 0.5, 0.0, 0.0)).rgb);
 }
 
 // Where a world point is on screen, in the convention the copies are read with: on this frame's
@@ -564,7 +580,7 @@ float3 MirroredPicture(float2 uv, float lod, bool finished)
         c = tex2Dlod(_RGSceneFinished, float4(uv, 0.0, lod)).rgb;
     else
         c = tex2Dlod(_RGScene, float4(uv, 0.0, lod)).rgb;
-    return c;
+    return Finite(c);
 }
 
 // Below the horizon and nothing hit: the ground at the building's feet, where the reflected ray
@@ -572,7 +588,7 @@ float3 MirroredPicture(float2 uv, float lod, bool finished)
 // is read there; off screen it is mirrored in (mode 0), or the city's average colour (mode 1).
 float3 GroundFill(float3 P, float3 R, float roughness, float groundY)
 {
-    float3 city = tex2Dlod(_RGCity, float4(0.5, 0.5, 0.0, 0.0)).rgb;
+    float3 city = CityColour();
     float3 result = city;
     if (_RGFill.x > 1.5)
     {
@@ -713,7 +729,7 @@ bool CityHit(float3 origin, float3 R, float ownId, float groundY, out float tHit
 // span: pixels a storey of it covers in the reflection -- under a couple, no bands.
 float3 NeighbourRadiance(float3 H, float3 R, float3 nb, float span, float roughness, float3 seen)
 {
-    float3 city = tex2Dlod(_RGCity, float4(0.5, 0.5, 0.0, 0.0)).rgb;
+    float3 city = CityColour();
     float detail = saturate(span * 0.5 - 0.5);
 
     float3 Rn = reflect(R, nb);
@@ -735,7 +751,7 @@ float3 SunGlint(float3 n, float3 V, float F, float roughness)
 {
     float3 L = _RGSunDir.xyz;
     float nl = saturate(dot(n, L));
-    float3 H = normalize(L - V);
+    float3 H = SafeNormalize(L - V, L);   // L = V: looking straight down the sun's own path
     float nh = saturate(dot(n, H));
     float nv = max(dot(n, -V), 0.05);
     float a = max(roughness * roughness, 0.0016);
