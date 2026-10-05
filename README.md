@@ -32,7 +32,7 @@ four tabs:
   cushioned (insulating glass bowing in or out), tilted, rippled (toughened glass); up close,
   fitted to the windows each building painted.
 - **Water** (off until switched on) -- the map's water: its brightness, the sky in it with real
-  water's reflectance, and the city in it, with its blur, its streaks and how long it is drawn.
+  water's reflectance, and the city in it, with its waves, its streaks and how long it is drawn.
 
 **Alt+G** turns the building picker on: click a building, and a small window of its own gives its
 asset its own glass.
@@ -77,9 +77,10 @@ the log is `RealGlass.log`, next to it.
   water's sky follows real water's reflectance instead -- about 2% looking straight down, about
   half toward the horizon, worked out for a breeze-roughened sea -- its colour can be made lighter
   or darker, and the city on screen is mirrored in it, by day and by night: each reflected ray
-  followed through the depth buffer from the flat sea, softened and stretched up and down by the
-  waves. Only the map's water and the game's own lighting of it are touched; buildings keep the
-  theme's sky.
+  followed through the depth buffer from a moving surface of small waves, so the reflection
+  wavers as real water's does, and stretched up and down by the waves too small to see. The
+  waves keep the game's own clock: they stop when the game is paused. Only the map's water and
+  the game's own lighting of it are touched; buildings keep the theme's sky.
 - **Fresnel**: glass reflects little straight on and nearly everything edge-on (Schlick's
   approximation), capped by a setting, because a city-builder camera sees facades edge-on. The
   rise is the same for every colour, so a coated pane's tint gives way to silver edge-on.
@@ -193,9 +194,15 @@ Every technique here has shipped in a game or is published:
     for a wind of U m/s); the sky's light reflected by such a sea, Curtis D. Mobley,
     **Estimation of the Remote-Sensing Reflectance from Above-Surface Measurements**, Applied
     Optics 38(36), 1999; Schlick's Fresnel (6) with water's index, 1.333. The city in the water
-    is traced through the depth buffer as in (3); its blur is a separable Gaussian weighted so
-    only water is averaged -- normalized convolution, Hans Knutsson and Carl-Fredrik Westin,
-    **Normalized and Differential Convolution**, CVPR 1993.
+    is traced through the depth buffer as in (3), from a surface of directional sine waves --
+    Mark Finch, **Effective Water Simulation from Physical Models**, GPU Gems (2004), chapter 1
+    ([online](https://developer.nvidia.com/gpugems/gpugems/part-i-natural-effects/chapter-1-effective-water-simulation-physical-models))
+    -- running at deep water's speeds, omega^2 = g k (Jerry Tessendorf, **Simulating Ocean
+    Water**, SIGGRAPH course notes, 2001), every octave of wavelength with the same slope as in
+    the equilibrium range (O. M. Phillips, **The equilibrium range in the spectrum of
+    wind-generated waves**, Journal of Fluid Mechanics 4(4), 1958); its streaks are a Gaussian up
+    and down weighted so only water is averaged -- normalized convolution, Hans Knutsson and
+    Carl-Fredrik Westin, **Normalized and Differential Convolution**, CVPR 1993.
 
 ## Building
 

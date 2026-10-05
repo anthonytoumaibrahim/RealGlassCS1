@@ -606,12 +606,37 @@ Check "  and a negative slider is none" $optics::CubeGain(-1.0) 0
 Check "daylight: night below -0.10" $optics::Daylight(-0.2) 0
 Check "  day above 0.10" $optics::Daylight(0.2) 1
 Check "  half at the horizon" $optics::Daylight(0.0) 0.5
-$across = 0.0; $up = 0.0
-$optics::BlurSigmas(1.0, 0.0, 0.1, 45.0, 16.0 / 9.0, [ref]$across, [ref]$up)
-Check "blur 100%, no streaks: 0.5% of the height, round" ("{0:F6} {1:F6}" -f $across, $up) ("{0:F6} {1:F6}" -f (0.005 * 9.0 / 16.0), 0.005)
-$optics::BlurSigmas(0.0, 1.0, 0.1, 90.0, 1.0, [ref]$across, [ref]$up)
-Check "streaks only: up and down only, the spread over the view (fov 90: 0.05 uv)" ("{0:F6} {1:F6}" -f $across, $up) ("{0:F6} {1:F6}" -f 0.0, 0.05)
+Check "streaks 100%: the spread over the view (fov 90: 0.05 uv)" ("{0:F6}" -f $optics::StreakSigma(1.0, 0.1, 90.0)) ("{0:F6}" -f 0.05)
+Check "  a negative slider is none" $optics::StreakSigma(-1.0, 0.1, 90.0) 0
 Check "the city's streaks: 2 x the slope in one plane" ("{0:F6}" -f $optics::Spread(0.02)) ("{0:F6}" -f 0.2)
+
+# The waves that bend the city's reflection: 16, 12 m down to 0.4 m in equal ratios, round the
+# heading, deep water's speeds in whole cycles an hour, the slopes' mean square the target.
+$waves = $optics::Waves()
+$n = $optics::WaveCount; $stride = $optics::WaveStride
+Check "the waves: 16 of them, 8 numbers each" $waves.Length ($n * $stride)
+$meanSquare = 0.0; $badLength = 0; $badDir = 0; $badSpeed = 0; $badWhole = 0; $badPhase = 0
+for ($i = 0; $i -lt $n; $i++) {
+    $at = $i * $stride
+    $kx = $waves[$at]; $kz = $waves[$at + 1]; $perHour = $waves[$at + 2]; $s = $waves[$at + 3]; $phase = $waves[$at + 4]; $len = $waves[$at + 5]
+    $meanSquare += $s * $s / 2.0
+    $want = 12.0 * [Math]::Pow(0.4 / 12.0, $i / 15.0)
+    if ([Math]::Abs($len - $want) -gt 1e-9 * $want) { $badLength++ }
+    if ([Math]::Abs([Math]::Sqrt($kx * $kx + $kz * $kz) * $len - 1.0) -gt 1e-9) { $badLength++ }
+    $heading = [Math]::Atan2($kz, $kx) * 180.0 / [Math]::PI
+    if ([Math]::Abs($heading - 30.0) -gt 70.0 + 1e-9) { $badDir++ }
+    $omega = [Math]::Sqrt(9.81 * 2.0 * [Math]::PI / $len)
+    if ([Math]::Abs($perHour * 2.0 * [Math]::PI / 3600.0 / $omega - 1.0) -gt 0.001) { $badSpeed++ }
+    if ($perHour -ne [Math]::Round($perHour)) { $badWhole++ }
+    if ($phase -lt 0.0 -or $phase -ge 1.0) { $badPhase++ }
+}
+Check "  wavelengths 12 m to 0.4 m, wave vectors 1 / wavelength" $badLength 0
+Check "  every direction within 70 deg of the heading" $badDir 0
+Check "  deep water's speed (omega^2 = g k) to 0.1%" $badSpeed 0
+Check "  whole cycles an hour (the game's hour clock wraps without a jump)" $badWhole 0
+Check "  phases in cycles, 0..1" $badPhase 0
+Check "  the slopes' mean square is WaveSlope^2" ("{0:F8}" -f $meanSquare) ("{0:F8}" -f ($optics::WaveSlope * $optics::WaveSlope))
+Check "the waves' default is 100%" (Default 'WaterCityWaves') 1
 Check "the reflection's length 150%: the ray's slope 2/3 of the mirror's" ("{0:F6}" -f $optics::MirrorSlope(0.3, 1.5)) ("{0:F6}" -f 0.2)
 Check "  length 100%: the mirror" ("{0:F6}" -f $optics::MirrorSlope(0.3, 1.0)) ("{0:F6}" -f 0.3)
 Check "  below 100% (or unset, 0): read as the mirror" ("{0:F6}" -f $optics::MirrorSlope(0.3, 0.0)) ("{0:F6}" -f 0.3)

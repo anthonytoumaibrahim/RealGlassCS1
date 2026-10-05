@@ -184,7 +184,7 @@
 
   <String key="WaterCityNight.Label">City reflection by night</String>
 
-  <String key="WaterCityBlur.Label">City reflection blur</String>
+  <String key="WaterCityWaves.Label">City reflection waves</String>
 
   <String key="WaterCityStreaks.Label">City reflection streaks</String>
 
@@ -195,15 +195,15 @@
        building with the building picker. Its title is the asset's name. -->
 
   <!-- The status line with nothing picked. {0}: the key that turns the building picker on. -->
-  <String key="Asset.None">Press {0} and click a building to give its asset glass of its own.</String>
+  <String key="Asset.None">Press {0} and click a building to customize its glass.</String>
   <!-- {0}: how many of the asset stand in this city. -->
-  <String key="Asset.Own">{0} in this city. Its own glass, on every copy, in every city.</String>
+  <String key="Asset.Own">{0} in this city</String>
   <String key="Asset.Global">{0} in this city. It follows the Glass tab.</String>
 
   <String key="Asset.Pick">Pick another building</String>
-  <String key="Asset.UseGlobal">Use the Glass tab's settings</String>
+  <String key="Asset.UseGlobal">Restore settings</String>
 
-  <String key="Group.AssetGlass">This asset's glass: its own where a name is gold, else the Glass tab's</String>
+  <String key="Group.AssetGlass">This asset will have its own settings</String>
 
   <String key="AssetGlassStrength.Label">Strength</String>
 

@@ -17,6 +17,14 @@ namespace RealGlass.Water
     ///   projected area towards the eye. 2% looking down, about half toward the horizon.
     /// - THE CITY'S STREAKS: a facet tilted by a in the plane of the view turns the reflected ray by
     ///   2a in height, so the waves stretch a reflection up and down by <see cref="Spread"/>.
+    /// - THE WAVES (<see cref="Waves"/>): the waves the screen can show, a sum of directional sine
+    ///   waves (Finch 2004, "Effective Water Simulation from Physical Models", GPU Gems ch. 1) at
+    ///   deep water's speeds (omega^2 = g k; Tessendorf 2001, "Simulating Ocean Water"), each with the
+    ///   same slope -- Phillips's (1958) equilibrium range, where every octave of wavelength carries
+    ///   the same slope. Each reflected ray leaves the surface they make instead of the flat sea, so
+    ///   the city's reflection wavers as real water's does; the waves shorter than the screen can show
+    ///   are the streaks' (the author, 2026-10-05: "the water doesn't get blurry. BUT, it does get
+    ///   distorted a bit, with the waves").
     /// - THE REFLECTION'S LENGTH (<see cref="MirrorSlope"/>): the mod's own stretch, not a model --
     ///   the city's reflection drawn longer than the city is tall, as reflections on open water look
     ///   drawn out toward the viewer (the author, 2026-10-04).
@@ -49,8 +57,26 @@ namespace RealGlass.Water
         /// <summary>The share of the screen, at each edge, over which the city's reflection fades out.</summary>
         public const double EdgeFade = 0.05;
 
-        /// <summary>The Blur slider's sigma at 100%, a share of the screen's height (5 px at 1080).</summary>
-        public const double BlurBase = 0.005;
+        /// <summary>How many waves bend the city's reflection (the shader's _RGWaterWaves holds two rows each).</summary>
+        public const int WaveCount = 16;
+
+        /// <summary>The longest wave, metres: the chop a light breeze raises on a harbour.</summary>
+        public const double WaveLongest = 12.0;
+
+        /// <summary>The shortest, metres; shorter ones are the streaks'.</summary>
+        public const double WaveShortest = 0.4;
+
+        /// <summary>The way the waves run, degrees from +x toward +z, and how far their directions spread either side of it.</summary>
+        public const double WaveHeading = 30.0;
+        public const double WaveSpread = 70.0;
+
+        /// <summary>The waves' root-mean-square slope at 100%, all of them together (rise over run). Set from pictures.</summary>
+        public const double WaveSlope = 0.03;
+
+        public const double Gravity = 9.81;
+
+        /// <summary>The numbers in each wave's row pair (<see cref="Waves"/>).</summary>
+        public const int WaveStride = 8;
 
         /// <summary>Cox &amp; Munk's mean square slope of a clean sea for a wind of u m/s (both directions together).</summary>
         public static double SlopeVariance(double windSpeed)
@@ -152,18 +178,51 @@ namespace RealGlass.Water
         }
 
         /// <summary>
-        /// The city reflection's Gaussian sigma in uv: across and up/down. blur: the Blur slider (1 =
-        /// <see cref="BlurBase"/> of the height, round); streaks: the Streaks slider (1 = the waves'
-        /// <see cref="Spread"/> as an angle on the screen, up and down only, the two added as
-        /// variances); fovY in degrees; aspect = width / height.
+        /// The city reflection's streaks: the Gaussian's sigma up and down, in uv of the screen's height.
+        /// streaks: the Streaks slider (1 = the waves' <see cref="Spread"/> as an angle on the screen);
+        /// fovY in degrees.
         /// </summary>
-        public static void BlurSigmas(double blur, double streaks, double spread, double fovY, double aspect, out double across, out double up)
+        public static double StreakSigma(double streaks, double spread, double fovY)
         {
-            double round = Math.Max(0.0, blur) * BlurBase;
             double perRadian = 1.0 / (2.0 * Math.Tan(fovY * Math.PI / 360.0));
-            double streak = Math.Max(0.0, streaks) * spread * perRadian;
-            across = round / Math.Max(aspect, 1e-3);
-            up = Math.Sqrt(round * round + streak * streak);
+            return Math.Max(0.0, streaks) * spread * perRadian;
+        }
+
+        /// <summary>
+        /// The waves, <see cref="WaveStride"/> numbers each (the shader's two rows: i and
+        /// <see cref="WaveCount"/> + i): the wave vector's x and z in cycles per metre; whole cycles
+        /// per hour (the game's hour clock, _SimulationTime2, wraps with no jump; deep water's speed to
+        /// 0.1%); the slope at 100%; the phase in cycles; the wavelength in metres; 0; 0. Wavelengths
+        /// from <see cref="WaveLongest"/> down to <see cref="WaveShortest"/> in equal ratios, their
+        /// directions in a scrambled order (golden-ratio steps over the spread: neighbouring lengths
+        /// run far apart), every slope the same so that the slopes' mean square, sum s^2 / 2, is
+        /// <see cref="WaveSlope"/>^2.
+        /// </summary>
+        public static double[] Waves()
+        {
+            var waves = new double[WaveCount * WaveStride];
+            double ratio = Math.Pow(WaveShortest / WaveLongest, 1.0 / (WaveCount - 1));
+            double slope = WaveSlope * Math.Sqrt(2.0 / WaveCount);
+            for (int i = 0; i < WaveCount; i++)
+            {
+                double length = WaveLongest * Math.Pow(ratio, i);
+                double k = 2.0 * Math.PI / length;
+                double heading = (WaveHeading + WaveSpread * (2.0 * Frac(0.5 + i * 0.6180339887) - 1.0)) * Math.PI / 180.0;
+                int at = i * WaveStride;
+                waves[at] = Math.Cos(heading) / length;
+                waves[at + 1] = Math.Sin(heading) / length;
+                waves[at + 2] = Math.Max(1.0, Math.Round(Math.Sqrt(Gravity * k) * 3600.0 / (2.0 * Math.PI)));
+                waves[at + 3] = slope;
+                waves[at + 4] = Frac(0.2 + i * 0.7548776662);
+                waves[at + 5] = length;
+            }
+
+            return waves;
+        }
+
+        private static double Frac(double x)
+        {
+            return x - Math.Floor(x);
         }
 
         /// <summary>

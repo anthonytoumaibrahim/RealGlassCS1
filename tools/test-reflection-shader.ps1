@@ -1,17 +1,21 @@
 # The Water tab's city reflection SHADER against the mod's model, in numbers (no pictures; RealLight's
 # test, ported 2026-10-03): the reflection's uniforms as the mod sets them, the shader drawn by Unity
 # 5.6 the way the mod draws it (UnityProject\Assets\Editor\CityReflectionTest.cs: a half-size copy of
-# the frame, the trace into a half-size buffer with mips, the Gaussian across and up, onto the water
+# the frame, the trace into a half-size buffer with mips, the streaks up and down, onto the water
 # -- one command buffer at AfterImageEffectsOpaque) over a plane of water at the sea's level and a lit
 # wall 60 m high standing past it, each listed point rendered with and without the reflection:
-#   - SHARP (blur and streaks 0), with and without the sky's share: water whose mirror ray meets the
+#   - SHARP (waves and streaks 0), with and without the sky's share: water whose mirror ray meets the
 #     wall = the water + rho(view) x strength x (wall - share x the theme's sky x its light), never
 #     below black; water whose ray passes beside or over the wall, the wall itself and the sky:
 #     untouched;
-#   - BLUR 300%: the middle of the reflection as sharp; at its side edge and its top edge, part way;
 #   - STREAKS 100%: at the side edge as sharp (up and down only); at the top edge, part way.
 #   - LENGTH 150% (the ray's slope 2/3 of the mirror's): water whose mirror ray passes over the wall
 #     now meets it (rho x the wall, sharp), water that met it still does, the rest untouched.
+#   - A TILTED SEA (one wave 100 km long through the waves' rows: the sea sloping down 5% toward
+#     the wall): each point's ray reflected off that slope, by the model -- water whose mirror passed
+#     over the wall now meets it, as the bent ray says; the rest as the model says.
+#   - WAVES 100% (the mod's own waves, the game's clock at a share of its hour): the wall and the sky
+#     untouched, the middle of the reflection still the wall's.
 # Run after build-bundle.ps1 (the shader compiles) and a DLL build:
 #
 #   powershell -NoProfile -ExecutionPolicy Bypass -File tools\test-reflection-shader.ps1
@@ -80,26 +84,52 @@ $points = @(
 )
 
 $cases = @(
-    @{ Name = "sharp, no sky share"; Share = 0.0; Water = "0.05 0.12 0.15"; Blur = 0.0; Streaks = 0.0 },
-    @{ Name = "sharp, sky share 100%"; Share = 1.0; Water = "0.6 0.9 1.0"; Blur = 0.0; Streaks = 0.0 },
-    @{ Name = "sharp, sky share 100%, a real sky at 60%"; Share = 1.0; Water = "0.6 0.9 1.0"; Blur = 0.0; Streaks = 0.0; Real = 0.6 },
-    @{ Name = "blur 300%"; Share = 0.0; Water = "0.05 0.12 0.15"; Blur = 3.0; Streaks = 0.0 },
-    @{ Name = "streaks 100%"; Share = 0.0; Water = "0.05 0.12 0.15"; Blur = 0.0; Streaks = 1.0 },
-    @{ Name = "length 150%"; Share = 0.0; Water = "0.05 0.12 0.15"; Blur = 0.0; Streaks = 0.0; Length = 1.5 }
+    @{ Name = "sharp, no sky share"; Share = 0.0; Water = "0.05 0.12 0.15"; Streaks = 0.0 },
+    @{ Name = "sharp, sky share 100%"; Share = 1.0; Water = "0.6 0.9 1.0"; Streaks = 0.0 },
+    @{ Name = "sharp, sky share 100%, a real sky at 60%"; Share = 1.0; Water = "0.6 0.9 1.0"; Streaks = 0.0; Real = 0.6 },
+    @{ Name = "streaks 100%"; Share = 0.0; Water = "0.05 0.12 0.15"; Streaks = 1.0 },
+    # "Stretch", not "Length": every hashtable answers .Length (1) when it has no such key, and the
+    # sharp checks below were skipped that way from 2026-10-04 to 2026-10-05.
+    @{ Name = "length 150%"; Share = 0.0; Water = "0.05 0.12 0.15"; Streaks = 0.0; Stretch = 1.5 },
+    @{ Name = "a tilted sea"; Share = 0.0; Water = "0.05 0.12 0.15"; Streaks = 0.0; Tilt = 0.05 },
+    @{ Name = "waves 100%"; Share = 0.0; Water = "0.05 0.12 0.15"; Streaks = 0.0; Waves = 1.0 }
 )
 $results = @{}
 
+# The tilted sea: one wave 1e5 m long (1e-5 cycles a metre along +x), phase half a cycle, slope 5%:
+# dh/dx = -0.05 cos(2 pi 1e-5 x) all over the scene -- what the shader's waves give there.
+$tiltK = 1e-5
+function TiltSlope([double]$x, [double]$s) { return $s * [Math]::Cos(2.0 * [Math]::PI * ($tiltK * $x + 0.5)) }
+$waveTable = $optics::Waves()
+
 foreach ($case in $cases) {
-    $sx = 0.0; $sy = 0.0
-    $optics::BlurSigmas($case.Blur, $case.Streaks, $spread, 60.0, 1.0, [ref]$sx, [ref]$sy)
+    $sy = $optics::StreakSigma($case.Streaks, $spread, 60.0)
 
     $lines = New-Object System.Collections.Generic.List[string]
     $lines.Add("_RGWaterGeom " + (N $level) + " 1 " + (N $case.Share) + " 0")
-    $length = if ($case.Length) { [double]$case.Length } else { 1.0 }
+    $length = if ($case.Stretch) { [double]$case.Stretch } else { 1.0 }
     $lines.Add("_RGWaterMarch " + (N $optics::MaxDistance) + " " + (N $optics::Thickness) + " " + (N $optics::EdgeFade) + " " + (N $length))
     # The half-size buffers of the 257 px test: 128 texels.
-    $lines.Add("_RGWaterBlur " + (N $sx) + " " + (N $sy) + " " + (N (1.0 / 128.0)) + " " + (N (1.0 / 128.0)))
+    $lines.Add("_RGWaterStreak " + (N $sy) + " " + (N (1.0 / 128.0)) + " 0 0")
     $lines.Add("_RGWaterLight " + (N $light[0]) + " " + (N $light[1]) + " " + (N $light[2]) + " 0")
+    # The waves: none, the tilted sea's one, or the mod's own.
+    $waveRows = New-Object 'double[,]' 32, 4
+    $strength = 0.0
+    if ($case.Tilt) {
+        $strength = 1.0
+        $waveRows[0, 0] = $tiltK; $waveRows[0, 3] = $case.Tilt
+        $waveRows[16, 0] = 0.5; $waveRows[16, 1] = 1.0 / $tiltK
+    }
+    elseif ($case.Waves) {
+        $strength = [double]$case.Waves
+        for ($i = 0; $i -lt 16; $i++) {
+            foreach ($c in 0..3) { $waveRows[$i, $c] = $waveTable[$i * 8 + $c]; $waveRows[(16 + $i), $c] = $waveTable[$i * 8 + 4 + $c] }
+        }
+    }
+    $lines.Add("_RGWaterWave " + (N $strength) + " 0 0 0")
+    foreach ($i in 0..31) { $lines.Add("wave " + $i + " " + (N $waveRows[$i, 0]) + " " + (N $waveRows[$i, 1]) + " " + (N $waveRows[$i, 2]) + " " + (N $waveRows[$i, 3])) }
+    # The game's hour clock: 443 s into the hour.
+    $lines.Add("simtime2 443 " + (N (443.0 / 3600.0)) + " 0 0")
     foreach ($i in 0..32) { $lines.Add("table " + $i + " " + (N $tbl[$i])) }
     $lines.Add("theme " + (N $theme[0]) + " " + (N $theme[1]) + " " + (N $theme[2]))
     $real = if ($case.Real) { [double]$case.Real } else { 0.0 }
@@ -119,7 +149,7 @@ foreach ($case in $cases) {
         "-logFile", "`"$(Join-Path $project 'reflection-test.log')`"")
     if (-not (Test-Path $out)) { Write-Host "FAIL  Unity wrote no output (exit $($proc.ExitCode)); see UnityProject\reflection-test.log"; exit 1 }
     $got = Get-Content $out
-    Write-Host ("{0} (sigma across {1:P2}, up {2:P2}): {3}" -f $case.Name, $sx, $sy, $got[0])
+    Write-Host ("{0} (streaks' sigma {1:P2}): {2}" -f $case.Name, $sy, $got[0])
     $got | Where-Object { $_ -like "EXCEPTION*" } | ForEach-Object { Write-Host $_; $script:failed++ }
 
     $rows = @{}
@@ -127,7 +157,42 @@ foreach ($case in $cases) {
     if ($rows.Count -ne $points.Count) { Check "every point came back" $false ("{0} of {1}" -f $rows.Count, $points.Count); continue }
     $results[$case.Name] = $rows
 
-    if ($case.Blur -gt 0.0 -or $case.Streaks -gt 0.0 -or $case.Length) { continue }
+    if ($case.Streaks -gt 0.0 -or $case.Stretch -or $case.Waves) { continue }
+
+    # THE TILTED SEA: each point's ray reflected off the slope where it meets the water, followed
+    # to the wall's face (x = 390, 60 m tall, z within 150): the wall where it lands clearly on it,
+    # untouched where clearly beside or over it, not judged within 2 m of an edge.
+    if ($case.Tilt) {
+        $wallColour = Three $rows["wall"] 10
+        foreach ($pt in $points) {
+            if ($pt.Name -eq "wall" -or $pt.Name -eq "sky") { continue }
+            $q = $rows[$pt.Name]
+            $d = Three $q 6; $plain = Three $q 10; $shader = Three $q 14
+            $t = ($eye[1] - $level) / -$d[1]
+            $px = $eye[0] + $d[0] * $t; $pz = $eye[2] + $d[2] * $t
+            $sx = TiltSlope $px $case.Tilt
+            $nl = [Math]::Sqrt(1.0 + $sx * $sx)
+            $n = [double[]]@((-$sx / $nl), (1.0 / $nl), 0.0)
+            $dn = $d[0] * $n[0] + $d[1] * $n[1]
+            $r = [double[]]@(($d[0] - 2.0 * $dn * $n[0]), [Math]::Abs($d[1] - 2.0 * $dn * $n[1]), $d[2])
+            $s = ($face - $px) / $r[0]
+            $y = $r[1] * $s; $z = $pz + $r[2] * $s
+            $land = "{0:F1} m up, z {1:F1}" -f $y, $z
+            if ($y -gt 6.0 -and $y -lt ($wallTop - 2.0) -and [Math]::Abs($z) -lt ($wallHalf - 2.0)) {
+                $rho = $optics::Lookup($tbl, -$d[1])
+                $want = [double[]]@(0.0, 0.0, 0.0)
+                foreach ($k in 0..2) { $want[$k] = $plain[$k] + $rho * $wallColour[$k] }
+                $w = Worst $shader $want
+                Check ("tilted sea, {0}: its ray lands on the wall ({1})" -f $pt.Say, $land) ($w -lt 0.015) ("shader {0}  model {1}  worst {2:P2}" -f (Show $shader), (Show $want), $w)
+            }
+            elseif ($y -gt ($wallTop + 2.0) -or [Math]::Abs($z) -gt ($wallHalf + 2.0)) {
+                $w = Worst $shader $plain
+                Check ("tilted sea, {0}: its ray passes the wall ({1}): untouched" -f $pt.Say, $land) ($w -lt 1e-4) ("{0} (without {1})" -f (Show $shader), (Show $plain))
+            }
+            else { Write-Host ("      tilted sea, {0}: lands at an edge ({1}), not judged" -f $pt.Say, $land) }
+        }
+        continue
+    }
 
     # SHARP: pixel by pixel against the model.
     $wallColour = Three $rows["wall"] 10
@@ -159,19 +224,19 @@ foreach ($case in $cases) {
     }
 }
 
-# What each case added at a point (red: the wall is red-heavy), and the checks on the blurs.
+# What each case added at a point (red: the wall is red-heavy), and the checks on the streaks,
+# the length and the waves.
 function AddedAt([string]$case, [string]$name) {
     $q = $results[$case][$name]
     return ([double]::Parse($q[14], $inv) - [double]::Parse($q[10], $inv))
 }
 if ($results.Count -eq $cases.Count) {
-    $sharpMid = AddedAt "sharp, no sky share" "water8"; $blurMid = AddedAt "blur 300%" "water8"
-    Check "blur: the middle of the reflection stays as sharp (a Gaussian of an even patch is the patch)" ([Math]::Abs($blurMid / $sharpMid - 1.0) -lt 0.03) ("{0:F4} vs {1:F4}" -f $blurMid, $sharpMid)
-    $side = (AddedAt "blur 300%" "edgeSide") / (AddedAt "blur 300%" "nearSide")
-    Check "  at the side's edge: part way (soft across)" ($side -gt 0.2 -and $side -lt 0.8) ("{0:P0} of the reflection 4 deg inside" -f $side)
-    $top = (AddedAt "blur 300%" "edgeTop") / (AddedAt "blur 300%" "nearTop")
-    Check "  at the top's edge: part way (soft up and down)" ($top -gt 0.2 -and $top -lt 0.8) ("{0:P0} of the reflection 1.5 deg below" -f $top)
-    Check "  the wall and the sky: untouched" ((AddedAt "blur 300%" "wall") -eq 0.0 -and (AddedAt "blur 300%" "sky") -eq 0.0) ""
+    $sharpMid = AddedAt "sharp, no sky share" "water8"; $wavesMid = AddedAt "waves 100%" "water8"
+    Check "waves 100%: the middle of the reflection still the wall's" ([Math]::Abs($wavesMid / $sharpMid - 1.0) -lt 0.03) ("{0:F4} vs {1:F4}" -f $wavesMid, $sharpMid)
+    Check "  the wall and the sky: untouched" ((AddedAt "waves 100%" "wall") -eq 0.0 -and (AddedAt "waves 100%" "sky") -eq 0.0) ""
+    $line = ""
+    foreach ($pt in $points) { $line += (" {0} {1:F4}/{2:F4}" -f $pt.Name, (AddedAt "waves 100%" $pt.Name), (AddedAt "sharp, no sky share" $pt.Name)) }
+    Write-Host ("      waves 100% vs flat, red added:" + $line)
 
     $sharpSide = AddedAt "sharp, no sky share" "edgeSide"; $streakSide = AddedAt "streaks 100%" "edgeSide"
     $sideRef = AddedAt "sharp, no sky share" "nearSide"

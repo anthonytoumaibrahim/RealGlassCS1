@@ -50,8 +50,8 @@ namespace RealGlass.Water
             if (!On(Settings.WaterEnabled))
                 return "water controls off";
             return "water controls ON: brightness " + Pct(Settings.WaterBrightness) + ", real sky " + (On(Settings.WaterRealSky) ? Pct(Settings.WaterSky) : "off") +
-                   ", city " + (On(Settings.WaterCity) ? Pct(Settings.WaterCityDay) + " day / " + Pct(Settings.WaterCityNight) + " night, blur " +
-                   Pct(Settings.WaterCityBlur) + ", streaks " + Pct(Settings.WaterCityStreaks) + ", length " + Pct(Settings.WaterCityLength) : "off");
+                   ", city " + (On(Settings.WaterCity) ? Pct(Settings.WaterCityDay) + " day / " + Pct(Settings.WaterCityNight) + " night, waves " +
+                   Pct(Settings.WaterCityWaves) + ", streaks " + Pct(Settings.WaterCityStreaks) + ", length " + Pct(Settings.WaterCityLength) : "off");
         }
 
         private static bool On(BoolSetting s)
@@ -177,11 +177,8 @@ namespace RealGlass.Water
             float strength = nightStrength + (dayStrength - nightStrength) * day;
             float skyShare = _surface != null && _surface.CubeHeld ? Value(Settings.WaterSky, Settings.Defaults.WaterSky) : 0f;
 
-            double aspect = camera.pixelHeight > 0 ? (double)camera.pixelWidth / camera.pixelHeight : 16.0 / 9.0;
-            double across, up;
-            WaterOptics.BlurSigmas(Value(Settings.WaterCityBlur, Settings.Defaults.WaterCityBlur), Value(Settings.WaterCityStreaks, Settings.Defaults.WaterCityStreaks),
-                                   _spread, camera.fieldOfView, aspect, out across, out up);
-            _city.SetUniforms(level, strength, skyShare, WaterSurface.ThemeCube(), lit, across, up,
+            double up = WaterOptics.StreakSigma(Value(Settings.WaterCityStreaks, Settings.Defaults.WaterCityStreaks), _spread, camera.fieldOfView);
+            _city.SetUniforms(level, strength, skyShare, WaterSurface.ThemeCube(), lit, up, Value(Settings.WaterCityWaves, Settings.Defaults.WaterCityWaves),
                               Value(Settings.WaterCityLength, Settings.Defaults.WaterCityLength), camera.farClipPlane);
             _city.Attach(camera);
             CityState("on (sea level " + level.ToString("F1") + " m)");

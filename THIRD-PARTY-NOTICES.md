@@ -133,8 +133,10 @@ insulating-glass pillowing and roller-wave distortion, unsharp masking (Schreibe
 a mipmap level (Williams 1983) for the painted detail it keeps, and an anti-aliased glass edge
 (RenderMan's filterstep, Apodaca and Gritz 1999; Golus 2017; Direct3D 11's standard 4x sample
 pattern), and for the water tab a rough sea's reflectance (Cox and Munk's wave slopes, 1954;
-Mobley's sea-surface reflectance factor, 1999) with the city traced through the depth buffer and
-blurred by normalized convolution (Knutsson and Westin, 1993) -- listed with links in
+Mobley's sea-surface reflectance factor, 1999) with the city traced through the depth buffer off
+a surface of directional sine waves (Finch 2004; deep water's speeds, Tessendorf 2001; Phillips's
+equilibrium range, 1958) and streaked by normalized convolution (Knutsson and Westin, 1993) --
+listed with links in
 `README.md`. Apart from the ray tracer above, the implementations were written for this mod.
 
 Other mods were read to understand the game's behaviour and to stay compatible with them:

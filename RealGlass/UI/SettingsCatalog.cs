@@ -1219,13 +1219,14 @@ namespace RealGlass.UI
                 Enabled = WaterCityOn,
             });
 
+            // The waves the reflected rays leave (WaterOptics.Waves): 100% a light breeze's chop.
             Add(new Row
             {
                 Kind = RowKind.Percent,
                 Panel = PanelPage.Water,
-                Float = Settings.WaterCityBlur,
-                DefaultFloat = Settings.Defaults.WaterCityBlur,
-                Min = 0f, Max = 500f, Step = 5f,
+                Float = Settings.WaterCityWaves,
+                DefaultFloat = Settings.Defaults.WaterCityWaves,
+                Min = 0f, Max = 300f, Step = 5f,
                 Enabled = WaterCityOn,
             });
 

@@ -240,8 +240,8 @@ namespace RealGlass
         /// <summary>0..3: the city's reflection by night (1 = real water).</summary>
         public static FloatSetting WaterCityNight { get; private set; }
 
-        /// <summary>0..5: a blur over the city's reflection, the same every way.</summary>
-        public static FloatSetting WaterCityBlur { get; private set; }
+        /// <summary>0..3: the waves bend the city's reflection (1 = a light breeze's chop: WaterOptics.Waves).</summary>
+        public static FloatSetting WaterCityWaves { get; private set; }
 
         /// <summary>0..0.1: the waves smear the city's reflection up and down (1 would be a light breeze's).</summary>
         public static FloatSetting WaterCityStreaks { get; private set; }
@@ -326,7 +326,9 @@ namespace RealGlass
             public const bool WaterCity = true;
             public const float WaterCityDay = 1f;
             public const float WaterCityNight = 1f;
-            public const float WaterCityBlur = 1f;
+
+            /// <summary>The waves bend the city's reflection; replaced the blur (the author, 2026-10-05: "the water doesn't get blurry").</summary>
+            public const float WaterCityWaves = 1f;
 
             /// <summary>1%: a light breeze's 100% smeared a fifth of the screen, and 5% was still too long (the author, 2026-10-04).</summary>
             public const float WaterCityStreaks = 0.01f;
@@ -404,7 +406,7 @@ namespace RealGlass
                 WaterCity = new BoolSetting("WaterCity", Defaults.WaterCity);
                 WaterCityDay = new FloatSetting("WaterCityDay", Defaults.WaterCityDay);
                 WaterCityNight = new FloatSetting("WaterCityNight", Defaults.WaterCityNight);
-                WaterCityBlur = new FloatSetting("WaterCityBlur", Defaults.WaterCityBlur);
+                WaterCityWaves = new FloatSetting("WaterCityWaves", Defaults.WaterCityWaves);
                 WaterCityStreaks = new FloatSetting("WaterCityStreaks", Defaults.WaterCityStreaks);
                 WaterCityLength = new FloatSetting("WaterCityLength", Defaults.WaterCityLength);
 

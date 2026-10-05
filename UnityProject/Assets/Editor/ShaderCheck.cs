@@ -22,7 +22,7 @@ public static class ShaderCheck
         "Assets/RealGlass/CityReflection.shader",
     };
 
-    private static readonly int[] Passes = { 1, 5, 1, 4 };
+    private static readonly int[] Passes = { 1, 5, 1, 3 };
 
     public static void Run()
     {

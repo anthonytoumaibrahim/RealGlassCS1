@@ -9,7 +9,7 @@ namespace RealGlass.Water
     /// The city in the map's water (RealGlass/CityReflection; ported from RealLight's
     /// CityReflectionOverlay, 2026-10-03): one command buffer on the main camera at
     /// CameraEvent.AfterImageEffectsOpaque -- a half-size copy of the frame (what the reflected rays
-    /// meet), the reflection traced into a half-size buffer, Gaussian-blurred across and up/down, then
+    /// meet), the reflection traced into a half-size buffer, streaked up and down by a Gaussian, then
     /// added over the water. Day and night.
     /// </summary>
     /// <remarks>
@@ -24,26 +24,31 @@ namespace RealGlass.Water
     /// - WHAT IT REPLACES: where the ray meets the city, the city takes the place of the sky the
     ///   water's cube shows: added = rho x strength x (city - skyShare x the theme's sky x its light),
     ///   skyShare the Sky slider while our cube is on the water, 0 otherwise.
-    /// - HOW LONG: the ray's slope is the mirror's divided by the Length slider
-    ///   (<see cref="WaterOptics.MirrorSlope"/>); the sky it replaces is still the mirror's.
+    /// - THE WAVES: the ray leaves the waves' surface at the water's point, not the flat sea
+    ///   (<see cref="WaterOptics.Waves"/>, x the Waves slider; their clock the game's own
+    ///   _SimulationTime2, so they stop when the game is paused). 0: the flat sea's mirror, exactly.
+    /// - HOW LONG: the ray's slope is divided by the Length slider (<see cref="WaterOptics.MirrorSlope"/>);
+    ///   the sky it replaces is still the flat sea's mirror.
     /// Three Unity 5.6 facts from RealLight's editor test: CommandBuffer.Blit binds its source only
     /// when the shader declares _MainTex in Properties; _MainTex_TexelSize read 0 (the texel size is a
-    /// uniform); the blurred buffer must be bound with the buffer's own SetGlobalTexture.
+    /// uniform); the streaked buffer must be bound with the buffer's own SetGlobalTexture.
     /// </remarks>
     public sealed class WaterCityReflection
     {
         private static readonly int IdFrame = Shader.PropertyToID("_RGWaterFrame");
         private static readonly int IdGeom = Shader.PropertyToID("_RGWaterGeom");
         private static readonly int IdMarch = Shader.PropertyToID("_RGWaterMarch");
-        private static readonly int IdBlur = Shader.PropertyToID("_RGWaterBlur");
-        private static readonly int IdBlurred = Shader.PropertyToID("_RGWaterBlurred");
+        private static readonly int IdStreak = Shader.PropertyToID("_RGWaterStreak");
+        private static readonly int IdStreaked = Shader.PropertyToID("_RGWaterStreaked");
+        private static readonly int IdWave = Shader.PropertyToID("_RGWaterWave");
+        private static readonly int IdWaves = Shader.PropertyToID("_RGWaterWaves");
         private static readonly int IdTheme = Shader.PropertyToID("_RGWaterTheme");
         private static readonly int IdLight = Shader.PropertyToID("_RGWaterLight");
 
         private readonly Material _material;
         private readonly Mesh _cube;
         private readonly CommandBuffer _buffer;
-        private RenderTexture _frame, _trace, _across, _blurred;
+        private RenderTexture _frame, _trace, _streaked;
         private Camera _camera;
         private bool _addedDepth;
         private bool _loggedWater;
@@ -51,8 +56,25 @@ namespace RealGlass.Water
         private WaterCityReflection(Shader shader)
         {
             _material = new Material(shader) { name = "RealGlass city reflection", hideFlags = HideFlags.HideAndDontSave };
+            _material.SetVectorArray(IdWaves, WaveRows());
             _cube = Cube("RealGlassWaterCube");
             _buffer = new CommandBuffer { name = "RealGlass water reflection" };
+        }
+
+        /// <summary>The shader's _RGWaterWaves: <see cref="WaterOptics.Waves"/> as its two rows a wave.</summary>
+        public static Vector4[] WaveRows()
+        {
+            double[] w = WaterOptics.Waves();
+            int n = WaterOptics.WaveCount;
+            var rows = new Vector4[2 * n];
+            for (int i = 0; i < n; i++)
+            {
+                int at = i * WaterOptics.WaveStride;
+                rows[i] = new Vector4((float)w[at], (float)w[at + 1], (float)w[at + 2], (float)w[at + 3]);
+                rows[n + i] = new Vector4((float)w[at + 4], (float)w[at + 5], (float)w[at + 6], (float)w[at + 7]);
+            }
+
+            return rows;
         }
 
         /// <summary>Null when the shader is missing or unsupported here (logged by ShaderBundle): the water reflects no city.</summary>
@@ -120,32 +142,29 @@ namespace RealGlass.Water
 
         /// <summary>
         /// The buffer: a half-size copy of the frame; the trace into a half-size buffer with mips (pass
-        /// 0); the Gaussian across (1) and up and down (2), each from its source's mips; onto the water (3).
+        /// 0); the streaks, up and down from its mips (1); onto the water (2).
         /// </summary>
         private void Record(int width, int height)
         {
             _buffer.Clear();
             Free(ref _frame);
             Free(ref _trace);
-            Free(ref _across);
-            Free(ref _blurred);
+            Free(ref _streaked);
 
             int w = Half(width), h = Half(height);
             _frame = Target("RealGlassWaterFrame", w, h, false);
             _trace = Target("RealGlassWaterTrace", w, h, true);
-            _across = Target("RealGlassWaterAcross", w, h, true);
-            _blurred = Target("RealGlassWaterBlurred", w, h, false);
+            _streaked = Target("RealGlassWaterStreaked", w, h, false);
             _material.SetTexture(IdFrame, _frame);
 
             _buffer.Blit(BuiltinRenderTextureType.CameraTarget, _frame);
             _buffer.SetRenderTarget(_trace);
             _buffer.ClearRenderTarget(false, true, Color.clear);
             _buffer.DrawMesh(_cube, Matrix4x4.identity, _material, 0, 0);
-            _buffer.Blit(_trace, _across, _material, 1);
-            _buffer.Blit(_across, _blurred, _material, 2);
-            _buffer.SetGlobalTexture(IdBlurred, _blurred);
+            _buffer.Blit(_trace, _streaked, _material, 1);
+            _buffer.SetGlobalTexture(IdStreaked, _streaked);
             _buffer.SetRenderTarget(BuiltinRenderTextureType.CameraTarget);
-            _buffer.DrawMesh(_cube, Matrix4x4.identity, _material, 0, 3);
+            _buffer.DrawMesh(_cube, Matrix4x4.identity, _material, 0, 2);
         }
 
         /// <summary>On the camera (or kept there, its buffers re-made on a resize).</summary>
@@ -177,7 +196,7 @@ namespace RealGlass.Water
             camera.AddCommandBuffer(CameraEvent.AfterImageEffectsOpaque, _buffer);
             _camera = camera;
             Log.Msg("water: the city is reflected in the map's water on '" + camera.name + "' after the opaque image effects (" +
-                    _frame.width + " x " + _frame.height + ": traced at half size, blurred, then onto the water" +
+                    _frame.width + " x " + _frame.height + ": traced at half size off the waves, streaked, then onto the water" +
                     (_addedDepth ? "; depth texture asked for" : "") + ")");
             LogWater();
         }
@@ -216,16 +235,18 @@ namespace RealGlass.Water
         /// <param name="skyShare">The Sky slider while our cube is on the water, else 0.</param>
         /// <param name="theme">The theme's cube (what the water shows of the sky).</param>
         /// <param name="light">The light the game's water lights the cube with (linear): the sun on the level + the sky's ambient.</param>
+        /// <param name="sigmaUp">The streaks' Gaussian up and down, uv (<see cref="WaterOptics.StreakSigma"/>).</param>
+        /// <param name="waves">The Waves slider: the waves' slopes x this (0: the flat sea's mirror).</param>
         /// <param name="length">The Length slider: the reflection this many times as long as the city is tall (<see cref="WaterOptics.MirrorSlope"/>).</param>
-        public void SetUniforms(float level, float strength, float skyShare, Texture theme, Color light, double sigmaAcross, double sigmaUp,
+        public void SetUniforms(float level, float strength, float skyShare, Texture theme, Color light, double sigmaUp, float waves,
                                 float length, float farPlane)
         {
             float reach = Mathf.Min((float)WaterOptics.MaxDistance, 0.9f * farPlane);
             int themeSize = theme != null ? Mathf.Max(theme.width, 1) : 1;
             _material.SetVector(IdGeom, new Vector4(level, strength, theme != null ? skyShare : 0f, Mathf.Max(0f, Mathf.Log(themeSize / 64f, 2f))));
             _material.SetVector(IdMarch, new Vector4(reach, (float)WaterOptics.Thickness, (float)WaterOptics.EdgeFade, Mathf.Max(1f, length)));
-            float texelX = _trace != null ? 1f / _trace.width : 0f, texelY = _trace != null ? 1f / _trace.height : 0f;
-            _material.SetVector(IdBlur, new Vector4((float)sigmaAcross, (float)sigmaUp, texelX, texelY));
+            _material.SetVector(IdStreak, new Vector4((float)sigmaUp, _trace != null ? 1f / _trace.height : 0f, 0f, 0f));
+            _material.SetVector(IdWave, new Vector4(Mathf.Max(0f, waves), 0f, 0f, 0f));
             if (theme != null)
                 _material.SetTexture(IdTheme, theme);
             _material.SetVector(IdLight, new Vector4(light.r, light.g, light.b, 0f));
@@ -261,8 +282,7 @@ namespace RealGlass.Water
             _buffer.Release();
             Free(ref _frame);
             Free(ref _trace);
-            Free(ref _across);
-            Free(ref _blurred);
+            Free(ref _streaked);
             UnityEngine.Object.Destroy(_material);
             UnityEngine.Object.Destroy(_cube);
         }

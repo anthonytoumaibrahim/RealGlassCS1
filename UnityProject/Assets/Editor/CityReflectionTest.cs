@@ -13,8 +13,9 @@ using UnityEngine.Rendering;
 /// reflection-test-input.txt -- the reflection's uniforms (material), the reflectance table, the
 /// theme's sky (one colour), the scene -- and runs
 ///   Unity.exe -batchmode -quit -projectPath . -executeMethod CityReflectionTest.Run
-/// which draws the reflection the way the mod does (a half-size copy of the frame, then the cube,
-/// from a command buffer at AfterImageEffectsOpaque on a legacy-deferred HDR camera) over a plane of
+/// which draws the reflection the way the mod does (a half-size copy of the frame, the trace, the
+/// streaks, then the cube, from a command buffer at AfterImageEffectsOpaque on a legacy-deferred HDR
+/// camera; the waves' rows and the game's hour clock from the file too) over a plane of
 /// water at the sea's level and a lit wall standing past it. Each listed world point is rendered
 /// with and without the reflection; reflection-test-output.txt has the pixel's own ray and both
 /// colours.
@@ -35,6 +36,7 @@ public static class CityReflectionTest
             var material = new Material(shader);
 
             var table = new Vector4[33];
+            var waves = new Vector4[32];
             var points = new List<string[]>();
             Vector3 eye = Vector3.zero, look = Vector3.forward, wallCentre = Vector3.zero, wallSize = Vector3.one;
             float level = 0f;
@@ -47,6 +49,10 @@ public static class CityReflectionTest
                     material.SetVector(p[0], new Vector4(F(p[1]), F(p[2]), F(p[3]), F(p[4])));
                 else if (p[0] == "table")
                     table[int.Parse(p[1], CultureInfo.InvariantCulture)] = new Vector4(F(p[2]), 0f, 0f, 0f);
+                else if (p[0] == "wave")
+                    waves[int.Parse(p[1], CultureInfo.InvariantCulture)] = new Vector4(F(p[2]), F(p[3]), F(p[4]), F(p[5]));
+                else if (p[0] == "simtime2")
+                    Shader.SetGlobalVector("_SimulationTime2", new Vector4(F(p[1]), F(p[2]), F(p[3]), F(p[4])));
                 else if (p[0] == "theme")
                     theme = new Color(F(p[1]), F(p[2]), F(p[3]), 1f);
                 else if (p[0] == "realsky")
@@ -73,6 +79,7 @@ public static class CityReflectionTest
             }
 
             Shader.SetGlobalVectorArray("_RGSeaTable", table);
+            material.SetVectorArray("_RGWaterWaves", waves);
 
             // The theme's sky: one colour every way.
             material.SetTexture("_RGWaterTheme", Cube(theme));
@@ -121,18 +128,17 @@ public static class CityReflectionTest
             mesh.bounds = new Bounds(Vector3.zero, Vector3.one * 1e6f);
 
             // As WaterCityReflection.Record.
-            RenderTexture frame = Target(Size / 2, false), trace = Target(Size / 2, true), across = Target(Size / 2, true), blurred = Target(Size / 2, false);
+            RenderTexture frame = Target(Size / 2, false), trace = Target(Size / 2, true), streaked = Target(Size / 2, false);
             material.SetTexture("_RGWaterFrame", frame);
             var buffer = new CommandBuffer { name = "RealGlass water reflection (test)" };
             buffer.Blit(BuiltinRenderTextureType.CameraTarget, frame);
             buffer.SetRenderTarget(trace);
             buffer.ClearRenderTarget(false, true, Color.clear);
             buffer.DrawMesh(mesh, Matrix4x4.identity, material, 0, 0);
-            buffer.Blit(trace, across, material, 1);
-            buffer.Blit(across, blurred, material, 2);
-            buffer.SetGlobalTexture("_RGWaterBlurred", blurred);
+            buffer.Blit(trace, streaked, material, 1);
+            buffer.SetGlobalTexture("_RGWaterStreaked", streaked);
             buffer.SetRenderTarget(BuiltinRenderTextureType.CameraTarget);
-            buffer.DrawMesh(mesh, Matrix4x4.identity, material, 0, 3);
+            buffer.DrawMesh(mesh, Matrix4x4.identity, material, 0, 2);
 
             Color[] plain = GrabAll(camera, target);
             camera.AddCommandBuffer(CameraEvent.AfterImageEffectsOpaque, buffer);
