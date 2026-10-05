@@ -237,7 +237,7 @@ namespace RealGlass.Water
             // Against TAA's flicker (measured, tools\preview\water-flicker.ps1, 2026-10-05): the ripples
             // read over 8 trace pixels (only waves the screen resolves bend the rays), the city read
             // as wide as a ray cone spreads (z = 1), the gain x 1.5 to keep the waviness.
-            _material.SetVector(IdWave, new Vector4(Mathf.Max(0f, waves) * 1.5f, 8f, 1f, 0f));
+            _material.SetVector(IdWave, new Vector4(Mathf.Max(0f, waves) * 2f, 3f, 1f, 0f));
             if (theme != null)
                 _material.SetTexture(IdTheme, theme);
             _material.SetVector(IdLight, new Vector4(light.r, light.g, light.b, 0f));
