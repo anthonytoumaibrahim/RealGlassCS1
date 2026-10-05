@@ -610,33 +610,51 @@ Check "streaks 100%: the spread over the view (fov 90: 0.05 uv)" ("{0:F6}" -f $o
 Check "  a negative slider is none" $optics::StreakSigma(-1.0, 0.1, 90.0) 0
 Check "the city's streaks: 2 x the slope in one plane" ("{0:F6}" -f $optics::Spread(0.02)) ("{0:F6}" -f 0.2)
 
-# The waves that bend the city's reflection: 16, 12 m down to 0.4 m in equal ratios, round the
-# heading, deep water's speeds in whole cycles an hour, the slopes' mean square the target.
-$waves = $optics::Waves()
-$n = $optics::WaveCount; $stride = $optics::WaveStride
-Check "the waves: 16 of them, 8 numbers each" $waves.Length ($n * $stride)
-$meanSquare = 0.0; $badLength = 0; $badDir = 0; $badSpeed = 0; $badWhole = 0; $badPhase = 0
+# The ripples (WaterOptics.Ripples): 32 waves with whole wave numbers across the texture (it tiles),
+# 16 m to 0.5 m before rounding, round the heading, deep water's speeds for their true lengths in
+# whole cycles an hour, every wave vector its own, the slopes' mean square exactly 1.
+$waves = $optics::Ripples()
+$n = $optics::RippleCount; $stride = $optics::WaveStride; $tile = $optics::RippleTile
+Check "the ripples: 32 of them, 8 numbers each" $waves.Length ($n * $stride)
+$meanSquare = 0.0; $badWhole = 0; $badLength = 0; $badDir = 0; $badSpeed = 0; $badPhase = 0; $badUnit = 0
+$seen = @{}; $dupes = 0
+$ratio = [Math]::Pow(0.5 / 16.0, 1.0 / 31.0)
 for ($i = 0; $i -lt $n; $i++) {
     $at = $i * $stride
-    $kx = $waves[$at]; $kz = $waves[$at + 1]; $perHour = $waves[$at + 2]; $s = $waves[$at + 3]; $phase = $waves[$at + 4]; $len = $waves[$at + 5]
+    $m = $waves[$at]; $nn = $waves[$at + 1]; $perHour = $waves[$at + 2]; $s = $waves[$at + 3]; $phase = $waves[$at + 4]
+    $dx = $waves[$at + 5]; $dz = $waves[$at + 6]
     $meanSquare += $s * $s / 2.0
-    $want = 12.0 * [Math]::Pow(0.4 / 12.0, $i / 15.0)
-    if ([Math]::Abs($len - $want) -gt 1e-9 * $want) { $badLength++ }
-    if ([Math]::Abs([Math]::Sqrt($kx * $kx + $kz * $kz) * $len - 1.0) -gt 1e-9) { $badLength++ }
-    $heading = [Math]::Atan2($kz, $kx) * 180.0 / [Math]::PI
-    if ([Math]::Abs($heading - 30.0) -gt 70.0 + 1e-9) { $badDir++ }
-    $omega = [Math]::Sqrt(9.81 * 2.0 * [Math]::PI / $len)
+    if ($m -ne [Math]::Round($m) -or $nn -ne [Math]::Round($nn) -or $perHour -ne [Math]::Round($perHour)) { $badWhole++ }
+    $key = "$m,$nn"; if ($seen.ContainsKey($key)) { $dupes++ } else { $seen[$key] = 1 }
+    $across = [Math]::Sqrt($m * $m + $nn * $nn)
+    $len = $tile / $across
+    $want = 16.0 * [Math]::Pow($ratio, $i)
+    # Rounding the wave numbers moves a length a little (the longest most: 10 cycles across).
+    if ([Math]::Abs($len / $want - 1.0) -gt 0.08) { $badLength++ }
+    $heading = [Math]::Atan2($nn, $m) * 180.0 / [Math]::PI
+    if ([Math]::Abs($heading - 30.0) -gt 75.0) { $badDir++ }
+    if ([Math]::Abs($dx - $m / $across) -gt 1e-12 -or [Math]::Abs($dz - $nn / $across) -gt 1e-12) { $badUnit++ }
+    $omega = [Math]::Sqrt(9.81 * 2.0 * [Math]::PI * $across / $tile)
     if ([Math]::Abs($perHour * 2.0 * [Math]::PI / 3600.0 / $omega - 1.0) -gt 0.001) { $badSpeed++ }
-    if ($perHour -ne [Math]::Round($perHour)) { $badWhole++ }
     if ($phase -lt 0.0 -or $phase -ge 1.0) { $badPhase++ }
 }
-Check "  wavelengths 12 m to 0.4 m, wave vectors 1 / wavelength" $badLength 0
-Check "  every direction within 70 deg of the heading" $badDir 0
-Check "  deep water's speed (omega^2 = g k) to 0.1%" $badSpeed 0
-Check "  whole cycles an hour (the game's hour clock wraps without a jump)" $badWhole 0
+Check "  whole wave numbers and whole cycles an hour (it tiles; the hour wraps without a jump)" $badWhole 0
+Check "  every wave vector its own" $dupes 0
+Check "  lengths 16 m to 0.5 m (within 8% after rounding)" $badLength 0
+Check "  every direction near the heading's 30 +- 70 deg (rounding moves it a little)" $badDir 0
+Check "  directions are the wave vectors, unit" $badUnit 0
+Check "  deep water's speed (omega^2 = g k) for the true length, to 0.1%" $badSpeed 0
 Check "  phases in cycles, 0..1" $badPhase 0
-Check "  the slopes' mean square is WaveSlope^2" ("{0:F8}" -f $meanSquare) ("{0:F8}" -f ($optics::WaveSlope * $optics::WaveSlope))
-Check "the waves' default is 100%" (Default 'WaterCityWaves') 1
+Check "  the slopes' mean square is exactly 1" ("{0:F8}" -f $meanSquare) ("{0:F8}" -f 1.0)
+Check "  the shortest is 3 texels or more" (($tile / $optics::RippleTexels) * 3.0 -le 0.5 + 1e-9) "True"
+Check "the game's texture decoded x 2 - 1, halved: rms 0.4 is a slope of 0.2; at 150% 0.3" ("{0:F4} {1:F4}" -f $optics::RippleSlope(0.4, 1.0), $optics::RippleSlope(0.4, 1.5)) "0.2000 0.3000"
+Check "the city reflection's gain: 100% bends by WaveSlope, whatever the texture" ("{0:F4}" -f ($optics::CityRippleGain(1.0, 0.4) * $optics::RippleSlope(0.4, 1.0))) ("{0:F4}" -f $optics::WaveSlope)
+Check "  0% is the flat mirror; no texture measured is none" ("{0} {1}" -f $optics::CityRippleGain(0.0, 0.4), $optics::CityRippleGain(1.0, 0.0)) "0 0"
+$mean = 0.0; $rms = 0.0
+$optics::DecodedStats([byte[]]@(255, 0, 128, 128), [byte[]]@(128, 128, 255, 0), [ref]$mean, [ref]$rms)
+# 128 decodes to 1/255 x 2 - 1 = +0.0039, not 0: the four vectors' mean is that, (0.0078, 0.0078) / 4.
+Check "decoded statistics: four unit vectors (+-x, +-y) average out, rms 1" ("{0:F4} {1:F4}" -f $mean, $rms) ("{0:F4} {1:F4}" -f ([Math]::Sqrt(2.0) * 2.0 * (128.0 / 255.0 * 2.0 - 1.0) / 4.0), 1.0)
+Check "the ripples' defaults: moving, 100%; the city reflection's waves 100%" ("{0} {1} {2}" -f (Default 'WaterRipples'), (Default 'WaterRippleStrength'), (Default 'WaterCityWaves')) "True 1 1"
 Check "the reflection's length 150%: the ray's slope 2/3 of the mirror's" ("{0:F6}" -f $optics::MirrorSlope(0.3, 1.5)) ("{0:F6}" -f 0.2)
 Check "  length 100%: the mirror" ("{0:F6}" -f $optics::MirrorSlope(0.3, 1.0)) ("{0:F6}" -f 0.3)
 Check "  below 100% (or unset, 0): read as the mirror" ("{0:F6}" -f $optics::MirrorSlope(0.3, 0.0)) ("{0:F6}" -f 0.3)

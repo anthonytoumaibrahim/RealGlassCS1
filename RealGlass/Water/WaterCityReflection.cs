@@ -24,9 +24,10 @@ namespace RealGlass.Water
     /// - WHAT IT REPLACES: where the ray meets the city, the city takes the place of the sky the
     ///   water's cube shows: added = rho x strength x (city - skyShare x the theme's sky x its light),
     ///   skyShare the Sky slider while our cube is on the water, 0 otherwise.
-    /// - THE WAVES: the ray leaves the waves' surface at the water's point, not the flat sea
-    ///   (<see cref="WaterOptics.Waves"/>, x the Waves slider; their clock the game's own
-    ///   _SimulationTime2, so they stop when the game is paused). 0: the flat sea's mirror, exactly.
+    /// - THE WAVES: the ray leaves the ripples' surface at the water's point, not the flat sea: the
+    ///   ripple texture the water is shaded with (<see cref="WaterRipples"/>), read as the game reads
+    ///   it, its slopes x <see cref="WaterOptics.CityRippleGain"/> (the Waves slider). 0: the flat
+    ///   sea's mirror, exactly.
     /// - HOW LONG: the ray's slope is divided by the Length slider (<see cref="WaterOptics.MirrorSlope"/>);
     ///   the sky it replaces is still the flat sea's mirror.
     /// Three Unity 5.6 facts from RealLight's editor test: CommandBuffer.Blit binds its source only
@@ -41,7 +42,7 @@ namespace RealGlass.Water
         private static readonly int IdStreak = Shader.PropertyToID("_RGWaterStreak");
         private static readonly int IdStreaked = Shader.PropertyToID("_RGWaterStreaked");
         private static readonly int IdWave = Shader.PropertyToID("_RGWaterWave");
-        private static readonly int IdWaves = Shader.PropertyToID("_RGWaterWaves");
+        private static readonly int IdRipples = Shader.PropertyToID("_RGRipples");
         private static readonly int IdTheme = Shader.PropertyToID("_RGWaterTheme");
         private static readonly int IdLight = Shader.PropertyToID("_RGWaterLight");
 
@@ -56,25 +57,8 @@ namespace RealGlass.Water
         private WaterCityReflection(Shader shader)
         {
             _material = new Material(shader) { name = "RealGlass city reflection", hideFlags = HideFlags.HideAndDontSave };
-            _material.SetVectorArray(IdWaves, WaveRows());
             _cube = Cube("RealGlassWaterCube");
             _buffer = new CommandBuffer { name = "RealGlass water reflection" };
-        }
-
-        /// <summary>The shader's _RGWaterWaves: <see cref="WaterOptics.Waves"/> as its two rows a wave.</summary>
-        public static Vector4[] WaveRows()
-        {
-            double[] w = WaterOptics.Waves();
-            int n = WaterOptics.WaveCount;
-            var rows = new Vector4[2 * n];
-            for (int i = 0; i < n; i++)
-            {
-                int at = i * WaterOptics.WaveStride;
-                rows[i] = new Vector4((float)w[at], (float)w[at + 1], (float)w[at + 2], (float)w[at + 3]);
-                rows[n + i] = new Vector4((float)w[at + 4], (float)w[at + 5], (float)w[at + 6], (float)w[at + 7]);
-            }
-
-            return rows;
         }
 
         /// <summary>Null when the shader is missing or unsupported here (logged by ShaderBundle): the water reflects no city.</summary>
@@ -152,7 +136,7 @@ namespace RealGlass.Water
             Free(ref _streaked);
 
             int w = Half(width), h = Half(height);
-            _frame = Target("RealGlassWaterFrame", w, h, false);
+            _frame = Target("RealGlassWaterFrame", w, h, true);
             _trace = Target("RealGlassWaterTrace", w, h, true);
             _streaked = Target("RealGlassWaterStreaked", w, h, false);
             _material.SetTexture(IdFrame, _frame);
@@ -236,17 +220,24 @@ namespace RealGlass.Water
         /// <param name="theme">The theme's cube (what the water shows of the sky).</param>
         /// <param name="light">The light the game's water lights the cube with (linear): the sun on the level + the sky's ambient.</param>
         /// <param name="sigmaUp">The streaks' Gaussian up and down, uv (<see cref="WaterOptics.StreakSigma"/>).</param>
-        /// <param name="waves">The Waves slider: the waves' slopes x this (0: the flat sea's mirror).</param>
+        /// <param name="ripples">The ripple texture the water is shaded with (null: the flat sea's mirror).</param>
+        /// <param name="rippleGain">The gain on the ripples' slopes (<see cref="WaterOptics.CityRippleGain"/>; 0: the flat sea's mirror).</param>
         /// <param name="length">The Length slider: the reflection this many times as long as the city is tall (<see cref="WaterOptics.MirrorSlope"/>).</param>
-        public void SetUniforms(float level, float strength, float skyShare, Texture theme, Color light, double sigmaUp, float waves,
-                                float length, float farPlane)
+        public void SetUniforms(float level, float strength, float skyShare, Texture theme, Color light, double sigmaUp, Texture ripples,
+                                double rippleGain, float length, float farPlane)
         {
+            float waves = ripples != null ? Mathf.Max(0f, (float)rippleGain) : 0f;
+            if (ripples != null)
+                _material.SetTexture(IdRipples, ripples);
             float reach = Mathf.Min((float)WaterOptics.MaxDistance, 0.9f * farPlane);
             int themeSize = theme != null ? Mathf.Max(theme.width, 1) : 1;
             _material.SetVector(IdGeom, new Vector4(level, strength, theme != null ? skyShare : 0f, Mathf.Max(0f, Mathf.Log(themeSize / 64f, 2f))));
             _material.SetVector(IdMarch, new Vector4(reach, (float)WaterOptics.Thickness, (float)WaterOptics.EdgeFade, Mathf.Max(1f, length)));
             _material.SetVector(IdStreak, new Vector4((float)sigmaUp, _trace != null ? 1f / _trace.height : 0f, 0f, 0f));
-            _material.SetVector(IdWave, new Vector4(Mathf.Max(0f, waves), 0f, 0f, 0f));
+            // Against TAA's flicker (measured, tools\preview\water-flicker.ps1, 2026-10-05): the ripples
+            // read over 8 trace pixels (only waves the screen resolves bend the rays), the city read
+            // as wide as a ray cone spreads (z = 1), the gain x 1.5 to keep the waviness.
+            _material.SetVector(IdWave, new Vector4(Mathf.Max(0f, waves) * 1.5f, 8f, 1f, 0f));
             if (theme != null)
                 _material.SetTexture(IdTheme, theme);
             _material.SetVector(IdLight, new Vector4(light.r, light.g, light.b, 0f));

@@ -650,6 +650,11 @@ namespace RealGlass.UI
             return WaterOn() && (Settings.WaterRealSky == null || Settings.WaterRealSky.value);
         }
 
+        private static bool WaterRipplesOn()
+        {
+            return WaterOn() && (Settings.WaterRipples == null || Settings.WaterRipples.value);
+        }
+
         private static bool WaterCityOn()
         {
             return WaterOn() && (Settings.WaterCity == null || Settings.WaterCity.value);
@@ -1167,6 +1172,29 @@ namespace RealGlass.UI
                 Enabled = WaterOn,
             });
 
+            // The ripples (Water/WaterRipples.cs): ours, moving, in place of the game's frozen ones.
+            Add(new Row
+            {
+                Kind = RowKind.Toggle,
+                Panel = PanelPage.Water,
+                Group = "WaterRipples",
+                Bool = Settings.WaterRipples,
+                DefaultBool = Settings.Defaults.WaterRipples,
+                Enabled = WaterOn,
+                AfterChange = WaterState("moving ripples", OnOff(Settings.WaterRipples)),
+            });
+
+            // 100%: as rough as the game's own ripple texture (measured in each city).
+            Add(new Row
+            {
+                Kind = RowKind.Percent,
+                Panel = PanelPage.Water,
+                Float = Settings.WaterRippleStrength,
+                DefaultFloat = Settings.Defaults.WaterRippleStrength,
+                Min = 0f, Max = 300f, Step = 5f,
+                Enabled = WaterRipplesOn,
+            });
+
             Add(new Row
             {
                 Kind = RowKind.Toggle,
@@ -1219,7 +1247,7 @@ namespace RealGlass.UI
                 Enabled = WaterCityOn,
             });
 
-            // The waves the reflected rays leave (WaterOptics.Waves): 100% a light breeze's chop.
+            // How much the ripples bend the city's reflection (WaterOptics.CityRippleGain): 100% today's look.
             Add(new Row
             {
                 Kind = RowKind.Percent,

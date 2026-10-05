@@ -1,13 +1,18 @@
-# Pictures of the Water tab's city reflection with the REAL shader on this machine's GPU (Unity 5.6,
-# UnityProject\Assets\Editor\WaterPreview.cs): a harbour of towers, by day and by night, the
-# reflection drawn exactly as the mod records it, with the mod's own numbers (the reflectance table,
-# the waves, the streaks' sigma) read from the built DLL. Laid out as a labelled contact sheet in
-# tools\preview\out\<Name>.png -- one row a view, one column a shot.
+# Pictures of the Water tab with the REAL shaders on this machine's GPU (Unity 5.6,
+# UnityProject\Assets\Editor\WaterPreview.cs): a harbour of towers; the water a stand-in for the
+# game's own water shader (Editor\PreviewWater.shader: its ripple normal, sky and sun highlight) with
+# our moving ripples (RealGlass/WaterRipples) on it, and the city reflection drawn exactly as the mod
+# records it, bending its rays off the same ripples. The mod's own numbers (the reflectance table,
+# the ripples, the streaks' sigma, the reflection's gain) are read from the built DLL. Laid out as a
+# labelled contact sheet in tools\preview\out\<Name>.png -- one row a view, one column a shot.
 #
 #   powershell -NoProfile -ExecutionPolicy Bypass -File tools\preview\water-render.ps1
-#   ... -Waves "0,1,2"        the Waves slider for each column (1 = 100%)
+#   ... -Views "day,close,high,sunset,night"   one row each
+#   ... -Ripples "0,1,2"      the Ripple strength for each column (1 = 100%; 0 = flat water)
 #   ... -Frames "0,0.5"       also these seconds later on the game's clock, at 100% (the motion;
 #                             "none": no such columns)
+#   ... -RippleRms 0.3        the game texture's decoded root-mean-square 100% matches (measured in
+#                             the game; the default is the mod's fallback)
 #   ... -Day 1 -Night 2.05 -Streaks 0.036 -Length 1.65 -Width 960 -Height 540 -Name water
 #   ... -Api glcore           the OpenGL Core shaders instead of Direct3D 11
 # Run after build-bundle.ps1 (the shader compiles) and a DLL build.
@@ -15,9 +20,10 @@
 param(
     [int]$Width = 960,
     [int]$Height = 540,
-    [string]$Views = "day,high,night",
-    [string]$Waves = "0,1,2",
-    [string]$Frames = "0.4,0.8",
+    [string]$Views = "day,close,high,sunset,night",
+    [string]$Ripples = "0,1,2",
+    [string]$Frames = "0.5,1.0",
+    [double]$RippleRms = -1.0,
     [double]$Day = 1.0,
     [double]$Night = 2.05,
     [double]$Streaks = 0.036,
@@ -54,30 +60,37 @@ $lines.Add("out " + $shotDir)
 $lines.Add("size " + $Width + " " + $Height)
 $tbl = $optics::BuildTable($optics::SlopeVariance($optics::SkyWind))
 foreach ($i in 0..32) { $lines.Add("table " + $i + " " + (N $tbl[$i])) }
-$w = $optics::Waves()
-$n = $optics::WaveCount; $stride = $optics::WaveStride
+$w = $optics::Ripples()
+$n = $optics::RippleCount; $stride = $optics::WaveStride
 for ($i = 0; $i -lt $n; $i++) {
     $at = $i * $stride
-    $lines.Add("wave " + $i + " " + (N $w[$at]) + " " + (N $w[$at + 1]) + " " + (N $w[$at + 2]) + " " + (N $w[$at + 3]))
-    $lines.Add("wave " + ($n + $i) + " " + (N $w[$at + 4]) + " " + (N $w[$at + 5]) + " " + (N $w[$at + 6]) + " " + (N $w[$at + 7]))
+    $lines.Add("ripple " + $i + " " + (N $w[$at]) + " " + (N $w[$at + 1]) + " " + (N $w[$at + 2]) + " " + (N $w[$at + 3]))
+    $lines.Add("ripple " + ($n + $i) + " " + (N $w[$at + 4]) + " " + (N $w[$at + 5]) + " " + (N $w[$at + 6]) + " " + (N $w[$at + 7]))
 }
+$rms = if ($RippleRms -gt 0.0) { $RippleRms } else { $optics::DefaultRippleRms }
+$lines.Add("ripplerms " + (N $rms))
+# The reflection's gain as the mod sets it at the Waves slider's 100% (CityRippleGain).
+$lines.Add("citygain " + (N ($optics::CityRippleGain(1.0, $rms))))
 $spread = $optics::Spread($optics::SlopeVariance($optics::CityWind))
 $lines.Add("streak " + (N ($optics::StreakSigma($Streaks, $spread, 45.0))))
 $lines.Add("length " + (N $Length))
 $lines.Add("exposure " + (N $ExposureDay) + " " + (N $ExposureNight))
 
-# Columns: each Waves value at 443 s into the game's hour, then 100% at each later frame.
+# Columns: each Ripple strength at 443 s into the game's hour, then 100% at each later frame.
 $columns = New-Object System.Collections.Generic.List[object]
-foreach ($v in $Waves.Split(',')) { $columns.Add(@{ Waves = [double]::Parse($v, $inv); Seconds = 443.0; Label = ("waves {0:P0}" -f [double]::Parse($v, $inv)) }) }
+foreach ($v in $Ripples.Split(',')) {
+    $r = [double]::Parse($v, $inv)
+    $columns.Add(@{ Ripples = $r; Seconds = 443.0; Label = $(if ($r -eq 0.0) { "flat (no ripples)" } else { "ripples {0:P0}" -f $r }) })
+}
 if ($Frames -ne "none") {
-    foreach ($v in $Frames.Split(',')) { $s = [double]::Parse($v, $inv); $columns.Add(@{ Waves = 1.0; Seconds = 443.0 + $s; Label = ("100%, {0:F1} s later" -f $s) }) }
+    foreach ($v in $Frames.Split(',')) { $s = [double]::Parse($v, $inv); $columns.Add(@{ Ripples = 1.0; Seconds = 443.0 + $s; Label = ("100%, {0:F1} s later" -f $s) }) }
 }
 $rows = $Views.Split(',')
 foreach ($view in $rows) {
     $strength = if ($view -like "night*") { $Night } else { $Day }
     for ($c = 0; $c -lt $columns.Count; $c++) {
         $col = $columns[$c]
-        $lines.Add(("shot {0}_{1} {0} {2} {3} {4}" -f $view, $c, (N $col.Waves), (N $col.Seconds), (N $strength)))
+        $lines.Add(("shot {0}_{1} {0} {2} {3} {4}" -f $view, $c, (N $col.Ripples), (N $col.Seconds), (N $strength)))
     }
 }
 [System.IO.File]::WriteAllLines((Join-Path $project "water-preview-input.txt"), $lines)

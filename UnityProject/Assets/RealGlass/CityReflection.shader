@@ -4,7 +4,8 @@
 // Bloom, so reflected lights glow as the lights do. Only on the map's water at the sea's level: the
 // pixels whose depth lies at that plane or beyond it (the water or its bed). Three passes:
 //   0 TRACE (a cube round the camera, into a half-size buffer with mips): the ray reflected by the
-//     waves at the water's point (WaveSlope; the flat sea's mirror ray with the waves at 0), its
+//     ripples at the water's point (RippleSlope: the game's own ripple texture, or ours, read as
+//     the game reads it; the flat sea's mirror ray with the gain at 0), its
 //     slope divided by the Length slider (the reflection drawn longer), followed through the depth
 //     texture; where it meets the city, the city's colour (a half-size copy of the frame) in place
 //     of the sky the water's cube already shows, x the rough sea's reflectance at the view's angle.
@@ -33,7 +34,6 @@ Shader "RealGlass/CityReflection"
     #define RG_MARCH 64
     #define RG_REFINE 6
     #define RG_STREAK 8
-    #define RG_WAVES 16
 
     UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
 
@@ -63,16 +63,16 @@ Shader "RealGlass/CityReflection"
     // command buffer's Blit left _MainTex_TexelSize at 0 in RealLight's editor test).
     float4 _RGWaterStreak;
 
-    // x: the waves' strength (the slider; 0: the flat sea's mirror).
+    // x: the gain on the ripples' slopes (WaterOptics.CityRippleGain; 0: the flat sea's mirror). y: the
+    // footprint the ripples are read over, in pixels of the trace (below 1, unset included, read as 1).
     float4 _RGWaterWave;
 
-    // The waves (WaterOptics.Waves): row i = the wave vector's x, z (cycles per metre), whole cycles
-    // per hour, the slope at 100%; row RG_WAVES + i = the phase (cycles), the wavelength (m).
-    float4 _RGWaterWaves[2 * RG_WAVES];
+    // The ripple texture the water is shaded with (ours, or the game's own _WaterNormal).
+    sampler2D _RGRipples;
 
-    // The game's own clock (SimulationManager.Update): y = the share of its hour gone. It runs with
-    // the game's speed and stops while the game is paused, as the game's water does.
-    float4 _SimulationTime2;
+    // The game's own clock (SimulationManager.Update): x = seconds into its minute. It runs with the
+    // game's speed and stops while the game is paused, as the game's water does.
+    float4 _SimulationTime;
 
     // rgb: the light the game's water lights its cube with (the sun on the level + the sky's
     // ambient, linear).
@@ -148,28 +148,25 @@ Shader "RealGlass/CityReflection"
         return scene >= tFlat * (1.0 - 0.005) - 2.0;
     }
 
-    // The water's slope (dh/dx, dh/dz) at the world point xz: the waves at least 4 pixels long on the
-    // screen there, each fading out between 4 and 2 -- the shorter ones are the streaks'. Judged in
-    // each wave's own direction (dx, dy: the step to the next pixel, m): toward the horizon the
-    // water is foreshortened along the view, so the waves running across it stay and those running
-    // along it go. Phases in cycles, frac before the cosine: the map's far corners are tens of
-    // thousands of cycles out.
-    float2 WaveSlope(float2 xz, float2 dx, float2 dy)
+    // The water's slope (dh/dx, dh/dz) at the world point xz, from its ripples as the game shades
+    // them (Custom/Water/Default, disassembled 2026-10-05): the ripple texture read twice -- at
+    // world xz x 0.0061, and at (z, x) x 0.0057 with its channels swapped -- crossfaded over a 2.5 s
+    // cycle (phase = t x 0.4 + 0.2 cos(0.06 x) cos(0.06 z), weight 2 |0.5 - frac(phase)| on the
+    // second), each decoded x 2 - 1 (x from .w, y from .y) and halved: the normal's x is world +x, its
+    // y world -z, so the slope is (-x, y). Left out: the offset along the flow (the sea's water barely
+    // flows), the foam's damping. dx, dy: the step to the next pixel (m), for the texture's mips --
+    // ripples shorter than the screen can show average out, as on the game's water.
+    float2 RippleSlope(float2 xz, float2 dx, float2 dy)
     {
-        float2 slope = float2(0.0, 0.0);
-        float hour = _SimulationTime2.y;
-        [unroll]
-        for (int w = 0; w < RG_WAVES; w++)
-        {
-            float4 wave = _RGWaterWaves[w];
-            float4 more = _RGWaterWaves[RG_WAVES + w];
-            float perPixel = max(abs(dot(wave.xy, dx)), abs(dot(wave.xy, dy)));
-            float fade = saturate(0.5 / max(perPixel, 1e-6) - 1.0);
-            float cycles = frac(dot(wave.xy, xz) - wave.z * hour + more.x);
-            // The wave's direction: its wave vector x its length.
-            slope += wave.xy * more.y * (wave.w * fade * cos(6.2831853 * cycles));
-        }
-        return slope * _RGWaterWave.x;
+        float phase = _SimulationTime.x * 0.4 + 0.2 * cos(0.06 * xz.x) * cos(0.06 * xz.y);
+        float blend = 2.0 * abs(0.5 - frac(phase));
+        float footprint = max(_RGWaterWave.y, 1.0);
+        dx *= footprint;
+        dy *= footprint;
+        float4 a = tex2Dgrad(_RGRipples, xz * 0.0061, dx * 0.0061, dy * 0.0061);
+        float4 b = tex2Dgrad(_RGRipples, xz.yx * 0.0057, dx.yx * 0.0057, dy.yx * 0.0057);
+        float2 n = lerp(float2(a.w, a.y), float2(b.y, b.w), blend) - 0.5;
+        return float2(-n.x, n.y) * _RGWaterWave.x;
     }
 
     float4 fragTrace(v2f i) : SV_Target
@@ -182,6 +179,12 @@ Shader "RealGlass/CityReflection"
         float h = _WorldSpaceCameraPos.y - _RGWaterGeom.x;
         float2 xz = _WorldSpaceCameraPos.xz + d.xz * (h / max(-d.y, 1e-4));
         float2 xzDx = ddx(xz), xzDy = ddy(xz);
+        float2 slope = float2(0.0, 0.0);
+        if (_RGWaterWave.x > 0.0)
+            slope = FiniteSigned(float3(RippleSlope(xz, xzDx, xzDy), 0.0)).xy;
+        // How far the waves turn the reflected ray from one pixel to the next (radians: a tilt turns
+        // it twice).
+        float turn = 2.0 * max(length(ddx(slope)), length(ddy(slope)));
 
         float tFlat;
         if (!Water(d, uv, tFlat))
@@ -195,10 +198,7 @@ Shader "RealGlass/CityReflection"
         float3 mirror = float3(d.x, -d.y, d.z);
         float3 bent = mirror;
         if (_RGWaterWave.x > 0.0)
-        {
-            float2 slope = FiniteSigned(float3(WaveSlope(xz, xzDx, xzDy), 0.0)).xy;
             bent = reflect(d, normalize(float3(-slope.x, 1.0, -slope.y)));
-        }
         float3 r = normalize(float3(bent.x, abs(bent.y) / max(_RGWaterMarch.w, 1.0), bent.z));
 
         // The mirror ray through the depth texture: geometric steps, then bisection.
@@ -245,7 +245,16 @@ Shader "RealGlass/CityReflection"
         float fade = saturate(min(min(at.x, 1.0 - at.x), min(at.y, 1.0 - at.y)) / max(_RGWaterMarch.z, 1e-4));
         fade *= 1.0 - smoothstep(0.7 * tMax, tMax, hi);
 
-        float3 c = Finite(tex2Dlod(_RGWaterFrame, float4(at.xy, 0.0, 0.0)).rgb);
+        // The city read as wide as the rays of one pixel spread by the time they meet it (a ray
+        // cone): the waves' turn over the distance travelled, in texels of the frame there.
+        float lod = 0.0;
+        if (_RGWaterWave.z > 0.0)
+        {
+            float texelAngle = 2.0 * _RGWaterStreak.y / max(abs(UNITY_MATRIX_P[1][1]), 1e-4);
+            float spread = hi * turn / max(at.z * texelAngle, 1e-6);
+            lod = 0.5 * log2(1.0 + spread * spread);
+        }
+        float3 c = Finite(tex2Dlod(_RGWaterFrame, float4(at.xy, 0.0, lod)).rgb);
         if (_RGWaterGeom.z > 0.0)
             c -= _RGWaterGeom.z * RGSkyLight(texCUBElod(_RGWaterTheme, float4(mirror, _RGWaterGeom.w)).rgb * _RGWaterLight.rgb, mirror);
         return float4(FiniteSigned(c * (k * fade)), 1.0);

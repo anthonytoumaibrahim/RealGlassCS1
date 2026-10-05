@@ -17,13 +17,14 @@ namespace RealGlass.Water
     ///   projected area towards the eye. 2% looking down, about half toward the horizon.
     /// - THE CITY'S STREAKS: a facet tilted by a in the plane of the view turns the reflected ray by
     ///   2a in height, so the waves stretch a reflection up and down by <see cref="Spread"/>.
-    /// - THE WAVES (<see cref="Waves"/>): the waves the screen can show, a sum of directional sine
-    ///   waves (Finch 2004, "Effective Water Simulation from Physical Models", GPU Gems ch. 1) at
-    ///   deep water's speeds (omega^2 = g k; Tessendorf 2001, "Simulating Ocean Water"), each with the
-    ///   same slope -- Phillips's (1958) equilibrium range, where every octave of wavelength carries
-    ///   the same slope. Each reflected ray leaves the surface they make instead of the flat sea, so
-    ///   the city's reflection wavers as real water's does; the waves shorter than the screen can show
-    ///   are the streaks' (the author, 2026-10-05: "the water doesn't get blurry. BUT, it does get
+    /// - THE RIPPLES (<see cref="Ripples"/>): the game's own ripple texture (_WaterNormal) moves only
+    ///   where the water flows; ours is redrawn every frame from a sum of directional sine waves
+    ///   (Finch 2004, "Effective Water Simulation from Physical Models", GPU Gems ch. 1) at deep
+    ///   water's speeds (omega^2 = g k; Tessendorf 2001, "Simulating Ocean Water"), with whole wave
+    ///   numbers across the texture so it tiles as an FFT ocean does (Tessendorf), each wave with the
+    ///   same slope -- Phillips's (1958) equilibrium range, where every octave of wavelength carries the
+    ///   same slope. The game shades with it as with its own; the city's reflection bends its rays off
+    ///   the same ripples (the author, 2026-10-05: "the water doesn't get blurry. BUT, it does get
     ///   distorted a bit, with the waves").
     /// - THE REFLECTION'S LENGTH (<see cref="MirrorSlope"/>): the mod's own stretch, not a model --
     ///   the city's reflection drawn longer than the city is tall, as reflections on open water look
@@ -57,25 +58,42 @@ namespace RealGlass.Water
         /// <summary>The share of the screen, at each edge, over which the city's reflection fades out.</summary>
         public const double EdgeFade = 0.05;
 
-        /// <summary>How many waves bend the city's reflection (the shader's _RGWaterWaves holds two rows each).</summary>
-        public const int WaveCount = 16;
+        /// <summary>How many waves make the ripples (the generator's _RGRippleWaves holds two rows each).</summary>
+        public const int RippleCount = 32;
 
-        /// <summary>The longest wave, metres: the chop a light breeze raises on a harbour.</summary>
-        public const double WaveLongest = 12.0;
+        /// <summary>The longest ripple, metres: the chop a light breeze raises on a harbour.</summary>
+        public const double RippleLongest = 16.0;
 
-        /// <summary>The shortest, metres; shorter ones are the streaks'.</summary>
-        public const double WaveShortest = 0.4;
+        /// <summary>The shortest, metres: 3 texels of the <see cref="RippleTexels"/> texture over <see cref="RippleTile"/>.</summary>
+        public const double RippleShortest = 0.5;
 
-        /// <summary>The way the waves run, degrees from +x toward +z, and how far their directions spread either side of it.</summary>
+        /// <summary>The ripple texture's size, texels a side.</summary>
+        public const int RippleTexels = 1024;
+
+        /// <summary>
+        /// How the game lays its ripple texture on the water (Custom/Water/Default, disassembled
+        /// 2026-10-05): once at world xz x <see cref="GameRippleScaleA"/>, once at (z, x) x
+        /// <see cref="GameRippleScaleB"/> with x and y swapped -- a mirrored, inverted copy.
+        /// </summary>
+        public const double GameRippleScaleA = 0.0061;
+        public const double GameRippleScaleB = 0.0057;
+
+        /// <summary>The metres one ripple texture covers (the game's first copy: 1 / 0.0061 = 164 m).</summary>
+        public static readonly double RippleTile = 1.0 / GameRippleScaleA;
+
+        /// <summary>The way the ripples run, degrees from +x toward +z, and how far their directions spread either side of it.</summary>
         public const double WaveHeading = 30.0;
         public const double WaveSpread = 70.0;
 
-        /// <summary>The waves' root-mean-square slope at 100%, all of them together (rise over run). Set from pictures.</summary>
+        /// <summary>
+        /// The slopes' root-mean-square of the waves the city's reflection bends its rays off, at 100%
+        /// (rise over run): today's look kept, whatever the ripples' strength calibrates to.
+        /// </summary>
         public const double WaveSlope = 0.03;
 
         public const double Gravity = 9.81;
 
-        /// <summary>The numbers in each wave's row pair (<see cref="Waves"/>).</summary>
+        /// <summary>The numbers in each ripple's row pair (<see cref="Ripples"/>).</summary>
         public const int WaveStride = 8;
 
         /// <summary>Cox &amp; Munk's mean square slope of a clean sea for a wind of u m/s (both directions together).</summary>
@@ -189,35 +207,95 @@ namespace RealGlass.Water
         }
 
         /// <summary>
-        /// The waves, <see cref="WaveStride"/> numbers each (the shader's two rows: i and
-        /// <see cref="WaveCount"/> + i): the wave vector's x and z in cycles per metre; whole cycles
-        /// per hour (the game's hour clock, _SimulationTime2, wraps with no jump; deep water's speed to
-        /// 0.1%); the slope at 100%; the phase in cycles; the wavelength in metres; 0; 0. Wavelengths
-        /// from <see cref="WaveLongest"/> down to <see cref="WaveShortest"/> in equal ratios, their
-        /// directions in a scrambled order (golden-ratio steps over the spread: neighbouring lengths
-        /// run far apart), every slope the same so that the slopes' mean square, sum s^2 / 2, is
-        /// <see cref="WaveSlope"/>^2.
+        /// The ripples, <see cref="WaveStride"/> numbers each (the generator's two rows: i and
+        /// <see cref="RippleCount"/> + i): the WHOLE wave numbers m, n (cycles across the texture, along
+        /// x and z: it tiles); whole cycles per hour (the game's hour clock, _SimulationTime2, wraps with
+        /// no jump; deep water's speed for the wave's true length on <see cref="RippleTile"/>, to 0.1%);
+        /// the slope; the phase in cycles; the direction's x and z (unit); 0. Lengths from
+        /// <see cref="RippleLongest"/> to <see cref="RippleShortest"/> in equal ratios before rounding,
+        /// directions in a scrambled order (golden-ratio steps over the spread: neighbouring lengths run
+        /// far apart), every slope the same and the slopes' mean square, sum s^2 / 2, exactly 1 -- the
+        /// generator multiplies by the root-mean-square slope it wants.
         /// </summary>
-        public static double[] Waves()
+        public static double[] Ripples()
         {
-            var waves = new double[WaveCount * WaveStride];
-            double ratio = Math.Pow(WaveShortest / WaveLongest, 1.0 / (WaveCount - 1));
-            double slope = WaveSlope * Math.Sqrt(2.0 / WaveCount);
-            for (int i = 0; i < WaveCount; i++)
+            var waves = new double[RippleCount * WaveStride];
+            double ratio = Math.Pow(RippleShortest / RippleLongest, 1.0 / (RippleCount - 1));
+            double slope = Math.Sqrt(2.0 / RippleCount);
+            var taken = new System.Collections.Generic.Dictionary<long, bool>();
+            for (int i = 0; i < RippleCount; i++)
             {
-                double length = WaveLongest * Math.Pow(ratio, i);
-                double k = 2.0 * Math.PI / length;
+                double cycles = RippleTile / (RippleLongest * Math.Pow(ratio, i));
                 double heading = (WaveHeading + WaveSpread * (2.0 * Frac(0.5 + i * 0.6180339887) - 1.0)) * Math.PI / 180.0;
+                double m = Math.Round(cycles * Math.Cos(heading)), n = Math.Round(cycles * Math.Sin(heading));
+                // Two ripples on one wave vector would add into one: step the second aside.
+                while ((m == 0.0 && n == 0.0) || taken.ContainsKey((long)m * 100000L + (long)n))
+                    n += 1.0;
+                taken[(long)m * 100000L + (long)n] = true;
+
+                double across = Math.Sqrt(m * m + n * n);
+                double k = 2.0 * Math.PI * across / RippleTile;
                 int at = i * WaveStride;
-                waves[at] = Math.Cos(heading) / length;
-                waves[at + 1] = Math.Sin(heading) / length;
+                waves[at] = m;
+                waves[at + 1] = n;
                 waves[at + 2] = Math.Max(1.0, Math.Round(Math.Sqrt(Gravity * k) * 3600.0 / (2.0 * Math.PI)));
                 waves[at + 3] = slope;
                 waves[at + 4] = Frac(0.2 + i * 0.7548776662);
-                waves[at + 5] = length;
+                waves[at + 5] = m / across;
+                waves[at + 6] = n / across;
             }
 
             return waves;
+        }
+
+        /// <summary>
+        /// The game decodes its ripple texture x 2 - 1 and halves it into the normal's slope
+        /// (Custom/Water/Default). So a texture whose decoded values have root-mean-square
+        /// <paramref name="decodedRms"/> (both channels together) is a surface of root-mean-square slope
+        /// decodedRms / 2: ours, at <paramref name="strength"/> (1 = as rough as the texture measured).
+        /// </summary>
+        public static double RippleSlope(double decodedRms, double strength)
+        {
+            return 0.5 * Math.Max(0.0, decodedRms) * Math.Max(0.0, strength);
+        }
+
+        /// <summary>
+        /// The city reflection's gain on the ripples' slopes: at the Waves slider's 100% and ripples at
+        /// 100%, the reflection's rays bend by <see cref="WaveSlope"/> root-mean-square (today's look,
+        /// whatever the game's texture measured); rougher ripples bend them more.
+        /// </summary>
+        public static double CityRippleGain(double cityWaves, double decodedRms)
+        {
+            double slopeAt100 = RippleSlope(decodedRms, 1.0);
+            return slopeAt100 > 1e-6 ? Math.Max(0.0, cityWaves) * WaveSlope / slopeAt100 : 0.0;
+        }
+
+        /// <summary>The decoded root-mean-square taken when the game's texture cannot be measured.</summary>
+        public const double DefaultRippleRms = 0.3;
+
+        /// <summary>
+        /// A ripple texture's two channels as the game reads them (bytes, decoded v / 255 x 2 - 1):
+        /// the mean of the decoded vector's length and its root-mean-square (both channels together).
+        /// </summary>
+        public static void DecodedStats(byte[] x, byte[] y, out double mean, out double rms)
+        {
+            mean = 0.0;
+            rms = 0.0;
+            int n = Math.Min(x != null ? x.Length : 0, y != null ? y.Length : 0);
+            if (n == 0)
+                return;
+
+            double sumX = 0.0, sumY = 0.0, sumSq = 0.0;
+            for (int i = 0; i < n; i++)
+            {
+                double a = x[i] / 255.0 * 2.0 - 1.0, b = y[i] / 255.0 * 2.0 - 1.0;
+                sumX += a;
+                sumY += b;
+                sumSq += a * a + b * b;
+            }
+
+            mean = Math.Sqrt(sumX * sumX + sumY * sumY) / n;
+            rms = Math.Sqrt(sumSq / n);
         }
 
         private static double Frac(double x)

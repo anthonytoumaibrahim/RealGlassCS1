@@ -15,8 +15,11 @@ namespace RealGlass.Water
     {
         private static readonly int IdTable = Shader.PropertyToID("_RGSeaTable");
 
+        private static readonly int IdGameRipples = Shader.PropertyToID("_WaterNormal");
+
         private WaterSurface _surface;
         private WaterCityReflection _city;
+        private WaterRipples _ripples;
         private Vector4[] _table;
         private readonly double _spread = WaterOptics.Spread(WaterOptics.SlopeVariance(WaterOptics.CityWind));
         private bool _failed;
@@ -33,7 +36,9 @@ namespace RealGlass.Water
 
                 _surface = WaterSurface.Create();
                 _city = WaterCityReflection.Create();
+                _ripples = WaterRipples.Create();
                 Log.Msg("water: ready (cube " + (_surface != null ? "yes" : "NO SHADER") + ", city reflection " + (_city != null ? "yes" : "NO SHADER") +
+                        ", ripples " + (_ripples != null ? "yes" : "NO SHADER") +
                         "; reflectance " + (rho[WaterOptics.TableSize - 1] * 100.0).ToString("F1") + "% looking down, " + (rho[4] * 100.0).ToString("F0") +
                         "% at 1 deg); " + Describe());
             }
@@ -49,7 +54,9 @@ namespace RealGlass.Water
         {
             if (!On(Settings.WaterEnabled))
                 return "water controls off";
-            return "water controls ON: brightness " + Pct(Settings.WaterBrightness) + ", real sky " + (On(Settings.WaterRealSky) ? Pct(Settings.WaterSky) : "off") +
+            return "water controls ON: brightness " + Pct(Settings.WaterBrightness) +
+                   ", moving ripples " + (On(Settings.WaterRipples) ? Pct(Settings.WaterRippleStrength) : "off") +
+                   ", real sky " + (On(Settings.WaterRealSky) ? Pct(Settings.WaterSky) : "off") +
                    ", city " + (On(Settings.WaterCity) ? Pct(Settings.WaterCityDay) + " day / " + Pct(Settings.WaterCityNight) + " night, waves " +
                    Pct(Settings.WaterCityWaves) + ", streaks " + Pct(Settings.WaterCityStreaks) + ", length " + Pct(Settings.WaterCityLength) : "off");
         }
@@ -109,7 +116,37 @@ namespace RealGlass.Water
                     _surface.ReleaseCube();
             }
 
+            RipplesFrame();
             CityFrame(light, toSun);
+        }
+
+        /// <summary>
+        /// Our moving ripples on the water (drawn this frame), or the game's own again. The game's
+        /// texture is measured either way: the city reflection's gain is set against it.
+        /// </summary>
+        private void RipplesFrame()
+        {
+            if (_ripples == null)
+                return;
+
+            if (On(Settings.WaterRipples))
+            {
+                _ripples.Draw(Value(Settings.WaterRippleStrength, Settings.Defaults.WaterRippleStrength));
+                _ripples.Hold();
+            }
+            else
+            {
+                _ripples.Release();
+                _ripples.Measure();
+            }
+        }
+
+        /// <summary>The ripple texture the water is shaded with now: ours while held, else the game's own.</summary>
+        private Texture ShadedRipples()
+        {
+            if (_ripples != null && _ripples.Held)
+                return _ripples.Texture;
+            return Shader.GetGlobalTexture(IdGameRipples);
         }
 
         /// <summary>
@@ -178,7 +215,9 @@ namespace RealGlass.Water
             float skyShare = _surface != null && _surface.CubeHeld ? Value(Settings.WaterSky, Settings.Defaults.WaterSky) : 0f;
 
             double up = WaterOptics.StreakSigma(Value(Settings.WaterCityStreaks, Settings.Defaults.WaterCityStreaks), _spread, camera.fieldOfView);
-            _city.SetUniforms(level, strength, skyShare, WaterSurface.ThemeCube(), lit, up, Value(Settings.WaterCityWaves, Settings.Defaults.WaterCityWaves),
+            double rms = _ripples != null ? _ripples.DecodedRms : WaterOptics.DefaultRippleRms;
+            double gain = WaterOptics.CityRippleGain(Value(Settings.WaterCityWaves, Settings.Defaults.WaterCityWaves), rms);
+            _city.SetUniforms(level, strength, skyShare, WaterSurface.ThemeCube(), lit, up, ShadedRipples(), gain,
                               Value(Settings.WaterCityLength, Settings.Defaults.WaterCityLength), camera.farClipPlane);
             _city.Attach(camera);
             CityState("on (sea level " + level.ToString("F1") + " m)");
@@ -200,6 +239,8 @@ namespace RealGlass.Water
         {
             if (_city != null && _city.Attached)
                 _city.Detach();
+            if (_ripples != null)
+                _ripples.Release();
             if (_surface != null)
                 _surface.GiveBack();
             else
@@ -213,6 +254,8 @@ namespace RealGlass.Water
             {
                 if (_city != null)
                     _city.Destroy();
+                if (_ripples != null)
+                    _ripples.Destroy();
                 if (_surface != null)
                     _surface.Destroy();
                 Shader.SetGlobalFloat("_RGWaterHeld", 0f);
@@ -223,6 +266,7 @@ namespace RealGlass.Water
             }
 
             _city = null;
+            _ripples = null;
             _surface = null;
         }
     }

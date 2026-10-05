@@ -240,8 +240,14 @@ namespace RealGlass
         /// <summary>0..3: the city's reflection by night (1 = real water).</summary>
         public static FloatSetting WaterCityNight { get; private set; }
 
-        /// <summary>0..3: the waves bend the city's reflection (1 = a light breeze's chop: WaterOptics.Waves).</summary>
+        /// <summary>0..3: the ripples bend the city's reflection (1 = today's look: WaterOptics.CityRippleGain).</summary>
         public static FloatSetting WaterCityWaves { get; private set; }
+
+        /// <summary>Our moving ripples on the water in place of the game's frozen ones (Water/WaterRipples.cs).</summary>
+        public static BoolSetting WaterRipples { get; private set; }
+
+        /// <summary>0..3: the ripples' roughness (1 = the game's own ripple texture's, measured).</summary>
+        public static FloatSetting WaterRippleStrength { get; private set; }
 
         /// <summary>0..0.1: the waves smear the city's reflection up and down (1 would be a light breeze's).</summary>
         public static FloatSetting WaterCityStreaks { get; private set; }
@@ -335,6 +341,12 @@ namespace RealGlass
 
             /// <summary>A mirror: the city's own height.</summary>
             public const float WaterCityLength = 1f;
+
+            /// <summary>Moving ripples on (the author, 2026-10-05: step 1 of the water plan, "a proof of concept").</summary>
+            public const bool WaterRipples = true;
+
+            /// <summary>As rough as the game's own ripples.</summary>
+            public const float WaterRippleStrength = 1f;
         }
 
         private static bool _initialised;
@@ -401,6 +413,8 @@ namespace RealGlass
 
                 WaterEnabled = new BoolSetting("WaterEnabled", Defaults.WaterEnabled);
                 WaterBrightness = new FloatSetting("WaterBrightness", Defaults.WaterBrightness);
+                WaterRipples = new BoolSetting("WaterRipples", Defaults.WaterRipples);
+                WaterRippleStrength = new FloatSetting("WaterRippleStrength", Defaults.WaterRippleStrength);
                 WaterRealSky = new BoolSetting("WaterRealSky", Defaults.WaterRealSky);
                 WaterSky = new FloatSetting("WaterSky", Defaults.WaterSky);
                 WaterCity = new BoolSetting("WaterCity", Defaults.WaterCity);

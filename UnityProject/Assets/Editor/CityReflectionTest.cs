@@ -15,7 +15,8 @@ using UnityEngine.Rendering;
 ///   Unity.exe -batchmode -quit -projectPath . -executeMethod CityReflectionTest.Run
 /// which draws the reflection the way the mod does (a half-size copy of the frame, the trace, the
 /// streaks, then the cube, from a command buffer at AfterImageEffectsOpaque on a legacy-deferred HDR
-/// camera; the waves' rows and the game's hour clock from the file too) over a plane of
+/// camera; the ripple texture -- one value everywhere, or RealGlass/WaterRipples' -- and the game's
+/// clocks from the file too) over a plane of
 /// water at the sea's level and a lit wall standing past it. Each listed world point is rendered
 /// with and without the reflection; reflection-test-output.txt has the pixel's own ray and both
 /// colours.
@@ -36,7 +37,10 @@ public static class CityReflectionTest
             var material = new Material(shader);
 
             var table = new Vector4[33];
-            var waves = new Vector4[32];
+            var ripples = new Vector4[64];
+            bool generate = false;
+            float rippleSlope = 0f;
+            Color uniformRipple = new Color(0.5f, 0.5f, 0.5f, 0.5f);
             var points = new List<string[]>();
             Vector3 eye = Vector3.zero, look = Vector3.forward, wallCentre = Vector3.zero, wallSize = Vector3.one;
             float level = 0f;
@@ -49,8 +53,19 @@ public static class CityReflectionTest
                     material.SetVector(p[0], new Vector4(F(p[1]), F(p[2]), F(p[3]), F(p[4])));
                 else if (p[0] == "table")
                     table[int.Parse(p[1], CultureInfo.InvariantCulture)] = new Vector4(F(p[2]), 0f, 0f, 0f);
-                else if (p[0] == "wave")
-                    waves[int.Parse(p[1], CultureInfo.InvariantCulture)] = new Vector4(F(p[2]), F(p[3]), F(p[4]), F(p[5]));
+                else if (p[0] == "ripple")
+                    ripples[int.Parse(p[1], CultureInfo.InvariantCulture)] = new Vector4(F(p[2]), F(p[3]), F(p[4]), F(p[5]));
+                else if (p[0] == "generate")
+                {
+                    // The ripple texture made by RealGlass/WaterRipples at this root-mean-square slope.
+                    generate = true;
+                    rippleSlope = F(p[1]);
+                }
+                else if (p[0] == "uniform")
+                    // One ripple everywhere: the texture's (x, y, z, w).
+                    uniformRipple = new Color(F(p[1]), F(p[2]), F(p[3]), F(p[4]));
+                else if (p[0] == "simtime")
+                    Shader.SetGlobalVector("_SimulationTime", new Vector4(F(p[1]), F(p[2]), F(p[3]), F(p[4])));
                 else if (p[0] == "simtime2")
                     Shader.SetGlobalVector("_SimulationTime2", new Vector4(F(p[1]), F(p[2]), F(p[3]), F(p[4])));
                 else if (p[0] == "theme")
@@ -79,7 +94,8 @@ public static class CityReflectionTest
             }
 
             Shader.SetGlobalVectorArray("_RGSeaTable", table);
-            material.SetVectorArray("_RGWaterWaves", waves);
+            Texture rippleTexture = generate ? (Texture)GenerateRipples(ripples, rippleSlope, 256) : Uniform(uniformRipple);
+            material.SetTexture("_RGRipples", rippleTexture);
 
             // The theme's sky: one colour every way.
             material.SetTexture("_RGWaterTheme", Cube(theme));
@@ -162,6 +178,37 @@ public static class CityReflectionTest
         }
 
         File.WriteAllText(Path.Combine(dir, "reflection-test-output.txt"), output.ToString());
+    }
+
+    /// <summary>A float texture of one value everywhere (read back exactly: no 8-bit rounding).</summary>
+    private static Texture2D Uniform(Color value)
+    {
+        var t = new Texture2D(4, 4, TextureFormat.RGBAFloat, true, true) { wrapMode = TextureWrapMode.Repeat };
+        var px = new Color[16];
+        for (int i = 0; i < px.Length; i++)
+            px[i] = value;
+        t.SetPixels(px);
+        t.Apply(true);
+        return t;
+    }
+
+    /// <summary>The ripple texture as WaterRipples draws it: RealGlass/WaterRipples into an ARGB32 linear target with mips.</summary>
+    public static RenderTexture GenerateRipples(Vector4[] rows, float slope, int size)
+    {
+        Shader shader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/RealGlass/WaterRipples.shader");
+        var generator = new Material(shader);
+        generator.SetVectorArray("_RGRippleWaves", rows);
+        generator.SetVector("_RGRipple", new Vector4(slope, 0f, 0f, 0f));
+        var rt = new RenderTexture(size, size, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear)
+        {
+            useMipMap = true,
+            autoGenerateMips = true,
+            wrapMode = TextureWrapMode.Repeat,
+            filterMode = FilterMode.Trilinear,
+        };
+        rt.Create();
+        Graphics.Blit(Texture2D.blackTexture, rt, generator, 0);
+        return rt;
     }
 
     /// <summary>A float cube of one colour every way (linear: read back exactly).</summary>

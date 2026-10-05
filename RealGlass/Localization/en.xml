@@ -170,6 +170,12 @@
 
   <String key="WaterBrightness.Label">Water brightness</String>
 
+  <String key="Group.WaterRipples">The ripples</String>
+
+  <String key="WaterRipples.Label">Moving ripples</String>
+
+  <String key="WaterRippleStrength.Label">Ripple strength</String>
+
   <String key="Group.WaterSky">The sky in the water</String>
 
   <String key="WaterRealSky.Label">Reflect the sky like real water</String>

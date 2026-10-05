@@ -35,6 +35,9 @@ namespace RealGlass
         /// <summary>The Water tab: the city in the map's water.</summary>
         public const string CityReflection = "RealGlass/CityReflection";
 
+        /// <summary>The Water tab: the moving ripples, laid in place of the game's ripple texture.</summary>
+        public const string WaterRipples = "RealGlass/WaterRipples";
+
         /// <summary>
         /// "RealGlass.Resources.realglass-win.bundle" and so on: the csproj's LogicalName for each
         /// bundle, with the name from <see cref="BundleFor"/> in between.

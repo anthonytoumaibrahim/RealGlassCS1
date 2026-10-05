@@ -11,11 +11,13 @@
 #   - STREAKS 100%: at the side edge as sharp (up and down only); at the top edge, part way.
 #   - LENGTH 150% (the ray's slope 2/3 of the mirror's): water whose mirror ray passes over the wall
 #     now meets it (rho x the wall, sharp), water that met it still does, the rest untouched.
-#   - A TILTED SEA (one wave 100 km long through the waves' rows: the sea sloping down 5% toward
-#     the wall): each point's ray reflected off that slope, by the model -- water whose mirror passed
+#   - A TILTED SEA (a ripple texture of one value: the sea falling 5% toward the wall and rising 5%
+#     toward +z): each point's ray reflected off that slope, by the model -- water whose mirror passed
 #     over the wall now meets it, as the bent ray says; the rest as the model says.
-#   - WAVES 100% (the mod's own waves, the game's clock at a share of its hour): the wall and the sky
-#     untouched, the middle of the reflection still the wall's.
+#   - RIPPLES (RealGlass/WaterRipples' texture, read as the game reads it, the gain the mod sets):
+#     the wall and the sky untouched, the middle of the reflection still the wall's.
+# Then the ripple generator itself, texel by texel, and the mod's measurement of the game's ripple
+# texture on a DXT5 stand-in (WaterRippleTest.cs).
 # Run after build-bundle.ps1 (the shader compiles) and a DLL build:
 #
 #   powershell -NoProfile -ExecutionPolicy Bypass -File tools\test-reflection-shader.ps1
@@ -92,15 +94,18 @@ $cases = @(
     # sharp checks below were skipped that way from 2026-10-04 to 2026-10-05.
     @{ Name = "length 150%"; Share = 0.0; Water = "0.05 0.12 0.15"; Streaks = 0.0; Stretch = 1.5 },
     @{ Name = "a tilted sea"; Share = 0.0; Water = "0.05 0.12 0.15"; Streaks = 0.0; Tilt = 0.05 },
-    @{ Name = "waves 100%"; Share = 0.0; Water = "0.05 0.12 0.15"; Streaks = 0.0; Waves = 1.0 }
+    @{ Name = "ripples, today's gain"; Share = 0.0; Water = "0.05 0.12 0.15"; Streaks = 0.0; Waves = 1.0 }
 )
 $results = @{}
 
-# The tilted sea: one wave 1e5 m long (1e-5 cycles a metre along +x), phase half a cycle, slope 5%:
-# dh/dx = -0.05 cos(2 pi 1e-5 x) all over the scene -- what the shader's waves give there.
-$tiltK = 1e-5
-function TiltSlope([double]$x, [double]$s) { return $s * [Math]::Cos(2.0 * [Math]::PI * ($tiltK * $x + 0.5)) }
-$waveTable = $optics::Waves()
+# The tilted sea: a ripple texture of ONE value, x = y = 0.5 + t: both of the game's reads give
+# (t, t), so the slope is (-t, +t) x the gain everywhere -- the sea falling 5% toward the wall (+x)
+# and rising 5% toward +z.
+function TiltSlope([double]$t) { return [double[]]@((-$t), $t) }
+# The ripples' case: the generator's texture at a root-mean-square slope of 0.06 (decoded 0.12), the
+# reflection's gain set as the mod sets it (CityRippleGain: today's 0.03 at 100%).
+$rippleTable = $optics::Ripples()
+$generatedSlope = 0.06
 
 foreach ($case in $cases) {
     $sy = $optics::StreakSigma($case.Streaks, $spread, 60.0)
@@ -112,23 +117,24 @@ foreach ($case in $cases) {
     # The half-size buffers of the 257 px test: 128 texels.
     $lines.Add("_RGWaterStreak " + (N $sy) + " " + (N (1.0 / 128.0)) + " 0 0")
     $lines.Add("_RGWaterLight " + (N $light[0]) + " " + (N $light[1]) + " " + (N $light[2]) + " 0")
-    # The waves: none, the tilted sea's one, or the mod's own.
-    $waveRows = New-Object 'double[,]' 32, 4
-    $strength = 0.0
+    # The ripples: none (gain 0), the tilted sea's one value, or the generator's.
+    $gain = 0.0
     if ($case.Tilt) {
-        $strength = 1.0
-        $waveRows[0, 0] = $tiltK; $waveRows[0, 3] = $case.Tilt
-        $waveRows[16, 0] = 0.5; $waveRows[16, 1] = 1.0 / $tiltK
+        $gain = 1.0
+        $v = 0.5 + [double]$case.Tilt
+        $lines.Add("uniform " + (N $v) + " " + (N $v) + " 1 " + (N $v))
     }
     elseif ($case.Waves) {
-        $strength = [double]$case.Waves
-        for ($i = 0; $i -lt 16; $i++) {
-            foreach ($c in 0..3) { $waveRows[$i, $c] = $waveTable[$i * 8 + $c]; $waveRows[(16 + $i), $c] = $waveTable[$i * 8 + 4 + $c] }
+        $gain = $optics::CityRippleGain([double]$case.Waves, 2.0 * $generatedSlope)
+        $lines.Add("generate " + (N $generatedSlope))
+        for ($i = 0; $i -lt 32; $i++) {
+            $lines.Add("ripple " + $i + " " + (($rippleTable[($i * 8)..($i * 8 + 3)] | ForEach-Object { N $_ }) -join " "))
+            $lines.Add("ripple " + (32 + $i) + " " + (($rippleTable[($i * 8 + 4)..($i * 8 + 7)] | ForEach-Object { N $_ }) -join " "))
         }
     }
-    $lines.Add("_RGWaterWave " + (N $strength) + " 0 0 0")
-    foreach ($i in 0..31) { $lines.Add("wave " + $i + " " + (N $waveRows[$i, 0]) + " " + (N $waveRows[$i, 1]) + " " + (N $waveRows[$i, 2]) + " " + (N $waveRows[$i, 3])) }
-    # The game's hour clock: 443 s into the hour.
+    $lines.Add("_RGWaterWave " + (N $gain) + " 0 0 0")
+    # The game's clocks: 23 s into its minute, 443 s into its hour.
+    $lines.Add("simtime 23 " + (N (23.0 / 60.0)) + " " + (N (23.0 * 2.0 * [Math]::PI)) + " " + (N (23.0 * 2.0 * [Math]::PI / 60.0)))
     $lines.Add("simtime2 443 " + (N (443.0 / 3600.0)) + " 0 0")
     foreach ($i in 0..32) { $lines.Add("table " + $i + " " + (N $tbl[$i])) }
     $lines.Add("theme " + (N $theme[0]) + " " + (N $theme[1]) + " " + (N $theme[2]))
@@ -161,7 +167,7 @@ foreach ($case in $cases) {
 
     # THE TILTED SEA: each point's ray reflected off the slope where it meets the water, followed
     # to the wall's face (x = 390, 60 m tall, z within 150): the wall where it lands clearly on it,
-    # untouched where clearly beside or over it, not judged within 2 m of an edge.
+    # untouched where clearly beside or over it, not judged within 5 m of an edge.
     if ($case.Tilt) {
         $wallColour = Three $rows["wall"] 10
         foreach ($pt in $points) {
@@ -170,22 +176,24 @@ foreach ($case in $cases) {
             $d = Three $q 6; $plain = Three $q 10; $shader = Three $q 14
             $t = ($eye[1] - $level) / -$d[1]
             $px = $eye[0] + $d[0] * $t; $pz = $eye[2] + $d[2] * $t
-            $sx = TiltSlope $px $case.Tilt
-            $nl = [Math]::Sqrt(1.0 + $sx * $sx)
-            $n = [double[]]@((-$sx / $nl), (1.0 / $nl), 0.0)
-            $dn = $d[0] * $n[0] + $d[1] * $n[1]
-            $r = [double[]]@(($d[0] - 2.0 * $dn * $n[0]), [Math]::Abs($d[1] - 2.0 * $dn * $n[1]), $d[2])
+            $sl = TiltSlope ([double]$case.Tilt)
+            $nl = [Math]::Sqrt(1.0 + $sl[0] * $sl[0] + $sl[1] * $sl[1])
+            $n = [double[]]@((-$sl[0] / $nl), (1.0 / $nl), (-$sl[1] / $nl))
+            $dn = $d[0] * $n[0] + $d[1] * $n[1] + $d[2] * $n[2]
+            $r = [double[]]@(($d[0] - 2.0 * $dn * $n[0]), [Math]::Abs($d[1] - 2.0 * $dn * $n[1]), ($d[2] - 2.0 * $dn * $n[2]))
             $s = ($face - $px) / $r[0]
             $y = $r[1] * $s; $z = $pz + $r[2] * $s
             $land = "{0:F1} m up, z {1:F1}" -f $y, $z
-            if ($y -gt 6.0 -and $y -lt ($wallTop - 2.0) -and [Math]::Abs($z) -lt ($wallHalf - 2.0)) {
+            # Within 5 m of an edge is not judged: a half-size texel spans ~3.3 m at the wall (390 m out,
+            # 128 texels over 60 deg), so its pixel straddles the edge.
+            if ($y -gt 6.0 -and $y -lt ($wallTop - 5.0) -and [Math]::Abs($z) -lt ($wallHalf - 5.0)) {
                 $rho = $optics::Lookup($tbl, -$d[1])
                 $want = [double[]]@(0.0, 0.0, 0.0)
                 foreach ($k in 0..2) { $want[$k] = $plain[$k] + $rho * $wallColour[$k] }
                 $w = Worst $shader $want
                 Check ("tilted sea, {0}: its ray lands on the wall ({1})" -f $pt.Say, $land) ($w -lt 0.015) ("shader {0}  model {1}  worst {2:P2}" -f (Show $shader), (Show $want), $w)
             }
-            elseif ($y -gt ($wallTop + 2.0) -or [Math]::Abs($z) -gt ($wallHalf + 2.0)) {
+            elseif ($y -gt ($wallTop + 5.0) -or [Math]::Abs($z) -gt ($wallHalf + 5.0)) {
                 $w = Worst $shader $plain
                 Check ("tilted sea, {0}: its ray passes the wall ({1}): untouched" -f $pt.Say, $land) ($w -lt 1e-4) ("{0} (without {1})" -f (Show $shader), (Show $plain))
             }
@@ -231,12 +239,13 @@ function AddedAt([string]$case, [string]$name) {
     return ([double]::Parse($q[14], $inv) - [double]::Parse($q[10], $inv))
 }
 if ($results.Count -eq $cases.Count) {
-    $sharpMid = AddedAt "sharp, no sky share" "water8"; $wavesMid = AddedAt "waves 100%" "water8"
-    Check "waves 100%: the middle of the reflection still the wall's" ([Math]::Abs($wavesMid / $sharpMid - 1.0) -lt 0.03) ("{0:F4} vs {1:F4}" -f $wavesMid, $sharpMid)
-    Check "  the wall and the sky: untouched" ((AddedAt "waves 100%" "wall") -eq 0.0 -and (AddedAt "waves 100%" "sky") -eq 0.0) ""
+    $rc = "ripples, today's gain"
+    $sharpMid = AddedAt "sharp, no sky share" "water8"; $wavesMid = AddedAt $rc "water8"
+    Check "ripples: the middle of the reflection still the wall's" ([Math]::Abs($wavesMid / $sharpMid - 1.0) -lt 0.03) ("{0:F4} vs {1:F4}" -f $wavesMid, $sharpMid)
+    Check "  the wall and the sky: untouched" ((AddedAt $rc "wall") -eq 0.0 -and (AddedAt $rc "sky") -eq 0.0) ""
     $line = ""
-    foreach ($pt in $points) { $line += (" {0} {1:F4}/{2:F4}" -f $pt.Name, (AddedAt "waves 100%" $pt.Name), (AddedAt "sharp, no sky share" $pt.Name)) }
-    Write-Host ("      waves 100% vs flat, red added:" + $line)
+    foreach ($pt in $points) { $line += (" {0} {1:F4}/{2:F4}" -f $pt.Name, (AddedAt $rc $pt.Name), (AddedAt "sharp, no sky share" $pt.Name)) }
+    Write-Host ("      ripples vs flat, red added:" + $line)
 
     $sharpSide = AddedAt "sharp, no sky share" "edgeSide"; $streakSide = AddedAt "streaks 100%" "edgeSide"
     $sideRef = AddedAt "sharp, no sky share" "nearSide"
@@ -264,6 +273,70 @@ else { Check "every case came back" $false ("{0} of {1}" -f $results.Count, $cas
 
 Remove-Item (Join-Path $project "reflection-test-output.txt") -ErrorAction SilentlyContinue
 Remove-Item (Join-Path $project "reflection-test-input.txt") -ErrorAction SilentlyContinue
+
+# ---- the ripples (UnityProject\Assets\Editor\WaterRippleTest.cs) -----------------------------
+# RealGlass/WaterRipples drawn as the mod draws it (1024 x 1024 ARGB32 linear, mips), read back: each
+# listed texel against the model -- slope = sum s x dir x cos(2 pi (m u + n v - c hour + phase)) x the
+# root-mean-square, written x = 0.5 - slope.x, y = 0.5 + slope.y (clamped) in .a/.r and .g -- within 1.5
+# of 255; the whole texture's decoded root-mean-square = 2 x the slope's (whole wave numbers: the
+# waves' cross terms vanish over the tile). And the mod's measurement of the game's texture on a DXT5
+# stand-in (Graphics.Blit + ReadPixels: the engine calls probed): measured against the pattern's own.
+$rippleSlope = 0.08
+$hourSeconds = 1234.5
+$size = 1024
+$texels = @(@(0, 0), @(17, 200), @(128, 128), @(511, 3), @(77, 951), @(1023, 1023), @(640, 333))
+$lines = New-Object System.Collections.Generic.List[string]
+for ($i = 0; $i -lt 32; $i++) {
+    $lines.Add("ripple " + $i + " " + (($rippleTable[($i * 8)..($i * 8 + 3)] | ForEach-Object { N $_ }) -join " "))
+    $lines.Add("ripple " + (32 + $i) + " " + (($rippleTable[($i * 8 + 4)..($i * 8 + 7)] | ForEach-Object { N $_ }) -join " "))
+}
+$lines.Add("slope " + (N $rippleSlope))
+$lines.Add("simtime2 " + (N $hourSeconds) + " " + (N ($hourSeconds / 3600.0)) + " 0 0")
+$lines.Add("size " + $size)
+foreach ($t in $texels) { $lines.Add("texel " + $t[0] + " " + $t[1]) }
+[System.IO.File]::WriteAllLines((Join-Path $project "ripple-test-input.txt"), $lines)
+$out = Join-Path $project "ripple-test-output.txt"
+if (Test-Path $out) { Remove-Item $out -Force }
+$proc = Start-Process -FilePath $Unity -WindowStyle Hidden -Wait -PassThru -ArgumentList @(
+    "-batchmode", "-quit", "-projectPath", "`"$project`"", "-executeMethod", "WaterRippleTest.Run",
+    "-logFile", "`"$(Join-Path $project 'ripple-test.log')`"")
+if (-not (Test-Path $out)) { Write-Host "FAIL  Unity wrote no output (exit $($proc.ExitCode)); see UnityProject\ripple-test.log"; exit 1 }
+$got = Get-Content $out
+Write-Host ("ripples: " + $got[0])
+$got | Where-Object { $_ -like "EXCEPTION*" } | ForEach-Object { Write-Host $_; $script:failed++ }
+$hour = [double]([float]($hourSeconds / 3600.0))
+$worst = 0.0; $detail = ""
+foreach ($line in ($got | Where-Object { $_ -like "texel *" })) {
+    $q = $line.Split(' ')
+    $tx = [int]$q[1]; $ty = [int]$q[2]
+    $u = ($tx + 0.5) / $size; $v = ($ty + 0.5) / $size
+    $sx = 0.0; $sz = 0.0
+    for ($i = 0; $i -lt 32; $i++) {
+        $at = $i * 8
+        $cycles = $rippleTable[$at] * $u + $rippleTable[$at + 1] * $v - $rippleTable[$at + 2] * $hour + $rippleTable[$at + 4]
+        $c = $rippleTable[$at + 3] * [Math]::Cos(2.0 * [Math]::PI * ($cycles - [Math]::Floor($cycles)))
+        $sx += $rippleTable[$at + 5] * $c; $sz += $rippleTable[$at + 6] * $c
+    }
+    $sx *= $rippleSlope; $sz *= $rippleSlope
+    $wantX = 255.0 * (0.5 + 0.5 * [Math]::Max(-1.0, [Math]::Min(1.0, -2.0 * $sx)))
+    $wantY = 255.0 * (0.5 + 0.5 * [Math]::Max(-1.0, [Math]::Min(1.0, 2.0 * $sz)))
+    $e = [Math]::Max([Math]::Abs([double]$q[6] - $wantX), [Math]::Max([Math]::Abs([double]$q[3] - $wantX), [Math]::Abs([double]$q[4] - $wantY)))
+    if ($e -gt $worst) { $worst = $e; $detail = ("texel {0},{1}: got a {2} r {3} g {4}, model x {5:F1} y {6:F1}" -f $tx, $ty, $q[6], $q[3], $q[4], $wantX, $wantY) }
+}
+Check "ripples: every listed texel = the model (x in .a and .r, y in .g)" ($worst -le 1.5) ("worst {0:F2} of 255 ({1})" -f $worst, $detail)
+$rmsLine = $got | Where-Object { $_ -like "rms *" } | Select-Object -First 1
+$rms = [double]::Parse($rmsLine.Split(' ')[1], $inv)
+Check "  the texture's decoded root-mean-square = 2 x the slope's" ([Math]::Abs($rms / (2.0 * $rippleSlope) - 1.0) -lt 0.02) ("{0:F4} vs {1:F4}" -f $rms, (2.0 * $rippleSlope))
+$src = $got | Where-Object { $_ -like "probe source *" } | Select-Object -First 1
+$meas = $got | Where-Object { $_ -like "probe measured *" } | Select-Object -First 1
+if ($src -and $meas) {
+    $srcRms = [double]::Parse($src.Split(' ')[-1], $inv); $measRms = [double]::Parse($meas.Split(' ')[-1], $inv)
+    Write-Host ("      " + $src)
+    Check "  the measurement on a DXT5 stand-in: Graphics.Blit + ReadPixels give its rms" ([Math]::Abs($measRms / $srcRms - 1.0) -lt 0.05) ("{0:F4} measured vs {1:F4}" -f $measRms, $srcRms)
+}
+else { Check "  the measurement probe ran" $false "no probe lines" }
+Remove-Item $out -ErrorAction SilentlyContinue
+Remove-Item (Join-Path $project "ripple-test-input.txt") -ErrorAction SilentlyContinue
 
 # ---- the water's sky cube (UnityProject\Assets\Editor\WaterCubeTest.cs) ----------------------
 # Drawn as the mod draws it (a hidden camera's skybox, RenderToCubemap); each face's centre against
