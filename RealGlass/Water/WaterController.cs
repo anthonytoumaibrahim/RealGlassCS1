@@ -20,6 +20,7 @@ namespace RealGlass.Water
         private WaterSurface _surface;
         private WaterCityReflection _city;
         private WaterRipples _ripples;
+        private WaterFoam _foam;
         private Vector4[] _table;
         private readonly double _spread = WaterOptics.Spread(WaterOptics.SlopeVariance(WaterOptics.CityWind));
         private bool _failed;
@@ -37,8 +38,9 @@ namespace RealGlass.Water
                 _surface = WaterSurface.Create();
                 _city = WaterCityReflection.Create();
                 _ripples = WaterRipples.Create();
+                _foam = WaterFoam.Create();
                 Log.Msg("water: ready (cube " + (_surface != null ? "yes" : "NO SHADER") + ", city reflection " + (_city != null ? "yes" : "NO SHADER") +
-                        ", ripples " + (_ripples != null ? "yes" : "NO SHADER") +
+                        ", ripples " + (_ripples != null ? "yes" : "NO SHADER") + ", foam " + (_foam != null ? "yes" : "NO SHADER") +
                         "; reflectance " + (rho[WaterOptics.TableSize - 1] * 100.0).ToString("F1") + "% looking down, " + (rho[4] * 100.0).ToString("F0") +
                         "% at 1 deg); " + Describe());
             }
@@ -56,6 +58,8 @@ namespace RealGlass.Water
                 return "water controls off";
             return "water controls ON: brightness " + Pct(Settings.WaterBrightness) +
                    ", moving ripples " + (On(Settings.WaterRipples) ? Pct(Settings.WaterRippleStrength) : "off") +
+                   ", foam " + (On(Settings.WaterFoam) ? Pct(Settings.WaterFoamAmount) + " (shores " + Pct(Settings.WaterFoamShore) + ", fast water " +
+                   Pct(Settings.WaterFoamRapids) + ", wave fronts " + Pct(Settings.WaterFoamFronts) + ")" : "off") +
                    ", real sky " + (On(Settings.WaterRealSky) ? Pct(Settings.WaterSky) : "off") +
                    ", city " + (On(Settings.WaterCity) ? Pct(Settings.WaterCityDay) + " day / " + Pct(Settings.WaterCityNight) + " night, waves " +
                    Pct(Settings.WaterCityWaves) + ", streaks " + Pct(Settings.WaterCityStreaks) + ", length " + Pct(Settings.WaterCityLength) : "off");
@@ -117,7 +121,31 @@ namespace RealGlass.Water
             }
 
             RipplesFrame();
+            FoamFrame();
             CityFrame(light, toSun);
+        }
+
+        /// <summary>The foam on the game's water this frame, or none (off, an info view, the snapshot tool, no sea level).</summary>
+        private void FoamFrame()
+        {
+            if (_foam == null)
+                return;
+
+            float level = float.NaN;
+            if (Singleton<TerrainManager>.exists && Singleton<TerrainManager>.instance.WaterSimulation != null)
+                level = Singleton<TerrainManager>.instance.WaterSimulation.m_currentSeaLevel;
+            bool show = On(Settings.WaterFoam) && !float.IsNaN(level) && !float.IsInfinity(level) &&
+                        !(Singleton<InfoManager>.exists && Singleton<InfoManager>.instance.CurrentMode != InfoManager.InfoMode.None) &&
+                        !(ToolsModifierControl.toolController != null && ToolsModifierControl.toolController.CurrentTool is SnapshotTool);
+            if (!show)
+            {
+                _foam.Hide();
+                return;
+            }
+
+            _foam.Show(Value(Settings.WaterFoamAmount, Settings.Defaults.WaterFoamAmount), Value(Settings.WaterFoamShore, Settings.Defaults.WaterFoamShore),
+                       Value(Settings.WaterFoamRapids, Settings.Defaults.WaterFoamRapids), Value(Settings.WaterFoamFronts, Settings.Defaults.WaterFoamFronts), level,
+                       Value(Settings.WaterFoamView, 0f));
         }
 
         /// <summary>
@@ -241,6 +269,8 @@ namespace RealGlass.Water
                 _city.Detach();
             if (_ripples != null)
                 _ripples.Release();
+            if (_foam != null)
+                _foam.Hide();
             if (_surface != null)
                 _surface.GiveBack();
             else
@@ -256,6 +286,8 @@ namespace RealGlass.Water
                     _city.Destroy();
                 if (_ripples != null)
                     _ripples.Destroy();
+                if (_foam != null)
+                    _foam.Destroy();
                 if (_surface != null)
                     _surface.Destroy();
                 Shader.SetGlobalFloat("_RGWaterHeld", 0f);
@@ -267,6 +299,7 @@ namespace RealGlass.Water
 
             _city = null;
             _ripples = null;
+            _foam = null;
             _surface = null;
         }
     }

@@ -49,7 +49,17 @@ namespace RealGlass.Water
         private readonly Material _material;
         private readonly Mesh _cube;
         private readonly CommandBuffer _buffer;
-        private RenderTexture _frame, _trace, _streaked;
+        private static readonly int IdTraced = Shader.PropertyToID("_RGWaterTraced");
+        private static readonly int IdHistory = Shader.PropertyToID("_RGWaterHistory");
+        private static readonly int IdPrevVP = Shader.PropertyToID("_RGWaterPrevVP");
+        private static readonly int IdHistoryInfo = Shader.PropertyToID("_RGWaterHistoryInfo");
+
+        /// <summary>How much of last frame's reflection each frame keeps (the history pass, clamped to this frame's neighbourhood).</summary>
+        private const float HistoryWeight = 0.85f;
+
+        private RenderTexture _frame, _trace, _accum, _history, _streaked;
+        private Matrix4x4 _lastVP;
+        private int _historyFrames;
         private Camera _camera;
         private bool _addedDepth;
         private bool _loggedWater;
@@ -133,19 +143,30 @@ namespace RealGlass.Water
             _buffer.Clear();
             Free(ref _frame);
             Free(ref _trace);
+            Free(ref _accum);
+            Free(ref _history);
             Free(ref _streaked);
 
             int w = Half(width), h = Half(height);
             _frame = Target("RealGlassWaterFrame", w, h, true);
-            _trace = Target("RealGlassWaterTrace", w, h, true);
+            _trace = Target("RealGlassWaterTrace", w, h, false);
+            _accum = Target("RealGlassWaterAccumulated", w, h, true);
+            _history = Target("RealGlassWaterHistory", w, h, false);
             _streaked = Target("RealGlassWaterStreaked", w, h, false);
             _material.SetTexture(IdFrame, _frame);
+            _material.SetTexture(IdTraced, _trace);
+            _material.SetTexture(IdHistory, _history);
+            _historyFrames = 0;
 
             _buffer.Blit(BuiltinRenderTextureType.CameraTarget, _frame);
             _buffer.SetRenderTarget(_trace);
             _buffer.ClearRenderTarget(false, true, Color.clear);
             _buffer.DrawMesh(_cube, Matrix4x4.identity, _material, 0, 0);
-            _buffer.Blit(_trace, _streaked, _material, 1);
+            // Against the flicker: this frame's trace blended with the last (pass 3), kept for the next.
+            _buffer.SetRenderTarget(_accum);
+            _buffer.DrawMesh(_cube, Matrix4x4.identity, _material, 0, 3);
+            _buffer.Blit(_accum, _history);
+            _buffer.Blit(_accum, _streaked, _material, 1);
             _buffer.SetGlobalTexture(IdStreaked, _streaked);
             _buffer.SetRenderTarget(BuiltinRenderTextureType.CameraTarget);
             _buffer.DrawMesh(_cube, Matrix4x4.identity, _material, 0, 2);
@@ -170,6 +191,7 @@ namespace RealGlass.Water
                 }
                 if (_frame == null || _frame.width != Half(camera.pixelWidth) || _frame.height != Half(camera.pixelHeight))
                     Record(camera.pixelWidth, camera.pixelHeight);
+                History(camera);
                 return;
             }
 
@@ -179,10 +201,26 @@ namespace RealGlass.Water
             Record(camera.pixelWidth, camera.pixelHeight);
             camera.AddCommandBuffer(CameraEvent.AfterImageEffectsOpaque, _buffer);
             _camera = camera;
+            History(camera);
             Log.Msg("water: the city is reflected in the map's water on '" + camera.name + "' after the opaque image effects (" +
                     _frame.width + " x " + _frame.height + ": traced at half size off the waves, streaked, then onto the water" +
                     (_addedDepth ? "; depth texture asked for" : "") + ")");
             LogWater();
+        }
+
+        /// <summary>
+        /// Last frame's view-projection for the history pass (OpenGL convention, as the glass's
+        /// reprojection), and the history's weight: none on the first frame after the buffers are made.
+        /// </summary>
+        private void History(Camera camera)
+        {
+            Matrix4x4 vp = camera.projectionMatrix * camera.worldToCameraMatrix;
+            bool ok = _historyFrames > 0 && _trace != null;
+            _material.SetMatrix(IdPrevVP, ok ? _lastVP : vp);
+            _material.SetVector(IdHistoryInfo, new Vector4(ok ? HistoryWeight : 0f, _trace != null ? 1f / _trace.width : 0f,
+                                                           _trace != null ? 1f / _trace.height : 0f, 0f));
+            _lastVP = vp;
+            _historyFrames++;
         }
 
         public void Detach()
@@ -204,6 +242,7 @@ namespace RealGlass.Water
 
             _camera = null;
             _addedDepth = false;
+            _historyFrames = 0;
             Log.Msg("water: the city reflection is off");
         }
 
@@ -235,8 +274,10 @@ namespace RealGlass.Water
             _material.SetVector(IdMarch, new Vector4(reach, (float)WaterOptics.Thickness, (float)WaterOptics.EdgeFade, Mathf.Max(1f, length)));
             _material.SetVector(IdStreak, new Vector4((float)sigmaUp, _trace != null ? 1f / _trace.height : 0f, 0f, 0f));
             // Against TAA's flicker (measured, tools\preview\water-flicker.ps1, 2026-10-05): the ripples
-            // read over 8 trace pixels (only waves the screen resolves bend the rays), the city read
-            // as wide as a ray cone spreads (z = 1), the gain x 1.5 to keep the waviness.
+            // read over 3 trace pixels (only waves the screen resolves bend the rays), the city read
+            // as wide as a ray cone spreads (z = 1), the gain x 2 to keep the waviness. (8 pixels and
+            // x 1.5 flickered least, but the author missed the night's waviness: "I really liked it
+            // better before".)
             _material.SetVector(IdWave, new Vector4(Mathf.Max(0f, waves) * 2f, 3f, 1f, 0f));
             if (theme != null)
                 _material.SetTexture(IdTheme, theme);
@@ -273,6 +314,8 @@ namespace RealGlass.Water
             _buffer.Release();
             Free(ref _frame);
             Free(ref _trace);
+            Free(ref _accum);
+            Free(ref _history);
             Free(ref _streaked);
             UnityEngine.Object.Destroy(_material);
             UnityEngine.Object.Destroy(_cube);

@@ -32,7 +32,8 @@ four tabs:
   cushioned (insulating glass bowing in or out), tilted, rippled (toughened glass); up close,
   fitted to the windows each building painted.
 - **Water** (off until switched on) -- the map's water: its brightness, the sky in it with real
-  water's reflectance, and the city in it, with its waves, its streaks and how long it is drawn.
+  water's reflectance, and the city in it, with its waves, its streaks and how long it is drawn;
+  foam along the shores, on fast water and on wave fronts.
 
 **Alt+G** turns the building picker on: click a building, and a small window of its own gives its
 asset its own glass.
@@ -86,6 +87,12 @@ the log is `RealGlass.log`, next to it.
   and the city's reflection bends off the same ripples. They keep the game's own clock: they stop
   when the game is paused. Only the map's water and the game's own lighting of it are touched;
   buildings keep the theme's sky.
+- **Foam** (on the water tab): white water where the game's own water simulation says it belongs --
+  along the sea's shores, in lines that run in to the beach; on fast water (rapids, weirs, a dam's
+  outflow); and on a rising wave front (a tsunami's, a flood's) -- carried along by the flow, as
+  bright as real sea foam, and fading to its true average far away instead of sparkling. It is
+  drawn on the game's own water, right after it: the game's water itself is untouched, and the
+  foam follows whatever the simulation does with it.
 - **Fresnel**: glass reflects little straight on and nearly everything edge-on (Schlick's
   approximation), capped by a setting, because a city-builder camera sees facades edge-on. The
   rise is the same for every colour, so a coated pane's tint gives way to silver edge-on.
@@ -210,6 +217,20 @@ Every technique here has shipped in a game or is published:
     ripples as the game's own water shader reads them; its streaks are a Gaussian up
     and down weighted so only water is averaged -- normalized convolution, Hans Knutsson and
     Carl-Fredrik Westin, **Normalized and Differential Convolution**, CVPR 1993.
+16. The foam: where it goes, from the game's own water simulation -- shoreline foam where the water
+    is shallow, as in Crest (Huw Bowles, Daniel Zimmermann et al., **Crest: Novel Ocean
+    Rendering Techniques in an Open Source Framework**, SIGGRAPH 2017 Advances in Real-Time
+    Rendering), its lines of broken waves phased by the depth as War Thunder phases its shore waves
+    by the distance to the shore (Tim Tcheblokov, **Ocean simulation and rendering in War
+    Thunder**, NVIDIA, CGDC 2015), and fronts where the water rises fast, the breaking test of Nuttapong
+    Chentanez and Matthias Mueller, **Real-time Simulation of Large Bodies of Water with Small Scale
+    Details**, Symposium on Computer Animation 2010. It moves along the flow in two phases half a
+    cycle apart -- Alex Vlachos, **Water Flow in Portal 2**, SIGGRAPH 2010, the game's own way with
+    its ripples. Its pattern: Steven Worley, **A Cellular Texture Basis Function**, SIGGRAPH 1996,
+    for the lace of bubble walls, and a fractal sum of noise (Ken Perlin, **An Image Synthesizer**,
+    SIGGRAPH 1985) for the patches, each equalized so that a share a of foam leaves exactly a of
+    the pattern white. Its brightness: dense sea foam's reflectance, Peter Koepke, **Effective
+    reflectance of oceanic whitecaps**, Applied Optics 23(11), 1984.
 
 ## Building
 

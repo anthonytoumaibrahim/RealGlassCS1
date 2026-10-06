@@ -655,6 +655,11 @@ namespace RealGlass.UI
             return WaterOn() && (Settings.WaterRipples == null || Settings.WaterRipples.value);
         }
 
+        private static bool WaterFoamOn()
+        {
+            return WaterOn() && (Settings.WaterFoam == null || Settings.WaterFoam.value);
+        }
+
         private static bool WaterCityOn()
         {
             return WaterOn() && (Settings.WaterCity == null || Settings.WaterCity.value);
@@ -1195,6 +1200,59 @@ namespace RealGlass.UI
                 Enabled = WaterRipplesOn,
             });
 
+            // The foam (Water/WaterFoam.cs): on the game's own water, from its simulation.
+            Add(new Row
+            {
+                Kind = RowKind.Toggle,
+                Panel = PanelPage.Water,
+                Group = "WaterFoam",
+                Bool = Settings.WaterFoam,
+                DefaultBool = Settings.Defaults.WaterFoam,
+                Enabled = WaterOn,
+                AfterChange = WaterState("foam", OnOff(Settings.WaterFoam)),
+            });
+
+            // 100%: the model's (FoamOptics); each source below on top of it.
+            Add(new Row
+            {
+                Kind = RowKind.Percent,
+                Panel = PanelPage.Water,
+                Float = Settings.WaterFoamAmount,
+                DefaultFloat = Settings.Defaults.WaterFoamAmount,
+                Min = 0f, Max = 300f, Step = 5f,
+                Enabled = WaterFoamOn,
+            });
+
+            Add(new Row
+            {
+                Kind = RowKind.Percent,
+                Panel = PanelPage.Water,
+                Float = Settings.WaterFoamShore,
+                DefaultFloat = Settings.Defaults.WaterFoamShore,
+                Min = 0f, Max = 200f, Step = 5f,
+                Enabled = WaterFoamOn,
+            });
+
+            Add(new Row
+            {
+                Kind = RowKind.Percent,
+                Panel = PanelPage.Water,
+                Float = Settings.WaterFoamRapids,
+                DefaultFloat = Settings.Defaults.WaterFoamRapids,
+                Min = 0f, Max = 200f, Step = 5f,
+                Enabled = WaterFoamOn,
+            });
+
+            Add(new Row
+            {
+                Kind = RowKind.Percent,
+                Panel = PanelPage.Water,
+                Float = Settings.WaterFoamFronts,
+                DefaultFloat = Settings.Defaults.WaterFoamFronts,
+                Min = 0f, Max = 200f, Step = 5f,
+                Enabled = WaterFoamOn,
+            });
+
             Add(new Row
             {
                 Kind = RowKind.Toggle,
@@ -1390,6 +1448,18 @@ namespace RealGlass.UI
                 Format = Steps,
                 Profiled = false,
                 AfterChange = ModController.PlaceHudButton,
+            });
+
+            // The foam's diagnostic view, set by hand in RealGlass.xml (WaterFoam.shader's _RGFoamDebug).
+            Add(new Row
+            {
+                Kind = RowKind.Value,
+                Float = Settings.WaterFoamView,
+                DefaultFloat = Settings.Defaults.WaterFoamView,
+                Min = 0f, Max = 3f, Step = 1f,
+                Format = Steps,
+                Profiled = false,
+                AfterChange = WaterState("foam view", () => Settings.WaterFoamView.value.ToString("F0")),
             });
         }
 

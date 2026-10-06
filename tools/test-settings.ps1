@@ -673,5 +673,46 @@ Check "  no light at all: 1e-3 each (never a division by 0)" ("{0} {1} {2}" -f $
 # The Water tab is off by default (the author, 2026-10-03).
 Check "the water controls are off by default" (Default 'WaterEnabled') "False"
 
+# ---- the foam (Water/FoamPattern.cs, Water/FoamOptics.cs) ----
+$pattern = $asm.GetType('RealGlass.Water.FoamPattern', $true)
+$foamOptics = $asm.GetType('RealGlass.Water.FoamOptics', $true)
+$size = $pattern::Size
+$texels = $pattern::Generate()
+$again = $pattern::Generate()
+Check "the foam's pattern: RGBA, a side of Size texels" $texels.Length ($size * $size * 4)
+$same = $true
+for ($i = 0; $i -lt $texels.Length; $i += 97) { if ($texels[$i] -ne $again[$i]) { $same = $false; break } }
+Check "  the same every time (no clock, no Random)" $same "True"
+# Each channel uniform on 0..255 (histogram-equalised): every value size^2 / 256 times, give or take one.
+foreach ($channel in 0, 1) {
+    $counts = New-Object int[] 256
+    for ($i = $channel; $i -lt $texels.Length; $i += 4) { $counts[$texels[$i]]++ }
+    $expected = $size * $size / 256
+    $off = 0
+    foreach ($c in $counts) { if ([Math]::Abs($c - $expected) -gt 1) { $off++ } }
+    Check ("  channel {0} uniform: every value {1} times" -f $channel, $expected) $off 0
+}
+# It tiles: the steps across the wrap (last column to first, last row to first) are no bigger than the
+# steps inside it, on average (a seam would be a line of large jumps).
+function Byte([int]$x, [int]$y, [int]$c) { return [int]$texels[(($y % $size) * $size + ($x % $size)) * 4 + $c] }
+foreach ($channel in 0, 1) {
+    $inside = 0.0; $wrap = 0.0
+    for ($y = 0; $y -lt $size; $y++) {
+        $inside += [Math]::Abs((Byte ($size / 2) $y $channel) - (Byte ($size / 2 - 1) $y $channel))
+        $wrap += [Math]::Abs((Byte 0 $y $channel) - (Byte ($size - 1) $y $channel))
+    }
+    Check ("  channel {0} tiles: the step across the wrap no bigger than inside (x 1.5)" -f $channel) ($wrap -le 1.5 * $inside) "True"
+}
+$v = $foamOptics::Vectors(1.0, 1.0, 1.0, 1.0, 40.0)
+Check "the foam's vectors: 6 of 4" $v.Length 24
+Check "  the lace's and the patches' repeats a metre" ("{0:F5} {1:F5}" -f $v[0], $v[1]) ("{0:F5} {1:F5}" -f (1.0 / $pattern::LaceTile), (1.0 / $pattern::PatchTile))
+Check "  shore: amount, depth, the sea's level, its tolerance" ("{0} {1} {2} {3}" -f $v[8], $v[9], $v[10], $v[11]) ("1 {0} 40 {1}" -f $foamOptics::ShoreDepth, $foamOptics::SeaTolerance)
+Check "  fast water starts below where it is full; fronts too" (($v[13] -lt $v[14]) -and ($v[17] -lt $v[18])) "True"
+Check "  the reflectance is Koepke's dense foam (20-55%)" (($v[20] -ge 0.2) -and ($v[20] -le 0.55)) "True"
+Check "  the flow carries it as the game's ripples: 0.14 of 1/0.0061 m every 2.5 s" ("{0:F3}" -f $v[21]) ("{0:F3}" -f (0.14 / 0.0061 / 2.5))
+Check "  the advection's cycle divides the game's 60 s clock" ((60.0 % $v[22]) -eq 0.0) "True"
+Check "  a negative share is none" ("{0} {1}" -f ($foamOptics::Vectors(-1.0, -1.0, 1.0, 1.0, 40.0))[23], ($foamOptics::Vectors(-1.0, -1.0, 1.0, 1.0, 40.0))[8]) "0 0"
+Check "the foam's defaults: on, every amount 100%" ("{0} {1} {2} {3} {4}" -f (Default 'WaterFoam'), (Default 'WaterFoamAmount'), (Default 'WaterFoamShore'), (Default 'WaterFoamRapids'), (Default 'WaterFoamFronts')) "True 1 1 1 1"
+
 Write-Host ""
 if ($failed -eq 0) { Write-Host "all passed" } else { Write-Host "$failed FAILED"; exit 1 }

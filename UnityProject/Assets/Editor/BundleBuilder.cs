@@ -27,6 +27,7 @@ public static class BundleBuilder
         "Assets/RealGlass/WaterCube.shader",
         "Assets/RealGlass/CityReflection.shader",
         "Assets/RealGlass/WaterRipples.shader",
+        "Assets/RealGlass/WaterFoam.shader",
     };
 
     /// <summary>

@@ -136,7 +136,11 @@ pattern), and for the water tab a rough sea's reflectance (Cox and Munk's wave s
 Mobley's sea-surface reflectance factor, 1999), moving ripples made of directional sine waves
 (Finch 2004; tiling and deep water's speeds, Tessendorf 2001; Phillips's equilibrium range, 1958),
 and the city traced through the depth buffer off those ripples and streaked by normalized
-convolution (Knutsson and Westin, 1993) --
+convolution (Knutsson and Westin, 1993), and foam from the game's own water simulation -- along
+shores as Crest's (Bowles et al. 2017) and War Thunder's (Tcheblokov 2015) shore foam, on rising
+fronts by Chentanez and Mueller's breaking test (2010) -- carried along the flow in two phases
+(Vlachos 2010), its pattern Worley's cellular texture (1996) and a fractal sum of noise (Perlin
+1985), as bright as dense sea foam (Koepke 1984) --
 listed with links in
 `README.md`. Apart from the ray tracer above, the implementations were written for this mod.
 

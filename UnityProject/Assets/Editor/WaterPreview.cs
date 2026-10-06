@@ -48,6 +48,9 @@ public static class WaterPreview
         public float FadeEnd;
         public float Jitter;
         public float Cone;
+        public float Distort;
+        public int Subframes;
+        public float History;
     }
 
     public static void Render()
@@ -68,7 +71,8 @@ public static class WaterPreview
             string outDir = dir;
             int width = 960, height = 540;
             float streak = 0f, length = 1f, exposureDay = 1f, exposureNight = 1f, rippleRms = 0.3f, cityGain = 0f;
-            var taa = new float[] { 64f, 32f, 60f, 1f, 0.94f, 0.15f };
+            // frames, warm-up, frames a second, jitter, blending, sharpen, raw frames written at the end
+            var taa = new float[] { 64f, 32f, 60f, 1f, 0.94f, 0.15f, 0f };
             foreach (string raw in File.ReadAllLines(Path.Combine(dir, "water-preview-input.txt")))
             {
                 string[] p = raw.Split(' ');
@@ -100,8 +104,9 @@ public static class WaterPreview
                     shots.Add(new Shot { Name = p[1], View = p[2], Ripples = F(p[3]), Seconds = F(p[4]), Strength = F(p[5]) });
                 else if (p[0] == "taa")
                 {
-                    // frames, warm-up frames, frames a second, jitter spread, stationary blending, sharpen
-                    for (int k = 0; k < taa.Length; k++)
+                    // frames, warm-up frames, frames a second, jitter spread, stationary blending, sharpen[,
+                    // raw frames written at the end]
+                    for (int k = 0; k < taa.Length && k + 1 < p.Length; k++)
                         taa[k] = F(p[k + 1]);
                 }
                 else if (p[0] == "seq")
@@ -109,6 +114,8 @@ public static class WaterPreview
                     {
                         Name = p[1], View = p[2], Ripples = F(p[3]), Seconds = F(p[4]), Strength = F(p[5]), Frozen = p[6] == "1",
                         CityGain = F(p[7]), Footprint = F(p[8]), FadeStart = F(p[9]), FadeEnd = F(p[10]), Jitter = F(p[11]), Cone = p.Length > 12 ? F(p[12]) : 0f,
+                        Distort = p.Length > 13 ? F(p[13]) : 0f, Subframes = p.Length > 14 ? (int)F(p[14]) : 1,
+                        History = p.Length > 15 ? F(p[15]) : 0f,
                     });
             }
 
@@ -161,21 +168,28 @@ public static class WaterPreview
             // As WaterCityReflection.Record.
             var mesh = UnitCube();
             int w = Mathf.Max(1, width / 2), h = Mathf.Max(1, height / 2);
-            RenderTexture frame = Target(w, h, true), trace = Target(w, h, true), streaked = Target(w, h, false);
+            RenderTexture frame = Target(w, h, true), trace = Target(w, h, false), streaked = Target(w, h, true);
+            RenderTexture accum = Target(w, h, true), history = Target(w, h, false);
             material.SetTexture("_RGWaterFrame", frame);
+            material.SetTexture("_RGWaterTrace", trace);
+            material.SetTexture("_RGWaterTraced", trace);
+            material.SetTexture("_RGWaterHistory", history);
             var buffer = new CommandBuffer { name = "RealGlass water reflection (preview)" };
             buffer.Blit(BuiltinRenderTextureType.CameraTarget, frame);
             buffer.SetRenderTarget(trace);
             buffer.ClearRenderTarget(false, true, Color.clear);
             buffer.DrawMesh(mesh, Matrix4x4.identity, material, 0, 0);
-            buffer.Blit(trace, streaked, material, 1);
+            buffer.SetRenderTarget(accum);
+            buffer.DrawMesh(mesh, Matrix4x4.identity, material, 0, 3);
+            buffer.Blit(accum, history);
+            buffer.Blit(accum, streaked, material, 1);
             buffer.SetGlobalTexture("_RGWaterStreaked", streaked);
             buffer.SetRenderTarget(BuiltinRenderTextureType.CameraTarget);
             buffer.DrawMesh(mesh, Matrix4x4.identity, material, 0, 2);
             camera.AddCommandBuffer(CameraEvent.AfterImageEffectsOpaque, buffer);
 
             material.SetVector("_RGWaterMarch", new Vector4(8000f, 30f, 0.05f, Mathf.Max(1f, length)));
-            material.SetVector("_RGWaterStreak", new Vector4(streak, 1f / h, 0f, 0f));
+            material.SetVector("_RGWaterStreak", new Vector4(streak, 1f / h, w, h));
 
             var stage = new Stage
             {
@@ -309,7 +323,7 @@ public static class WaterPreview
     private static void Sequences(List<Seq> seqs, Stage stage, Camera camera, RenderTexture target, RenderTexture trace, Material material,
                                   Vector4[] rows, float rippleRms, float[] taa, float exposureDay, float exposureNight, string outDir, List<string> log)
     {
-        int frames = (int)taa[0], warm = (int)taa[1];
+        int frames = (int)taa[0], warm = (int)taa[1], dump = taa.Length > 6 ? (int)taa[6] : 0;
         float fps = taa[2], spread = taa[3], blend = taa[4], sharpen = taa[5];
         int width = target.width, height = target.height, n = width * height;
         var resolve = new Material(AssetDatabase.LoadAssetAtPath<Shader>("Assets/Editor/PreviewTAA.shader"));
@@ -327,6 +341,7 @@ public static class WaterPreview
         }
         var flicker = new double[n];
         var flickerRaw = new double[n];
+        var exposed = new Color[n];
         log.Add("taa: " + frames + " frames (" + warm + " to warm up) at " + fps + " a second; jitter " + spread + ", blending " + blend + ", sharpen " + sharpen);
 
         foreach (Seq s in seqs)
@@ -334,7 +349,7 @@ public static class WaterPreview
             bool night = stage.Set(s.View);
             float exposure = night ? exposureNight : exposureDay;
             material.SetVector("_RGWaterGeom", new Vector4(0f, s.Strength, 0f, 0f));
-            material.SetVector("_RGWaterWave", new Vector4(s.CityGain, s.Footprint, s.Cone, 0f));
+            material.SetVector("_RGWaterWave", new Vector4(s.CityGain, s.Footprint, s.Cone, s.Distort));
             material.SetVector("_RGWaterLight", new Vector4(1f, 1f, 1f, 0f));
             RenderTexture ripples = s.FadeEnd > 0f ? bandRipples : boxRipples;
             stage.Water.SetTexture("_WaterNormal", ripples);
@@ -346,11 +361,6 @@ public static class WaterPreview
 
             for (int f = 0; f < frames; f++)
             {
-                float t = s.Seconds + (s.Frozen ? 0f : f / fps);
-                Shader.SetGlobalVector("_SimulationTime", new Vector4(t % 60f, (t % 60f) / 60f, 0f, 0f));
-                Shader.SetGlobalVector("_SimulationTime2", new Vector4(t, t / 3600f, 0f, 0f));
-                DrawRipples(generator, ripples, 0.5f * rippleRms * s.Ripples, s.FadeStart, s.FadeEnd);
-
                 int i = f % 8;
                 float jx = (Halton(i + 1, 2) - 0.5f) * spread * s.Jitter, jy = (Halton(i + 1, 3) - 0.5f) * spread * s.Jitter;
                 camera.ResetProjectionMatrix();
@@ -358,7 +368,23 @@ public static class WaterPreview
                 projection.m02 += 2f * jx / width;
                 projection.m12 += 2f * jy / height;
                 camera.projectionMatrix = projection;
-                camera.Render();
+
+                // Sub-frames (measured frames only): the frame as a camera whose shutter is open the whole
+                // frame sees it -- the mean of its light over the frame's time (the raw frame's flicker).
+                int subs = f >= warm - 2 && !s.Frozen ? Math.Max(1, s.Subframes) : 1;
+                for (int j = 0; j < subs; j++)
+                {
+                    float t = s.Seconds + (s.Frozen ? 0f : (f + (float)j / subs) / fps);
+                    Shader.SetGlobalVector("_SimulationTime", new Vector4(t % 60f, (t % 60f) / 60f, 0f, 0f));
+                    Shader.SetGlobalVector("_SimulationTime2", new Vector4(t, t / 3600f, 0f, 0f));
+                    DrawRipples(generator, ripples, 0.5f * rippleRms * s.Ripples, s.FadeStart, s.FadeEnd);
+                    // As WaterCityReflection.History (the camera stands still; no history on a run's first frame).
+                    material.SetMatrix("_RGWaterPrevVP", camera.projectionMatrix * camera.worldToCameraMatrix);
+                    material.SetVector("_RGWaterHistoryInfo", new Vector4(f == 0 || s.History <= 0f ? 0f : s.History, 2f / width, 2f / height, 0f));
+                    camera.Render();
+                    if (subs > 1)
+                        AddFrame(target, read, exposed, j == 0, 1f / subs);
+                }
 
                 resolve.SetTexture("_HistoryTex", history);
                 resolve.SetVector("_Jitter", new Vector4(jx / width, jy / height, 0f, 0f));
@@ -368,10 +394,25 @@ public static class WaterPreview
 
                 if (mask == null)
                     mask = WaterMask(trace, width, height);
+                if (dump > 0 && f >= frames - dump)
+                {
+                    RenderTexture.active = target;
+                    read.ReadPixels(new Rect(0, 0, width, height), 0, 0);
+                    RenderTexture.active = null;
+                    Color[] shot = subs > 1 ? exposed : read.GetPixels();
+                    var toned = new Color[n];
+                    for (int p = 0; p < n; p++)
+                        toned[p] = new Color(Tone(shot[p].r * exposure), Tone(shot[p].g * exposure), Tone(shot[p].b * exposure), 1f);
+                    WritePng(Path.Combine(outDir, s.Name + "-f" + (f - (frames - dump)) + ".png"), toned, width, height);
+                }
                 if (f >= warm - 2)
                 {
                     Brightness(resolved, read, lum[f % 3], exposure);
-                    Brightness(target, read, raw[f % 3], exposure);
+                    if (subs > 1)
+                        for (int p = 0; p < n; p++)
+                            raw[f % 3][p] = Tone((0.2126f * exposed[p].r + 0.7152f * exposed[p].g + 0.0722f * exposed[p].b) * exposure);
+                    else
+                        Brightness(target, read, raw[f % 3], exposure);
                     if (f >= warm)
                     {
                         float[] a = lum[f % 3], b = lum[(f + 2) % 3], c = lum[(f + 1) % 3];
@@ -410,18 +451,21 @@ public static class WaterPreview
                 s.Name, 100.0 * water / n, bright / w, 255.0 * sum / w, 100.0 * over2 / w, 100.0 * over8 / w, 255.0 * rawSum / w, 100.0 * rawOver2 / w, 100.0 * rawOver8 / w));
 
             // The last resolved frame, and the flicker map: grey = the mean second difference x 25 on the
-            // water (red over 8/255), the frame at a third elsewhere.
-            RenderTexture.active = resolved;
+            // water (red over 8/255), the frame at a third elsewhere. With no jitter, the raw frame and
+            // its own flicker (no TAA).
+            bool noJitter = s.Jitter <= 0f;
+            double[] shownFlicker = noJitter ? flickerRaw : flicker;
+            RenderTexture.active = noJitter ? target : resolved;
             read.ReadPixels(new Rect(0, 0, width, height), 0, 0);
             RenderTexture.active = null;
-            Color[] px = read.GetPixels();
+            Color[] px = noJitter && s.Subframes > 1 && !s.Frozen ? exposed : read.GetPixels();
             var picture = new Color[n];
             var map = new Color[n];
             for (int p = 0; p < n; p++)
             {
                 Color c = new Color(Tone(px[p].r * exposure), Tone(px[p].g * exposure), Tone(px[p].b * exposure), 1f);
                 picture[p] = c;
-                float v = (float)(flicker[p] / Math.Max(1, measured));
+                float v = (float)(shownFlicker[p] / Math.Max(1, measured));
                 map[p] = !mask[p] ? c * 0.33f : v > 8f / 255f ? new Color(1f, 0.15f, 0.1f, 1f) : new Color(Mathf.Min(1f, 25f * v), Mathf.Min(1f, 25f * v), Mathf.Min(1f, 25f * v), 1f);
                 map[p].a = 1f;
             }
@@ -430,7 +474,18 @@ public static class WaterPreview
         }
     }
 
-    private static void WritePng(string path, Color[] px, int width, int height)
+    /// <summary>The frame's linear colour x weight, written into sum (first) or added to it.</summary>
+    private static void AddFrame(RenderTexture rt, Texture2D read, Color[] sum, bool first, float weight)
+    {
+        RenderTexture.active = rt;
+        read.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0);
+        RenderTexture.active = null;
+        Color[] px = read.GetPixels();
+        for (int p = 0; p < px.Length; p++)
+            sum[p] = first ? px[p] * weight : sum[p] + px[p] * weight;
+    }
+
+    internal static void WritePng(string path, Color[] px, int width, int height)
     {
         var png = new Texture2D(width, height, TextureFormat.RGB24, false);
         png.SetPixels(px);
@@ -439,7 +494,7 @@ public static class WaterPreview
     }
 
     /// <summary>Each pixel's displayed brightness (0..1): its luminance x the exposure, tonemapped as the PNGs.</summary>
-    private static void Brightness(RenderTexture rt, Texture2D read, float[] into, float exposure)
+    internal static void Brightness(RenderTexture rt, Texture2D read, float[] into, float exposure)
     {
         RenderTexture.active = rt;
         read.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0);
@@ -519,7 +574,7 @@ public static class WaterPreview
         RenderTexture.active = before;
     }
 
-    private static float Halton(int index, int radix)
+    internal static float Halton(int index, int radix)
     {
         float result = 0f, fraction = 1f / radix;
         while (index > 0)
@@ -603,7 +658,7 @@ public static class WaterPreview
     }
 
     /// <summary>8 x 8 bays of 16 px (4 m): a window 3 x 2.6 m in each. By day dark glass in light walls (alpha 0: nothing glows); by night dark walls, about half the windows lit warm or cool (alpha 1 where lit).</summary>
-    private static Texture2D Facade(bool night, System.Random random)
+    internal static Texture2D Facade(bool night, System.Random random)
     {
         const int bay = 16, bays = 8, size = bay * bays;
         var t = new Texture2D(size, size, TextureFormat.RGBA32, true, true) { wrapMode = TextureWrapMode.Repeat, filterMode = FilterMode.Trilinear, anisoLevel = 8 };
@@ -631,7 +686,7 @@ public static class WaterPreview
     }
 
     /// <summary>The illumination map Self-Illumin reads (its alpha): the facade's own alpha, x 8 for a lit window's glow.</summary>
-    private static Texture2D Illum(Texture2D facade)
+    internal static Texture2D Illum(Texture2D facade)
     {
         var t = new Texture2D(facade.width, facade.height, TextureFormat.RGBA32, true, true) { wrapMode = TextureWrapMode.Repeat, filterMode = FilterMode.Trilinear, anisoLevel = 8 };
         Color[] px = facade.GetPixels();
@@ -642,13 +697,13 @@ public static class WaterPreview
         return t;
     }
 
-    private static float Tone(float x)
+    internal static float Tone(float x)
     {
         float c = 1f - Mathf.Exp(-Mathf.Max(0f, x));
         return Mathf.Pow(c, 1f / 2.2f);
     }
 
-    private static Mesh UnitCube()
+    internal static Mesh UnitCube()
     {
         var mesh = new Mesh();
         mesh.vertices = new[]
@@ -661,7 +716,7 @@ public static class WaterPreview
         return mesh;
     }
 
-    private static Cubemap Cube(Color colour)
+    internal static Cubemap Cube(Color colour)
     {
         var cube = new Cubemap(8, TextureFormat.RGBAFloat, false);
         var face = new Color[64];
@@ -673,7 +728,7 @@ public static class WaterPreview
         return cube;
     }
 
-    private static RenderTexture Target(int width, int height, bool mips)
+    internal static RenderTexture Target(int width, int height, bool mips)
     {
         var rt = new RenderTexture(width, height, 0, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear)
         {
@@ -686,7 +741,7 @@ public static class WaterPreview
         return rt;
     }
 
-    private static float F(string s)
+    internal static float F(string s)
     {
         return float.Parse(s, CultureInfo.InvariantCulture);
     }

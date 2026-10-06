@@ -176,6 +176,18 @@
 
   <String key="WaterRippleStrength.Label">Ripple strength</String>
 
+  <String key="Group.WaterFoam">The foam</String>
+
+  <String key="WaterFoam.Label">Foam</String>
+
+  <String key="WaterFoamAmount.Label">Foam amount</String>
+
+  <String key="WaterFoamShore.Label">Foam along the shores</String>
+
+  <String key="WaterFoamRapids.Label">Foam on fast water</String>
+
+  <String key="WaterFoamFronts.Label">Foam on wave fronts</String>
+
   <String key="Group.WaterSky">The sky in the water</String>
 
   <String key="WaterRealSky.Label">Reflect the sky like real water</String>
@@ -280,6 +292,8 @@
 
   <String key="HudButtonX.Label">The mod's button (without Unified UI): distance from the left edge</String>
   <String key="HudButtonY.Label">The mod's button (without Unified UI): distance from the top edge</String>
+
+  <String key="WaterFoamView.Label">Foam diagnostic view: 0 off, 1 its sources, 2 or 3 where it draws</String>
 
   <!-- ==================== The color row ==================== -->
 

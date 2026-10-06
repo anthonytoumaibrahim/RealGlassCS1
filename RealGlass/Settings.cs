@@ -68,6 +68,9 @@ namespace RealGlass
         /// UI units from the top left of the screen. The player drags it there.
         /// </summary>
         public static FloatSetting HudButtonX { get; private set; }
+
+        /// <summary>Hidden: the foam's diagnostic view (0 none, 1 its sources, 2 / 3 where it draws: WaterFoam.shader).</summary>
+        public static FloatSetting WaterFoamView { get; private set; }
         public static FloatSetting HudButtonY { get; private set; }
 
         // ---- F8 -> Glass ---------------------------------------------------------------------
@@ -249,6 +252,21 @@ namespace RealGlass
         /// <summary>0..3: the ripples' roughness (1 = the game's own ripple texture's, measured).</summary>
         public static FloatSetting WaterRippleStrength { get; private set; }
 
+        /// <summary>Foam on the water: shores, rapids, wave fronts (Water/WaterFoam.cs).</summary>
+        public static BoolSetting WaterFoam { get; private set; }
+
+        /// <summary>0..3: all the foam x this (1 = the model's: Water/FoamOptics.cs).</summary>
+        public static FloatSetting WaterFoamAmount { get; private set; }
+
+        /// <summary>0..2: the foam along the sea's shores x this.</summary>
+        public static FloatSetting WaterFoamShore { get; private set; }
+
+        /// <summary>0..2: the foam on fast water (rapids, weirs, outflows) x this.</summary>
+        public static FloatSetting WaterFoamRapids { get; private set; }
+
+        /// <summary>0..2: the foam on rising wave fronts (tsunamis, floods, dam breaks) x this.</summary>
+        public static FloatSetting WaterFoamFronts { get; private set; }
+
         /// <summary>0..0.1: the waves smear the city's reflection up and down (1 would be a light breeze's).</summary>
         public static FloatSetting WaterCityStreaks { get; private set; }
 
@@ -271,6 +289,8 @@ namespace RealGlass
             /// <summary>Under the sister mods' buttons: Volumetric Weather (10, 60), Volumetric Explosions (10, 100), RealFlag (10, 140).</summary>
             public const float HudButtonX = 10f;
             public const float HudButtonY = 180f;
+
+            public const float WaterFoamView = 0f;
 
             // ---- Glass ----
             public const bool GlassEnabled = true;
@@ -347,6 +367,15 @@ namespace RealGlass
 
             /// <summary>As rough as the game's own ripples.</summary>
             public const float WaterRippleStrength = 1f;
+
+            /// <summary>Foam on (the author, 2026-10-06: "One thing I'd actually like is the foam").</summary>
+            public const bool WaterFoam = true;
+
+            /// <summary>The model's foam, every source at its own.</summary>
+            public const float WaterFoamAmount = 1f;
+            public const float WaterFoamShore = 1f;
+            public const float WaterFoamRapids = 1f;
+            public const float WaterFoamFronts = 1f;
         }
 
         private static bool _initialised;
@@ -415,6 +444,11 @@ namespace RealGlass
                 WaterBrightness = new FloatSetting("WaterBrightness", Defaults.WaterBrightness);
                 WaterRipples = new BoolSetting("WaterRipples", Defaults.WaterRipples);
                 WaterRippleStrength = new FloatSetting("WaterRippleStrength", Defaults.WaterRippleStrength);
+                WaterFoam = new BoolSetting("WaterFoam", Defaults.WaterFoam);
+                WaterFoamAmount = new FloatSetting("WaterFoamAmount", Defaults.WaterFoamAmount);
+                WaterFoamShore = new FloatSetting("WaterFoamShore", Defaults.WaterFoamShore);
+                WaterFoamRapids = new FloatSetting("WaterFoamRapids", Defaults.WaterFoamRapids);
+                WaterFoamFronts = new FloatSetting("WaterFoamFronts", Defaults.WaterFoamFronts);
                 WaterRealSky = new BoolSetting("WaterRealSky", Defaults.WaterRealSky);
                 WaterSky = new FloatSetting("WaterSky", Defaults.WaterSky);
                 WaterCity = new BoolSetting("WaterCity", Defaults.WaterCity);
@@ -437,6 +471,7 @@ namespace RealGlass
 
                 HudButtonX = new FloatSetting("HudButtonX", Defaults.HudButtonX);
                 HudButtonY = new FloatSetting("HudButtonY", Defaults.HudButtonY);
+                WaterFoamView = new FloatSetting("WaterFoamView", Defaults.WaterFoamView);
 
                 // Before the file is read: reading it walks the catalog, and building the catalog
                 // calls Init.

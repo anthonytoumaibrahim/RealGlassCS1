@@ -60,12 +60,18 @@ Shader "RealGlass/CityReflection"
     float4 _RGWaterMarch;
 
     // x: the streaks' sigma up and down (uv); y: a texel's height in the half-size buffers (uv; a
-    // command buffer's Blit left _MainTex_TexelSize at 0 in RealLight's editor test).
+    // command buffer's Blit left _MainTex_TexelSize at 0 in RealLight's editor test); zw: the trace
+    // buffer's size, texels.
     float4 _RGWaterStreak;
 
     // x: the gain on the ripples' slopes (WaterOptics.CityRippleGain; 0: the flat sea's mirror). y: the
     // footprint the ripples are read over, in pixels of the trace (below 1, unset included, read as 1).
+    // z: the ray cone (bent rays only). w: 1 = the waves DISTORT the flat mirror's picture at the
+    // composite; 0 = each pixel's ray is bent by the waves in the trace.
     float4 _RGWaterWave;
+
+    // The trace as drawn (the composite reads its own pixel's distance share there).
+    sampler2D _RGWaterTrace;
 
     // The ripple texture the water is shaded with (ours, or the game's own _WaterNormal).
     sampler2D _RGRipples;
@@ -179,8 +185,9 @@ Shader "RealGlass/CityReflection"
         float h = _WorldSpaceCameraPos.y - _RGWaterGeom.x;
         float2 xz = _WorldSpaceCameraPos.xz + d.xz * (h / max(-d.y, 1e-4));
         float2 xzDx = ddx(xz), xzDy = ddy(xz);
+        bool distort = _RGWaterWave.w > 0.5;
         float2 slope = float2(0.0, 0.0);
-        if (_RGWaterWave.x > 0.0)
+        if (_RGWaterWave.x > 0.0 && !distort)
             slope = FiniteSigned(float3(RippleSlope(xz, xzDx, xzDy), 0.0)).xy;
         // How far the waves turn the reflected ray from one pixel to the next (radians: a tilt turns
         // it twice).
@@ -225,9 +232,10 @@ Shader "RealGlass/CityReflection"
             t *= grow;
         }
 
-        // Water that meets nothing: the cube's sky stays (nothing added), but it is water.
+        // Water that meets nothing: the cube's sky stays (nothing added), but it is water (distorted:
+        // a = 1 + the share of the way that lies past the water, all of it).
         if (hit < 0.0 || k <= 0.0)
-            return float4(0.0, 0.0, 0.0, 1.0);
+            return float4(0.0, 0.0, 0.0, distort ? 2.0 : 1.0);
 
         float lo = tPrev, hi = hit;
         [loop]
@@ -257,6 +265,13 @@ Shader "RealGlass/CityReflection"
         float3 c = Finite(tex2Dlod(_RGWaterFrame, float4(at.xy, 0.0, lod)).rgb);
         if (_RGWaterGeom.z > 0.0)
             c -= _RGWaterGeom.z * RGSkyLight(texCUBElod(_RGWaterTheme, float4(mirror, _RGWaterGeom.w)).rgb * _RGWaterLight.rgb, mirror);
+        if (distort)
+        {
+            // The flat mirror's picture, premultiplied by a = 1 + the share of the way from the eye to
+            // what was met that lies past the water (the composite's parallax); rho at the composite.
+            float a = 1.0 + saturate(hi / max(tFlat + hi, 1e-3));
+            return float4(FiniteSigned(c * fade) * a, a);
+        }
         return float4(FiniteSigned(c * (k * fade)), 1.0);
     }
 
@@ -282,18 +297,99 @@ Shader "RealGlass/CityReflection"
         return sum / weights;
     }
 
+    // 3 HISTORY (against flicker, 2026-10-06: the trace's hit-or-miss edges crawl as the waves move):
+    // this frame's trace blended with last frame's result where this water point was then (the flat
+    // sea's point through last frame's view-projection, OpenGL convention as ComputeScreenPos), the
+    // history clamped to the box of this frame's 3 x 3 neighbourhood (Karis 2014, "High-Quality Temporal
+    // Supersampling"; Pedersen 2016). _RGWaterHistoryInfo: x the history's weight (0: none yet), y 1 /
+    // the buffers' width, z 1 / height.
+    sampler2D _RGWaterTraced;
+    sampler2D _RGWaterHistory;
+    float4x4 _RGWaterPrevVP;
+    float4 _RGWaterHistoryInfo;
+
+    float4 fragHistory(v2f i) : SV_Target
+    {
+        float3 d = normalize(i.dir);
+        float2 uv = i.screen.xy / i.screen.w;
+        float4 c = tex2Dlod(_RGWaterTraced, float4(uv, 0.0, 0.0));
+        float h = _WorldSpaceCameraPos.y - _RGWaterGeom.x;
+        if (c.a <= 0.5 || _RGWaterHistoryInfo.x <= 0.0 || d.y >= -1e-4 || h <= 0.5)
+            return c;
+
+        float3 p = _WorldSpaceCameraPos + d * (h / -d.y);
+        float4 clip = mul(_RGWaterPrevVP, float4(p, 1.0));
+        if (clip.w <= 1e-4)
+            return c;
+        float2 prev = clip.xy / clip.w * 0.5 + 0.5;
+        if (prev.x < 0.0 || prev.x > 1.0 || prev.y < 0.0 || prev.y > 1.0)
+            return c;
+
+        float4 lo = c, hi = c;
+        [unroll]
+        for (int y = -1; y <= 1; y++)
+        {
+            [unroll]
+            for (int x = -1; x <= 1; x++)
+            {
+                float4 s = tex2Dlod(_RGWaterTraced, float4(uv + float2(x * _RGWaterHistoryInfo.y, y * _RGWaterHistoryInfo.z), 0.0, 0.0));
+                lo = min(lo, s);
+                hi = max(hi, s);
+            }
+        }
+        float4 history = tex2Dlod(_RGWaterHistory, float4(prev, 0.0, 0.0));
+        if (history.a <= 0.5)
+            return c;
+        history.rgb = clamp(FiniteSigned(history.rgb), lo.rgb, hi.rgb);
+        return float4(FiniteSigned(lerp(c.rgb, history.rgb, _RGWaterHistoryInfo.x)), c.a);
+    }
+
     float4 fragComposite(v2f i) : SV_Target
     {
         float3 d = normalize(i.dir);
         float2 uv = i.screen.xy / i.screen.w;
+
+        // DISTORTED (w = 1; Sousa 2005, GPU Gems 2 ch. 19: the reflection's picture read where the
+        // waves' normal sends it). The ray the waves reflect, mirrored below the level, is the view
+        // whose flat mirror ray it is: what it meets far away is on the screen there (uvFar); what it
+        // meets at the water's edge is here (uv). Between them by the share of the way past the water.
+        // Before any branch: the derivatives need every pixel of the quad. The composite is drawn at
+        // the full size, the footprint counted in the trace's (half-size) pixels.
+        float h = _WorldSpaceCameraPos.y - _RGWaterGeom.x;
+        float2 xz = _WorldSpaceCameraPos.xz + d.xz * (h / max(-d.y, 1e-4));
+        float2 xzDx = 2.0 * ddx(xz), xzDy = 2.0 * ddy(xz);
+        bool distort = _RGWaterWave.w > 0.5;
+        float2 slope = float2(0.0, 0.0);
+        if (_RGWaterWave.x > 0.0 && distort)
+            slope = FiniteSigned(float3(RippleSlope(xz, xzDx, xzDy), 0.0)).xy;
+        float3 bent = reflect(d, normalize(float3(-slope.x, 1.0, -slope.y)));
+        float3 seen = float3(bent.x, -abs(bent.y), bent.z);
+        float2 uvFar = Project(_WorldSpaceCameraPos + seen * 1000.0).xy;
+        float2 uvDx = ddx(uv), uvDy = ddy(uv), farDx = ddx(uvFar), farDy = ddy(uvFar);
+
         float tFlat;
         if (!Water(d, uv, tFlat))
             return float4(0.0, 0.0, 0.0, 0.0);
 
-        float4 c = tex2Dlod(_RGWaterStreaked, float4(uv, 0.0, 0.0));
+        float4 c;
+        float gain = 1.0;
+        if (distort)
+        {
+            float2 texels = max(_RGWaterStreak.zw, 1.0);
+            float own = tex2Dlod(_RGWaterTrace, float4((floor(uv * texels) + 0.5) / texels, 0.0, 0.0)).a;
+            float past = saturate(own - 1.0);
+            float2 at = Project(_WorldSpaceCameraPos + (d * (1.0 - past) + seen * past) * 1000.0).xy;
+            // Read as wide as the neighbouring pixels' reads spread (the rays' cone, as the GPU picks
+            // a texture's level), so the picture's edges soften where the waves scatter it.
+            c = tex2Dgrad(_RGWaterStreaked, at, lerp(uvDx, farDx, past), lerp(uvDy, farDy, past));
+            // Off the screen there is no picture: faded out over 2% of it.
+            gain = RGSeaRho(-d.y) * _RGWaterGeom.y * saturate(1.0 + min(min(at.x, 1.0 - at.x), min(at.y, 1.0 - at.y)) / 0.02);
+        }
+        else
+            c = tex2Dlod(_RGWaterStreaked, float4(uv, 0.0, 0.0));
         if (c.a <= 1e-3)
             return float4(0.0, 0.0, 0.0, 0.0);
-        float3 added = FiniteSigned(c.rgb / c.a);
+        float3 added = FiniteSigned(c.rgb / c.a) * gain;
 
         // Never below black (by day a dark building over a bright sky takes light away).
         float3 base = Finite(tex2Dlod(_RGWaterFrame, float4(uv, 0.0, 0.0)).rgb);
@@ -344,6 +440,21 @@ Shader "RealGlass/CityReflection"
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment fragComposite
+            #pragma target 3.5
+            ENDCG
+        }
+
+        // 3: the history, into the accumulated buffer.
+        Pass
+        {
+            ZWrite Off
+            ZTest Always
+            Cull Off
+            Blend Off
+
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment fragHistory
             #pragma target 3.5
             ENDCG
         }

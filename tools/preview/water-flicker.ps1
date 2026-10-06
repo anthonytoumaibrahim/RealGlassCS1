@@ -13,6 +13,7 @@
 #   ... -Views "night,day,sunset,close"
 #   ... -Runs "vanilla,today,F4,band36F4"   from the presets below
 #   ... -RippleRms 0.176 -Day 0.15 -Night 2.05   the author's game (2026-10-05 log) and his sliders
+#   ... -Ripples 1.25 -Streaks 0 -Length 1.5      his Ripple strength, Streaks and Length (2026-10-06)
 #   ... -Jitter 1 -Blending 0.94 -Sharpen 0.15   his Render It! profile's TAA
 # Run after build-bundle.ps1 (the shaders compile) and a DLL build.
 
@@ -22,6 +23,7 @@ param(
     [string]$Views = "night,day,sunset,close",
     [string]$Runs = "vanilla,frozencity,moving,today",
     [double]$RippleRms = 0.176,
+    [double]$Ripples = 1.0,
     [double]$Day = 0.15,
     [double]$Night = 2.05,
     [double]$Streaks = 0.036,
@@ -34,6 +36,7 @@ param(
     [double]$Jitter = 1.0,
     [double]$Blending = 0.94,
     [double]$Sharpen = 0.15,
+    [int]$Dump = 0,
     [string]$Name = "water-flicker",
     [ValidateSet("d3d11", "glcore")]
     [string]$Api = "d3d11",
@@ -86,6 +89,32 @@ $presets = @{
     "fixJ"       = @{ Frozen = 0; City = 1; Gain = 2; Foot = 4; A = 8; B = 16; Jit = 1; Cone = 1; Label = "levels 8-16 + 4 px + cone, gain x2" }
     "fixK"       = @{ Frozen = 0; City = 1; Gain = 2; Foot = 3; A = 8; B = 16; Jit = 1; Cone = 1; Label = "levels 8-16 + 3 px + cone, gain x2" }
     "fixL"       = @{ Frozen = 0; City = 1; Gain = 1.5; Foot = 4; A = 6; B = 12; Jit = 1; Cone = 1; Label = "levels 6-12 + 4 px + cone, gain x1.5" }
+    # Without TAA (2026-10-06: "flickering too much, even without TAA"): no jitter, the clocks alone.
+    # The mod's reflection gain is x 2 the Waves slider's; his file has Waves 300% -> Gain 6.
+    "ntMoving"   = @{ Frozen = 0; City = 0; Gain = 1; Foot = 3; A = 0; B = 0; Jit = 0; Cone = 1; Label = "no TAA: moving ripples, no city reflection" }
+    "ntFrozen"   = @{ Frozen = 1; City = 1; Gain = 6; Foot = 3; A = 0; B = 0; Jit = 0; Cone = 1; Label = "no TAA: frozen ripples, his reflection" }
+    "ntFlat"     = @{ Frozen = 0; City = 1; Gain = 0; Foot = 3; A = 0; B = 0; Jit = 0; Cone = 1; Label = "no TAA: moving ripples, reflection a flat mirror" }
+    "ntW100"     = @{ Frozen = 0; City = 1; Gain = 2; Foot = 3; A = 0; B = 0; Jit = 0; Cone = 1; Label = "no TAA: waves 100% (deployed gain)" }
+    "ntW300"     = @{ Frozen = 0; City = 1; Gain = 6; Foot = 3; A = 0; B = 0; Jit = 0; Cone = 1; Label = "no TAA: waves 300% (his file)" }
+    # Dist = 1: the flat mirror traced, its picture distorted by the waves at the composite.
+    "ntD100"     = @{ Frozen = 0; City = 1; Gain = 2; Foot = 3; A = 0; B = 0; Jit = 0; Dist = 1; Label = "no TAA: DISTORTED mirror, waves 100%" }
+    "ntD300"     = @{ Frozen = 0; City = 1; Gain = 6; Foot = 3; A = 0; B = 0; Jit = 0; Dist = 1; Label = "no TAA: DISTORTED mirror, waves 300%" }
+    "D300"       = @{ Frozen = 0; City = 1; Gain = 6; Foot = 3; A = 0; B = 0; Jit = 1; Dist = 1; Label = "TAA: DISTORTED mirror, waves 300%" }
+    "W300"       = @{ Frozen = 0; City = 1; Gain = 6; Foot = 3; A = 0; B = 0; Jit = 1; Cone = 1; Label = "TAA: bent rays, waves 300%" }
+    "ntF8g2"     = @{ Frozen = 0; City = 1; Gain = 2; Foot = 8; A = 0; B = 0; Jit = 0; Cone = 1; Label = "no TAA: 8 px, waves 100%" }
+    "ntF8g6"     = @{ Frozen = 0; City = 1; Gain = 6; Foot = 8; A = 0; B = 0; Jit = 0; Cone = 1; Label = "no TAA: 8 px, waves 300%" }
+    "ntF6g3"     = @{ Frozen = 0; City = 1; Gain = 3; Foot = 6; A = 0; B = 0; Jit = 0; Cone = 1; Label = "no TAA: 6 px, gain 3" }
+    # Hist = w: the reflection's own history pass (CityReflection pass 3), keeping w of the last frame.
+    "ntW100h85"  = @{ Frozen = 0; City = 1; Gain = 2; Foot = 3; A = 0; B = 0; Jit = 0; Cone = 1; Hist = 0.85; Label = "no TAA: waves 100% + history 0.85" }
+    "ntW300h85"  = @{ Frozen = 0; City = 1; Gain = 6; Foot = 3; A = 0; B = 0; Jit = 0; Cone = 1; Hist = 0.85; Label = "no TAA: waves 300% + history 0.85" }
+    "W300h85"    = @{ Frozen = 0; City = 1; Gain = 6; Foot = 3; A = 0; B = 0; Jit = 1; Cone = 1; Hist = 0.85; Label = "TAA: waves 300% + history 0.85" }
+    # Sub = n: each frame the mean of n times over the frame (a shutter open the whole frame: what
+    # motion blur aims at).
+    "ntW100s8"   = @{ Frozen = 0; City = 1; Gain = 2; Foot = 3; A = 0; B = 0; Jit = 0; Cone = 1; Sub = 8; Label = "no TAA: bent rays 100%, shutter open 8 sub-frames" }
+    "ntW300s8"   = @{ Frozen = 0; City = 1; Gain = 6; Foot = 3; A = 0; B = 0; Jit = 0; Cone = 1; Sub = 8; Label = "no TAA: bent rays 300%, shutter open 8 sub-frames" }
+    "ntD100s8"   = @{ Frozen = 0; City = 1; Gain = 2; Foot = 3; A = 0; B = 0; Jit = 0; Dist = 1; Sub = 8; Label = "no TAA: DISTORTED 100%, shutter open 8 sub-frames" }
+    "ntD300s8"   = @{ Frozen = 0; City = 1; Gain = 6; Foot = 3; A = 0; B = 0; Jit = 0; Dist = 1; Sub = 8; Label = "no TAA: DISTORTED 300%, shutter open 8 sub-frames" }
+    "ntMovings8" = @{ Frozen = 0; City = 0; Gain = 1; Foot = 3; A = 0; B = 0; Jit = 0; Cone = 1; Sub = 8; Label = "no TAA: no city reflection, shutter open 8 sub-frames" }
 }
 
 $ErrorActionPreference = "Stop"
@@ -122,7 +151,7 @@ $spread = $optics::Spread($optics::SlopeVariance($optics::CityWind))
 $lines.Add("streak " + (N ($optics::StreakSigma($Streaks, $spread, 45.0))))
 $lines.Add("length " + (N $Length))
 $lines.Add("exposure " + (N $ExposureDay) + " " + (N $ExposureNight))
-$lines.Add("taa " + $FrameCount + " " + $Warm + " " + (N $Fps) + " " + (N $Jitter) + " " + (N $Blending) + " " + (N $Sharpen))
+$lines.Add("taa " + $FrameCount + " " + $Warm + " " + (N $Fps) + " " + (N $Jitter) + " " + (N $Blending) + " " + (N $Sharpen) + " " + $Dump)
 
 $runList = $Runs.Split(',')
 foreach ($r in $runList) { if (-not $presets.ContainsKey($r)) { throw "no run '$r' (presets: $($presets.Keys -join ', '))" } }
@@ -133,7 +162,10 @@ foreach ($view in $viewList) {
         $p = $presets[$r]
         $city = if ($p.City -eq 1) { $strength } else { 0.0 }
         $cone = if ($p.ContainsKey("Cone")) { $p.Cone } else { 0 }
-        $lines.Add(("seq {0}_{1} {0} 1 443 {2} {3} {4} {5} {6} {7} {8} {9}" -f $view, $r, (N $city), $p.Frozen, (N ($gain * $p.Gain)), (N $p.Foot), (N $p.A), (N $p.B), (N $p.Jit), $cone))
+        $dist = if ($p.ContainsKey("Dist")) { $p.Dist } else { 0 }
+        $sub = if ($p.ContainsKey("Sub")) { $p.Sub } else { 1 }
+        $hist = if ($p.ContainsKey("Hist")) { $p.Hist } else { 0 }
+        $lines.Add(("seq {0}_{1} {0} {10} 443 {2} {3} {4} {5} {6} {7} {8} {9} {11} {12} {13}" -f $view, $r, (N $city), $p.Frozen, (N ($gain * $p.Gain)), (N $p.Foot), (N $p.A), (N $p.B), (N $p.Jit), $cone, (N $Ripples), $dist, $sub, (N $hist)))
     }
 }
 [System.IO.File]::WriteAllLines((Join-Path $project "water-preview-input.txt"), $lines)
@@ -164,7 +196,7 @@ foreach ($view in $viewList) {
     foreach ($r in $runList) {
         $top = $row * ($label + $Height)
         $stat = $report | Where-Object { $_ -like ("flicker {0}_{1}:*" -f $view, $r) } | Select-Object -First 1
-        $short = if ($stat) { ($stat -replace '^.*\| TAA: ', 'TAA: ' -replace ' \| no TAA.*$', '') } else { "" }
+        $short = if (-not $stat) { "" } elseif ($presets[$r].Jit -eq 0) { ($stat -replace '^.*\| no TAA: ', 'no TAA: ') } else { ($stat -replace '^.*\| TAA: ', 'TAA: ' -replace ' \| no TAA.*$', '') }
         $g.DrawString(("{0} -- {1}   [{2}]" -f $view, $presets[$r].Label, $short), $font, $brush, 6, ($top + 2))
         foreach ($k in 0..1) {
             $file = Join-Path $shotDir ("{0}_{1}{2}.png" -f $view, $r, $(if ($k -eq 1) { "-flicker" } else { "" }))
