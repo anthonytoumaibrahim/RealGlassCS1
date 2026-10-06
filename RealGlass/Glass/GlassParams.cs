@@ -60,7 +60,7 @@ namespace RealGlass.Glass
             p.Reflectivity = 0.20f;
             p.Glancing = 0.80f;
             p.Clarity = 0.24f;
-            p.Strength = 1.00f;
+            p.Strength = 0.85f;
             p.Threshold = 0.70f;
             p.NightWindows = true;
             p.ShowMask = false;

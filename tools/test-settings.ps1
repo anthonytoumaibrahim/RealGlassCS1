@@ -658,7 +658,8 @@ Check "the ripples' defaults: moving, 100%; the city reflection's waves 100%" ("
 Check "the reflection's length 150%: the ray's slope 2/3 of the mirror's" ("{0:F6}" -f $optics::MirrorSlope(0.3, 1.5)) ("{0:F6}" -f 0.2)
 Check "  length 100%: the mirror" ("{0:F6}" -f $optics::MirrorSlope(0.3, 1.0)) ("{0:F6}" -f 0.3)
 Check "  below 100% (or unset, 0): read as the mirror" ("{0:F6}" -f $optics::MirrorSlope(0.3, 0.0)) ("{0:F6}" -f 0.3)
-Check "the streaks' default is 1%, the length's 100%" ("{0} {1}" -f (Default 'WaterCityStreaks'), (Default 'WaterCityLength')) "0.01 1"
+Check "the streaks' default is 0%, the length's 130% (the author's, 2026-10-07)" ("{0} {1}" -f (Default 'WaterCityStreaks'), (Default 'WaterCityLength')) "0 1.3"
+Check "  the sky in the water 80%, the city by night 300%" ("{0} {1}" -f (Default 'WaterSky'), (Default 'WaterCityNight')) "0.8 3"
 
 $r = 1.2; $g = 1.1; $b = 1.0
 $optics::FloorLight([ref]$r, [ref]$g, [ref]$b)
@@ -712,7 +713,7 @@ Check "  the reflectance is Koepke's dense foam (20-55%)" (($v[20] -ge 0.2) -and
 Check "  the flow carries it as the game's ripples: 0.14 of 1/0.0061 m every 2.5 s" ("{0:F3}" -f $v[21]) ("{0:F3}" -f (0.14 / 0.0061 / 2.5))
 Check "  the advection's cycle divides the game's 60 s clock" ((60.0 % $v[22]) -eq 0.0) "True"
 Check "  a negative share is none" ("{0} {1}" -f ($foamOptics::Vectors(-1.0, -1.0, 1.0, 1.0, 40.0))[23], ($foamOptics::Vectors(-1.0, -1.0, 1.0, 1.0, 40.0))[8]) "0 0"
-Check "the foam's defaults: on, every amount 100%" ("{0} {1} {2} {3} {4}" -f (Default 'WaterFoam'), (Default 'WaterFoamAmount'), (Default 'WaterFoamShore'), (Default 'WaterFoamRapids'), (Default 'WaterFoamFronts')) "True 1 1 1 1"
+Check "the foam's defaults: on, 30%; shores 100%, fast water 5%, fronts 100%" ("{0} {1} {2} {3} {4}" -f (Default 'WaterFoam'), (Default 'WaterFoamAmount'), (Default 'WaterFoamShore'), (Default 'WaterFoamRapids'), (Default 'WaterFoamFronts')) "True 0.3 1 0.05 1"
 
 Write-Host ""
 if ($failed -eq 0) { Write-Host "all passed" } else { Write-Host "$failed FAILED"; exit 1 }

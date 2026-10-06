@@ -317,7 +317,8 @@ namespace RealGlass
             public const float GlassGlancing = 0.80f;
             public const float GlassEdgeSilver = 1f;
             public const float GlassClarity = 0.24f;
-            public const float GlassStrength = 1f;
+            /// <summary>85%: a little of the game's own windows shows through (the author's, 2026-10-07).</summary>
+            public const float GlassStrength = 0.85f;
             public const float GlassThreshold = 0.70f;
             public const bool GlassNightWindows = true;
             public const bool GlassShowMask = false;
@@ -350,23 +351,25 @@ namespace RealGlass
             public const int SkyCubeSize = 2;         // 256 px
             public const int SkyCubeRate = 6;
 
-            // ---- Water ---- (off; inside it, RealLight's defaults: real water everywhere)
+            // ---- Water ---- (off; inside it, the author's own settings, 2026-10-07)
             public const bool WaterEnabled = false;
             public const float WaterBrightness = 1f;
             public const bool WaterRealSky = true;
-            public const float WaterSky = 1f;
+            public const float WaterSky = 0.80f;
             public const bool WaterCity = true;
             public const float WaterCityDay = 1f;
-            public const float WaterCityNight = 1f;
+
+            /// <summary>300%: the lit city carries the water at night (the author's, 2026-10-07).</summary>
+            public const float WaterCityNight = 3f;
 
             /// <summary>The waves bend the city's reflection; replaced the blur (the author, 2026-10-05: "the water doesn't get blurry").</summary>
             public const float WaterCityWaves = 1f;
 
-            /// <summary>1%: a light breeze's 100% smeared a fifth of the screen, and 5% was still too long (the author, 2026-10-04).</summary>
-            public const float WaterCityStreaks = 0.01f;
+            /// <summary>None: the waves bend the reflection, no smear (the author's, 2026-10-07; 1% from 2026-10-04).</summary>
+            public const float WaterCityStreaks = 0f;
 
-            /// <summary>A mirror: the city's own height.</summary>
-            public const float WaterCityLength = 1f;
+            /// <summary>130%: the city's reflection a little longer than a mirror's (the author's, 2026-10-07).</summary>
+            public const float WaterCityLength = 1.3f;
 
             /// <summary>Moving ripples on (the author, 2026-10-05: step 1 of the water plan, "a proof of concept").</summary>
             public const bool WaterRipples = true;
@@ -383,10 +386,10 @@ namespace RealGlass
             /// <summary>Foam on (the author, 2026-10-06: "One thing I'd actually like is the foam").</summary>
             public const bool WaterFoam = true;
 
-            /// <summary>The model's foam, every source at its own.</summary>
-            public const float WaterFoamAmount = 1f;
+            /// <summary>30% of the model's foam, hardly any on fast water (the author's, 2026-10-07).</summary>
+            public const float WaterFoamAmount = 0.30f;
             public const float WaterFoamShore = 1f;
-            public const float WaterFoamRapids = 1f;
+            public const float WaterFoamRapids = 0.05f;
             public const float WaterFoamFronts = 1f;
         }
 
