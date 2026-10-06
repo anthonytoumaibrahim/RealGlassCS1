@@ -252,6 +252,9 @@ namespace RealGlass
         /// <summary>0..3: the ripples' roughness (1 = the game's own ripple texture's, measured).</summary>
         public static FloatSetting WaterRippleStrength { get; private set; }
 
+        /// <summary>0.5..3: the ripples' lengths (1 = 16 m down to 0.5 m).</summary>
+        public static FloatSetting WaterRippleSize { get; private set; }
+
         /// <summary>Foam on the water: shores, rapids, wave fronts (Water/WaterFoam.cs).</summary>
         public static BoolSetting WaterFoam { get; private set; }
 
@@ -368,6 +371,9 @@ namespace RealGlass
             /// <summary>As rough as the game's own ripples.</summary>
             public const float WaterRippleStrength = 1f;
 
+            /// <summary>16 m down to 0.5 m.</summary>
+            public const float WaterRippleSize = 1f;
+
             /// <summary>Foam on (the author, 2026-10-06: "One thing I'd actually like is the foam").</summary>
             public const bool WaterFoam = true;
 
@@ -444,6 +450,7 @@ namespace RealGlass
                 WaterBrightness = new FloatSetting("WaterBrightness", Defaults.WaterBrightness);
                 WaterRipples = new BoolSetting("WaterRipples", Defaults.WaterRipples);
                 WaterRippleStrength = new FloatSetting("WaterRippleStrength", Defaults.WaterRippleStrength);
+                WaterRippleSize = new FloatSetting("WaterRippleSize", Defaults.WaterRippleSize);
                 WaterFoam = new BoolSetting("WaterFoam", Defaults.WaterFoam);
                 WaterFoamAmount = new FloatSetting("WaterFoamAmount", Defaults.WaterFoamAmount);
                 WaterFoamShore = new FloatSetting("WaterFoamShore", Defaults.WaterFoamShore);

@@ -38,6 +38,7 @@ namespace RealGlass.Water
         private double _decodedRms = WaterOptics.DefaultRippleRms;
         private float _drawnHour = float.NaN;
         private double _drawnSlope = -1.0;
+        private double _size = 1.0;
 
         private WaterRipples(Shader shader)
         {
@@ -83,7 +84,13 @@ namespace RealGlass.Water
         /// <summary>The generator's _RGRippleWaves: <see cref="WaterOptics.Ripples"/> as its two rows a wave.</summary>
         public static Vector4[] Rows()
         {
-            double[] w = WaterOptics.Ripples();
+            return Rows(1.0);
+        }
+
+        /// <summary>The same at the Ripple size slider's <paramref name="size"/> (1 = 100%).</summary>
+        public static Vector4[] Rows(double size)
+        {
+            double[] w = WaterOptics.Ripples(size);
             int n = WaterOptics.RippleCount;
             var rows = new Vector4[2 * n];
             for (int i = 0; i < n; i++)
@@ -97,9 +104,17 @@ namespace RealGlass.Water
         }
 
         /// <summary>This frame's ripples at <paramref name="strength"/> (1 = as rough as the game's own texture).</summary>
-        public void Draw(float strength)
+        public void Draw(float strength, float size)
         {
             Measure();
+            if (Math.Abs(size - _size) > 1e-4)
+            {
+                _size = size;
+                _material.SetVectorArray(IdWaves, Rows(size));
+                _drawnHour = float.NaN;
+                Log.Msg("water: ripple size " + (size * 100f).ToString("F0") + "%");
+            }
+
             double slope = WaterOptics.RippleSlope(_decodedRms, strength);
             Vector4 clock = Shader.GetGlobalVector(IdClock);
             if (clock.y == _drawnHour && Math.Abs(slope - _drawnSlope) < 1e-6)

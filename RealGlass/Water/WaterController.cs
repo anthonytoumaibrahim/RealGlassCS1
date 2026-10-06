@@ -159,7 +159,8 @@ namespace RealGlass.Water
 
             if (On(Settings.WaterRipples))
             {
-                _ripples.Draw(Value(Settings.WaterRippleStrength, Settings.Defaults.WaterRippleStrength));
+                _ripples.Draw(Value(Settings.WaterRippleStrength, Settings.Defaults.WaterRippleStrength),
+                              Value(Settings.WaterRippleSize, Settings.Defaults.WaterRippleSize));
                 _ripples.Hold();
             }
             else

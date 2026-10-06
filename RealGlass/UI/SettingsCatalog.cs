@@ -1200,6 +1200,17 @@ namespace RealGlass.UI
                 Enabled = WaterRipplesOn,
             });
 
+            // 100%: 16 m down to 0.5 m; every length x the slider, the slopes kept (WaterOptics.Ripples).
+            Add(new Row
+            {
+                Kind = RowKind.Percent,
+                Panel = PanelPage.Water,
+                Float = Settings.WaterRippleSize,
+                DefaultFloat = Settings.Defaults.WaterRippleSize,
+                Min = 50f, Max = 300f, Step = 5f,
+                Enabled = WaterRipplesOn,
+            });
+
             // The foam (Water/WaterFoam.cs): on the game's own water, from its simulation.
             Add(new Row
             {

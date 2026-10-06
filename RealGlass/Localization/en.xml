@@ -176,6 +176,8 @@
 
   <String key="WaterRippleStrength.Label">Ripple strength</String>
 
+  <String key="WaterRippleSize.Label">Ripple size</String>
+
   <String key="Group.WaterFoam">The foam</String>
 
   <String key="WaterFoam.Label">Foam</String>
