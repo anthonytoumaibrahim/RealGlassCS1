@@ -55,7 +55,7 @@ namespace RealGlass.Water
         private static readonly int IdHistoryInfo = Shader.PropertyToID("_RGWaterHistoryInfo");
 
         /// <summary>How much of last frame's reflection each frame keeps (the history pass, clamped to this frame's neighbourhood).</summary>
-        private const float HistoryWeight = 0.85f;
+        private const float HistoryWeight = 0.75f;
 
         private RenderTexture _frame, _trace, _accum, _history, _streaked;
         private Matrix4x4 _lastVP;
@@ -277,8 +277,9 @@ namespace RealGlass.Water
             // read over 3 trace pixels (only waves the screen resolves bend the rays), the city read
             // as wide as a ray cone spreads (z = 1), the gain x 2 to keep the waviness. (8 pixels and
             // x 1.5 flickered least, but the author missed the night's waviness: "I really liked it
-            // better before".)
-            _material.SetVector(IdWave, new Vector4(Mathf.Max(0f, waves) * 2f, 3f, 1f, 0f));
+            // better before".) The ray cone is OFF since the history pass (2026-10-06): with both, the
+            // author found the reflection "too blurry".
+            _material.SetVector(IdWave, new Vector4(Mathf.Max(0f, waves) * 2f, 3f, 0f, 0f));
             if (theme != null)
                 _material.SetTexture(IdTheme, theme);
             _material.SetVector(IdLight, new Vector4(light.r, light.g, light.b, 0f));

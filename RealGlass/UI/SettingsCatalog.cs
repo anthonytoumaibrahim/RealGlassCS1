@@ -1211,6 +1211,17 @@ namespace RealGlass.UI
                 Enabled = WaterRipplesOn,
             });
 
+            // 100%: the longest wave as the ripple size makes it; lower = calmer water, short ripples only.
+            Add(new Row
+            {
+                Kind = RowKind.Percent,
+                Panel = PanelPage.Water,
+                Float = Settings.WaterWaveSize,
+                DefaultFloat = Settings.Defaults.WaterWaveSize,
+                Min = 5f, Max = 100f, Step = 5f,
+                Enabled = WaterRipplesOn,
+            });
+
             // The foam (Water/WaterFoam.cs): on the game's own water, from its simulation.
             Add(new Row
             {

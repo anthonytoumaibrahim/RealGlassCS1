@@ -255,6 +255,9 @@ namespace RealGlass
         /// <summary>0.5..3: the ripples' lengths (1 = 16 m down to 0.5 m).</summary>
         public static FloatSetting WaterRippleSize { get; private set; }
 
+        /// <summary>0.05..1: the longest wave's share of its length (1 = 16 m at 100% ripple size).</summary>
+        public static FloatSetting WaterWaveSize { get; private set; }
+
         /// <summary>Foam on the water: shores, rapids, wave fronts (Water/WaterFoam.cs).</summary>
         public static BoolSetting WaterFoam { get; private set; }
 
@@ -374,6 +377,9 @@ namespace RealGlass
             /// <summary>16 m down to 0.5 m.</summary>
             public const float WaterRippleSize = 1f;
 
+            /// <summary>The longest waves at full length.</summary>
+            public const float WaterWaveSize = 1f;
+
             /// <summary>Foam on (the author, 2026-10-06: "One thing I'd actually like is the foam").</summary>
             public const bool WaterFoam = true;
 
@@ -451,6 +457,7 @@ namespace RealGlass
                 WaterRipples = new BoolSetting("WaterRipples", Defaults.WaterRipples);
                 WaterRippleStrength = new FloatSetting("WaterRippleStrength", Defaults.WaterRippleStrength);
                 WaterRippleSize = new FloatSetting("WaterRippleSize", Defaults.WaterRippleSize);
+                WaterWaveSize = new FloatSetting("WaterWaveSize", Defaults.WaterWaveSize);
                 WaterFoam = new BoolSetting("WaterFoam", Defaults.WaterFoam);
                 WaterFoamAmount = new FloatSetting("WaterFoamAmount", Defaults.WaterFoamAmount);
                 WaterFoamShore = new FloatSetting("WaterFoamShore", Defaults.WaterFoamShore);

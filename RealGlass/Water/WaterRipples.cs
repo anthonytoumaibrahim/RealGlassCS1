@@ -39,6 +39,7 @@ namespace RealGlass.Water
         private float _drawnHour = float.NaN;
         private double _drawnSlope = -1.0;
         private double _size = 1.0;
+        private double _waveSize = 1.0;
 
         private WaterRipples(Shader shader)
         {
@@ -90,7 +91,13 @@ namespace RealGlass.Water
         /// <summary>The same at the Ripple size slider's <paramref name="size"/> (1 = 100%).</summary>
         public static Vector4[] Rows(double size)
         {
-            double[] w = WaterOptics.Ripples(size);
+            return Rows(size, 1.0);
+        }
+
+        /// <summary>The same with the Wave size slider's <paramref name="waveSize"/> (1 = 100%).</summary>
+        public static Vector4[] Rows(double size, double waveSize)
+        {
+            double[] w = WaterOptics.Ripples(size, waveSize);
             int n = WaterOptics.RippleCount;
             var rows = new Vector4[2 * n];
             for (int i = 0; i < n; i++)
@@ -104,15 +111,16 @@ namespace RealGlass.Water
         }
 
         /// <summary>This frame's ripples at <paramref name="strength"/> (1 = as rough as the game's own texture).</summary>
-        public void Draw(float strength, float size)
+        public void Draw(float strength, float size, float waveSize)
         {
             Measure();
-            if (Math.Abs(size - _size) > 1e-4)
+            if (Math.Abs(size - _size) > 1e-4 || Math.Abs(waveSize - _waveSize) > 1e-4)
             {
                 _size = size;
-                _material.SetVectorArray(IdWaves, Rows(size));
+                _waveSize = waveSize;
+                _material.SetVectorArray(IdWaves, Rows(size, waveSize));
                 _drawnHour = float.NaN;
-                Log.Msg("water: ripple size " + (size * 100f).ToString("F0") + "%");
+                Log.Msg("water: ripple size " + (size * 100f).ToString("F0") + "%, wave size " + (waveSize * 100f).ToString("F0") + "%");
             }
 
             double slope = WaterOptics.RippleSlope(_decodedRms, strength);

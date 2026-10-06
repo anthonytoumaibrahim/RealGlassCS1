@@ -70,6 +70,9 @@ namespace RealGlass.Water
         /// <summary>The Ripple size slider's range (1 = 100%).</summary>
         public const double MinRippleSize = 0.5, MaxRippleSize = 3.0;
 
+        /// <summary>The Wave size slider's range (1 = 100%): the longest wave's share of its length at the ripple size.</summary>
+        public const double MinWaveSize = 0.05, MaxWaveSize = 1.0;
+
         /// <summary>The ripple texture's size, texels a side.</summary>
         public const int RippleTexels = 1024;
 
@@ -231,8 +234,19 @@ namespace RealGlass.Water
         /// </summary>
         public static double[] Ripples(double size)
         {
+            return Ripples(size, 1.0);
+        }
+
+        /// <summary>
+        /// The same with the longest wave x <paramref name="waveSize"/> (the Wave size slider, 1 = 100%):
+        /// calm water keeps only the short ripples; never shorter than 1.5 x the shortest.
+        /// </summary>
+        public static double[] Ripples(double size, double waveSize)
+        {
             size = Math.Max(MinRippleSize, Math.Min(MaxRippleSize, size));
-            double longest = RippleLongest * size, shortest = RippleShortest * Math.Max(1.0, size);
+            waveSize = Math.Max(MinWaveSize, Math.Min(MaxWaveSize, waveSize));
+            double shortest = RippleShortest * Math.Max(1.0, size);
+            double longest = Math.Max(1.5 * shortest, RippleLongest * size * waveSize);
             var waves = new double[RippleCount * WaveStride];
             double ratio = Math.Pow(shortest / longest, 1.0 / (RippleCount - 1));
             double slope = Math.Sqrt(2.0 / RippleCount);

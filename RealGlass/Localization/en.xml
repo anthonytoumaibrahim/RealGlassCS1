@@ -166,7 +166,7 @@
   <!-- ==================== F8 panel: Water ==================== -->
   <!-- The map's water: its brightness, the sky in it, the city in it. Off by default. -->
 
-  <String key="WaterEnabled.Label">Water controls</String>
+  <String key="WaterEnabled.Label">Water controls (EXPERIMENTAL)</String>
 
   <String key="WaterBrightness.Label">Water brightness</String>
 
@@ -177,6 +177,8 @@
   <String key="WaterRippleStrength.Label">Ripple strength</String>
 
   <String key="WaterRippleSize.Label">Ripple size</String>
+
+  <String key="WaterWaveSize.Label">Wave size</String>
 
   <String key="Group.WaterFoam">The foam</String>
 
