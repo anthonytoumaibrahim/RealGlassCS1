@@ -58,7 +58,7 @@ public static class FoamPreview
         public GameObject CameraObject;
         public RenderTexture Target;
         public Light Sun;
-        public Material Skybox, Water, Foam, Reflection;
+        public Material Skybox, Water, Foam, Reflection, Surface;
         public Camera Capture;
         public RenderTexture SkyCube;
         public List<Tower> Towers;
@@ -76,7 +76,7 @@ public static class FoamPreview
             if (Tsunami != wantTsunami)
             {
                 Coast.Tsunami = wantTsunami;
-                Coast.Bind(Water, Foam, Log);
+                Coast.Bind(Water, Foam, Surface, Log);
                 Tsunami = wantTsunami;
             }
 
@@ -226,6 +226,16 @@ public static class FoamPreview
             RenderTexture frame = WaterPreview.Target(w, h, true), trace = WaterPreview.Target(w, h, true), streaked = WaterPreview.Target(w, h, false);
             reflection.SetTexture("_RGWaterFrame", frame);
             var buffer = new CommandBuffer { name = "RealGlass water reflection (preview)" };
+            var surface = new Material(AssetDatabase.LoadAssetAtPath<Shader>("Assets/RealGlass/WaterSurfaceMask.shader"));
+            var surfaceDepth = new RenderTexture(width, height, 24, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
+            surfaceDepth.filterMode = FilterMode.Point;
+            surfaceDepth.Create();
+            reflection.SetTexture("_RGWaterSurfaceDepth", surfaceDepth);
+            buffer.SetRenderTarget(surfaceDepth);
+            buffer.ClearRenderTarget(true, true, Color.clear);
+            foreach (Renderer renderer in waterRenderers)
+                buffer.DrawMesh(renderer.GetComponent<MeshFilter>().sharedMesh, renderer.transform.localToWorldMatrix, surface, 0, 0);
+            buffer.SetRenderTarget(BuiltinRenderTextureType.CameraTarget);
             buffer.Blit(BuiltinRenderTextureType.CameraTarget, frame);
             buffer.SetRenderTarget(trace);
             buffer.ClearRenderTarget(false, true, Color.clear);
@@ -243,7 +253,7 @@ public static class FoamPreview
             var scene = new Scene
             {
                 Coast = coast, Camera = camera, CameraObject = cameraObject, Target = target, Sun = sun, Skybox = skybox, Water = water,
-                Foam = foamMaterial, Reflection = reflection, Capture = capture, SkyCube = skyCube, Towers = towers, FoamRenderers = foamRenderers,
+                Foam = foamMaterial, Reflection = reflection, Surface = surface, Capture = capture, SkyCube = skyCube, Towers = towers, FoamRenderers = foamRenderers,
                 Rows = rows, RippleRms = rippleRms, Log = log,
             };
             if (seqs.Count > 0)
@@ -538,7 +548,7 @@ public static class FoamPreview
         }
 
         /// <summary>The data as the game holds it, on both materials.</summary>
-        public void Bind(Material water, Material foam, List<string> log)
+        public void Bind(Material water, Material foam, Material surfaceMaterial, List<string> log)
         {
             var heights = new Color32[WaterTexels * WaterTexels];
             for (int j = 0; j < WaterTexels; j++)
@@ -575,7 +585,7 @@ public static class FoamPreview
                 surface[2 + frame] = DataTexture(SurfaceTexels, b, FilterMode.Bilinear);
             }
 
-            foreach (Material m in new[] { water, foam })
+            foreach (Material m in new[] { water, foam, surfaceMaterial })
             {
                 m.SetTexture("_MainTex", heightMap);
                 m.SetTexture("_TerrainHeight", terrainMap);

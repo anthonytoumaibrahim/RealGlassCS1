@@ -169,6 +169,7 @@
   <String key="WaterEnabled.Label">Water controls (EXPERIMENTAL)</String>
 
   <String key="WaterBrightness.Label">Water brightness</String>
+  <String key="WaterDayLook.Label">Daylight blue and wave detail</String>
 
   <String key="Group.WaterRipples">The ripples</String>
 

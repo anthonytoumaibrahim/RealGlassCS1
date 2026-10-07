@@ -33,7 +33,9 @@ four tabs:
   fitted to the windows each building painted.
 - **Water** (off until switched on) -- the map's water: its brightness, the sky in it with real
   water's reflectance, and the city in it, with its waves, its streaks and how long it is drawn;
-  foam along the shores, on fast water and on wave fronts.
+  foam along the shores, on fast water and on wave fronts. **Daylight blue and wave detail** adds
+  a brighter blue tone and stronger long-wave detail during the day, fading out at night. Set it
+  to 0% for the previous colour and wave balance; the existing brightness and ripple controls apply.
 
 **Alt+G** turns the building picker on: click a building, and a small window of its own gives its
 asset its own glass.
@@ -87,6 +89,11 @@ the log is `RealGlass.log`, next to it.
   and the city's reflection bends off the same ripples. They keep the game's own clock: they stop
   when the game is paused. Only the map's water and the game's own lighting of it are touched;
   buildings keep the theme's sky.
+- **Water reflections follow the surface**, including elevated lakes and rivers: a separate depth
+  pass draws the game's simulated water meshes with their own patch data. The seabed cannot stand
+  in for the surface, and dry depressions, banks and foreground buildings are excluded. Reflection
+  tracing and temporal history both use this surface depth. The reflection still needs its source
+  scenery on screen; off-screen scenery falls back to the sky.
 - **Foam** (on the water tab): white water where the game's own water simulation says it belongs --
   along the sea's shores, in lines that run in to the beach; on fast water (rapids, weirs, a dam's
   outflow); and on a rising wave front (a tsunami's, a flood's) -- carried along by the flow, as

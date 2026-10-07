@@ -7,6 +7,14 @@ the mod's name in the game.
 
 The first Workshop release: realistic glass on every building, at every distance.
 
+### Water improvements
+
+- Reflections use a separate depth record of the visible simulated water surface, instead of
+  inferring water from sea level and terrain depth. Sloping seabeds, dry areas below sea level,
+  elevated lakes and foreground occlusion are covered by GPU regressions.
+- Daylight blue and wave detail: brighter blue clean water and stronger long waves during the
+  day, fading back to the existing colour and wave balance at night. Adjustable from 0 to 100%.
+
 ### New
 
 - **The glass**: drawn over each building's own glass -- what the asset's author painted shiny,

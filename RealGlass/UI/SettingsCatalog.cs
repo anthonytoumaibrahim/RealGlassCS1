@@ -1177,6 +1177,16 @@ namespace RealGlass.UI
                 Enabled = WaterOn,
             });
 
+            Add(new Row
+            {
+                Kind = RowKind.Percent,
+                Panel = PanelPage.Water,
+                Float = Settings.WaterDayLook,
+                DefaultFloat = Settings.Defaults.WaterDayLook,
+                Min = 0f, Max = 100f, Step = 5f,
+                Enabled = WaterOn,
+            });
+
             // The ripples (Water/WaterRipples.cs): ours, moving, in place of the game's frozen ones.
             Add(new Row
             {

@@ -57,6 +57,7 @@ namespace RealGlass.Water
             if (!On(Settings.WaterEnabled))
                 return "water controls off";
             return "water controls ON: brightness " + Pct(Settings.WaterBrightness) +
+                   ", daylight look " + Pct(Settings.WaterDayLook) +
                    ", moving ripples " + (On(Settings.WaterRipples) ? Pct(Settings.WaterRippleStrength) : "off") +
                    ", foam " + (On(Settings.WaterFoam) ? Pct(Settings.WaterFoamAmount) + " (shores " + Pct(Settings.WaterFoamShore) + ", fast water " +
                    Pct(Settings.WaterFoamRapids) + ", wave fronts " + Pct(Settings.WaterFoamFronts) + ")" : "off") +
@@ -110,17 +111,18 @@ namespace RealGlass.Water
 
             Vector3 toSun;
             Color light = WaterLight(out toSun);
+            float dayLook = WaterAppearance.DayAmount(toSun.y, Value(Settings.WaterDayLook, Settings.Defaults.WaterDayLook));
 
             if (_surface != null)
             {
-                _surface.HoldColour(Value(Settings.WaterBrightness, Settings.Defaults.WaterBrightness));
+                _surface.HoldColour(Value(Settings.WaterBrightness, Settings.Defaults.WaterBrightness), dayLook);
                 if (On(Settings.WaterRealSky))
                     _surface.HoldCube(Value(Settings.WaterSky, Settings.Defaults.WaterSky), light);
                 else
                     _surface.ReleaseCube();
             }
 
-            RipplesFrame();
+            RipplesFrame(dayLook);
             FoamFrame();
             CityFrame(light, toSun);
         }
@@ -152,7 +154,7 @@ namespace RealGlass.Water
         /// Our moving ripples on the water (drawn this frame), or the game's own again. The game's
         /// texture is measured either way: the city reflection's gain is set against it.
         /// </summary>
-        private void RipplesFrame()
+        private void RipplesFrame(float dayLook)
         {
             if (_ripples == null)
                 return;
@@ -161,7 +163,7 @@ namespace RealGlass.Water
             {
                 _ripples.Draw(Value(Settings.WaterRippleStrength, Settings.Defaults.WaterRippleStrength),
                               Value(Settings.WaterRippleSize, Settings.Defaults.WaterRippleSize),
-                              Value(Settings.WaterWaveSize, Settings.Defaults.WaterWaveSize));
+                              Value(Settings.WaterWaveSize, Settings.Defaults.WaterWaveSize), dayLook);
                 _ripples.Hold();
             }
             else
@@ -226,8 +228,6 @@ namespace RealGlass.Water
                     level = terrain.WaterSimulation.m_currentSeaLevel;
                 if (float.IsNaN(level) || float.IsInfinity(level))
                     why = "no sea level";
-                else if (camera.transform.position.y - level <= 1f)
-                    why = "the camera is at the water";
             }
 
             if (why != null)

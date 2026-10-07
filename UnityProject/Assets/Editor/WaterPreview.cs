@@ -25,6 +25,7 @@ public static class WaterPreview
         public float Ripples;
         public float Seconds;
         public float Strength;
+        public float DayLook;
     }
 
     /// <summary>
@@ -101,7 +102,7 @@ public static class WaterPreview
                     exposureNight = F(p[2]);
                 }
                 else if (p[0] == "shot")
-                    shots.Add(new Shot { Name = p[1], View = p[2], Ripples = F(p[3]), Seconds = F(p[4]), Strength = F(p[5]) });
+                    shots.Add(new Shot { Name = p[1], View = p[2], Ripples = F(p[3]), Seconds = F(p[4]), Strength = F(p[5]), DayLook = p.Length > 6 ? F(p[6]) : 0f });
                 else if (p[0] == "taa")
                 {
                     // frames, warm-up frames, frames a second, jitter spread, stationary blending, sharpen[,
@@ -175,6 +176,7 @@ public static class WaterPreview
             material.SetTexture("_RGWaterTraced", trace);
             material.SetTexture("_RGWaterHistory", history);
             var buffer = new CommandBuffer { name = "RealGlass water reflection (preview)" };
+            PreviewWaterSurface.Record(buffer, material, GameObject.Find("preview water surface"), width, height);
             buffer.Blit(BuiltinRenderTextureType.CameraTarget, frame);
             buffer.SetRenderTarget(trace);
             buffer.ClearRenderTarget(false, true, Color.clear);
@@ -202,6 +204,9 @@ public static class WaterPreview
             foreach (Shot shot in shots)
             {
                 bool night = stage.Set(shot.View);
+                // This synthetic scene turns its sun off at night instead of rotating it below the horizon.
+                float dayLook = RealGlass.Water.WaterAppearance.DayAmount(night ? -1f : -sun.transform.forward.y, shot.DayLook);
+                water.SetColor("_BodyColour", RealGlass.Water.WaterAppearance.Colour(new Color(0.03f, 0.06f, 0.08f, 1f).linear, 1f, dayLook).gamma);
 
                 // The game's clocks at this shot's time, then the ripples drawn for it (as WaterRipples:
                 // root-mean-square slope = half the game texture's decoded rms x the strength).
@@ -209,7 +214,7 @@ public static class WaterPreview
                 Shader.SetGlobalVector("_SimulationTime2", new Vector4(shot.Seconds, shot.Seconds / 3600f, 0f, 0f));
                 if (ripples != null)
                     ripples.Release();
-                ripples = CityReflectionTest.GenerateRipples(rows, 0.5f * rippleRms * shot.Ripples, 1024);
+                ripples = CityReflectionTest.GenerateRipples(rows, 0.5f * rippleRms * shot.Ripples, 1024, dayLook);
                 water.SetTexture("_WaterNormal", ripples);
                 material.SetTexture("_RGRipples", ripples);
 
@@ -637,6 +642,7 @@ public static class WaterPreview
         }
 
         GameObject water = GameObject.CreatePrimitive(PrimitiveType.Plane);
+        water.name = "preview water surface";
         water.GetComponent<Renderer>().sharedMaterial = waterMaterial;
         water.transform.localScale = new Vector3(110f, 1f, 300f);
         water.transform.position = new Vector3(0f, 0f, 0f);

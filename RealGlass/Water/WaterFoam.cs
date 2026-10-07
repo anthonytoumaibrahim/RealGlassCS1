@@ -74,6 +74,8 @@ namespace RealGlass.Water
                                     MaterialPropertyBlock properties, bool castShadows, bool receiveShadows)
         {
             Graphics.DrawMesh(mesh, matrix, material, layer, camera, submeshIndex, properties, castShadows, receiveShadows);
+            // Reflection coverage is independent of whether foam is enabled.
+            WaterCityReflection.DrawSurface(mesh, matrix, material, layer, camera, submeshIndex, properties);
             if (!s_active || (object)material != (object)s_gameWater || (object)material == null)
                 return;
 

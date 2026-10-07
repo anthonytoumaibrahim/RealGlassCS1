@@ -1,8 +1,8 @@
 // The city in the map's water, by day and by night (RealGlass/Water/WaterCityReflection.cs has the
 // model and its sources; ported from RealLight's CityReflection, 2026-10-03, which checked it against
 // the CPU in an editor test). Drawn from a command buffer after the opaque image effects, before
-// Bloom, so reflected lights glow as the lights do. Only on the map's water at the sea's level: the
-// pixels whose depth lies at that plane or beyond it (the water or its bed). Three passes:
+// Bloom, so reflected lights glow as the lights do. Only on visible simulated water: the separate
+// surface-depth pass records the water meshes, independently of the terrain behind them. Four passes:
 //   0 TRACE (a cube round the camera, into a half-size buffer with mips): the ray reflected by the
 //     ripples at the water's point (RippleSlope: the game's own ripple texture, or ours, read as
 //     the game reads it; the flat sea's mirror ray with the gain at 0), its
@@ -15,6 +15,7 @@
 //     averaged (normalised convolution), so the shore does not darken the reflection's edge.
 //   2 COMPOSITE (the cube, onto the frame): on the water, the streaked rgb / a. Added (Blend One
 //     One); never taking a pixel below black.
+//   3 HISTORY: reprojected from the actual water surface, clamped to the current neighbourhood.
 Shader "RealGlass/CityReflection"
 {
     // Blit binds its source as the material's main texture, which needs the property declared
@@ -36,6 +37,8 @@ Shader "RealGlass/CityReflection"
     #define RG_STREAK 8
 
     UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
+    // Full-resolution eye depth from the game's water meshes; zero means no visible water.
+    sampler2D _RGWaterSurfaceDepth;
 
     // The frame as the game drew it, just before (a half-size copy): what the rays meet.
     sampler2D _RGWaterFrame;
@@ -123,35 +126,31 @@ Shader "RealGlass/CityReflection"
     // (m; negative: in front). -1e9 where that is the sky, or the water itself or its bed (at or
     // below the level: at a low angle the next pixel's water lies metres nearer, and a ray just
     // leaving the water would meet it).
-    float Behind(float3 s, float3 q)
+    float Behind(float3 s, float3 q, float surfaceY)
     {
         float raw = SAMPLE_DEPTH_TEXTURE_LOD(_CameraDepthTexture, float4(s.xy, 0.0, 0.0));
         if (Linear01Depth(raw) > 0.9999)
             return -1e9;
         float eye = LinearEyeDepth(raw);
-        // The scene's height from this texel's depth along q's ray: off by the texel's own slant,
-        // so the margin grows with the distance.
+        float water = tex2Dlod(_RGWaterSurfaceDepth, float4(s.xy, 0.0, 0.0)).r;
+        if (water > 0.0 && eye >= water - 0.5)
+            return -1e9;
+        // The scene height along the sample ray, relative to this water point's local level.
+        // A distance-scaled height cutoff used to remove low buildings far across the water.
         float sceneY = _WorldSpaceCameraPos.y + (q.y - _WorldSpaceCameraPos.y) * eye / s.z;
-        if (sceneY <= _RGWaterGeom.x + max(0.5, 0.01 * eye))
+        if (sceneY <= surfaceY + 0.5)
             return -1e9;
         return s.z - eye;
     }
 
-    // The map's water along d at uv: what the game drew lies at the sea's plane or beyond it (its
-    // bed), and is not the void. tFlat: the plane's distance.
-    bool Water(float3 d, float2 uv, out float tFlat)
+    // Reconstruct the surface, not the terrain behind it. Point sampling preserves dry banks and
+    // foreground silhouettes at the full-resolution composite as well as the half-size trace.
+    bool Water(float3 d, float2 uv, out float tSurface)
     {
-        tFlat = 0.0;
-        float h = _WorldSpaceCameraPos.y - _RGWaterGeom.x;
-        if (d.y >= -1e-4 || h <= 0.5)
-            return false;
-        tFlat = h / -d.y;
-        float raw = SAMPLE_DEPTH_TEXTURE_LOD(_CameraDepthTexture, float4(uv, 0.0, 0.0));
-        if (Linear01Depth(raw) > 0.9999)
-            return false;
+        float eye = tex2Dlod(_RGWaterSurfaceDepth, float4(uv, 0.0, 0.0)).r;
         float3 forward = -normalize(UNITY_MATRIX_V[2].xyz);
-        float scene = LinearEyeDepth(raw) / max(dot(d, forward), 1e-3);
-        return scene >= tFlat * (1.0 - 0.005) - 2.0;
+        tSurface = eye / max(dot(d, forward), 1e-3);
+        return eye > 0.0 && d.y < -1e-4;
     }
 
     // The water's slope (dh/dx, dh/dz) at the world point xz, from its ripples as the game shades
@@ -180,11 +179,15 @@ Shader "RealGlass/CityReflection"
         float3 d = normalize(i.dir);
         float2 uv = i.screen.xy / i.screen.w;
 
-        // Where the view meets the flat sea, and the step to the next pixel there -- before any
-        // branch: the derivatives need every pixel of the quad.
-        float h = _WorldSpaceCameraPos.y - _RGWaterGeom.x;
-        float2 xz = _WorldSpaceCameraPos.xz + d.xz * (h / max(-d.y, 1e-4));
-        float2 xzDx = ddx(xz), xzDy = ddy(xz);
+        float tFlat;
+        bool water = Water(d, uv, tFlat);
+        float3 p = _WorldSpaceCameraPos + d * tFlat;
+        // Use the local surface plane for derivatives: a dry neighbour's zero depth must not create
+        // a huge ripple footprint at a shoreline.
+        float2 xz = p.xz;
+        float3 dDx = ddx(d), dDy = ddy(d);
+        float2 xzDx = tFlat * (dDx.xz - d.xz * dDx.y / min(d.y, -1e-4));
+        float2 xzDy = tFlat * (dDy.xz - d.xz * dDy.y / min(d.y, -1e-4));
         bool distort = _RGWaterWave.w > 0.5;
         float2 slope = float2(0.0, 0.0);
         if (_RGWaterWave.x > 0.0 && !distort)
@@ -193,12 +196,10 @@ Shader "RealGlass/CityReflection"
         // it twice).
         float turn = 2.0 * max(length(ddx(slope)), length(ddy(slope)));
 
-        float tFlat;
-        if (!Water(d, uv, tFlat))
+        if (!water)
             return float4(0.0, 0.0, 0.0, 0.0);
 
         float k = RGSeaRho(-d.y) * _RGWaterGeom.y;
-        float3 p = float3(_WorldSpaceCameraPos.x + d.x * tFlat, _RGWaterGeom.x, _WorldSpaceCameraPos.z + d.z * tFlat);
         // The ray the waves reflect (a ray turned below the level meets the next wave: mirrored back
         // up), and the one followed: its slope divided by the length (the reflection drawn that many
         // times as long). The sky the city replaces is the flat sea's mirror: the water's cube.
@@ -222,7 +223,7 @@ Shader "RealGlass/CityReflection"
             float3 q = Project(wq);
             if (!OnScreen(q))
                 break;
-            float behind = Behind(q, wq);
+            float behind = Behind(q, wq, p.y);
             if (behind > 0.0 && behind < max(_RGWaterMarch.y, (t - tPrev) * 1.5))
             {
                 hit = t;
@@ -243,7 +244,7 @@ Shader "RealGlass/CityReflection"
         {
             float mid = 0.5 * (lo + hi);
             float3 wm = p + r * mid;
-            if (Behind(Project(wm), wm) > 0.0)
+            if (Behind(Project(wm), wm, p.y) > 0.0)
                 hi = mid;
             else
                 lo = mid;
@@ -313,11 +314,11 @@ Shader "RealGlass/CityReflection"
         float3 d = normalize(i.dir);
         float2 uv = i.screen.xy / i.screen.w;
         float4 c = tex2Dlod(_RGWaterTraced, float4(uv, 0.0, 0.0));
-        float h = _WorldSpaceCameraPos.y - _RGWaterGeom.x;
-        if (c.a <= 0.5 || _RGWaterHistoryInfo.x <= 0.0 || d.y >= -1e-4 || h <= 0.5)
+        float tSurface;
+        if (c.a <= 0.5 || _RGWaterHistoryInfo.x <= 0.0 || !Water(d, uv, tSurface))
             return c;
 
-        float3 p = _WorldSpaceCameraPos + d * (h / -d.y);
+        float3 p = _WorldSpaceCameraPos + d * tSurface;
         float4 clip = mul(_RGWaterPrevVP, float4(p, 1.0));
         if (clip.w <= 1e-4)
             return c;
@@ -355,9 +356,12 @@ Shader "RealGlass/CityReflection"
         // meets at the water's edge is here (uv). Between them by the share of the way past the water.
         // Before any branch: the derivatives need every pixel of the quad. The composite is drawn at
         // the full size, the footprint counted in the trace's (half-size) pixels.
-        float h = _WorldSpaceCameraPos.y - _RGWaterGeom.x;
-        float2 xz = _WorldSpaceCameraPos.xz + d.xz * (h / max(-d.y, 1e-4));
-        float2 xzDx = 2.0 * ddx(xz), xzDy = 2.0 * ddy(xz);
+        float tFlat;
+        bool water = Water(d, uv, tFlat);
+        float2 xz = _WorldSpaceCameraPos.xz + d.xz * tFlat;
+        float3 dDx = ddx(d), dDy = ddy(d);
+        float2 xzDx = 2.0 * tFlat * (dDx.xz - d.xz * dDx.y / min(d.y, -1e-4));
+        float2 xzDy = 2.0 * tFlat * (dDy.xz - d.xz * dDy.y / min(d.y, -1e-4));
         bool distort = _RGWaterWave.w > 0.5;
         float2 slope = float2(0.0, 0.0);
         if (_RGWaterWave.x > 0.0 && distort)
@@ -367,8 +371,7 @@ Shader "RealGlass/CityReflection"
         float2 uvFar = Project(_WorldSpaceCameraPos + seen * 1000.0).xy;
         float2 uvDx = ddx(uv), uvDy = ddy(uv), farDx = ddx(uvFar), farDy = ddy(uvFar);
 
-        float tFlat;
-        if (!Water(d, uv, tFlat))
+        if (!water)
             return float4(0.0, 0.0, 0.0, 0.0);
 
         float4 c;

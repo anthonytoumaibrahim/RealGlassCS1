@@ -58,6 +58,21 @@ itself), the glass presets against the catalog, and every slider's default again
 on the built DLL (`-Dll <path>` for another one). `test-localization` checks the language files
 against the code, both ways.
 
+Water GPU regressions (Unity 5.6 with graphics enabled):
+
+```
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\test-water-surface.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\test-water-surface.ps1 -Api glcore
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\test-reflection-shader.ps1
+```
+
+The surface regression uses the runtime capture class and simulated patch data: sloped seabeds,
+elevated and overlapping water, dry cells, foreground occlusion, reused property blocks, empty
+frames, resizing and reattachment. It also checks daylight colour/waves and preservation at night.
+The optical suite verifies the reflection against its model, including an elevated lake.
+For a daylight comparison: `tools\preview\water-render.ps1 -DayLooks 0,1 -Ripples 1 -Frames none`.
+These are synthetic scenes; check the final look and frame time in a loaded city before release.
+
 **Look at a change before playing it:** `tools\preview\gpu-render.ps1` draws the REAL glass
 shader in Unity 5.6, in the game's legacy deferred lighting, over test towers painted the way
 the game's assets are, and lays the frames out as a sheet in `tools\preview\out\`.

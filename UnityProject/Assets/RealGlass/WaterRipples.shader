@@ -28,6 +28,9 @@ Shader "RealGlass/WaterRipples"
     // shorter than z texels is left out and one of w texels or more is in full (smoothstep between):
     // each level holds only the waves it can show without aliasing.
     float4 _RGRipple;
+    // Daylight-only emphasis of the longer waves. Frequencies/phases never change at dusk:
+    // smoothly change amplitudes, so a paused sea and the established night look stay stable.
+    float _RGDayWaves;
 
     // The game's own clock (SimulationManager.Update): y = the share of its hour gone. It runs with the
     // game's speed and stops while the game is paused.
@@ -47,7 +50,9 @@ Shader "RealGlass/WaterRipples"
             float cycles = frac(dot(wave.xy, uv) - wave.z * hour + more.x);
             float texels = _RGRipple.y / max(length(wave.xy), 1e-3);
             float keep = _RGRipple.y > 0.0 ? smoothstep(_RGRipple.z, _RGRipple.w, texels) : 1.0;
-            slope += more.yz * (wave.w * keep * cos(6.2831853 * cycles));
+            float longWave = 1.0 - (float)w / (RG_RIPPLES - 1);
+            float dayGain = 1.0 + 0.85 * saturate(_RGDayWaves) * longWave * longWave;
+            slope += more.yz * (wave.w * dayGain * keep * cos(6.2831853 * cycles));
         }
         slope = FiniteSigned(float3(slope * _RGRipple.x, 0.0)).xy;
 

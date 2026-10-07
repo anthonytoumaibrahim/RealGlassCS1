@@ -11,7 +11,8 @@ $simDir = Join-Path $root "UnityProject\Assets\Sim"
 New-Item -ItemType Directory -Force $simDir | Out-Null
 
 $files = "Glass\GlassParams.cs", "Glass\GlassUniforms.cs", "Glass\GlassScreen.cs", "Glass\GlassSky.cs", "Glass\CityMap.cs",
-         "Glass\GlassQuality.cs", "Glass\AssetTextures.cs", "Water\FoamPattern.cs"
+         "Glass\GlassQuality.cs", "Glass\AssetTextures.cs", "Water\FoamPattern.cs", "Water\WaterSurfaceMask.cs",
+         "Water\WaterAppearance.cs", "Water\WaterOptics.cs"
 $names = @()
 foreach ($f in $files) {
     $name = Split-Path $f -Leaf

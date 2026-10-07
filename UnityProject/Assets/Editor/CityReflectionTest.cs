@@ -147,6 +147,7 @@ public static class CityReflectionTest
             RenderTexture frame = Target(Size / 2, false), trace = Target(Size / 2, true), streaked = Target(Size / 2, false);
             material.SetTexture("_RGWaterFrame", frame);
             var buffer = new CommandBuffer { name = "RealGlass water reflection (test)" };
+            PreviewWaterSurface.Record(buffer, material, water, Size, Size);
             buffer.Blit(BuiltinRenderTextureType.CameraTarget, frame);
             buffer.SetRenderTarget(trace);
             buffer.ClearRenderTarget(false, true, Color.clear);
@@ -193,12 +194,13 @@ public static class CityReflectionTest
     }
 
     /// <summary>The ripple texture as WaterRipples draws it: RealGlass/WaterRipples into an ARGB32 linear target with mips.</summary>
-    public static RenderTexture GenerateRipples(Vector4[] rows, float slope, int size)
+    public static RenderTexture GenerateRipples(Vector4[] rows, float slope, int size, float dayLook = 0f)
     {
         Shader shader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/RealGlass/WaterRipples.shader");
         var generator = new Material(shader);
         generator.SetVectorArray("_RGRippleWaves", rows);
         generator.SetVector("_RGRipple", new Vector4(slope, 0f, 0f, 0f));
+        generator.SetFloat("_RGDayWaves", dayLook);
         var rt = new RenderTexture(size, size, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear)
         {
             useMipMap = true,

@@ -389,6 +389,7 @@ UnityProject/Bundles/
 UnityProject/Assets/Sim/
 UnityProject/gpu.log
 UnityProject/check.log
+UnityProject/water-surface-test-output.txt
 
 # The Visual Studio template above ignores *.meta, but Unity asset metadata
 # (stable GUIDs) belongs in source control -- except the generated Sim folder's.

@@ -160,8 +160,8 @@ namespace RealGlass.Water
             Shader.SetGlobalFloat(IdHeld, 1f);
         }
 
-        /// <summary>The theme's water colour x the slider on the water's materials, every frame (the theme may change it).</summary>
-        public void HoldColour(float brightness)
+        /// <summary>The theme's clean-water colour with the daylight look and brightness, refreshed as the light/theme changes.</summary>
+        public void HoldColour(float brightness, float dayLook)
         {
             if (!Take())
                 return;
@@ -169,7 +169,7 @@ namespace RealGlass.Water
             Color theme = Shader.GetGlobalColor(IdColour);
             Color linear = theme.linear;
             float k = Mathf.Max(0f, brightness);
-            Color colour = new Color(linear.r * k, linear.g * k, linear.b * k).gamma;
+            Color colour = WaterAppearance.Colour(linear, k, dayLook).gamma;
             colour.a = theme.a;
             for (int i = 0; i < 2; i++)
             {

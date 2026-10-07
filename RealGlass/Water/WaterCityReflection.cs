@@ -13,9 +13,8 @@ namespace RealGlass.Water
     /// added over the water. Day and night.
     /// </summary>
     /// <remarks>
-    /// - WHERE: on the map's water at the sea's level only (WaterSimulation.m_currentSeaLevel): a pixel
-    ///   whose depth lies at that plane or beyond it (the water or its bed). The surface is that flat
-    ///   plane, so the mirror ray is exact.
+    /// - WHERE: the game's visible water meshes, recorded with their simulation heights in a separate
+    ///   depth buffer. The seabed in the scene depth never supplies the reflection's surface position.
     /// - THE RAY: followed through the camera's depth texture (McGuire &amp; Mara 2014), 64 steps
     ///   growing geometrically to <see cref="WaterOptics.MaxDistance"/>, the crossing refined by
     ///   bisection; only what stands above the level counts as a hit.
@@ -49,6 +48,10 @@ namespace RealGlass.Water
         private readonly Material _material;
         private readonly Mesh _cube;
         private readonly CommandBuffer _buffer;
+        private readonly WaterSurfaceMask _surface;
+        private static WaterCityReflection s_active;
+        private Material _gameWater;
+        private bool _surfaceFailed;
         private static readonly int IdTraced = Shader.PropertyToID("_RGWaterTraced");
         private static readonly int IdHistory = Shader.PropertyToID("_RGWaterHistory");
         private static readonly int IdPrevVP = Shader.PropertyToID("_RGWaterPrevVP");
@@ -64,18 +67,44 @@ namespace RealGlass.Water
         private bool _addedDepth;
         private bool _loggedWater;
 
-        private WaterCityReflection(Shader shader)
+        private WaterCityReflection(Shader shader, Shader surfaceShader)
         {
             _material = new Material(shader) { name = "RealGlass city reflection", hideFlags = HideFlags.HideAndDontSave };
             _cube = Cube("RealGlassWaterCube");
             _buffer = new CommandBuffer { name = "RealGlass water reflection" };
+            _surface = new WaterSurfaceMask(surfaceShader);
         }
 
         /// <summary>Null when the shader is missing or unsupported here (logged by ShaderBundle): the water reflects no city.</summary>
         public static WaterCityReflection Create()
         {
             Shader shader = ShaderBundle.Get(ShaderBundle.CityReflection);
-            return shader != null && shader.isSupported ? new WaterCityReflection(shader) : null;
+            Shader surface = ShaderBundle.Get(ShaderBundle.WaterSurfaceMask);
+            if (!SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.RFloat))
+            {
+                Log.Warn("water: surface depth textures are unsupported; city reflections are disabled");
+                return null;
+            }
+            return shader != null && shader.isSupported && surface != null && surface.isSupported ? new WaterCityReflection(shader, surface) : null;
+        }
+
+        /// <summary>Called by the shared water draw hook, even with foam switched off.</summary>
+        public static void DrawSurface(Mesh mesh, Matrix4x4 matrix, Material material, int layer, Camera camera,
+                                       int submesh, MaterialPropertyBlock properties)
+        {
+            WaterCityReflection active = s_active;
+            if (active == null || active._surfaceFailed || (object)material == null || (object)material != (object)active._gameWater)
+                return;
+            try
+            {
+                active._surface.Draw(mesh, matrix, layer, camera, submesh, properties);
+            }
+            catch (Exception e)
+            {
+                active._surfaceFailed = true;
+                active.Detach();
+                Log.Error("water: surface capture failed; city reflections are disabled until the city reloads", e);
+            }
         }
 
         public bool Attached
@@ -175,7 +204,7 @@ namespace RealGlass.Water
         /// <summary>On the camera (or kept there, its buffers re-made on a resize).</summary>
         public void Attach(Camera camera)
         {
-            if (camera == null)
+            if (camera == null || _surfaceFailed)
             {
                 Detach();
                 return;
@@ -183,6 +212,7 @@ namespace RealGlass.Water
 
             if (camera == _camera)
             {
+                PrepareSurface(camera);
                 // The glass gives the depth texture back when it goes off, also when it was ours first.
                 if ((camera.depthTextureMode & DepthTextureMode.Depth) == 0)
                 {
@@ -198,14 +228,26 @@ namespace RealGlass.Water
             Detach();
             _addedDepth = (camera.depthTextureMode & DepthTextureMode.Depth) == 0;
             camera.depthTextureMode |= DepthTextureMode.Depth;
+            PrepareSurface(camera);
             Record(camera.pixelWidth, camera.pixelHeight);
             camera.AddCommandBuffer(CameraEvent.AfterImageEffectsOpaque, _buffer);
             _camera = camera;
+            s_active = this;
             History(camera);
-            Log.Msg("water: the city is reflected in the map's water on '" + camera.name + "' after the opaque image effects (" +
+            Log.Msg("water: the city is reflected on the captured water surface on '" + camera.name + "' after the opaque image effects (" +
                     _frame.width + " x " + _frame.height + ": traced at half size off the waves, streaked, then onto the water" +
                     (_addedDepth ? "; depth texture asked for" : "") + ")");
             LogWater();
+            if (!WaterFoam.Hooked)
+                Log.Warn("water: surface capture requires both water draw hooks; found " + WaterFoam.Hooks());
+        }
+
+        private void PrepareSurface(Camera camera)
+        {
+            _surface.Attach(camera);
+            _material.SetTexture("_RGWaterSurfaceDepth", _surface.Texture);
+            _gameWater = Singleton<TerrainManager>.exists ? Singleton<TerrainManager>.instance.m_waterMaterial : null;
+            _surface.SetMapping(_gameWater);
         }
 
         /// <summary>
@@ -225,6 +267,9 @@ namespace RealGlass.Water
 
         public void Detach()
         {
+            if (s_active == this)
+                s_active = null;
+            _surface.Detach();
             if (_camera == null)
                 return;
 
@@ -313,6 +358,7 @@ namespace RealGlass.Water
         {
             Detach();
             _buffer.Release();
+            _surface.Destroy();
             Free(ref _frame);
             Free(ref _trace);
             Free(ref _accum);

@@ -86,6 +86,7 @@ $points = @(
 )
 
 $cases = @(
+    @{ Name = "raised lake, sea level unchanged"; Share = 0.0; Water = "0.05 0.12 0.15"; Streaks = 0.0; Raised = 100.0 },
     @{ Name = "sharp, no sky share"; Share = 0.0; Water = "0.05 0.12 0.15"; Streaks = 0.0 },
     @{ Name = "sharp, sky share 100%"; Share = 1.0; Water = "0.6 0.9 1.0"; Streaks = 0.0 },
     @{ Name = "sharp, sky share 100%, a real sky at 60%"; Share = 1.0; Water = "0.6 0.9 1.0"; Streaks = 0.0; Real = 0.6 },
@@ -140,12 +141,13 @@ foreach ($case in $cases) {
     $lines.Add("theme " + (N $theme[0]) + " " + (N $theme[1]) + " " + (N $theme[2]))
     $real = if ($case.Real) { [double]$case.Real } else { 0.0 }
     if ($real -gt 0.0) { $lines.Add("realsky " + (N $realSky[0]) + " " + (N $realSky[1]) + " " + (N $realSky[2]) + " " + (N $real)) }
-    $lines.Add("level " + (N $level))
+    $raised = if ($case.Raised) { [double]$case.Raised } else { 0.0 }
+    $lines.Add("level " + (N ($level + $raised)))
     $lines.Add("water " + $case.Water)
-    $lines.Add("eye " + (N $eye[0]) + " " + (N $eye[1]) + " " + (N $eye[2]))
+    $lines.Add("eye " + (N $eye[0]) + " " + (N ($eye[1] + $raised)) + " " + (N $eye[2]))
     $lines.Add("look 1 -0.12 0")
-    $lines.Add("wall " + (N ($face + 10.0)) + " " + (N ($level + $wallTop / 2.0)) + " 0 20 " + (N $wallTop) + " " + (N (2.0 * $wallHalf)))
-    foreach ($pt in $points) { $lines.Add("point " + $pt.Name + " " + (N $pt.P[0]) + " " + (N $pt.P[1]) + " " + (N $pt.P[2])) }
+    $lines.Add("wall " + (N ($face + 10.0)) + " " + (N ($level + $raised + $wallTop / 2.0)) + " 0 20 " + (N $wallTop) + " " + (N (2.0 * $wallHalf)))
+    foreach ($pt in $points) { $lines.Add("point " + $pt.Name + " " + (N $pt.P[0]) + " " + (N ($pt.P[1] + $raised)) + " " + (N $pt.P[2])) }
     [System.IO.File]::WriteAllLines((Join-Path $project "reflection-test-input.txt"), $lines)
 
     $out = Join-Path $project "reflection-test-output.txt"

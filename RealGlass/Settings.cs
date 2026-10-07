@@ -228,6 +228,9 @@ namespace RealGlass
         /// <summary>0.25..4: the water's own colour x this (1 = the map theme's).</summary>
         public static FloatSetting WaterBrightness { get; private set; }
 
+        /// <summary>0..1: brighter blue clean water and stronger long-wave detail by day, fading out at night.</summary>
+        public static FloatSetting WaterDayLook { get; private set; }
+
         /// <summary>The water reflects the theme's sky with real water's reflectance, not the same share at every angle.</summary>
         public static BoolSetting WaterRealSky { get; private set; }
 
@@ -354,6 +357,7 @@ namespace RealGlass
             // ---- Water ---- (off; inside it, the author's own settings, 2026-10-07)
             public const bool WaterEnabled = false;
             public const float WaterBrightness = 1f;
+            public const float WaterDayLook = 1f;
             public const bool WaterRealSky = true;
             public const float WaterSky = 0.80f;
             public const bool WaterCity = true;
@@ -457,6 +461,7 @@ namespace RealGlass
 
                 WaterEnabled = new BoolSetting("WaterEnabled", Defaults.WaterEnabled);
                 WaterBrightness = new FloatSetting("WaterBrightness", Defaults.WaterBrightness);
+                WaterDayLook = new FloatSetting("WaterDayLook", Defaults.WaterDayLook);
                 WaterRipples = new BoolSetting("WaterRipples", Defaults.WaterRipples);
                 WaterRippleStrength = new FloatSetting("WaterRippleStrength", Defaults.WaterRippleStrength);
                 WaterRippleSize = new FloatSetting("WaterRippleSize", Defaults.WaterRippleSize);
