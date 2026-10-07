@@ -1,0 +1,89 @@
+# The rooms behind the glass: one picture each, cut out of a Poly Haven indoor panorama (CC0,
+# https://polyhaven.com/hdris/indoor) by render-rooms.py -- see build-rooms.ps1.
+#
+#   slug  yaw  pitch  fov  kind  [lamp x,y ...]
+#
+# yaw / pitch / fov in degrees (the survey's yaw: 0 looks along the panorama's middle); kind one of
+# home office shop hotel leisure public industry; a lamp x,y (0..1 from the picture's bottom left)
+# is where the night picture's light falls from (none: one high in the middle).
+# Chosen by eye from a survey of 73 panoramas x 6 directions (2026-10-07). Left out: any view with
+# people in it (blender_institute), walls of paintings (art_studio, artist_workshop, country_club),
+# readable signs and brands (phone_shop 240, newman_lobby 240), bathrooms, photo studios.
+
+# ---- homes (26) ----
+anniversary_lounge      120  -5  75  home     0.5,0.85 0.15,0.45
+anniversary_lounge      180  -5  75  home
+blinds                   60  -5  75  home     0.5,0.9
+blinds                  120  -5  75  home     0.6,0.85
+cayley_interior         180  -5  75  home     0.4,0.9
+cayley_interior         240  -5  75  home     0.5,0.85 0.85,0.4
+combination_room        120  -5  75  home     0.5,0.85 0.2,0.5
+combination_room        180  -5  75  home
+combination_room        300  -5  75  home     0.15,0.5
+fireplace                60  -5  75  home     0.3,0.5
+fireplace               180  -5  75  home
+fireplace               240  -5  75  home     0.7,0.5
+kiara_interior           60  -5  75  home     0.3,0.6
+entrance_hall            60  -5  75  home     0.5,0.85
+kiara_interior            0  -5  75  home     0.8,0.5
+kiara_interior          180  -5  75  home     0.5,0.9
+kiara_interior          240  -5  75  home     0.3,0.6
+lythwood_lounge           0  -5  75  home
+lythwood_lounge         120  -5  75  home     0.5,0.85 0.85,0.45
+lythwood_lounge         240  -5  75  home     0.5,0.8
+reading_room             60  -5  75  home     0.75,0.45
+reading_room            120  -5  75  home     0.35,0.6
+reading_room            180  -5  75  home
+wooden_lounge             0  -5  75  home     0.4,0.85
+wooden_lounge           180  -5  75  home
+cabin                   120  -5  75  home     0.5,0.75
+
+# ---- offices (10) ----
+poly_haven_studio        60  -5  75  office   0.3,0.9 0.7,0.9
+poly_haven_studio       120  -5  75  office   0.3,0.9 0.7,0.9
+poly_haven_studio       180  -5  75  office   0.3,0.9 0.7,0.9
+poly_haven_studio       240  -5  75  office   0.3,0.9 0.7,0.9
+church_meeting_room       0  -5  75  office   0.5,0.9
+vintage_measuring_lab   120  -5  75  office   0.3,0.9 0.7,0.9
+vintage_measuring_lab   180  -5  75  office   0.3,0.9 0.7,0.9
+unfinished_office_night 240  -5  75  office   0.5,0.9
+small_empty_room_1      180  -5  75  office   0.5,0.9
+hotel_room              240  -5  75  office   0.4,0.55
+
+# ---- shops (6) ----
+decor_shop                0  -5  75  shop     0.3,0.9 0.7,0.9
+decor_shop              120  -5  75  shop     0.5,0.9
+phone_shop              120  -5  75  shop     0.3,0.9 0.7,0.9
+witsand_woolshop         60  -5  75  shop     0.5,0.9
+witsand_woolshop        120  -5  75  shop     0.5,0.9
+gear_store               60  -5  75  shop     0.5,0.9
+
+# ---- hotels (6) ----
+hotel_room              120  -5  75  hotel    0.5,0.8
+hotel_room              300  -5  75  hotel    0.4,0.6
+lythwood_room           180  -5  75  hotel    0.55,0.5
+lythwood_room           300  -5  75  hotel    0.3,0.5
+relax_inn_seaview_suite 120  -5  75  hotel    0.2,0.45 0.8,0.45
+relax_inn_seaview_suite 300  -5  75  hotel    0.5,0.8
+
+# ---- leisure: cafes, bars, restaurants (6) ----
+comfy_cafe              120  -5  75  leisure  0.5,0.8
+comfy_cafe              240  -5  75  leisure  0.3,0.7 0.75,0.7
+cowboy_town_saloon      120  -5  75  leisure  0.5,0.85
+warm_bar                 60  -5  75  leisure  0.5,0.85
+warm_restaurant_night   180  -5  75  leisure  0.5,0.8
+warm_reception_dinner   120  -5  75  leisure  0.5,0.85
+
+# ---- public: hospitals, schools, halls (5) ----
+childrens_hospital       60  -5  75  public   0.5,0.9
+hospital_room_2         120  -5  75  public   0.5,0.9
+st_fagans_interior        0  -5  75  public   0.3,0.9 0.7,0.9
+school_hall              60  -5  75  public   0.5,0.9
+newman_cafeteria        240  -5  75  public   0.3,0.9 0.7,0.9
+
+# ---- industry (5) ----
+machine_shop_01          60  -5  75  industry 0.3,0.9 0.7,0.9
+machine_shop_01         240  -5  75  industry 0.3,0.9 0.7,0.9
+carpentry_shop_01       180  -5  75  industry 0.5,0.9
+university_workshop     180  -5  75  industry 0.3,0.9 0.7,0.9
+small_workshop          120  -5  75  industry 0.5,0.9

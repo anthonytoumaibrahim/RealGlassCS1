@@ -37,6 +37,7 @@ namespace RealGlass.PerAsset
         public const string OwnColourName = "GlassOwnColour";
         public const string ThresholdName = "GlassThreshold";
         public const string NightWindowsName = "GlassNightWindows";
+        public const string InteriorsName = "InteriorsEnabled";
 
         /// <summary>The sliders' ranges, as the file writes them: the global rows' (UI/SettingsCatalog.cs).</summary>
         public const float StrengthMax = 100f, DetailMax = 100f, ReflectivityMax = 60f, ClarityMax = 100f, OwnColourMax = 100f;
@@ -96,6 +97,8 @@ namespace RealGlass.PerAsset
                     Element(text, ThresholdName, SettingsXmlFormat.FormatNumber(record.Threshold.Value * 100f));
                 if (record.NightWindows.HasValue)
                     Element(text, NightWindowsName, SettingsXmlFormat.FormatBool(record.NightWindows.Value));
+                if (record.Interiors.HasValue)
+                    Element(text, InteriorsName, SettingsXmlFormat.FormatBool(record.Interiors.Value));
 
                 text.Append("  </").Append(AssetElement).Append('>').Append(NewLine);
             }
@@ -297,6 +300,14 @@ namespace RealGlass.PerAsset
                 else
                     Problem(problems, where + "ignored: not true or false");
             }
+            else if (Is(name, InteriorsName))
+            {
+                bool on;
+                if (SettingsXmlFormat.TryParseBool(value, out on))
+                    record.Interiors = on;
+                else
+                    Problem(problems, where + "ignored: not true or false");
+            }
             else if (Is(name, ColourName))
             {
                 Color32 colour;
@@ -317,7 +328,7 @@ namespace RealGlass.PerAsset
             {
                 Problem(problems, record.Name + ": <" + name + "> ignored: an asset can have " + StrengthName + ", " + DetailName +
                                   ", " + PresetName + ", " + ColourName + ", " + ReflectivityName + ", " + ClarityName + ", " +
-                                  OwnColourName + ", " + ThresholdName + " and " + NightWindowsName);
+                                  OwnColourName + ", " + ThresholdName + ", " + NightWindowsName + " and " + InteriorsName);
             }
         }
 

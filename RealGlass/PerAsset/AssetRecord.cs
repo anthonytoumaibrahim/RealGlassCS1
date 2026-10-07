@@ -47,6 +47,9 @@ namespace RealGlass.PerAsset
         /// <summary>The windows this asset lights at night count as glass too (GlassNightWindows).</summary>
         public bool? NightWindows;
 
+        /// <summary>Rooms behind this asset's windows (InteriorsEnabled): false keeps the game's own windows.</summary>
+        public bool? Interiors;
+
         public AssetRecord(string name)
         {
             Name = name;
@@ -55,7 +58,7 @@ namespace RealGlass.PerAsset
         /// <summary>Nothing of its own: the asset follows every global setting.</summary>
         public bool IsEmpty
         {
-            get { return !Strength.HasValue && !PaintedDetail.HasValue && !HasGlass; }
+            get { return !Strength.HasValue && !PaintedDetail.HasValue && !HasGlass && !Interiors.HasValue; }
         }
 
 
@@ -85,7 +88,8 @@ namespace RealGlass.PerAsset
 
             return Strength == other.Strength && PaintedDetail == other.PaintedDetail && Preset == other.Preset &&
                    SameColour(Colour, other.Colour) && Reflectivity == other.Reflectivity && Clarity == other.Clarity &&
-                   OwnColour == other.OwnColour && Threshold == other.Threshold && NightWindows == other.NightWindows;
+                   OwnColour == other.OwnColour && Threshold == other.Threshold && NightWindows == other.NightWindows &&
+                   Interiors == other.Interiors;
         }
 
         private static bool SameColour(Color32? a, Color32? b)

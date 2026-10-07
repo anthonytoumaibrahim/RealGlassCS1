@@ -46,6 +46,16 @@ namespace RealGlass.Glass
         public bool PaneWeather;
         public bool PanesFollowWindows;     // close up, the panes are the windows the asset painted
 
+        // Interiors (Interiors.cs, Interiors.cginc): rooms behind every window, off by default
+        public bool Interiors;              // rooms behind the windows of every building (an asset can say otherwise)
+        public bool InteriorsByDay;         // by day too; off: the dark inside by day, the rooms from dusk
+        public float InteriorsLit;          // 0.05..0.9: the share of rooms lit at the busiest hour
+        public bool InteriorsLateNight;     // the share follows the hour (homes empty out after midnight)
+        public float InteriorsSwitching;    // 0..3: how often a room's light changes (1 = every Interiors.HoursPerChange game hours)
+        public float InteriorsBrightness;   // 0.25..3: a lit room's light (1 = about the game's own lit window)
+        public float InteriorsColoured;     // 0..0.3: the share of rooms lit by coloured lights (LED, RGB)
+        public float InteriorsCurtains;     // 0..1: the share of windows with curtains or blinds
+
         /// <summary>The defaults the mod ships (Settings.Defaults); tools/test-settings.ps1 checks they agree.</summary>
         public static GlassParams Default()
         {
@@ -86,6 +96,15 @@ namespace RealGlass.Glass
             p.RollerWave = 1.50f;
             p.PaneWeather = true;
             p.PanesFollowWindows = true;
+
+            p.Interiors = false;
+            p.InteriorsByDay = false;
+            p.InteriorsLit = 0.45f;
+            p.InteriorsLateNight = true;
+            p.InteriorsSwitching = 1f;
+            p.InteriorsBrightness = 1f;
+            p.InteriorsColoured = 0.04f;
+            p.InteriorsCurtains = 0.70f;
             return p;
         }
     }
@@ -107,5 +126,7 @@ namespace RealGlass.Glass
         public int CubeMips;                     // mip levels of the sky cube
         public int ColorMapWidth;                // the game's object colour map, whose texel a building's
         public int ColorMapHeight;               // colour index names (RenderManager.OBJECT_COLORMAP_*)
+        public float Hour;                       // the game's time of day, 0..24
+        public float Clock;                      // game hours since the city's day 0, wrapped (Interiors.ClockWrap): the rooms' switching
     }
 }

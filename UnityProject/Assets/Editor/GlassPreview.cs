@@ -101,6 +101,24 @@ public static class GlassPreview
 
         /// <summary>The id of the middle block's first full-glass tower: the building "A.*" gives its own glass.</summary>
         public int FullGlassId;
+
+        /// <summary>The rooms behind the glass (the mod's RoomAtlas, same file, the mod's own pictures).</summary>
+        public RoomAtlas Rooms = new RoomAtlas();
+    }
+
+    /// <summary>The variant's "Hour=h": the time of day the rooms' lights follow (21:00 by night, 13:00 by day).</summary>
+    private static float? _hour;
+
+    /// <summary>The kind of rooms a stand-in has (Interiors.Kind*): low punched-window blocks homes and shops, towers offices and flats.</summary>
+    private static int RoomKindOf(Building b, int id)
+    {
+        switch (b.Kind)
+        {
+            case "punched": return id % 3 == 0 ? Interiors.KindShopLow : Interiors.KindHome;
+            case "fins": return Interiors.KindHome;
+            case "glassbox": return id % 2 == 0 ? Interiors.KindHotel : Interiors.KindOffice;
+            default: return Interiors.KindOffice;
+        }
     }
 
     /// <summary>The variant's "A.Field=value": the full-glass tower's own settings (its asset's, in the mod).</summary>
@@ -170,6 +188,14 @@ public static class GlassPreview
 
         Scene s = BuildScene(width, height, glass, util, standIn);
         Debug.Log("RG PREVIEW: " + s.Buildings.Count + " buildings");
+
+        // The rooms' pictures, as the mod ships them (tools/interiors/build-rooms.ps1).
+        string resources = Path.Combine(Path.GetDirectoryName(Application.dataPath), "../RealGlass/Resources");
+        string nightFile = Path.Combine(resources, "rooms-night.bytes"), dayFile = Path.Combine(resources, "rooms-day.bytes");
+        if (File.Exists(nightFile) && File.Exists(dayFile) && s.Rooms.Load(File.ReadAllBytes(nightFile), File.ReadAllBytes(dayFile)))
+            Debug.Log("RG PREVIEW: " + s.Rooms.Tiles + " rooms");
+        else
+            Debug.Log("RG PREVIEW: no rooms (" + (File.Exists(nightFile) ? s.Rooms.Problem : "no " + nightFile) + ")");
 
         for (int row = 0; row < views.Length; row++)
         {
@@ -850,11 +876,21 @@ public static class GlassPreview
         _hizOff = false;
         _budgetOverrides.Clear();
         _asset = new AssetOverride();
+        _hour = null;
         if (drawGlass)
             p = Override(p, variant);
 
-        // The full-glass tower's own settings, as the mod's AssetMap writes an asset's.
+        // Every building's kind of rooms, as the mod's AssetMap writes it while there are rooms;
+        // then the full-glass tower's own settings, as it writes an asset's.
         s.Assets.ClearAll();
+        if (p.Interiors)
+        {
+            for (int i = 0; i < s.Buildings.Count; i++)
+            {
+                byte a = Interiors.Texel(RoomKindOf(s.Buildings[i], i + 1), Interiors.FollowGlobal);
+                s.Assets.Set(i + 1, new Color32(AssetTextures.Global, AssetTextures.Global, AssetTextures.Global, a));
+            }
+        }
         if (_asset.Strength.HasValue || _asset.Detail.HasValue || _asset.HasGlass)
         {
             byte slot = AssetTextures.Global;
@@ -869,7 +905,7 @@ public static class GlassPreview
             s.Assets.Set(s.FullGlassId, new Color32(
                 _asset.Strength.HasValue ? AssetTextures.Encode(_asset.Strength.Value) : AssetTextures.Global,
                 _asset.Detail.HasValue ? AssetTextures.Encode(_asset.Detail.Value) : AssetTextures.Global,
-                slot, AssetTextures.Global));
+                slot, p.Interiors ? Interiors.Texel(Interiors.KindOffice, Interiors.FollowGlobal) : AssetTextures.Global));
         }
         s.Assets.Upload();
         s.Assets.Bind();
@@ -886,6 +922,8 @@ public static class GlassPreview
         f.ScreenHeight = s.Height;
         f.ColorMapWidth = ColorMapWidth;
         f.ColorMapHeight = ColorMapHeight;
+        f.Hour = _hour ?? (night ? 21f : 13f);
+        f.Clock = 24f * 10f + f.Hour;
 
         // The clouds' stand-in round the camera, lit by the sun of the moment (VW follows the camera
         // the same way).
@@ -909,6 +947,7 @@ public static class GlassPreview
         }
         q = (GlassQuality)boxedQ;
         GlassUniforms.Apply(p, f, q);
+        Interiors.Apply(p, f, s.Rooms, p.Interiors && s.Rooms.Loaded);
         bool screenOk = false;
 
         // Two renders: the first leaves the finished picture and the camera's matrices for the
@@ -1026,6 +1065,11 @@ public static class GlassPreview
             if (kv[0].Trim().Equals("Tier", StringComparison.OrdinalIgnoreCase))
             {
                 _tier = kv[1].Trim().ToLowerInvariant();
+                continue;
+            }
+            if (kv[0].Trim().Equals("Hour", StringComparison.OrdinalIgnoreCase))
+            {
+                _hour = float.Parse(kv[1].Trim(), CultureInfo.InvariantCulture);
                 continue;
             }
             if (kv[0].Trim().Equals("Budget", StringComparison.OrdinalIgnoreCase))

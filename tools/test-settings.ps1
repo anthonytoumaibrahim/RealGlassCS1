@@ -451,6 +451,20 @@ Check "shininess needed: pulled into 10..95" ("" + $r.Records[0].Threshold + " "
 Check "  lit windows: on/off spellings, nonsense refused and said" ("" + ($r.Records[0].NightWindows -eq $null) + " " + $r.Records[1].NightWindows + " " + $r.Problems.Count) "True True 3"
 Check "  the root is <RealGlassAssets>" ($text -match "<RealGlassAssets version=`"1`">") "True"
 
+# The rooms behind an asset's windows (the Interiors tab's switch, per asset): off is kept, on is
+# kept, and an asset with nothing else of its own is still written.
+$rooms = NewRecord "Rooms off"
+$rooms.Interiors = $false
+$roomsOn = NewRecord "Rooms on"
+$roomsOn.Interiors = $true
+$roomsList = [Activator]::CreateInstance($recList)
+$roomsList.Add($rooms); $roomsList.Add($roomsOn)
+$roomsText = $assetFmt::Write($roomsList, "")
+$r = ParseAssets $roomsText
+Check "rooms per asset: written under the global switch's name" ($roomsText -match "<InteriorsEnabled>false</InteriorsEnabled>" -and $roomsText -match "<InteriorsEnabled>true</InteriorsEnabled>") "True"
+Check "  both read back, off and on (sorted by name)" ("" + $r.Records.Count + " " + $r.Records[0].Interiors + " " + $r.Records[1].Interiors) "2 False True"
+Check "  an asset with only that is not empty, and has no glass of its own" ("" + $rooms.IsEmpty + " " + $rooms.HasGlass) "False False"
+
 $r = ParseAssets ("<RealGlassAssets version=`"1`"><Asset name=`"X`"><GlassStrength>150</GlassStrength><GlassReflectivity>70%</GlassReflectivity>" +
                   "<GlassClarity>abc</GlassClarity><GlassPreset>Silver reflective</GlassPreset><Foo>1</Foo></Asset>" +
                   "<Thing/><Asset><GlassStrength>5</GlassStrength></Asset></RealGlassAssets>")
@@ -572,7 +586,10 @@ $pairs = @(
     @('Smoothness', 'GlassSmoothness'), @('EdgeFade', 'SsrEdgeFade'), @('PaneWidth', 'PaneWidth'),
     @('FloorHeight', 'FloorHeight'), @('Pillow', 'PanePillow'), @('Tilt', 'PaneTilt'), @('RollerWave', 'RollerWave'),
     @('PaneWeather', 'PaneWeather'), @('EdgeSilver', 'GlassEdgeSilver'), @('Finished', 'ReflectFinished'), @('SkyClouds', 'SkyClouds'),
-    @('Neighbours', 'ReflectNeighbours'), @('SteadyGlints', 'SteadyGlints'), @('PanesFollowWindows', 'PanesFollowWindows'))
+    @('Neighbours', 'ReflectNeighbours'), @('SteadyGlints', 'SteadyGlints'), @('PanesFollowWindows', 'PanesFollowWindows'),
+    @('Interiors', 'InteriorsEnabled'), @('InteriorsByDay', 'InteriorsByDay'), @('InteriorsLit', 'InteriorsLit'),
+    @('InteriorsLateNight', 'InteriorsLateNight'), @('InteriorsSwitching', 'InteriorsSwitching'),
+    @('InteriorsBrightness', 'InteriorsBrightness'), @('InteriorsColoured', 'InteriorsColoured'), @('InteriorsCurtains', 'InteriorsCurtains'))
 $mismatch = @()
 foreach ($pair in $pairs) {
     $mine = $paramsType.GetField($pair[0]).GetValue($gp)
@@ -583,6 +600,29 @@ Check "GlassParams.Default() = Settings.Defaults, row by row" ($mismatch -join "
 $c = Default 'GlassColor'
 $tint = "{0:F4} {1:F4} {2:F4}" -f $paramsType.GetField('TintR').GetValue($gp), $paramsType.GetField('TintG').GetValue($gp), $paramsType.GetField('TintB').GetValue($gp)
 Check "  and the glass colour" $tint ("{0:F4} {1:F4} {2:F4}" -f ($c.r / 255.0), ($c.g / 255.0), ($c.b / 255.0))
+
+# ---- the rooms behind the glass (Glass\Interiors.cs) ----------------------------------------
+# Which rooms are lit at an hour, how long a room keeps its light, and a building's texel.
+$interiors = $asm.GetType('RealGlass.Glass.Interiors', $true)
+Check "rooms: a texel is kind + 16 x the asset's switch (an office, off: 17)" ($interiors::Texel($interiors::KindOffice, $interiors::AssetOff)) 17
+Check "  following the global switch: the kind alone" ($interiors::Texel($interiors::KindShopHigh, $interiors::FollowGlobal)) 7
+Check "  a room keeps its light 4 game hours at 100%, 2 at 200%, for good at 0%" ("" + $interiors::HoursPerState(1.0) + " " + $interiors::HoursPerState(2.0) + " " + $interiors::HoursPerState(0.0)) "4 2 0"
+$gpRooms = $paramsType.GetMethod('Default').Invoke($null, @())
+$boxedRooms = [object]$gpRooms
+$paramsType.GetField('InteriorsLit').SetValue($boxedRooms, [single]0.5)
+$evening = $interiors::Shares($boxedRooms, 21.0)
+$small = $interiors::Shares($boxedRooms, 3.0)
+Check "  homes at 21:00: the slider's share" ("{0:F3}" -f $evening.x) "0.500"
+Check "  homes at 03:00: far fewer" ($small.x -lt $evening.x * 0.3) "True"
+Check "  offices at 03:00: some left on" ($small.y -gt 0.05) "True"
+Check "  shops shut at night, open by day" ("" + ($small.z -lt 0.1) + " " + (($interiors::Shares($boxedRooms, 12.0)).z -gt 0.45)) "True True"
+$paramsType.GetField('InteriorsLateNight').SetValue($boxedRooms, $false)
+$flat = $interiors::Shares($boxedRooms, 3.0)
+Check "  not following the hour: the slider's share all night" ("{0:F2} {1:F2} {2:F2} {3:F2}" -f $flat.x, $flat.y, $flat.z, $flat.w) "0.50 0.50 0.50 0.50"
+$paramsType.GetField('InteriorsLit').SetValue($boxedRooms, [single]1.0)
+Check "  never every room: at most 95%" ("{0:F2}" -f ($interiors::Shares($boxedRooms, 21.0)).x) "0.95"
+$curve = $interiors.GetField('Homes', [Reflection.BindingFlags]'NonPublic,Static').GetValue($null)
+Check "  the curve is continuous at midnight" ("{0:F3}" -f $interiors::Curve($curve, 23.999)) ("{0:F3}" -f $interiors::Curve($curve, 0.0))
 
 # ---- the water (Water\WaterOptics.cs) ------------------------------------------------------
 # The rough sea's reflectance table both water shaders read (_RGSeaTable), and the constants the

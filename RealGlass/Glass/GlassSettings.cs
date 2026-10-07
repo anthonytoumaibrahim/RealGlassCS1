@@ -47,6 +47,15 @@ namespace RealGlass.Glass
             p.RollerWave = Settings.RollerWave.value;
             p.PaneWeather = Settings.PaneWeather.value;
             p.PanesFollowWindows = Settings.PanesFollowWindows.value;
+
+            p.Interiors = Settings.InteriorsEnabled.value;
+            p.InteriorsByDay = Settings.InteriorsByDay.value;
+            p.InteriorsLit = Settings.InteriorsLit.value;
+            p.InteriorsLateNight = Settings.InteriorsLateNight.value;
+            p.InteriorsSwitching = Settings.InteriorsSwitching.value;
+            p.InteriorsBrightness = Settings.InteriorsBrightness.value;
+            p.InteriorsColoured = Settings.InteriorsColoured.value;
+            p.InteriorsCurtains = Settings.InteriorsCurtains.value;
             return p;
         }
     }

@@ -54,6 +54,7 @@
   <String key="Tab.Glass">Glass</String>
   <String key="Tab.Reflections">Reflections</String>
   <String key="Tab.Panes">Panes</String>
+  <String key="Tab.Interiors">Interiors</String>
   <String key="Tab.Water">Water</String>
 
   <String key="Key.Press">Press a key</String>
@@ -163,6 +164,30 @@
 
   <String key="PanesFollowWindows.Label">Panes follow the windows</String>
 
+  <!-- ==================== F8 panel: Interiors ==================== -->
+  <!-- Rooms behind every building's windows: pictures of real rooms, each with its own lamp and
+       curtain. Off by default; at night only unless "by day too" is ticked. -->
+
+  <String key="InteriorsEnabled.Label">Rooms behind the windows</String>
+
+  <String key="InteriorsByDay.Label">Show the rooms by day too</String>
+
+  <String key="Group.RoomLights">Lights at night</String>
+
+  <String key="InteriorsLit.Label">Lit rooms</String>
+
+  <String key="InteriorsLateNight.Label">Fewer lights late at night</String>
+
+  <String key="InteriorsSwitching.Label">Lights switching on and off</String>
+
+  <String key="InteriorsBrightness.Label">Room light brightness</String>
+
+  <String key="InteriorsColoured.Label">Colored lights (LED, RGB)</String>
+
+  <String key="Group.RoomCurtains">Curtains and blinds</String>
+
+  <String key="InteriorsCurtains.Label">Windows with curtains or blinds</String>
+
   <!-- ==================== F8 panel: Water ==================== -->
   <!-- The map's water: its brightness, the sky in it, the city in it. Off by default. -->
 
@@ -245,6 +270,10 @@
   <String key="AssetGlassThreshold.Label">Shininess needed</String>
 
   <String key="AssetGlassNightWindows.Label">Windows lit at night are glass</String>
+
+  <String key="Group.AssetInteriors">Interiors</String>
+
+  <String key="AssetInteriorsEnabled.Label">Rooms behind the windows</String>
 
   <String key="Asset.Global.Button">Global</String>
 

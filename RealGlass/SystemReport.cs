@@ -76,7 +76,15 @@ namespace RealGlass
                         " skyCube=" + Settings.SkyCubePixels + "px x" + Int(Settings.SkyCubeRate, Settings.Defaults.SkyCubeRate) + "/frame" +
                         " | panes: storey=" + (Settings.FloorHeight != null ? Settings.FloorHeight.value : Settings.Defaults.FloorHeight).ToString("F1") + "m" +
                         " weather=" + On(Settings.PaneWeather, Settings.Defaults.PaneWeather) +
-                        " followWindows=" + On(Settings.PanesFollowWindows, Settings.Defaults.PanesFollowWindows));
+                        " followWindows=" + On(Settings.PanesFollowWindows, Settings.Defaults.PanesFollowWindows) +
+                        " | rooms=" + On(Settings.InteriorsEnabled, Settings.Defaults.InteriorsEnabled) +
+                        " byDay=" + On(Settings.InteriorsByDay, Settings.Defaults.InteriorsByDay) +
+                        " lit=" + Percent(Settings.InteriorsLit, Settings.Defaults.InteriorsLit) +
+                        " lateNight=" + On(Settings.InteriorsLateNight, Settings.Defaults.InteriorsLateNight) +
+                        " switching=" + Percent(Settings.InteriorsSwitching, Settings.Defaults.InteriorsSwitching) +
+                        " brightness=" + Percent(Settings.InteriorsBrightness, Settings.Defaults.InteriorsBrightness) +
+                        " coloured=" + Percent(Settings.InteriorsColoured, Settings.Defaults.InteriorsColoured) +
+                        " curtains=" + Percent(Settings.InteriorsCurtains, Settings.Defaults.InteriorsCurtains));
 
                 Log.Msg("panel key: " + (Settings.PanelKey != null ? SettingsXmlFormat.FormatKey(Settings.PanelKey.value) : "?") +
                         ", Unified UI wanted=" + On(Settings.UseUnifiedUI, Settings.Defaults.UseUnifiedUI) +

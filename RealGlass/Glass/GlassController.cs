@@ -23,7 +23,13 @@ namespace RealGlass.Glass
         private readonly GlassSky _sky = new GlassSky();
         private readonly CityHeights _heights = new CityHeights();
         private readonly AssetMap _assets = new AssetMap();
+        private readonly RoomAtlas _rooms = new RoomAtlas();
+        private bool _roomsTried;
+        private string _loggedRooms = "";
         private int _loggedHiZ = -1;
+
+        private const string RoomsNightResource = "RealGlass.Resources.rooms-night.bytes";
+        private const string RoomsDayResource = "RealGlass.Resources.rooms-day.bytes";
 
         /// <summary>
         /// What the costly parts may spend (GlassQuality): Ultra until players get a quality choice;
@@ -273,10 +279,21 @@ namespace RealGlass.Glass
                 _heights.Update(_look, Time.realtimeSinceStartup);
             _heights.Map.Bind(p.Neighbours);
 
-            // Each building asset's own glass, on every copy of it (RealGlassAssets.xml).
-            _assets.Update(p);
+            // Each building asset's own glass, on every copy of it (RealGlassAssets.xml), and every
+            // building's kind of rooms while there are rooms anywhere.
+            bool roomsWanted = p.Interiors || PerAsset.AssetFile.AnyInteriorsOn;
+            bool rooms = RoomsReady(roomsWanted) && roomsWanted;
+            _assets.Update(p, rooms);
 
             GlassUniforms.Apply(p, f, _quality);
+            Interiors.Apply(p, f, _rooms, rooms);
+            string roomsState = !roomsWanted ? "off" : (rooms ? "on" + (p.Interiors ? "" : " (only the assets that have them)") +
+                (p.InteriorsByDay ? ", day and night" : ", at night") : "wanted, but no pictures");
+            if (roomsState != _loggedRooms)
+            {
+                _loggedRooms = roomsState;
+                Log.Msg("interiors: " + roomsState);
+            }
             bool copied = _screen.Update(camera, _util, p.Finished, _quality.HiZLevels);
             if (!copied)
             {
@@ -317,6 +334,7 @@ namespace RealGlass.Glass
                                _heights.Map.LiveTop.ToString("F0") + " m, " + _heights.LastMs.ToString("F1") + " ms over " + _heights.LastFrames + " frames"
                                : "city heights being drawn") : "no city heights") +
                            "; hi-z " + (copied ? _screen.HiZLevels + " levels" : "-") +
+                           "; rooms " + (rooms ? DescribeRooms(p, f) : "off") +
                            "; shaders seen: " + GlassDraw.DescribeShaders());
                 ResetCounters();
             }
@@ -441,7 +459,55 @@ namespace RealGlass.Glass
             f.ScreenHeight = camera.pixelHeight;
             f.ColorMapWidth = RenderManager.OBJECT_COLORMAP_WIDTH;
             f.ColorMapHeight = RenderManager.OBJECT_COLORMAP_HEIGHT;
+
+            // The game's clock, for the rooms' lights: the hour (as the sky has it), and the hours
+            // since day 0 -- SimulationManager.Update's own sum, a day being DAYTIME_FRAMES (65536)
+            // frames (IL 2026-10-07) -- wrapped at 256 days. It runs with the game's speed and stops
+            // when the game is paused.
+            if (Singleton<SimulationManager>.exists)
+            {
+                SimulationManager sm = Singleton<SimulationManager>.instance;
+                f.Hour = sm.m_currentDayTimeHour;
+                uint frames = sm.m_referenceFrameIndex + sm.m_dayTimeOffsetFrames;
+                double hours = ((double)frames + sm.m_referenceTimer) * 24.0 / SimulationManager.DAYTIME_FRAMES;
+                f.Clock = (float)(hours - Interiors.ClockWrap * System.Math.Floor(hours / Interiors.ClockWrap));
+            }
             return f;
+        }
+
+        /// <summary>
+        /// The rooms' pictures, read from the DLL the first time rooms are wanted (the switch, or an
+        /// asset of their own), kept for the city. False while there are none (and why, once).
+        /// </summary>
+        private bool RoomsReady(bool wanted)
+        {
+            if (!wanted || _roomsTried)
+                return _rooms.Loaded;
+
+            _roomsTried = true;
+            byte[] night = ShaderBundle.ReadResource(RoomsNightResource), day = ShaderBundle.ReadResource(RoomsDayResource);
+            if (_rooms.Load(night, day))
+            {
+                Log.Msg("interiors: " + _rooms.Tiles + " rooms loaded (" + _rooms.Night.width + "x" + _rooms.Night.height + " by night, " +
+                        _rooms.Day.width + "x" + _rooms.Day.height + " by day; " + DescribePools() + ")");
+            }
+            else
+            {
+                Log.Warn("interiors: the rooms' pictures could not be loaded (" + _rooms.Problem + "): no rooms behind the glass");
+            }
+            return _rooms.Loaded;
+        }
+
+        private string DescribePools()
+        {
+            string[] names = { "homes", "offices", "shops", "hotels", "leisure", "public", "industry", "spare" };
+            string s = "";
+            for (int k = 0; k < RoomAtlas.PoolCount; k++)
+            {
+                if (_rooms.Pools[k].y > 0.5f)
+                    s += (s.Length > 0 ? ", " : "") + (int)_rooms.Pools[k].y + " " + names[k];
+            }
+            return s;
         }
 
         /// <summary>The settings in one line: what the log's "glass:" lines are read against.</summary>
@@ -458,7 +524,22 @@ namespace RealGlass.Glass
                    ", fill " + p.OffscreenFill + ", glint " + Pct(p.SunGlint) + ", smooth " + Pct(p.Smoothness) +
                    "; panes " + p.PaneWidth.ToString("F1") + " x " + p.FloorHeight.ToString("F1") + " m, pillow " + Pct(p.Pillow) + ", tilt " + Pct(p.Tilt) +
                    ", roller " + Pct(p.RollerWave) + (p.PaneWeather ? " (weather)" : "") + (p.PanesFollowWindows ? ", following the windows" : "") +
-                   "; behind the glass: a dark inside by day, the game's own windows by night";
+                   "; behind the glass: " + (p.Interiors
+                       ? "ROOMS " + (p.InteriorsByDay ? "day and night" : "at night") + ", lit " + Pct(p.InteriorsLit) +
+                         (p.InteriorsLateNight ? " following the hour" : " all night") + ", switching " + Pct(p.InteriorsSwitching) +
+                         ", brightness " + Pct(p.InteriorsBrightness) + ", coloured " + Pct(p.InteriorsColoured) + ", curtains " + Pct(p.InteriorsCurtains)
+                       : "a dark inside by day, the game's own windows by night");
+        }
+
+        /// <summary>The rooms now, for the 5 s line: the hour, the shares lit, how long a room keeps its light.</summary>
+        private static string DescribeRooms(GlassParams p, GlassFrame f)
+        {
+            Vector4 s = Interiors.Shares(p, f.Hour);
+            float hours = Interiors.HoursPerState(p.InteriorsSwitching);
+            return "at " + Mathf.FloorToInt(f.Hour) + ":" + Mathf.FloorToInt((f.Hour % 1f) * 60f).ToString("00") +
+                   ", lit: homes " + Pct(s.x) + ", offices " + Pct(s.y) + ", shops " + Pct(s.z) + ", others " + Pct(s.w) +
+                   (hours > 0f ? ", a room's light changes every " + hours.ToString("F1") + " game hours" : ", the pattern stands still") +
+                   " (clock " + f.Clock.ToString("F2") + " h)";
         }
 
         private static string Pct(float v)
@@ -480,6 +561,7 @@ namespace RealGlass.Glass
             _sky.Destroy();
             _heights.Destroy();
             _assets.Destroy();
+            _rooms.Destroy();
             RestoreCamera();
             foreach (Material m in new[] { _near, _lod, _group, _util })
             {

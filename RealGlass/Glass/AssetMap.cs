@@ -15,8 +15,12 @@ namespace RealGlass.Glass
     /// After any change of an asset's glass (or of a global setting an asset's glass falls back on)
     /// a pass over the whole building buffer, a slice a frame; then a slow watch for buildings that
     /// went up or levelled up into another asset. Nothing at all while no asset has glass of its
-    /// own. The asset being edited in the panel is put on its buildings at once
-    /// (<see cref="RefreshAsset"/>).
+    /// own and there are no rooms. The asset being edited in the panel is put on its buildings at
+    /// once (<see cref="RefreshAsset"/>).
+    ///
+    /// While there are rooms behind the glass (Interiors.cs) EVERY building's texel says what kind of
+    /// building it is (its a channel: <see cref="Interiors.Texel"/>; 255 while there are none), so the
+    /// watch never stops then.
     /// </remarks>
     internal sealed class AssetMap
     {
@@ -33,6 +37,8 @@ namespace RealGlass.Glass
 
         private readonly AssetTextures _textures = new AssetTextures();
         private readonly Dictionary<BuildingInfo, Color32> _texelOf = new Dictionary<BuildingInfo, Color32>();
+        private readonly Dictionary<BuildingInfo, Color32> _fullTexelOf = new Dictionary<BuildingInfo, Color32>();
+        private bool _rooms;
         private readonly Dictionary<ulong, int> _slotOf = new Dictionary<ulong, int>();
         private readonly Dictionary<ulong, int> _keep = new Dictionary<ulong, int>();
         private readonly List<ResolvedAsset> _resolved = new List<ResolvedAsset>();
@@ -53,11 +59,22 @@ namespace RealGlass.Glass
             get { return _slotOf.Count; }
         }
 
-        /// <summary>Every frame while the glass is on: keeps the textures current and bound.</summary>
-        public void Update(GlassParams global)
+        /// <summary>
+        /// Every frame while the glass is on: keeps the textures current and bound. rooms: there are
+        /// rooms behind the glass, so every building's kind is wanted.
+        /// </summary>
+        public void Update(GlassParams global, bool rooms)
         {
             if (!_textures.IsCreated)
                 _textures.Create(RenderManager.OBJECT_COLORMAP_WIDTH, RenderManager.OBJECT_COLORMAP_HEIGHT);
+
+            if (rooms != _rooms)
+            {
+                // Every texel's a channel changes: a pass over the whole city.
+                _rooms = rooms;
+                _fullTexelOf.Clear();
+                _passLeft = Singleton<BuildingManager>.instance.m_buildings.m_buffer.Length;
+            }
 
             ulong globalKey = GlassKey(GlassUniforms.Tint(global.TintR, global.TintG, global.TintB), global.OwnColour,
                                        global.Reflectivity, global.Clarity, global.Threshold, global.NightWindows);
@@ -76,7 +93,7 @@ namespace RealGlass.Glass
                 }
             }
 
-            int budget = _passLeft > 0 ? PassPerFrame : (_texelOf.Count > 0 ? WatchPerFrame : 0);
+            int budget = _passLeft > 0 ? PassPerFrame : (_texelOf.Count > 0 || _rooms ? WatchPerFrame : 0);
             if (budget > 0)
                 Scan(budget);
 
@@ -105,9 +122,7 @@ namespace RealGlass.Glass
                 _passLeft = Singleton<BuildingManager>.instance.m_buildings.m_buffer.Length;
             }
 
-            Color32 texel;
-            if (!_texelOf.TryGetValue(info, out texel))
-                texel = AllGlobal;
+            Color32 texel = TexelOf(info);
 
             Building[] buffer = Singleton<BuildingManager>.instance.m_buildings.m_buffer;
             for (int i = 1; i < buffer.Length; i++)
@@ -137,9 +152,7 @@ namespace RealGlass.Glass
                 if ((buffer[i].m_flags & (Building.Flags.Created | Building.Flags.Deleted)) == Building.Flags.Created &&
                     buffer[i].m_parentBuilding == 0)
                 {
-                    BuildingInfo info = buffer[i].Info;
-                    if (info == null || !_texelOf.TryGetValue(info, out texel))
-                        texel = AllGlobal;
+                    texel = TexelOf(buffer[i].Info);
                 }
 
                 _textures.Set(i, texel);
@@ -147,6 +160,87 @@ namespace RealGlass.Glass
 
             if (_passLeft > 0)
                 _passLeft -= budget;
+        }
+
+        /// <summary>
+        /// A building's texel: its asset's own glass (or the global settings), and while there are
+        /// rooms its kind and its asset's own say about them. Cached per asset.
+        /// </summary>
+        private Color32 TexelOf(BuildingInfo info)
+        {
+            if (info == null)
+                return AllGlobal;
+
+            Color32 texel;
+            if (_fullTexelOf.TryGetValue(info, out texel))
+                return texel;
+
+            if (!_texelOf.TryGetValue(info, out texel))
+                texel = AllGlobal;
+            if (_rooms)
+            {
+                AssetRecord record = AssetFile.Get(info.name);
+                int assetSwitch = record == null || !record.Interiors.HasValue ? Interiors.FollowGlobal
+                    : (record.Interiors.Value ? Interiors.AssetOn : Interiors.AssetOff);
+                texel.a = Interiors.Texel(KindOf(info), assetSwitch);
+            }
+            _fullTexelOf[info] = texel;
+            return texel;
+        }
+
+        /// <summary>
+        /// What rooms a building has, by what the game says it is (its ItemClass): homes, offices, shops
+        /// (homes above the low ones, offices above the high), hotels, leisure, public buildings, industry.
+        /// </summary>
+        public static int KindOf(BuildingInfo info)
+        {
+            ItemClass c = info != null ? info.m_class : null;
+            if (c == null)
+                return Interiors.KindOffice;
+
+            switch (c.m_service)
+            {
+                case ItemClass.Service.Residential:
+                    return Interiors.KindHome;
+                case ItemClass.Service.Office:
+                    return Interiors.KindOffice;
+                case ItemClass.Service.Commercial:
+                    switch (c.m_subService)
+                    {
+                        case ItemClass.SubService.CommercialLeisure:
+                            return Interiors.KindLeisure;
+                        case ItemClass.SubService.CommercialTourist:
+                            return Interiors.KindHotel;
+                        case ItemClass.SubService.CommercialHigh:
+                        case ItemClass.SubService.CommercialWallToWall:
+                            return Interiors.KindShopHigh;
+                        default:
+                            return Interiors.KindShopLow;
+                    }
+                case ItemClass.Service.Hotel:
+                    return Interiors.KindHotel;
+                case ItemClass.Service.Tourism:
+                case ItemClass.Service.Beautification:
+                    return Interiors.KindLeisure;
+                case ItemClass.Service.Industrial:
+                case ItemClass.Service.PlayerIndustry:
+                case ItemClass.Service.Fishing:
+                    return Interiors.KindIndustry;
+                case ItemClass.Service.HealthCare:
+                case ItemClass.Service.Education:
+                case ItemClass.Service.PlayerEducation:
+                case ItemClass.Service.Museums:
+                case ItemClass.Service.Monument:
+                case ItemClass.Service.PoliceDepartment:
+                case ItemClass.Service.FireDepartment:
+                case ItemClass.Service.Disaster:
+                case ItemClass.Service.PublicTransport:
+                case ItemClass.Service.VarsitySports:
+                case ItemClass.Service.ServicePoint:
+                    return Interiors.KindPublic;
+                default:
+                    return Interiors.KindOffice;
+            }
         }
 
         /// <summary>
@@ -161,6 +255,7 @@ namespace RealGlass.Glass
         private void Resolve(GlassParams global)
         {
             _texelOf.Clear();
+            _fullTexelOf.Clear();
             _resolved.Clear();
             LoadedAssets = 0;
 
@@ -338,6 +433,8 @@ namespace RealGlass.Glass
         {
             _textures.Destroy();
             _texelOf.Clear();
+            _fullTexelOf.Clear();
+            _rooms = false;
             _slotOf.Clear();
             _nextSlot = 0;
             _seenVersion = -1;

@@ -154,7 +154,8 @@ namespace RealGlass
             return result;
         }
 
-        private static byte[] ReadResource(string resource)
+        /// <summary>An embedded resource's bytes (the bundles, the rooms' pictures); null when the DLL has none by that name.</summary>
+        internal static byte[] ReadResource(string resource)
         {
             using (Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resource))
             {

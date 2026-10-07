@@ -205,9 +205,33 @@ namespace RealGlass
         /// </summary>
         public static BoolSetting PanesFollowWindows { get; private set; }
 
-        // Behind the glass there are no settings (round 7, the author: no rooms, and the game's own
-        // lit windows at night, untouched): by day a dark inside (GlassUniforms), by night the
-        // game's own window.
+        // ---- F8 -> Interiors (Glass/Interiors.cs; off by default, the author 2026-10-07) --------
+        // Off: behind the glass by day a dark inside (GlassUniforms), by night the game's own window
+        // (round 7). On: rooms behind every building's windows, OURS at night.
+
+        /// <summary>Rooms behind the windows of every building (an asset can say otherwise, Alt+G).</summary>
+        public static BoolSetting InteriorsEnabled { get; private set; }
+
+        /// <summary>The rooms by day too; off, they show from dusk (the author: "by default interiors only show up at night").</summary>
+        public static BoolSetting InteriorsByDay { get; private set; }
+
+        /// <summary>0.05..0.9: the share of rooms lit at the busiest hour.</summary>
+        public static FloatSetting InteriorsLit { get; private set; }
+
+        /// <summary>The share follows the hour: homes empty out after midnight, offices keep a few floors.</summary>
+        public static BoolSetting InteriorsLateNight { get; private set; }
+
+        /// <summary>0..3: how often a room's light changes (1 = about every Interiors.HoursPerChange game hours; 0 never).</summary>
+        public static FloatSetting InteriorsSwitching { get; private set; }
+
+        /// <summary>0.25..3: a lit room's light (1 = about the game's own lit window).</summary>
+        public static FloatSetting InteriorsBrightness { get; private set; }
+
+        /// <summary>0..0.3: the share of rooms lit by coloured lights (LED, RGB).</summary>
+        public static FloatSetting InteriorsColoured { get; private set; }
+
+        /// <summary>0..1: the share of windows with curtains or blinds.</summary>
+        public static FloatSetting InteriorsCurtains { get; private set; }
 
         // ---- Options page -> Rendering (the F8 panel's tab until 2026-10-04) ---------------
 
@@ -349,6 +373,20 @@ namespace RealGlass
             public const bool PaneWeather = true;
             public const bool PanesFollowWindows = true;
 
+            // ---- Interiors ---- (off: "by default it's off for now", the author 2026-10-07)
+            public const bool InteriorsEnabled = false;
+            public const bool InteriorsByDay = false;
+
+            /// <summary>Under half at the busiest hour: "you'll likely never find ALL interiors lit up".</summary>
+            public const float InteriorsLit = 0.45f;
+            public const bool InteriorsLateNight = true;
+            public const float InteriorsSwitching = 1f;
+            public const float InteriorsBrightness = 1f;
+
+            /// <summary>"orange/white/led/rgb even but less common": a few rooms in twenty-five.</summary>
+            public const float InteriorsColoured = 0.04f;
+            public const float InteriorsCurtains = 0.70f;
+
             // ---- Rendering ---- (the author's: the largest, livest sky)
             public const int GlassDistance = 2;       // the whole city
             public const int SkyCubeSize = 2;         // 256 px
@@ -458,6 +496,15 @@ namespace RealGlass
                 RollerWave = new FloatSetting("RollerWave", Defaults.RollerWave);
                 PaneWeather = new BoolSetting("PaneWeather", Defaults.PaneWeather);
                 PanesFollowWindows = new BoolSetting("PanesFollowWindows", Defaults.PanesFollowWindows);
+
+                InteriorsEnabled = new BoolSetting("InteriorsEnabled", Defaults.InteriorsEnabled);
+                InteriorsByDay = new BoolSetting("InteriorsByDay", Defaults.InteriorsByDay);
+                InteriorsLit = new FloatSetting("InteriorsLit", Defaults.InteriorsLit);
+                InteriorsLateNight = new BoolSetting("InteriorsLateNight", Defaults.InteriorsLateNight);
+                InteriorsSwitching = new FloatSetting("InteriorsSwitching", Defaults.InteriorsSwitching);
+                InteriorsBrightness = new FloatSetting("InteriorsBrightness", Defaults.InteriorsBrightness);
+                InteriorsColoured = new FloatSetting("InteriorsColoured", Defaults.InteriorsColoured);
+                InteriorsCurtains = new FloatSetting("InteriorsCurtains", Defaults.InteriorsCurtains);
 
                 WaterEnabled = new BoolSetting("WaterEnabled", Defaults.WaterEnabled);
                 WaterBrightness = new FloatSetting("WaterBrightness", Defaults.WaterBrightness);

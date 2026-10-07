@@ -44,6 +44,7 @@ Shader "RealGlass/Glass"
             #pragma fragment frag
             #pragma multi_compile RG_NEAR RG_LOD RG_GROUP
             #include "GlassCommon.cginc"
+            #include "Interiors.cginc"
 
             sampler2D _MainTex;
             float4 _MainTex_ST;
@@ -548,7 +549,8 @@ Shader "RealGlass/Glass"
                 // light, GlassUniforms.InsideByDay), seen through the glass's clarity and colour. By
                 // night the game's own picture of this window, untouched: which windows are lit, how
                 // brightly and in what colour is each asset's own night texture and the game's
-                // timing -- nothing of ours. The reflections go on top either way.
+                // timing -- unless the rooms are on for this building (below). The reflections go on
+                // top either way.
                 float daylight = _RGLight.x;
                 float3 through = min(clarity * filter, 1.0) * (1.0 - Fs);
                 float3 inside = _RGAmbSky.rgb * _RGLight.y * through;
@@ -562,15 +564,39 @@ Shader "RealGlass/Glass"
                 else
                     coverage *= 1.0 - wall;
 
-                float3 L = F * refl * _RGRefl.x
-                         + lerp(gamePixel, inside, daylight)
-                         + SunGlint(np, V, Fs, rough) * (F / max(Fs, 1e-4));
+                // The rooms behind the glass (Interiors.cginc), where they are on for this building:
+                // OURS at night, in place of the game's own window, and by day too when asked; else
+                // today's dark inside by day. At night the room's light is not dimmed by the clarity
+                // (its brightness is the slider's), only coloured a little by the glass (round 5's).
+                float3 nightFilter = lerp(float3(1.0, 1.0, 1.0), filter, 0.3);
+                nightFilter /= max(Luma(nightFilter), 0.05);
+                float3 roomNight, roomDay;
+                float rooms = RoomsBehind(P, n, t, V, baseY, footprint, painted, IdOf(i.building), asset.a,
+                                          inside, through, nightFilter * (1.0 - Fs), roomNight, roomDay);
+                float3 behind = lerp(gamePixel, inside, daylight);
+                float roomCover = 0.0;
+                if (rooms > 0.0)
+                {
+                    float byDay = _RGRooms.y;
+                    behind = lerp(lerp(gamePixel, roomNight, rooms), lerp(inside, roomDay, rooms * byDay), daylight);
+                    roomCover = rooms * lerp(1.0, byDay, daylight);
+                }
+
+                float3 front = F * refl * _RGRefl.x + SunGlint(np, V, Fs, rough) * (F / max(Fs, 1e-4));
+
+                // What is behind the glass covers the whole window where it is a room (no share of
+                // the game's own lit window under an unlit room), the reflections only at the glass's
+                // strength: out = coverage x front + cover x behind, written for SrcAlpha blending as
+                // that / cover. With no rooms cover = coverage: front + behind, as always.
+                float full = coverage / max(strength, 1e-4);
+                float cover = lerp(coverage, full, roomCover);
+                float3 L = (coverage * front + cover * behind) / max(cover, 1e-4);
 
                 // The last guard, on every API (Finite.cginc): whatever slipped through, the pixel
                 // is light that is a number, and a coverage that is not one is none -- the game's
                 // own glass shows there instead of a NaN reaching the frame (and, through the
                 // finished picture, next frame's reflections).
-                return float4(Finite(L), FiniteAlpha(coverage));
+                return float4(Finite(L), FiniteAlpha(cover));
             }
             ENDCG
         }

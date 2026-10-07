@@ -34,7 +34,7 @@ namespace RealGlass.UI
     /// Which tab of the in-game (F8) panel a row appears on. None = not in it. (One building asset's
     /// own glass is the building window's: PerAsset.AssetCatalog's rows, not this catalog's.)
     /// </summary>
-    public enum PanelPage { None, Glass, Reflections, Panes, Water }
+    public enum PanelPage { None, Glass, Reflections, Panes, Interiors, Water }
 
     /// <summary>General = the game's mod options page (no tabs). None = not on it.</summary>
     public enum OptionsPage { None, General }
@@ -395,6 +395,7 @@ namespace RealGlass.UI
             Log.Msg("settings catalog: " + Rows.Count + " rows | panel Glass=" + CountForPanel(PanelPage.Glass) +
                     " Reflections=" + CountForPanel(PanelPage.Reflections) +
                     " Panes=" + CountForPanel(PanelPage.Panes) +
+                    " Interiors=" + CountForPanel(PanelPage.Interiors) +
                     " Water=" + CountForPanel(PanelPage.Water) +
                     " | options page=" + CountForOptions(OptionsPage.General) +
                     " | building window=" + PerAsset.AssetCatalog.Rows.Count +
@@ -640,6 +641,11 @@ namespace RealGlass.UI
             return GlassOn() && (Settings.SkyReflection == null || Settings.SkyReflection.value == 0);
         }
 
+        private static bool InteriorsOn()
+        {
+            return GlassOn() && Settings.InteriorsEnabled != null && Settings.InteriorsEnabled.value;
+        }
+
         private static bool WaterOn()
         {
             return Settings.WaterEnabled != null && Settings.WaterEnabled.value;
@@ -687,6 +693,7 @@ namespace RealGlass.UI
             BuildGlass();
             BuildReflections();
             BuildPanes();
+            BuildInteriors();
             BuildWater();
 
             // The options page, top to bottom: the mod, what the glass may cost, then diagnostics
@@ -1103,6 +1110,101 @@ namespace RealGlass.UI
                 DefaultBool = Settings.Defaults.PanesFollowWindows,
                 Enabled = GlassOn,
                 AfterChange = State("panes follow the painted windows", OnOff(Settings.PanesFollowWindows)),
+            });
+        }
+
+        /// <summary>
+        /// F8 -> Interiors: rooms behind every building's windows (Glass/Interiors.cs), ours at night;
+        /// off by default (the author, 2026-10-07: "by default it's off for now, and when turned on it
+        /// affects all buildings"). An asset can say otherwise in the building window.
+        /// </summary>
+        private static void BuildInteriors()
+        {
+            Add(new Row
+            {
+                Kind = RowKind.Toggle,
+                Panel = PanelPage.Interiors,
+                Bool = Settings.InteriorsEnabled,
+                DefaultBool = Settings.Defaults.InteriorsEnabled,
+                Enabled = GlassOn,
+                AfterChange = State("rooms behind the windows", OnOff(Settings.InteriorsEnabled)),
+            });
+
+            Add(new Row
+            {
+                Kind = RowKind.Toggle,
+                Panel = PanelPage.Interiors,
+                Bool = Settings.InteriorsByDay,
+                DefaultBool = Settings.Defaults.InteriorsByDay,
+                Enabled = InteriorsOn,
+                AfterChange = State("rooms by day too", OnOff(Settings.InteriorsByDay)),
+            });
+
+            Add(new Row
+            {
+                Kind = RowKind.Percent,
+                Panel = PanelPage.Interiors,
+                Group = "RoomLights",
+                Float = Settings.InteriorsLit,
+                DefaultFloat = Settings.Defaults.InteriorsLit,
+                Min = 5f, Max = 90f, Step = 1f,
+                Enabled = InteriorsOn,
+                AfterChange = Changed,
+            });
+
+            Add(new Row
+            {
+                Kind = RowKind.Toggle,
+                Panel = PanelPage.Interiors,
+                Bool = Settings.InteriorsLateNight,
+                DefaultBool = Settings.Defaults.InteriorsLateNight,
+                Enabled = InteriorsOn,
+                AfterChange = State("fewer room lights late at night", OnOff(Settings.InteriorsLateNight)),
+            });
+
+            Add(new Row
+            {
+                Kind = RowKind.Percent,
+                Panel = PanelPage.Interiors,
+                Float = Settings.InteriorsSwitching,
+                DefaultFloat = Settings.Defaults.InteriorsSwitching,
+                Min = 0f, Max = 300f, Step = 5f,
+                Enabled = InteriorsOn,
+                AfterChange = Changed,
+            });
+
+            Add(new Row
+            {
+                Kind = RowKind.Percent,
+                Panel = PanelPage.Interiors,
+                Float = Settings.InteriorsBrightness,
+                DefaultFloat = Settings.Defaults.InteriorsBrightness,
+                Min = 25f, Max = 300f, Step = 5f,
+                Enabled = InteriorsOn,
+                AfterChange = Changed,
+            });
+
+            Add(new Row
+            {
+                Kind = RowKind.Percent,
+                Panel = PanelPage.Interiors,
+                Float = Settings.InteriorsColoured,
+                DefaultFloat = Settings.Defaults.InteriorsColoured,
+                Min = 0f, Max = 30f, Step = 1f,
+                Enabled = InteriorsOn,
+                AfterChange = Changed,
+            });
+
+            Add(new Row
+            {
+                Kind = RowKind.Percent,
+                Panel = PanelPage.Interiors,
+                Group = "RoomCurtains",
+                Float = Settings.InteriorsCurtains,
+                DefaultFloat = Settings.Defaults.InteriorsCurtains,
+                Min = 0f, Max = 100f, Step = 1f,
+                Enabled = InteriorsOn,
+                AfterChange = Changed,
             });
         }
 

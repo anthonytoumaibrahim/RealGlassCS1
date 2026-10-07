@@ -111,7 +111,18 @@ the log is `RealGlass.log`, next to it.
   daylight -- seen through the glass's colour and clarity: the glass's own shade, with the
   reflections on top. By night, each window exactly as the game draws it: which windows are lit,
   how brightly and in what colour is every asset's own night texture and the game's timing, and
-  the mod leaves it alone -- it only adds the reflections.
+  the mod leaves it alone -- it only adds the reflections. Unless the rooms are on:
+- **Rooms behind the windows** (the Interiors tab, off unless switched on; then on every building,
+  and an asset can be left out with the building picker): at night every window shows a room --
+  a photograph of a real room, chosen by what the building is (homes, offices, shops, hotels,
+  restaurants, hospitals and schools, workshops), set a little behind the glass so it slides behind
+  the frame as the camera moves -- with a curtain, tulle, drapes or a blind of its own in front, and
+  a lamp of its own: mostly the warm and neutral whites real rooms have, a few colored LEDs. Which
+  rooms are lit is each room's own chance against the hour: homes busiest in the evening and nearly
+  dark before dawn, offices a floor at a time with a few left on, shops by opening hours -- and
+  every few game hours each room may switch, each at its own moment, so the city's lights change
+  slowly through the night, never all at once. Far away, a room smaller than a pixel is averaged
+  with its neighbours instead of sparkling. By day the rooms can show too, dark behind the glass.
 - **Painted detail kept**: an asset whose whole facade is marked shiny -- a full-glass tower --
   still has its floors, slab bands and frames painted in its colour map. Where that painting
   stands out from the storey round it, the glass steps aside and the building shows as its
@@ -238,6 +249,23 @@ Every technique here has shipped in a game or is published:
     SIGGRAPH 1985) for the patches, each equalized so that a share a of foam leaves exactly a of
     the pattern white. Its brightness: dense sea foam's reflectance, Peter Koepke, **Effective
     reflectance of oceanic whitecaps**, Applied Optics 23(11), 1984.
+17. The rooms behind the windows: layered as **Forza Horizon 4**'s windows are -- the room, a
+    curtain or blind of its own that lets the room's light through at night, a picture per room
+    from a group of its building's kind, one flat picture far away (Gareth Harwood, Playground
+    Games, **A window into Playground Games' latest shader development**, Game Developer, 2019,
+    [article](https://www.gamedeveloper.com/design/game-tech-deep-dive-a-window-into-playground-games-latest-shader-development));
+    the picture a plane behind the glass, the simplest case of Joost van Dongen's **Interior
+    Mapping**, CGI 2008 ([article](https://www.gamedeveloper.com/programming/interior-mapping-rendering-real-rooms-without-geometry)).
+    Lit windows scattered at random, some office buildings a whole floor at a time: Shamus Young's
+    procedural city (2009, [article](https://www.shamusyoung.com/twentysidedtale/?p=2954)). How many
+    are lit at each hour: homes after the shape of Ian Richardson, Murray Thomson, David Infield and
+    Alice Delahunty, **Domestic lighting: A high-resolution energy demand model**, Energy and
+    Buildings 41(7), 2009; offices after EnergyPlus's office lighting schedule, with a share left on
+    all night as Gregory Dobler et al. observed of commercial windows (**Dynamics of the urban
+    lightscape**, Information Systems 54, 2015). The lamps' colours: Mitchell Charity's blackbody
+    colour table ([vendian.org](http://www.vendian.org/mncharity/dir3/blackbody/)). The pictures are
+    cut from [Poly Haven](https://polyhaven.com/hdris/indoor)'s indoor panoramas (CC0), the rooms'
+    own daylit windows filled from round them by normalized convolution (Knutsson and Westin, 15).
 
 ## Building
 
@@ -260,6 +288,8 @@ screen-space ray tracer is adapted from McGuire and Mara's BSD 2-Clause code; it
 shipped with the mod and the published techniques it builds on are credited in
 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md). The button's icon is
 [*Window*](https://openclipart.org/detail/173814/window) by ali2013 on Openclipart, public domain.
+The rooms behind the windows are pictures cut from [Poly Haven](https://polyhaven.com)'s indoor
+panoramas, CC0 -- with thanks to its photographers.
 
 Cities: Skylines is © Colossal Order Ltd., published by Paradox Interactive AB. Unity is a
 trademark of Unity Technologies. This is an unofficial fan-made mod, not affiliated with or

@@ -43,6 +43,14 @@
     <EmbeddedResource Include="Resources\realglass-mac.bundle"
                       LogicalName="RealGlass.Resources.realglass-mac.bundle"
                       Condition="Exists('Resources\realglass-mac.bundle')" />
+    <!-- The rooms behind the glass: raw DXT1 pictures, once for every platform (Glass/RoomAtlas.cs;
+         made by tools/interiors/build-rooms.ps1). -->
+    <EmbeddedResource Include="Resources\rooms-night.bytes"
+                      LogicalName="RealGlass.Resources.rooms-night.bytes"
+                      Condition="Exists('Resources\rooms-night.bytes')" />
+    <EmbeddedResource Include="Resources\rooms-day.bytes"
+                      LogicalName="RealGlass.Resources.rooms-day.bytes"
+                      Condition="Exists('Resources\rooms-day.bytes')" />
   </ItemGroup>
 
   <ItemGroup>

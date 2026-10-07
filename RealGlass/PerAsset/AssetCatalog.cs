@@ -26,7 +26,7 @@ namespace RealGlass.PerAsset
         private static FloatSetting _strength, _detail, _reflectivity, _clarity, _own, _threshold;
         private static IntSetting _preset;
         private static ColorSetting _colour;
-        private static BoolSetting _nightWindows;
+        private static BoolSetting _nightWindows, _interiors;
 
         public static List<Row> Rows
         {
@@ -61,6 +61,7 @@ namespace RealGlass.PerAsset
             _own = new FloatSetting("AssetGlassOwnColour", Settings.Defaults.GlassOwnColour, false);
             _threshold = new FloatSetting("AssetGlassThreshold", Settings.Defaults.GlassThreshold, false);
             _nightWindows = new BoolSetting("AssetGlassNightWindows", Settings.Defaults.GlassNightWindows, false);
+            _interiors = new BoolSetting("AssetInteriorsEnabled", Settings.Defaults.InteriorsEnabled, false);
 
             var rows = new List<Row>();
 
@@ -146,6 +147,21 @@ namespace RealGlass.PerAsset
                     "lit-at-night windows count as glass: " + (_nightWindows.value ? "yes" : "no")),
             });
 
+            // The rooms behind its windows (the Interiors tab's switch, for this asset): off keeps the
+            // game's own windows on every copy of it.
+            rows.Add(new Row
+            {
+                Kind = RowKind.Toggle,
+                Group = "AssetInteriors",
+                Bool = _interiors,
+                DefaultBool = Settings.Defaults.InteriorsEnabled,
+                Enabled = Editable,
+                Overridden = () => Has(r => r.Interiors.HasValue),
+                ClearOverride = () => Change(r => r.Interiors = null, "rooms back to the Interiors tab's switch"),
+                AfterChange = () => Change(r => r.Interiors = _interiors.value,
+                    "rooms behind the windows: " + (_interiors.value ? "yes" : "no")),
+            });
+
             _rows = rows;
             Sync();
         }
@@ -207,6 +223,7 @@ namespace RealGlass.PerAsset
             _own.value = r != null && r.OwnColour.HasValue ? r.OwnColour.Value : Settings.GlassOwnColour.value;
             _threshold.value = r != null && r.Threshold.HasValue ? r.Threshold.Value : Settings.GlassThreshold.value;
             _nightWindows.value = r != null && r.NightWindows.HasValue ? r.NightWindows.Value : Settings.GlassNightWindows.value;
+            _interiors.value = r != null && r.Interiors.HasValue ? r.Interiors.Value : Settings.InteriorsEnabled.value;
 
             _colour.value = r != null && r.Colour.HasValue ? r.Colour.Value : (hasPreset ? preset.Colour : Settings.GlassColor.value);
             _reflectivity.value = r != null && r.Reflectivity.HasValue ? r.Reflectivity.Value

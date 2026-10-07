@@ -73,6 +73,31 @@ namespace RealGlass.PerAsset
             get { return Records.Count; }
         }
 
+        private static int _anyInteriorsVersion = -1;
+        private static bool _anyInteriors;
+
+        /// <summary>Some asset has rooms of its own switched ON (they show even while the Interiors tab's switch is off).</summary>
+        public static bool AnyInteriorsOn
+        {
+            get
+            {
+                if (_anyInteriorsVersion != _version)
+                {
+                    _anyInteriorsVersion = _version;
+                    _anyInteriors = false;
+                    foreach (AssetRecord record in Records.Values)
+                    {
+                        if (record.Interiors.HasValue && record.Interiors.Value)
+                        {
+                            _anyInteriors = true;
+                            break;
+                        }
+                    }
+                }
+                return _anyInteriors;
+            }
+        }
+
         /// <summary>The asset's own glass, or null when it follows every global setting. Do not change it: <see cref="Put"/> a copy.</summary>
         public static AssetRecord Get(string name)
         {
