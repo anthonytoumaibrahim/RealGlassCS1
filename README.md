@@ -31,11 +31,10 @@ four tabs:
 - **Panes** -- the panes' width and height (a storey), and how they bend what they mirror:
   cushioned (insulating glass bowing in or out), tilted, rippled (toughened glass); up close,
   fitted to the windows each building painted.
-- **Water** (off until switched on) -- the map's water: its brightness, the sky in it with real
-  water's reflectance, and the city in it, with its waves, its streaks and how long it is drawn;
-  foam along the shores, on fast water and on wave fronts. **Daylight blue and wave detail** adds
-  a brighter blue tone and stronger long-wave detail during the day, fading out at night. Set it
-  to 0% for the previous colour and wave balance; the existing brightness and ripple controls apply.
+- **Water** (off until switched on) -- the map's water: its own color (a deep, dark lake by
+  default, or the map theme's -- no Theme Mixer needed) and brightness, the sky in it with real
+  water's reflectance on every ripple, and the city in it, with its waves, its streaks and how long
+  it is drawn; foam along the shores, on fast water and on wave fronts.
 
 **Alt+G** turns the building picker on: click a building, and a small window of its own gives its
 asset its own glass.
@@ -77,9 +76,11 @@ the log is `RealGlass.log`, next to it.
   reflection widen to match (specular anti-aliasing) instead of sparkling as the camera moves.
 - **The water** (its own tab, off unless switched on): the game's water adds the map theme's sky
   at the same strength from every angle, so a white sky turns the sea white. With the tab on, the
-  water's sky follows real water's reflectance instead -- about 2% looking straight down, about
-  half toward the horizon, worked out for a breeze-roughened sea -- its colour can be made lighter
-  or darker, and the city on screen is mirrored in it, by day and by night: each reflected ray
+  water's sky follows real water's reflectance instead -- worked out on every pixel for the ripple
+  there, about 2% looking straight down, about half toward the horizon, and the averaged
+  roughness of a breeze-roughened sea where the ripples are too small to see -- the sky in it is
+  the one on screen, clouds and sunsets included; its color is your own or the map theme's, and
+  the city on screen is mirrored in it, by day and by night: each reflected ray
   followed through the depth buffer from the water's ripples, so the reflection wavers as real
   water's does, and stretched up and down by the waves too small to see. The ripples move: the
   game's own ripple texture moves only where the water flows (an open sea or a still lake is
@@ -115,8 +116,9 @@ the log is `RealGlass.log`, next to it.
 - **Rooms behind the windows** (the Interiors tab, off unless switched on; then on every building,
   and an asset can be left out with the building picker): at night every window shows a room --
   a photograph of a real room, chosen by what the building is (homes, offices, shops, hotels,
-  restaurants, hospitals and schools, workshops), set a little behind the glass so it slides behind
-  the frame as the camera moves -- with a curtain, tulle, drapes or a blind of its own in front, and
+  restaurants, hospitals and schools, workshops), with depth: a room behind the window whose floor,
+  ceiling and walls move as the camera does (or a flat picture on the glass: the room depth is a
+  slider) -- with a curtain, tulle, drapes or a blind of its own in front, and
   a lamp of its own: mostly the warm and neutral whites real rooms have, a few colored LEDs. Which
   rooms are lit is each room's own chance against the hour: homes busiest in the evening and nearly
   dark before dawn, offices a floor at a time with a few left on, shops by opening hours -- and
@@ -223,7 +225,10 @@ Every technique here has shipped in a game or is published:
     Journal of the Optical Society of America 44(11), 1954 (mean square slope 0.003 + 0.00512 U
     for a wind of U m/s); the sky's light reflected by such a sea, Curtis D. Mobley,
     **Estimation of the Remote-Sensing Reflectance from Above-Surface Measurements**, Applied
-    Optics 38(36), 1999; Schlick's Fresnel (6) with water's index, 1.333. The ripples are a sum of
+    Optics 38(36), 1999; Schlick's Fresnel (6) with water's index, 1.333, on each ripple, and that
+    rough sea's reflectance where the ripples' texture filtering has averaged them away -- Eric
+    Bruneton, Fabrice Neyret and Nicolas Holzschuch, **Real-time Realistic Ocean Lighting using
+    Seamless Transitions from Geometry to BRDF**, Computer Graphics Forum 29(2), 2010. The ripples are a sum of
     directional sine waves -- Mark Finch, **Effective Water Simulation from Physical Models**, GPU
     Gems (2004), chapter 1
     ([online](https://developer.nvidia.com/gpugems/gpugems/part-i-natural-effects/chapter-1-effective-water-simulation-physical-models))
@@ -254,8 +259,12 @@ Every technique here has shipped in a game or is published:
     from a group of its building's kind, one flat picture far away (Gareth Harwood, Playground
     Games, **A window into Playground Games' latest shader development**, Game Developer, 2019,
     [article](https://www.gamedeveloper.com/design/game-tech-deep-dive-a-window-into-playground-games-latest-shader-development));
-    the picture a plane behind the glass, the simplest case of Joost van Dongen's **Interior
-    Mapping**, CGI 2008 ([article](https://www.gamedeveloper.com/programming/interior-mapping-rendering-real-rooms-without-geometry)).
+    each room a box behind its window whose walls, floor and ceiling the view's ray meets -- Joost
+    van Dongen's **Interior Mapping**, CGI 2008 ([article](https://www.gamedeveloper.com/programming/interior-mapping-rendering-real-rooms-without-geometry))
+    -- kept as one picture of the box seen from in front of the window, as SimCity (Maxis, 2013;
+    Andrew Willmott) kept its rooms and Ben Golus wrote it up
+    ([Unity forums](https://discussions.unity.com/t/interior-mapping/424676)); each box painted
+    from its panorama's middle, as an interior cubemap is.
     Lit windows scattered at random, some office buildings a whole floor at a time: Shamus Young's
     procedural city (2009, [article](https://www.shamusyoung.com/twentysidedtale/?p=2954)). How many
     are lit at each hour: homes after the shape of Ian Richardson, Murray Thomson, David Infield and

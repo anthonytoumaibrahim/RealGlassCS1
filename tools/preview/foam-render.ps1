@@ -13,6 +13,13 @@
 #   ... -Amount 1 -Shore 1 -Fast 1 -Front 1     the foam's amount and each source's share (1 = the model's)
 #   ... -Sources              a last column: each source's amount as a colour (red shore, green fast, blue fronts)
 #   ... -Width 960 -Height 540 -Name foam -Api glcore
+#   ... -SkyColumns "old:0.8,old:0.3,new:1"   columns of the sky on the water instead of the foam's:
+#                             old:g = the mod's cube until 2026-10-08 (the stand-in's) at Sky slider g,
+#                             new:g = the sky layer (RealGlass/WaterSky) at g; an optional third part
+#                             is the water's colour (new:1:#0E222B); foam on in every column
+#   ... -Body "#0E222B"       the stand-in water's colour for every shot (default the preview's own)
+#   ... -RippleRms 0.527      the game's ripple texture's decoded rms (default WaterOptics' fallback, 0.3;
+#                             the author's game measured 0.527)
 # Run after build-bundle.ps1 (the shaders compile) and a DLL build.
 
 param(
@@ -37,6 +44,9 @@ param(
     [double]$Length = 1.65,
     [double]$ExposureDay = 1.6,
     [double]$ExposureNight = 2.5,
+    [string]$SkyColumns = "",
+    [string]$Body = "",
+    [double]$RippleRms = -1.0,
     [string]$Name = "foam",
     [ValidateSet("d3d11", "glcore")]
     [string]$Api = "d3d11",
@@ -76,8 +86,14 @@ for ($i = 0; $i -lt $n; $i++) {
     $lines.Add("ripple " + $i + " " + (N $w[$at]) + " " + (N $w[$at + 1]) + " " + (N $w[$at + 2]) + " " + (N $w[$at + 3]))
     $lines.Add("ripple " + ($n + $i) + " " + (N $w[$at + 4]) + " " + (N $w[$at + 5]) + " " + (N $w[$at + 6]) + " " + (N $w[$at + 7]))
 }
-$rms = $optics::DefaultRippleRms
+$rms = if ($RippleRms -gt 0.0) { $RippleRms } else { $optics::DefaultRippleRms }
 $lines.Add("ripplerms " + (N $rms))
+# The sky layer's ripple averaging (WaterOptics.SkyRippleMips at 100%) and the ripples' mean square slope.
+$start = 0.0; $span = 0.0
+$optics::SkyRippleMips(1.0, 1.0, [ref]$start, [ref]$span)
+$slope = $optics::RippleSlope($rms, 1.0)
+$lines.Add("skyripples " + (N $start) + " " + (N $span) + " " + $optics::RippleTexels + " " + (N ($slope * $slope)))
+if ($Body -ne "") { $lines.Add("body " + $Body) }
 $lines.Add("citygain " + (N ($optics::CityRippleGain(1.0, $rms))))
 $spread = $optics::Spread($optics::SlopeVariance($optics::CityWind))
 $lines.Add("streak " + (N ($optics::StreakSigma($Streaks, $spread, 45.0))))
@@ -87,10 +103,24 @@ $v = $foam::Vectors($Amount, $Shore, $Fast, $Front, 40.0)
 for ($i = 0; $i -lt 6; $i++) { $lines.Add("foam " + $i + " " + (N $v[4 * $i]) + " " + (N $v[4 * $i + 1]) + " " + (N $v[4 * $i + 2]) + " " + (N $v[4 * $i + 3])) }
 
 $columns = New-Object System.Collections.Generic.List[object]
-$columns.Add(@{ Foam = 0; Seconds = 443.0; Label = "today (no foam layer)" })
-$columns.Add(@{ Foam = 1; Seconds = 443.0; Label = "foam" })
-if ($Later -gt 0.0) { $columns.Add(@{ Foam = 1; Seconds = 443.0 + $Later; Label = ("foam, {0:F1} s later" -f $Later) }) }
-if ($Sources) { $columns.Add(@{ Foam = 2; Seconds = 443.0; Label = "sources: red shore, green fast, blue fronts" }) }
+if ($SkyColumns -ne "") {
+    foreach ($spec in $SkyColumns.Split(',')) {
+        $part = $spec.Split(':')
+        $mode = if ($part[0] -eq "new") { 1 } else { 0 }
+        $gain = [double]::Parse($part[1], $inv)
+        $colour = if ($part.Count -gt 2) { $part[2] } else { "-" }
+        $what = if ($mode -eq 1) { "sky per pixel" } else { "cube (until now)" }
+        $label = "{0}, sky {1:P0}" -f $what, $gain
+        if ($colour -ne "-") { $label += ", " + $colour }
+        $columns.Add(@{ Foam = 1; Seconds = 443.0; Mode = $mode; Gain = $gain; Body = $colour; Label = $label })
+    }
+}
+else {
+    $columns.Add(@{ Foam = 0; Seconds = 443.0; Label = "today (no foam layer)" })
+    $columns.Add(@{ Foam = 1; Seconds = 443.0; Label = "foam" })
+    if ($Later -gt 0.0) { $columns.Add(@{ Foam = 1; Seconds = 443.0 + $Later; Label = ("foam, {0:F1} s later" -f $Later) }) }
+    if ($Sources) { $columns.Add(@{ Foam = 2; Seconds = 443.0; Label = "sources: red shore, green fast, blue fronts" }) }
+}
 if ($Flicker -ne "") {
     # Render It!'s TAA (PPv1): 60 frames a second, jitter spread 1, stationary blending 0.94, sharpen 0.15.
     $lines.Add("taa " + $TaaFrames + " " + $TaaWarm + " 60 1 0.94 0.15")
@@ -104,7 +134,8 @@ foreach ($view in $rows) {
     $strength = if ($view -like "night*") { $Night } else { $Day }
     for ($c = 0; $c -lt $columns.Count; $c++) {
         $col = $columns[$c]
-        $lines.Add(("shot {0}_{1} {0} {2} {3} {4}" -f $view, $c, $col.Foam, (N $col.Seconds), (N $strength)))
+        $sky = if ($col.ContainsKey("Mode")) { " {0} {1} {2}" -f $col.Mode, (N $col.Gain), $col.Body } else { "" }
+        $lines.Add(("shot {0}_{1} {0} {2} {3} {4}" -f $view, $c, $col.Foam, (N $col.Seconds), (N $strength)) + $sky)
     }
 }
 [System.IO.File]::WriteAllLines((Join-Path $project "foam-preview-input.txt"), $lines)

@@ -15,14 +15,15 @@ namespace RealGlass.Water
     /// <remarks>
     /// - WHERE: the game's visible water meshes, recorded with their simulation heights in a separate
     ///   depth buffer. The seabed in the scene depth never supplies the reflection's surface position.
-    /// - THE RAY: followed through the camera's depth texture (McGuire &amp; Mara 2014), 64 steps
-    ///   growing geometrically to <see cref="WaterOptics.MaxDistance"/>, the crossing refined by
-    ///   bisection; only what stands above the level counts as a hit.
+    /// - THE RAY: followed through the camera's depth texture (McGuire &amp; Mara 2014), 96 steps
+    ///   growing geometrically to the camera's far plane x 0.9 (at most <see cref="WaterOptics.MaxDistance"/>),
+    ///   the crossing refined by bisection; only what stands above the level counts as a hit.
     /// - HOW MUCH: rho at the view's angle (<see cref="WaterOptics.BuildTable"/>) x the strength, by
     ///   day or by night: faint from above, strong across the water.
     /// - WHAT IT REPLACES: where the ray meets the city, the city takes the place of the sky the
-    ///   water's cube shows: added = rho x strength x (city - skyShare x the theme's sky x its light),
-    ///   skyShare the Sky slider while our cube is on the water, 0 otherwise.
+    ///   water shows: added = rho x strength x (city - skyShare x that sky), skyShare the Sky slider
+    ///   while our sky is on the water (0 otherwise); that sky the live sky the sky layer draws
+    ///   (<see cref="WaterSkyLayer"/>; light 1), or the theme's x its light under our cube.
     /// - THE WAVES: the ray leaves the ripples' surface at the water's point, not the flat sea: the
     ///   ripple texture the water is shaded with (<see cref="WaterRipples"/>), read as the game reads
     ///   it, its slopes x <see cref="WaterOptics.CityRippleGain"/> (the Waves slider). 0: the flat

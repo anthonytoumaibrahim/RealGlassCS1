@@ -651,6 +651,11 @@ namespace RealGlass.UI
             return Settings.WaterEnabled != null && Settings.WaterEnabled.value;
         }
 
+        private static bool WaterOwnColourOn()
+        {
+            return WaterOn() && (Settings.WaterThemeColor == null || !Settings.WaterThemeColor.value);
+        }
+
         private static bool WaterSkyOn()
         {
             return WaterOn() && (Settings.WaterRealSky == null || Settings.WaterRealSky.value);
@@ -1140,6 +1145,18 @@ namespace RealGlass.UI
                 AfterChange = State("rooms by day too", OnOff(Settings.InteriorsByDay)),
             });
 
+            // 0%: each room a flat picture on the glass; 100%: a room with depth behind it.
+            Add(new Row
+            {
+                Kind = RowKind.Percent,
+                Panel = PanelPage.Interiors,
+                Float = Settings.InteriorsDepth,
+                DefaultFloat = Settings.Defaults.InteriorsDepth,
+                Min = 0f, Max = 100f, Step = 5f,
+                Enabled = InteriorsOn,
+                AfterChange = Changed,
+            });
+
             Add(new Row
             {
                 Kind = RowKind.Percent,
@@ -1269,6 +1286,28 @@ namespace RealGlass.UI
                 AfterChange = WaterState("water controls", OnOff(Settings.WaterEnabled)),
             });
 
+            // The water's colour: ours (the author, 2026-10-08: "rather than rely on Theme Mixer to edit
+            // the water color, we can do that with our mod"), or the map theme's -- Theme Mixer's when it
+            // runs (Water/WaterSurface.cs: our value sits on the water's materials, the theme's is the global).
+            Add(new Row
+            {
+                Kind = RowKind.Toggle,
+                Panel = PanelPage.Water,
+                Bool = Settings.WaterThemeColor,
+                DefaultBool = Settings.Defaults.WaterThemeColor,
+                Enabled = WaterOn,
+                AfterChange = WaterState("the map theme's water color", OnOff(Settings.WaterThemeColor)),
+            });
+
+            Add(new Row
+            {
+                Kind = RowKind.Colour,
+                Panel = PanelPage.Water,
+                Colour = Settings.WaterColor,
+                DefaultColour = Settings.Defaults.WaterColor,
+                Enabled = WaterOwnColourOn,
+            });
+
             Add(new Row
             {
                 Kind = RowKind.Percent,
@@ -1276,16 +1315,6 @@ namespace RealGlass.UI
                 Float = Settings.WaterBrightness,
                 DefaultFloat = Settings.Defaults.WaterBrightness,
                 Min = 25f, Max = 400f, Step = 5f,
-                Enabled = WaterOn,
-            });
-
-            Add(new Row
-            {
-                Kind = RowKind.Percent,
-                Panel = PanelPage.Water,
-                Float = Settings.WaterDayLook,
-                DefaultFloat = Settings.Defaults.WaterDayLook,
-                Min = 0f, Max = 100f, Step = 5f,
                 Enabled = WaterOn,
             });
 

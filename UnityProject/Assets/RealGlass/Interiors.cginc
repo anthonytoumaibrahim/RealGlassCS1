@@ -8,27 +8,31 @@
 //  - The layers -- a room picture, a curtain or blind of its own that lets light through at night,
 //    the glass in front; per room a picture from a group of its building's kind; far away one flat
 //    picture: Forza Horizon 4's windows (Harwood, "A window into Playground Games' latest shader
-//    development", Game Developer 2019). The picture a card behind the glass, so it slides behind the
-//    frame as the view moves (the one-plane case of van Dongen's interior mapping, 2008).
+//    development", Game Developer 2019).
+//  - The room a box behind the window, its walls, floor and ceiling met by the view's ray: Joost van
+//    Dongen, "Interior Mapping", CGI 2008; each room ONE picture of its box seen from in front of the
+//    window, read back through that picture's camera: SimCity (Maxis 2013, Andrew Willmott), as Ben
+//    Golus wrote it up (Unity forums, "Interior Mapping", 2016). RoomPictureUV.
 //  - Lit windows scattered at random, some office buildings a whole floor at a time: Young's
 //    procedural city (2009). Which rooms are lit, by the hour: Interiors.cs.
 //  - The lamps' colours: Mitchell Charity's blackbody colour table (CIE 1931 2 deg, linear sRGB).
-//  - The pictures: Poly Haven's indoor panoramas (CC0), cropped and graded by tools/interiors.
+//  - The pictures: Poly Haven's indoor panoramas (CC0), painted on the box from the room's middle and
+//    graded by tools/interiors.
 
 #ifndef REALGLASS_INTERIORS_INCLUDED
 #define REALGLASS_INTERIORS_INCLUDED
 
 float4 _RGRooms;          // x rooms on every building (1), y by day too (1), z the clock (game hours), w game hours a room keeps its light (0: for good)
 float4 _RGRooms2;         // x a lit room's average light (brightness x Interiors.LitRoomLuminance), y the coloured lights' share, z the curtains' share, w pictures loaded (1)
+float4 _RGRooms3;         // x room depth: 0 a flat picture on the glass .. 1 a box room behind it
 float4 _RGRoomShare;      // the share of rooms lit now: x homes, y offices and industry, z shops, w hotels, leisure, public
-float4 _RGRoomAtlasInfo;  // x tiles a row, y a night tile's pixels, z a day tile's pixels, w tiles
-float4 _RGRoomPools[8];   // per kind of room (Interiors.Pool*): x its first tile, y how many
+float4 _RGRoomAtlasInfo;  // x tiles a row, y a night tile's pixels, z a day tile's pixels, w the back wall's share of a picture
+float4 _RGRoomPools[8];   // per kind of room (Interiors.Pool*): x its first tile, y how many, z its box's aspect, w its depth (half-heights)
 sampler2D _RGRoomAtlas;   // the rooms by night, each lit by its own lamps in a neutral white (sRGB DXT1)
 sampler2D _RGRoomAtlasDay;// the same rooms by day, in the same places
 
 #define RG_ROOM_TILE_MEAN 0.18   // every picture's mean luminance, linear (tools/interiors/render-rooms.py)
-#define RG_ROOM_DEPTH 0.8        // metres from the glass to the picture
-#define RG_ROOM_OVERSCAN 1.25    // the picture this much larger than its window: room to slide
+#define RG_ROOM_OVERSCAN 1.25    // a room's front this much larger than the window the asset painted
 
 // Charity's blackbody colours, linear sRGB, red 1 (bbr_color.txt, 2 deg).
 static const float3 RG_K2200 = float3(1.0, 0.3126, 0.0219);
@@ -242,6 +246,53 @@ float3 RoomLight(float2 cellId, float pool, float4 group, float buildingSeed, ou
 // window of its own (a curtain wall's spandrel): bottom, top.
 #define RG_ROOM_SLAB float2(0.14, 0.06)
 
+// The room's front, the face of its box that holds the window: the box's aspect (A, width over
+// height), covering the window (a painted window RG_ROOM_OVERSCAN larger: the room is wider than its
+// window; a storey's cell exactly, so its floor and ceiling are the storey's). Its height, metres.
+float RoomFrontHeight(float aspect, float2 windowSize, bool grid)
+{
+    float over = grid ? 1.0 : RG_ROOM_OVERSCAN;
+    return windowSize.x / max(windowSize.y, 0.01) < aspect ? windowSize.y * over : windowSize.x * over / aspect;
+}
+
+// Where this pixel of glass looks in its room's picture. The room is a box behind the window: x
+// across (-A..A), y floor to ceiling (-1..1), z in (0..D), the window a part of its front at z = 0;
+// the picture is that box seen from a camera in front of the window, far enough that the back wall
+// fills _RGRoomAtlasInfo.w of it (tools/interiors/render-rooms.py, box_view) -- so the ray from
+// the eye through this pixel, met with the box's walls, floor, ceiling or back, and projected
+// through that camera, is the right place in it: the room moves as a room does when the view does
+// (interior mapping, van Dongen 2008; one picture per room, SimCity 2013 as Ben Golus wrote it up).
+// _RGRooms3.x blends from the flat picture on the glass (0) to the box (1). Mirrored for half the
+// rooms; the window's place in the room's front a room's own (crop).
+float2 RoomPictureUV(float aspect, float depth, float3 P, float3 V, float3 n, float3 t, float along,
+                     float2 windowMin, float2 windowSize, bool grid, float seed)
+{
+    // The front, in metres, round the window: the window at a place of the room's own within it.
+    float frontH = RoomFrontHeight(aspect, windowSize, grid);
+    float2 front = float2(frontH * aspect, frontH);
+    float2 slack = max(front - windowSize, 0.0);
+    float2 crop = float2(RoomRand(seed, 1.0), lerp(0.3, 0.7, RoomRand(seed, 2.0)));
+    float2 onFront = saturate((float2(along, P.y) - windowMin + slack * crop) / front);   // 0..1 across the front
+
+    // Into the box: the front point and the view's direction in the room's frame (half-heights).
+    float mirror = RoomRand(seed, 4.0) < 0.5 ? -1.0 : 1.0;
+    float3 F = float3((onFront.x * 2.0 - 1.0) * aspect * mirror, onFront.y * 2.0 - 1.0, 0.0);
+    float3 d = float3(dot(V, t) * mirror, V.y, max(dot(V, -n), 1e-3));
+    float sx = d.x >= 0.0 ? 1.0 : -1.0, sy = d.y >= 0.0 ? 1.0 : -1.0;
+    float tx = (sx * aspect - F.x) / (abs(d.x) > 1e-5 ? d.x : sx * 1e-5);
+    float ty = (sy - F.y) / (abs(d.y) > 1e-5 ? d.y : sy * 1e-5);
+    float tz = depth / d.z;
+    float3 H = F + d * max(min(min(tx, ty), tz), 0.0);
+
+    // Through the picture's camera.
+    float backShare = clamp(_RGRoomAtlasInfo.w, 0.05, 0.95);
+    float cam = backShare * depth / (1.0 - backShare);
+    float2 box = H.xy * (cam / (cam + H.z));
+    float2 boxUV = float2(box.x / aspect, box.y) * 0.5 + 0.5;
+    float2 flatUV = float2(F.x / aspect, F.y) * 0.5 + 0.5;
+    return lerp(flatUV, boxUV, saturate(_RGRooms3.x));
+}
+
 // What the room behind this pixel of glass sends through it, by night and by day, once through the
 // glass (nightGlass, dayGlass: what the glass lets through of each). Returns how much of the
 // window is the room's: 0 where there are no rooms (switched off, not loaded, an asset of its own
@@ -335,27 +386,16 @@ float RoomsBehind(float3 P, float3 n, float3 t, float3 V, float baseY, float foo
     float2 xy = saturate((float2(along, P.y) - bandMin) / bandSize);
     if (detail > 0.0)
     {
-        // The picture: a card RG_ROOM_DEPTH behind the glass, a little larger than the window, its
-        // aspect kept (a crop of it, at a place of the room's own), mirrored for half the rooms.
-        float2 local = float2(along, P.y) - bandMin;
-        float vn = max(dot(V, -n), 0.15);
-        float2 slide = float2(dot(V, t), V.y) / vn * RG_ROOM_DEPTH;
-        float2 c = ((local + slide) / bandSize - 0.5) / RG_ROOM_OVERSCAN + 0.5;
-        float aspect = bandSize.x / max(bandSize.y, 0.01);
-        float2 crop = float2(RoomRand(seed, 1.0), RoomRand(seed, 2.0));
-        float2 tileUV = aspect < 1.0 ? float2((1.0 - aspect) * crop.x + c.x * aspect, c.y)
-                                     : float2(c.x, (1.0 - 1.0 / aspect) * lerp(0.3, 0.7, crop.y) + c.y / aspect);
-        if (RoomRand(seed, 4.0) < 0.5)
-            tileUV.x = 1.0 - tileUV.x;
-
         float4 range = _RGRoomPools[(int)pool];
         float tile = range.x + min(floor(RoomRand(seed, 3.0) * range.y), max(range.y - 1.0, 0.0));
         float perRow = max(_RGRoomAtlasInfo.x, 1.0);
         float2 tileXY = float2(fmod(tile, perRow), floor(tile / perRow));
+        float2 tileUV = RoomPictureUV(range.z, range.w, P, V, n, t, along, bandMin, bandSize, grid, seed);
 
         // The level of detail the pixel covers (a little sharper than its longest footprint), the
-        // reads kept inside the tile at that level.
-        float tileMetres = bandSize.y * RG_ROOM_OVERSCAN * max(aspect, 1.0);
+        // reads kept inside the tile at that level. The picture spans the room's front: a little
+        // more than the window.
+        float tileMetres = RoomFrontHeight(range.z, bandSize, grid);
         float nightPx = max(_RGRoomAtlasInfo.y, 1.0), dayPx = max(_RGRoomAtlasInfo.z, 1.0);
         float lodN = clamp(log2(max(footprint * 0.7 * nightPx / tileMetres, 1e-4)), 0.0, log2(nightPx));
         float lodD = clamp(log2(max(footprint * 0.7 * dayPx / tileMetres, 1e-4)), 0.0, log2(dayPx));

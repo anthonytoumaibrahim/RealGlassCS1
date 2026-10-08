@@ -12,17 +12,21 @@ namespace RealGlass.Glass
     /// C# 4: the GPU preview runs this same file (tools/preview/sync-sim.ps1).
     /// </summary>
     /// <remarks>
-    /// A file: "RGRA", version 1, width, height, mips, Unity's TextureFormat, tiles a row, a tile's
-    /// pixels, tiles, then per kind of room (<see cref="Pools"/>) its first tile and how many, then the
-    /// data's length and the data (little-endian ints). Tile k is at column k % row, row k / row,
-    /// counted from the BOTTOM of the texture (uv's v up), the picture upright in it.
+    /// A file: "RGRA", version 2, width, height, mips, Unity's TextureFormat, tiles a row, a tile's
+    /// pixels, tiles, the back wall's share of a picture (float), then per kind of room
+    /// (<see cref="Pools"/>) its first tile, how many, its box's aspect and depth (floats), then the
+    /// data's length and the data (little-endian). Tile k is at column k % row, row k / row, counted
+    /// from the BOTTOM of the texture (uv's v up), the picture upright in it. Each picture is a BOX
+    /// ROOM seen through its window (tools/interiors/render-rooms.py, box_view): the room x -A..A
+    /// across, -1..1 up, 0..D deep, from a camera far enough in front that the back wall fills
+    /// <see cref="Far"/> of the picture.
     /// </remarks>
     public sealed class RoomAtlas
     {
         /// <summary>Kinds of room, the atlas's groups: homes, offices, shops, hotels, leisure, public, industry, (spare).</summary>
         public const int PoolCount = 8;
 
-        private const int Version = 1;
+        private const int Version = 2;
 
         public Texture2D Night { get; private set; }
         public Texture2D Day { get; private set; }
@@ -31,7 +35,13 @@ namespace RealGlass.Glass
         public int DayTile { get; private set; }
         public int Tiles { get; private set; }
 
-        /// <summary>Per kind of room: x its first tile, y how many (0: none -- the shader is given another kind's).</summary>
+        /// <summary>The share of a picture, across, that is the room's back wall.</summary>
+        public float Far { get; private set; }
+
+        /// <summary>
+        /// Per kind of room: x its first tile, y how many (0: none -- the shader is given another kind's),
+        /// z its box's aspect (width / height), w its depth (in half-heights).
+        /// </summary>
         public readonly Vector4[] Pools = new Vector4[PoolCount];
 
         /// <summary>Why the last Load failed; "" when it did not.</summary>
@@ -54,12 +64,13 @@ namespace RealGlass.Glass
             try
             {
                 int nightRow, nightTiles, dayRow, dayTiles, nightTile, dayTile;
+                float nightFar, dayFar;
                 var nightPools = new Vector4[PoolCount];
                 var dayPools = new Vector4[PoolCount];
-                Texture2D n = Read(night, "rooms by night", out nightRow, out nightTile, out nightTiles, nightPools);
+                Texture2D n = Read(night, "rooms by night", out nightRow, out nightTile, out nightTiles, out nightFar, nightPools);
                 if (n == null)
                     return false;
-                Texture2D d = Read(day, "rooms by day", out dayRow, out dayTile, out dayTiles, dayPools);
+                Texture2D d = Read(day, "rooms by day", out dayRow, out dayTile, out dayTiles, out dayFar, dayPools);
                 if (d == null)
                 {
                     UnityEngine.Object.DestroyImmediate(n);
@@ -80,6 +91,7 @@ namespace RealGlass.Glass
                 NightTile = nightTile;
                 DayTile = dayTile;
                 Tiles = nightTiles;
+                Far = nightFar;
                 for (int k = 0; k < PoolCount; k++)
                     Pools[k] = nightPools[k];
                 Problem = "";
@@ -93,9 +105,10 @@ namespace RealGlass.Glass
             }
         }
 
-        private Texture2D Read(byte[] bytes, string what, out int perRow, out int tilePx, out int tiles, Vector4[] pools)
+        private Texture2D Read(byte[] bytes, string what, out int perRow, out int tilePx, out int tiles, out float far, Vector4[] pools)
         {
             perRow = tilePx = tiles = 0;
+            far = 0f;
             if (bytes == null || bytes.Length < 64)
             {
                 Problem = what + ": no data";
@@ -114,9 +127,10 @@ namespace RealGlass.Glass
             perRow = Int(bytes, ref at);
             tilePx = Int(bytes, ref at);
             tiles = Int(bytes, ref at);
+            far = Float(bytes, ref at);
             int poolCount = Int(bytes, ref at);
             if (version != Version || format != (int)TextureFormat.DXT1 || width <= 0 || height <= 0 || width > 8192 || height > 8192 ||
-                mips < 1 || perRow <= 0 || tilePx <= 0 || tiles <= 0 || poolCount != PoolCount)
+                mips < 1 || perRow <= 0 || tilePx <= 0 || tiles <= 0 || poolCount != PoolCount || !(far > 0.05f && far < 0.95f))
             {
                 Problem = what + ": version " + version + ", " + width + "x" + height + ", format " + format + ", " + poolCount + " kinds: not ours";
                 return null;
@@ -125,7 +139,13 @@ namespace RealGlass.Glass
             for (int k = 0; k < PoolCount; k++)
             {
                 int first = Int(bytes, ref at), count = Int(bytes, ref at);
-                pools[k] = new Vector4(first, count, 0f, 0f);
+                float aspect = Float(bytes, ref at), depth = Float(bytes, ref at);
+                if (!(aspect > 0.2f && aspect < 8f && depth > 0.1f && depth < 20f))
+                {
+                    Problem = what + ": kind " + k + "'s box " + aspect + " x " + depth + ": not a room";
+                    return null;
+                }
+                pools[k] = new Vector4(first, count, aspect, depth);
             }
 
             int length = Int(bytes, ref at);
@@ -164,6 +184,13 @@ namespace RealGlass.Glass
             return v;
         }
 
+        private static float Float(byte[] b, ref int at)
+        {
+            float v = BitConverter.ToSingle(b, at);   // little-endian on every platform the game runs on
+            at += 4;
+            return v;
+        }
+
         /// <summary>The atlases and their layout, for the shader (Interiors.cginc).</summary>
         public void Bind()
         {
@@ -172,7 +199,7 @@ namespace RealGlass.Glass
 
             Shader.SetGlobalTexture("_RGRoomAtlas", Night);
             Shader.SetGlobalTexture("_RGRoomAtlasDay", Day);
-            Shader.SetGlobalVector("_RGRoomAtlasInfo", new Vector4(TilesPerRow, NightTile, DayTile, Tiles));
+            Shader.SetGlobalVector("_RGRoomAtlasInfo", new Vector4(TilesPerRow, NightTile, DayTile, Far));
         }
 
         public void Destroy()

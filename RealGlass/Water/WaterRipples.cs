@@ -38,7 +38,6 @@ namespace RealGlass.Water
         private double _decodedRms = WaterOptics.DefaultRippleRms;
         private float _drawnHour = float.NaN;
         private double _drawnSlope = -1.0;
-        private float _drawnDayLook = -1f;
         private double _size = 1.0;
         private double _waveSize = 1.0;
 
@@ -112,7 +111,7 @@ namespace RealGlass.Water
         }
 
         /// <summary>This frame's ripples at <paramref name="strength"/> (1 = as rough as the game's own texture).</summary>
-        public void Draw(float strength, float size, float waveSize, float dayLook)
+        public void Draw(float strength, float size, float waveSize)
         {
             Measure();
             if (Math.Abs(size - _size) > 1e-4 || Math.Abs(waveSize - _waveSize) > 1e-4)
@@ -126,12 +125,10 @@ namespace RealGlass.Water
 
             double slope = WaterOptics.RippleSlope(_decodedRms, strength);
             Vector4 clock = Shader.GetGlobalVector(IdClock);
-            dayLook = Mathf.Clamp01(dayLook);
-            if (clock.y == _drawnHour && Math.Abs(slope - _drawnSlope) < 1e-6 && Mathf.Abs(dayLook - _drawnDayLook) < 1e-6f)
+            if (clock.y == _drawnHour && Math.Abs(slope - _drawnSlope) < 1e-6)
                 return;
 
             _material.SetVector(IdRipple, new Vector4((float)slope, 0f, 0f, 0f));
-            _material.SetFloat("_RGDayWaves", dayLook);
             Graphics.Blit(Texture2D.blackTexture, _texture, _material, 0);
             if (_drawnSlope < 0.0)
                 Log.Msg("water: moving ripples drawn (" + WaterOptics.RippleCount + " waves, " + WaterOptics.RippleLongest.ToString("F0") + " m to " +
@@ -139,7 +136,6 @@ namespace RealGlass.Water
                         " m; root-mean-square slope " + slope.ToString("F3") + ")");
             _drawnHour = clock.y;
             _drawnSlope = slope;
-            _drawnDayLook = dayLook;
         }
 
         /// <summary>

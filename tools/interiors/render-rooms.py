@@ -1,16 +1,19 @@
 # The pictures of the rooms behind the glass (UnityProject/Assets/RealGlass/Interiors.cginc), made
 # from Poly Haven's indoor panoramas (CC0, https://polyhaven.com/license). Runs in Blender's own
 # Python (numpy, and Blender's HDR reader and PNG writer); no rendering: each view is the panorama
-# reprojected through a pinhole camera, here, in numpy.
+# reprojected, here, in numpy -- through a pinhole camera for the survey, onto a box room for the
+# atlas (box_view).
 #
 #   blender -b --factory-startup -P render-rooms.py -- survey <hdri dir> <out dir> [yaws] [size]
 #       every panorama x every yaw at "size" px, exposed for a look: to choose rooms by eye.
 #   blender -b --factory-startup -P render-rooms.py -- bake <hdri dir> <rooms.txt> <out dir>
-#       the rooms of rooms.txt: by day and by night, packed into rooms-night.png (8 x 8 tiles of
-#       256 px) and rooms-day.png (8 x 8 tiles of 128 px), each tile's mean luminance TILE_MEAN, and
-#       rooms-pools.txt (the kinds' first tile and count) for the editor's baker.
+#       the rooms of rooms.txt as box rooms: by day and by night, packed into rooms-night.png (8 x 8
+#       tiles of 256 px) and rooms-day.png (8 x 8 tiles of 128 px), each tile's mean luminance
+#       TILE_MEAN, and rooms-pools.txt (the kinds' first tile, count and box shape) for the editor's
+#       baker.
 #
-# rooms.txt: one room a line -- slug yaw pitch fov kind [lamp...] -- kind one of home office shop
+# rooms.txt: one room a line -- slug yaw pitch fov kind [lamp...] -- (pitch and fov: the survey's
+# view; the bake looks level, turned to the nearest wall) -- kind one of home office shop
 # hotel leisure public industry; a lamp "x,y" (0..1 across the picture, from its bottom left) puts
 # a lamp's pool of light there in the night picture (none given: one high in the middle). '#' starts
 # a comment.
@@ -44,7 +47,6 @@ def load_hdri(path):
 
 def view(pano, yaw_deg, pitch_deg, fov_deg, size):
     """The panorama through a pinhole camera: size x size, rows bottom-up, supersampled."""
-    h, w, _ = pano.shape
     n = size * SUPER
     yaw, pitch = math.radians(yaw_deg), math.radians(pitch_deg)
     f = np.array([math.sin(yaw) * math.cos(pitch), math.sin(pitch), math.cos(yaw) * math.cos(pitch)])
@@ -55,7 +57,78 @@ def view(pano, yaw_deg, pitch_deg, fov_deg, size):
     s = (np.arange(n) + 0.5) / n * 2.0 - 1.0
     x, y = np.meshgrid(s, s)                      # y: row 0 at the bottom
     d = f[None, None, :] + (x[..., None] * t) * r[None, None, :] + (y[..., None] * t) * u[None, None, :]
-    d /= np.linalg.norm(d, axis=2, keepdims=True)
+    return sample(pano, d).reshape(size, SUPER, size, SUPER, 3).mean(axis=(1, 3))
+
+
+# The box rooms (Interiors.cginc RG_ROOM_FAR, and the kinds' shapes in rooms-pools.txt): the room
+# is a box behind its window, x across (-A..A), y up (-1..1, floor to ceiling), z in (0..D); the
+# picture is the box seen from a camera in front of the window, far enough that the back wall fills
+# FAR of the picture across; the panorama is painted on the box's walls from EYE, the middle of the
+# room at eye height -- interior mapping's cubemap from the room's centre (van Dongen 2008), stored
+# as one perspective picture per room (SimCity 2013's atlas, as Ben Golus wrote it up).
+FAR = 0.55
+EYE_Y = 0.05
+SHAPES = {                         # kind: (aspect A = width / height, depth D in half-heights)
+    "home": (1.4, 2.8), "hotel": (1.4, 2.8), "office": (2.0, 4.0), "shop": (1.8, 3.5),
+    "leisure": (1.8, 3.5), "public": (1.8, 3.5), "industry": (1.8, 3.5), "spare": (1.4, 2.8),
+}
+
+
+def box_view(pano, yaw_deg, aspect, depth, size):
+    """The room as a box, seen through its window: size x size (the width squeezed by the aspect)."""
+    n = size * SUPER
+    yaw = math.radians(yaw_deg)
+    f = np.array([math.sin(yaw), 0.0, math.cos(yaw)])
+    r = np.array([math.cos(yaw), 0.0, -math.sin(yaw)])
+    up = np.array([0.0, 1.0, 0.0])
+    cam = FAR * depth / (1.0 - FAR)
+    s = (np.arange(n) + 0.5) / n * 2.0 - 1.0
+    u, v = np.meshgrid(s, s)
+    fx, fy = u * aspect, v
+    dx, dy, dz = fx, fy, np.full_like(fx, cam)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        tx = np.where(np.abs(dx) > 1e-9, (np.sign(dx) * aspect - fx) / dx, np.inf)
+        ty = np.where(np.abs(dy) > 1e-9, (np.sign(dy) - fy) / dy, np.inf)
+    tz = depth / cam
+    t = np.minimum(np.minimum(tx, ty), tz)
+    hx, hy, hz = fx + t * dx, fy + t * dy, t * dz
+    qx, qy, qz = hx, hy - EYE_Y, hz - depth * 0.5
+    d = qx[..., None] * r + qy[..., None] * up + qz[..., None] * f
+    return sample(pano, d).reshape(size, SUPER, size, SUPER, 3).mean(axis=(1, 3))
+
+
+def align_yaw(pano, yaw_deg, reach=40, step=5):
+    """
+    The yaw near the one chosen that looks square at a wall: there the edges above and below the
+    middle of the view (the back wall's ceiling line, skirting, shelves) run level, where a view
+    into a corner has them slanting. The share of the gradient's energy within 4 degrees of level,
+    over the middle half of the columns and the top and bottom thirds of the rows; a little less
+    for each degree turned away from the choice.
+    """
+    best, best_score = yaw_deg, -1.0
+    for dyaw in range(-reach, reach + 1, step):
+        c = view(pano, yaw_deg + dyaw, 0.0, 90.0, 96)
+        lum = np.log(np.maximum(luma(c), 1e-4))
+        gx = np.zeros_like(lum)
+        gy = np.zeros_like(lum)
+        gx[:, 1:-1] = lum[:, 2:] - lum[:, :-2]
+        gy[1:-1, :] = lum[2:, :] - lum[:-2, :]
+        e = gx * gx + gy * gy
+        level = (np.abs(gx) < np.tan(math.radians(4.0)) * np.abs(gy)).astype(np.float64)
+        n = lum.shape[0]
+        rows = np.r_[0:n // 3, n - n // 3:n]
+        cols = slice(n // 4, n - n // 4)
+        ee = e[rows, cols]
+        score = (ee * level[rows, cols]).sum() / max(ee.sum(), 1e-9) - 0.002 * abs(dyaw)
+        if score > best_score:
+            best, best_score = yaw_deg + dyaw, score
+    return best
+
+
+def sample(pano, d):
+    """The panorama in the directions d (any length; x right, y up, z forward), bilinear."""
+    h, w, _ = pano.shape
+    d = d / np.linalg.norm(d, axis=-1, keepdims=True)
     lon = np.arctan2(d[..., 0], d[..., 2])
     lat = np.arcsin(np.clip(d[..., 1], -1.0, 1.0))
     fu = (lon / (2.0 * math.pi) + 0.5) * w - 0.5
@@ -68,7 +141,7 @@ def view(pano, yaw_deg, pitch_deg, fov_deg, size):
     u0 = u0 % w
     c = (pano[v0, u0] * (1 - au) * (1 - av) + pano[v0, u1] * au * (1 - av) +
          pano[v0 + 1, u0] * (1 - au) * av + pano[v0 + 1, u1] * au * av)
-    return c.reshape(size, SUPER, size, SUPER, 3).mean(axis=(1, 3))
+    return c
 
 
 def luma(c):
@@ -216,27 +289,44 @@ def bake(src, rooms_file, out):
     cache = {}
     tiles_dir = os.path.join(out, "tiles")
     os.makedirs(tiles_dir, exist_ok=True)
+    taken = {}                                    # slug: the yaws already used
     for k, room in enumerate(rooms):
         if room["slug"] not in cache:
             cache.clear()
             cache[room["slug"]] = load_hdri(os.path.join(src, room["slug"] + ".hdr"))
         pano = cache[room["slug"]]
-        v = view(pano, room["yaw"], room["pitch"], room["fov"], NIGHT_TILE)
+        # The room's walls square to the view (rooms.txt chose what to look at; this turns it until
+        # a wall faces the window), then the box of its kind's shape. Two views of one panorama that
+        # turn to the same wall: the second takes the next wall round, the side nearer its choice.
+        yaw = align_yaw(pano, room["yaw"])
+        used = taken.setdefault(room["slug"], [])
+        def clash(y):
+            return any(abs((y - u + 180.0) % 360.0 - 180.0) < 45.0 for u in used)
+        if clash(yaw):
+            options = [y for y in (yaw + 90.0, yaw - 90.0, yaw + 180.0) if not clash(y)]
+            options.sort(key=lambda y: abs((y - room["yaw"] + 180.0) % 360.0 - 180.0))
+            yaw = options[0] if options else yaw
+        used.append(yaw)
+        aspect, depth = SHAPES[room["kind"]]
+        v = box_view(pano, yaw, aspect, depth, NIGHT_TILE)
         n_pic = night_picture(v, room["lamps"])
         d_pic = day_picture(v.reshape(DAY_TILE, 2, DAY_TILE, 2, 3).mean(axis=(1, 3)))
         col, row = k % PER_ROW, k // PER_ROW      # row counted from the bottom, as the arrays are
         night[row * NIGHT_TILE:(row + 1) * NIGHT_TILE, col * NIGHT_TILE:(col + 1) * NIGHT_TILE] = n_pic
         day[row * DAY_TILE:(row + 1) * DAY_TILE, col * DAY_TILE:(col + 1) * DAY_TILE] = d_pic
-        save_png(n_pic, os.path.join(tiles_dir, "%02d_%s_%s_%d_night.png" % (k, room["kind"], room["slug"], room["yaw"])))
-        save_png(d_pic, os.path.join(tiles_dir, "%02d_%s_%s_%d_day.png" % (k, room["kind"], room["slug"], room["yaw"])))
-        print("ROOM", k, room["kind"], room["slug"], room["yaw"], flush=True)
+        save_png(n_pic, os.path.join(tiles_dir, "%02d_%s_%s_%d_night.png" % (k, room["kind"], room["slug"], yaw)))
+        save_png(d_pic, os.path.join(tiles_dir, "%02d_%s_%s_%d_day.png" % (k, room["kind"], room["slug"], yaw)))
+        print("ROOM", k, room["kind"], room["slug"], room["yaw"], "->", yaw, flush=True)
     save_png(night, os.path.join(out, "rooms-night.png"))
     save_png(day, os.path.join(out, "rooms-day.png"))
     with open(os.path.join(out, "rooms-pools.txt"), "w", encoding="utf-8") as f:
-        f.write("%d %d %d %d\n" % (PER_ROW, NIGHT_TILE, DAY_TILE, len(rooms)))
+        # Tiles a row, a tile's pixels by night and by day, rooms, the back wall's share of the
+        # picture; then per kind: first tile, how many, its box's aspect and depth.
+        f.write("%d %d %d %d %.4f\n" % (PER_ROW, NIGHT_TILE, DAY_TILE, len(rooms), FAR))
         for kind in KINDS:
             idx = [i for i, r in enumerate(rooms) if r["kind"] == kind]
-            f.write("%s %d %d\n" % (kind, idx[0] if idx else 0, len(idx)))
+            aspect, depth = SHAPES[kind]
+            f.write("%s %d %d %.4f %.4f\n" % (kind, idx[0] if idx else 0, len(idx), aspect, depth))
     print("BAKE OK", len(rooms), "rooms", flush=True)
 
 

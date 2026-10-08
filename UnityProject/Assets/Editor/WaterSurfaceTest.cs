@@ -103,7 +103,6 @@ public static class WaterSurfaceTest
             Record(mask, mesh, left, right, block);
             camera.Render();
             Check("camera layer filtering", Maximum(Read(mask.Texture)) == 0f);
-            Daylight();
         }
         catch (Exception e)
         {
@@ -118,41 +117,6 @@ public static class WaterSurfaceTest
         Results.Add(_failed == 0 ? "WATER SURFACE TEST OK" : "WATER SURFACE TEST FAILED: " + _failed);
         File.WriteAllLines("water-surface-test-output.txt", Results.ToArray());
         EditorApplication.Exit(_failed == 0 ? 0 : 1);
-    }
-
-    private static void Daylight()
-    {
-        var theme = new Color(0.03f, 0.06f, 0.08f, 0.6f);
-        Color night = WaterAppearance.Colour(theme, 1.3f, WaterAppearance.DayAmount(-0.3f, 1f));
-        Check("night colour preserved", Mathf.Abs(night.r - theme.r * 1.3f) < 1e-6f &&
-            Mathf.Abs(night.g - theme.g * 1.3f) < 1e-6f && Mathf.Abs(night.b - theme.b * 1.3f) < 1e-6f && night.a == theme.a);
-        Color day = WaterAppearance.Colour(theme, 1f, WaterAppearance.DayAmount(0.5f, 1f));
-        Check("day is brighter and bluer", day.grayscale > theme.grayscale && day.b / day.r > theme.b / theme.r);
-        Color off = WaterAppearance.Colour(theme, 1f, WaterAppearance.DayAmount(0.5f, 0f));
-        Check("zero daylight control restores theme", off == theme);
-        Check("dusk transitions continuously", Mathf.Abs(WaterAppearance.DayAmount(-0.001f, 1f) - WaterAppearance.DayAmount(0.001f, 1f)) < 0.02f);
-        double[] waves = WaterOptics.Ripples();
-        var rows = new Vector4[64];
-        for (int i = 0; i < 32; i++)
-        {
-            int p = i * 8;
-            rows[i] = new Vector4((float)waves[p], (float)waves[p + 1], (float)waves[p + 2], (float)waves[p + 3]);
-            rows[i + 32] = new Vector4((float)waves[p + 4], (float)waves[p + 5], (float)waves[p + 6], 0f);
-        }
-        Shader.SetGlobalVector("_SimulationTime2", new Vector4(443f, 443f / 3600f, 0f, 0f));
-        Color[] original = Read(CityReflectionTest.GenerateRipples(rows, 0.10f, 256));
-        Color[] daylight = Read(CityReflectionTest.GenerateRipples(rows, 0.10f, 256, 1f));
-        Color[] nightWaves = Read(CityReflectionTest.GenerateRipples(rows, 0.10f, 256, WaterAppearance.DayAmount(-0.3f, 1f)));
-        double before = 0.0, after = 0.0;
-        float difference = 0f;
-        for (int i = 0; i < original.Length; i++)
-        {
-            before += Math.Pow(original[i].r - 0.5f, 2) + Math.Pow(original[i].g - 0.5f, 2);
-            after += Math.Pow(daylight[i].r - 0.5f, 2) + Math.Pow(daylight[i].g - 0.5f, 2);
-            difference = Mathf.Max(difference, Mathf.Abs(original[i].r - nightWaves[i].r), Mathf.Abs(original[i].g - nightWaves[i].g));
-        }
-        Check("daylight waves gain visible slope detail", after > before * 1.35 && after < before * 2.5, Math.Sqrt(after / before).ToString("F3") + "x RMS slope");
-        Check("night waves unchanged on GPU", difference == 0f);
     }
 
     private static void Record(WaterSurfaceMask mask, Mesh mesh, Matrix4x4 left, Matrix4x4 right, MaterialPropertyBlock block)

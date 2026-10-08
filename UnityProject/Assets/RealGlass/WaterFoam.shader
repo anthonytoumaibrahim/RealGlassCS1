@@ -32,8 +32,9 @@ Shader "RealGlass/WaterFoam"
 
     SubShader
     {
-        // Right after the game's water (Geometry+1), before the glass and the game's fog.
-        Tags { "Queue" = "Geometry+2" "IgnoreProjector" = "True" "RenderType" = "Transparent" }
+        // Right after the game's water (Geometry+1) and the sky on it (RealGlass/WaterSky, Geometry+2):
+        // foam is on top of the water, reflecting nothing; before the glass and the game's fog.
+        Tags { "Queue" = "Geometry+3" "IgnoreProjector" = "True" "RenderType" = "Transparent" }
 
         Pass
         {

@@ -23,7 +23,6 @@ param(
     [string]$Views = "day,close,high,sunset,night",
     [string]$Ripples = "0,1,2",
     [string]$Frames = "0.5,1.0",
-    [string]$DayLooks = "1",
     [double]$RippleRms = -1.0,
     [double]$Day = 1.0,
     [double]$Night = 2.05,
@@ -87,20 +86,11 @@ if ($Frames -ne "none") {
     foreach ($v in $Frames.Split(',')) { $s = [double]::Parse($v, $inv); $columns.Add(@{ Ripples = 1.0; Seconds = 443.0 + $s; Label = ("100%, {0:F1} s later" -f $s) }) }
 }
 $rows = $Views.Split(',')
-$styled = New-Object System.Collections.Generic.List[object]
-foreach ($look in $DayLooks.Split(',')) {
-    $value = [double]::Parse($look, $inv)
-    foreach ($col in $columns) {
-        $styled.Add(@{ Ripples = $col.Ripples; Seconds = $col.Seconds; DayLook = $value;
-                      Label = ("daylight {0:P0}, {1}" -f $value, $col.Label) })
-    }
-}
-$columns = $styled
 foreach ($view in $rows) {
     $strength = if ($view -like "night*") { $Night } else { $Day }
     for ($c = 0; $c -lt $columns.Count; $c++) {
         $col = $columns[$c]
-        $lines.Add(("shot {0}_{1} {0} {2} {3} {4} {5}" -f $view, $c, (N $col.Ripples), (N $col.Seconds), (N $strength), (N $col.DayLook)))
+        $lines.Add(("shot {0}_{1} {0} {2} {3} {4}" -f $view, $c, (N $col.Ripples), (N $col.Seconds), (N $strength)))
     }
 }
 [System.IO.File]::WriteAllLines((Join-Path $project "water-preview-input.txt"), $lines)

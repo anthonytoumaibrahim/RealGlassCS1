@@ -215,6 +215,9 @@ namespace RealGlass
         /// <summary>The rooms by day too; off, they show from dusk (the author: "by default interiors only show up at night").</summary>
         public static BoolSetting InteriorsByDay { get; private set; }
 
+        /// <summary>0..1: the rooms as boxes with depth behind the glass (1) or flat pictures on it (0).</summary>
+        public static FloatSetting InteriorsDepth { get; private set; }
+
         /// <summary>0.05..0.9: the share of rooms lit at the busiest hour.</summary>
         public static FloatSetting InteriorsLit { get; private set; }
 
@@ -249,13 +252,16 @@ namespace RealGlass
         /// <summary>The Water tab's switch: off, the map's water is the game's and the theme's.</summary>
         public static BoolSetting WaterEnabled { get; private set; }
 
-        /// <summary>0.25..4: the water's own colour x this (1 = the map theme's).</summary>
+        /// <summary>The clean water's colour is the map theme's (or Theme Mixer's), not <see cref="WaterColor"/>.</summary>
+        public static BoolSetting WaterThemeColor { get; private set; }
+
+        /// <summary>The clean water's own colour, sRGB (Water/WaterSurface.cs).</summary>
+        public static ColorSetting WaterColor { get; private set; }
+
+        /// <summary>0.25..4: the water's colour x this.</summary>
         public static FloatSetting WaterBrightness { get; private set; }
 
-        /// <summary>0..1: brighter blue clean water and stronger long-wave detail by day, fading out at night.</summary>
-        public static FloatSetting WaterDayLook { get; private set; }
-
-        /// <summary>The water reflects the theme's sky with real water's reflectance, not the same share at every angle.</summary>
+        /// <summary>The water reflects the sky as real water does, per ripple (Water/WaterSkyLayer.cs), not the same share at every angle.</summary>
         public static BoolSetting WaterRealSky { get; private set; }
 
         /// <summary>0..3: that reflection x this (1 = real water).</summary>
@@ -377,6 +383,9 @@ namespace RealGlass
             public const bool InteriorsEnabled = false;
             public const bool InteriorsByDay = false;
 
+            /// <summary>Full depth (the author, 2026-10-07: "a slider would be better, some people might not prefer the parallax").</summary>
+            public const float InteriorsDepth = 1f;
+
             /// <summary>Under half at the busiest hour: "you'll likely never find ALL interiors lit up".</summary>
             public const float InteriorsLit = 0.45f;
             public const bool InteriorsLateNight = true;
@@ -394,10 +403,22 @@ namespace RealGlass
 
             // ---- Water ---- (off; inside it, the author's own settings, 2026-10-07)
             public const bool WaterEnabled = false;
+
+            /// <summary>Our own colour, not the theme's (the author, 2026-10-08: "rather than rely on Theme Mixer").</summary>
+            public const bool WaterThemeColor = false;
+
+            /// <summary>
+            /// Deep lake water (the author's reference, 2026-10-08: Battlefield 6's Lake Mead, near water
+            /// #11222A..#1A2C34 with its faint sky in it): dark, a little teal. Set from the preview's
+            /// pictures (tools\preview\foam-render.ps1 -SkyColumns).
+            /// </summary>
+            public static readonly Color32 WaterColor = new Color32(0x0E, 0x22, 0x2B, 255);
+
             public const float WaterBrightness = 1f;
-            public const float WaterDayLook = 1f;
             public const bool WaterRealSky = true;
-            public const float WaterSky = 0.80f;
+
+            /// <summary>Real water (the sky per ripple since 2026-10-08; 80% while the cube counted each ripple's tilt twice).</summary>
+            public const float WaterSky = 1f;
             public const bool WaterCity = true;
             public const float WaterCityDay = 1f;
 
@@ -499,6 +520,7 @@ namespace RealGlass
 
                 InteriorsEnabled = new BoolSetting("InteriorsEnabled", Defaults.InteriorsEnabled);
                 InteriorsByDay = new BoolSetting("InteriorsByDay", Defaults.InteriorsByDay);
+                InteriorsDepth = new FloatSetting("InteriorsDepth", Defaults.InteriorsDepth);
                 InteriorsLit = new FloatSetting("InteriorsLit", Defaults.InteriorsLit);
                 InteriorsLateNight = new BoolSetting("InteriorsLateNight", Defaults.InteriorsLateNight);
                 InteriorsSwitching = new FloatSetting("InteriorsSwitching", Defaults.InteriorsSwitching);
@@ -507,8 +529,9 @@ namespace RealGlass
                 InteriorsCurtains = new FloatSetting("InteriorsCurtains", Defaults.InteriorsCurtains);
 
                 WaterEnabled = new BoolSetting("WaterEnabled", Defaults.WaterEnabled);
+                WaterThemeColor = new BoolSetting("WaterThemeColor", Defaults.WaterThemeColor);
+                WaterColor = new ColorSetting("WaterColor", Defaults.WaterColor);
                 WaterBrightness = new FloatSetting("WaterBrightness", Defaults.WaterBrightness);
-                WaterDayLook = new FloatSetting("WaterDayLook", Defaults.WaterDayLook);
                 WaterRipples = new BoolSetting("WaterRipples", Defaults.WaterRipples);
                 WaterRippleStrength = new FloatSetting("WaterRippleStrength", Defaults.WaterRippleStrength);
                 WaterRippleSize = new FloatSetting("WaterRippleSize", Defaults.WaterRippleSize);

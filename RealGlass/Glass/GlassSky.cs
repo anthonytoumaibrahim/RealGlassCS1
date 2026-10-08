@@ -45,6 +45,15 @@ namespace RealGlass.Glass
         public string Problem = "";
 
         /// <summary>
+        /// The global the cube is bound to: the glass's "_RGSky"; the water's sky layer keeps its own
+        /// cube under another name (Water/WaterSkyLayer.cs).
+        /// </summary>
+        public string GlobalName = "_RGSky";
+
+        /// <summary>The live cube (null until the first update, or while the game's map is used).</summary>
+        public Texture Cube { get { return _cube; } }
+
+        /// <summary>
         /// live: our cube of the skybox at size x size per face, facesPerFrame faces refreshed now,
         /// with the clouds in it when clouds is set and there are clouds to draw; else gameMap (the
         /// game's _EnvironmentCubemap) is bound as it is.
@@ -58,7 +67,7 @@ namespace RealGlass.Glass
                 Release();
                 Mips = gameMap is Cubemap ? ((Cubemap)gameMap).mipmapCount : 1;
                 if (gameMap != null)
-                    Shader.SetGlobalTexture("_RGSky", gameMap);
+                    Shader.SetGlobalTexture(GlobalName, gameMap);
                 return;
             }
 
@@ -117,7 +126,7 @@ namespace RealGlass.Glass
 
             _facesDone = Mathf.Min(_facesDone + count, 6);
             Problem = "";
-            Shader.SetGlobalTexture("_RGSky", _cube);
+            Shader.SetGlobalTexture(GlobalName, _cube);
         }
 
         /// <summary>

@@ -525,7 +525,7 @@ namespace RealGlass.Glass
                    "; panes " + p.PaneWidth.ToString("F1") + " x " + p.FloorHeight.ToString("F1") + " m, pillow " + Pct(p.Pillow) + ", tilt " + Pct(p.Tilt) +
                    ", roller " + Pct(p.RollerWave) + (p.PaneWeather ? " (weather)" : "") + (p.PanesFollowWindows ? ", following the windows" : "") +
                    "; behind the glass: " + (p.Interiors
-                       ? "ROOMS " + (p.InteriorsByDay ? "day and night" : "at night") + ", lit " + Pct(p.InteriorsLit) +
+                       ? "ROOMS " + (p.InteriorsByDay ? "day and night" : "at night") + ", depth " + Pct(p.InteriorsDepth) + ", lit " + Pct(p.InteriorsLit) +
                          (p.InteriorsLateNight ? " following the hour" : " all night") + ", switching " + Pct(p.InteriorsSwitching) +
                          ", brightness " + Pct(p.InteriorsBrightness) + ", coloured " + Pct(p.InteriorsColoured) + ", curtains " + Pct(p.InteriorsCurtains)
                        : "a dark inside by day, the game's own windows by night");

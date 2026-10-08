@@ -82,7 +82,7 @@ namespace RealGlass.Glass
             0.75f, 0.75f, 0.75f, 0.75f, 0.75f, 0.82f, 0.90f, 0.97f, 1.00f, 1.00f, 0.90f, 0.72f,
         };
 
-        private static int _rooms, _rooms2, _share, _pools;
+        private static int _rooms, _rooms2, _rooms3, _share, _pools;
         private static bool _ids;
         private static readonly Vector4[] PoolsOut = new Vector4[RoomAtlas.PoolCount];
 
@@ -92,6 +92,7 @@ namespace RealGlass.Glass
                 return;
             _rooms = Shader.PropertyToID("_RGRooms");
             _rooms2 = Shader.PropertyToID("_RGRooms2");
+            _rooms3 = Shader.PropertyToID("_RGRooms3");
             _share = Shader.PropertyToID("_RGRoomShare");
             _pools = Shader.PropertyToID("_RGRoomPools");
             _ids = true;
@@ -135,6 +136,7 @@ namespace RealGlass.Glass
             Shader.SetGlobalVector(_rooms2, new Vector4(Mathf.Max(p.InteriorsBrightness, 0f) * LitRoomLuminance,
                                                         Mathf.Clamp(p.InteriorsColoured, 0f, 1f), Mathf.Clamp01(p.InteriorsCurtains),
                                                         show && loaded ? 1f : 0f));
+            Shader.SetGlobalVector(_rooms3, new Vector4(Mathf.Clamp01(p.InteriorsDepth), 0f, 0f, 0f));
             Shader.SetGlobalVector(_share, Shares(p, f.Hour));
             if (!loaded)
                 return;
@@ -149,7 +151,7 @@ namespace RealGlass.Glass
                     bool working = k == PoolShop || k == PoolIndustry || k == PoolPublic;
                     pool = working && office.y > 0.5f ? office : (home.y > 0.5f ? home : office);
                     if (pool.y < 0.5f)
-                        pool = new Vector4(0f, Mathf.Max(atlas.Tiles, 1), 0f, 0f);
+                        pool = new Vector4(0f, Mathf.Max(atlas.Tiles, 1), atlas.Pools[k].z, atlas.Pools[k].w);
                 }
                 PoolsOut[k] = pool;
             }

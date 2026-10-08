@@ -23,9 +23,10 @@ public static class ShaderCheck
         "Assets/RealGlass/WaterRipples.shader",
         "Assets/RealGlass/WaterFoam.shader",
         "Assets/RealGlass/WaterSurfaceMask.shader",
+        "Assets/RealGlass/WaterSky.shader",
     };
 
-    private static readonly int[] Passes = { 1, 5, 1, 4, 1, 1, 1 };
+    private static readonly int[] Passes = { 1, 5, 1, 4, 1, 1, 1, 1 };
 
     public static void Run()
     {

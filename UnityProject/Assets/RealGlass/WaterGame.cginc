@@ -25,6 +25,8 @@
 #define RG_WATER_GAME
 
 sampler2D _MainTex;
+// The ripples the water is shaded with: the game's global, or ours on its material (WaterRipples).
+sampler2D _WaterNormal;
 sampler2D _TerrainHeight;
 sampler2D _SurfaceAOld;
 sampler2D _SurfaceANew;
@@ -120,6 +122,31 @@ void RGGameSurface(float2 uv, out float4 a, out float4 b)
     float4 b0 = tex2D(_SurfaceBOld, uv);
     a = a0 + _TerrainStatus.y * (tex2D(_SurfaceANew, uv) - a0);
     b = b0 + _TerrainStatus.y * (tex2D(_SurfaceBNew, uv) - b0);
+}
+
+// The water's normal as the game shades it (the opaque water's forward pixel program, 2026-10-06):
+// _WaterNormal read twice -- at world xz x 0.0061, and at (z, x) x 0.0057 with its channels swapped --
+// each carried along the flow in two phases half a 2.5 s cycle apart (Vlachos 2010), crossfaded;
+// decoded x 2 - 1, x 0.5 x (0.5 + the flow's speed), plus the simulated surface's own slope (_SurfaceA).
+// Left out: the foam's damping and the rain rings. uvA: the first read's uv (its derivatives say how
+// far the ripples are averaged away at this pixel).
+float3 RGGameWaterNormal(float2 xz, float4 sa, float4 sb, out float2 uvA)
+{
+    float2 flow = sb.xz * 2.0 - 1.0;
+    float speed = max(abs(flow.x), abs(flow.y));
+    float phase = _SimulationTime.x * 0.4 + 0.2 * cos(0.06 * xz.x) * cos(0.06 * xz.y);
+    float f = frac(phase);
+    float g = frac(phase + 0.5) - 0.5;
+    uvA = xz * 0.0061 - 0.14 * (f - 0.5) * flow;
+    float4 a = tex2D(_WaterNormal, uvA);
+    float4 b = tex2D(_WaterNormal, xz.yx * 0.0057 - 0.14 * g * flow.yx);
+    float blend = 2.0 * abs(0.5 - f);
+    float2 ripple = lerp(float2(a.w, a.y), float2(b.y, b.w), blend) * 2.0 - 1.0;
+    float2 tilt = sa.xz * 2.0 - 1.0;
+    float2 n2 = ripple * 0.5 * (speed + 0.5) + float2(tilt.x, -tilt.y);
+    n2 /= max(length(n2), 1.0);
+    float3 nt = float3(n2, sqrt(max(1.0 - dot(n2, n2), 0.0)));
+    return normalize(float3(nt.x, nt.z, -nt.y));
 }
 
 // What the game's vertex program makes of a water mesh vertex: its world position (the simulated

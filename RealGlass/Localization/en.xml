@@ -172,6 +172,8 @@
 
   <String key="InteriorsByDay.Label">Show the rooms by day too</String>
 
+  <String key="InteriorsDepth.Label">Room depth</String>
+
   <String key="Group.RoomLights">Lights at night</String>
 
   <String key="InteriorsLit.Label">Lit rooms</String>
@@ -189,12 +191,13 @@
   <String key="InteriorsCurtains.Label">Windows with curtains or blinds</String>
 
   <!-- ==================== F8 panel: Water ==================== -->
-  <!-- The map's water: its brightness, the sky in it, the city in it. Off by default. -->
+  <!-- The map's water: its color and brightness, the sky in it, the city in it. Off by default. -->
 
   <String key="WaterEnabled.Label">Water controls (EXPERIMENTAL)</String>
 
+  <String key="WaterThemeColor.Label">Use the map theme's water color</String>
+  <String key="WaterColor.Label">Water color</String>
   <String key="WaterBrightness.Label">Water brightness</String>
-  <String key="WaterDayLook.Label">Daylight blue and wave detail</String>
 
   <String key="Group.WaterRipples">The ripples</String>
 

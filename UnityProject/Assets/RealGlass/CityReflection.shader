@@ -29,10 +29,11 @@ Shader "RealGlass/CityReflection"
     #include "UnityCG.cginc"
     #include "WaterCommon.cginc"
 
-    // 64 steps over 1 m .. 8 km grow 15% each: at 32 (34%) a step near a roof's edge jumped from in
-    // front of the facade to over and behind it, and the reflection's top was eaten (RealLight's
-    // editor test, a 60 m wall).
-    #define RG_MARCH 64
+    // 96 steps over 1 m .. the reach (the far plane's 0.9, ~20 km in the author's city) grow 11% each
+    // (64 over 8 km, 15%, until 2026-10-08: the author found the night reflection's reach short). At 32
+    // (34%) a step near a roof's edge jumped from in front of the facade to over and behind it, and the
+    // reflection's top was eaten (RealLight's editor test, a 60 m wall).
+    #define RG_MARCH 96
     #define RG_REFINE 6
     #define RG_STREAK 8
 

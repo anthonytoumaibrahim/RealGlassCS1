@@ -107,7 +107,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 | Asset | Source | Licence | Use |
 | --- | --- | --- | --- |
 | `RealGlass/Resources/GlassIcon.png` | [*Window*](https://openclipart.org/detail/173814/window) by ali2013 on Openclipart (2012), as an 80×80 PNG with a transparent background | Public domain (CC0 1.0) | The mod's button icon, embedded in the DLL. No attribution is required; this entry records where it came from, with thanks |
-| `RealGlass/Resources/rooms-night.bytes`, `rooms-day.bytes` | 64 views cut from 37 of [Poly Haven](https://polyhaven.com/hdris/indoor)'s indoor HDRI panoramas (2k), each listed with its direction in `tools/interiors/rooms.txt`; reprojected, graded for day and night and compressed by `tools/interiors/build-rooms.ps1` | CC0 1.0 ([Poly Haven's licence](https://polyhaven.com/license): "You can redistribute them ... even in a product you sell"; no attribution required) | The pictures of the rooms behind the windows (the Interiors tab), embedded in the DLL. Views with people in them, walls of paintings and readable brand signs were left out |
+| `RealGlass/Resources/rooms-night.bytes`, `rooms-day.bytes` | 64 views cut from 37 of [Poly Haven](https://polyhaven.com/hdris/indoor)'s indoor HDRI panoramas (2k), each listed with its direction in `tools/interiors/rooms.txt`; reprojected onto box rooms, graded for day and night and compressed by `tools/interiors/build-rooms.ps1` | CC0 1.0 ([Poly Haven's licence](https://polyhaven.com/license): "You can redistribute them ... even in a product you sell"; no attribution required) | The pictures of the rooms behind the windows (the Interiors tab), embedded in the DLL. Views with people in them, walls of paintings and readable brand signs were left out |
 
 ## Build-time only
 
@@ -135,7 +135,8 @@ insulating-glass pillowing and roller-wave distortion, unsharp masking (Schreibe
 a mipmap level (Williams 1983) for the painted detail it keeps, and an anti-aliased glass edge
 (RenderMan's filterstep, Apodaca and Gritz 1999; Golus 2017; Direct3D 11's standard 4x sample
 pattern), and for the water tab a rough sea's reflectance (Cox and Munk's wave slopes, 1954;
-Mobley's sea-surface reflectance factor, 1999), moving ripples made of directional sine waves
+Mobley's sea-surface reflectance factor, 1999), per ripple where the ripples are seen and averaged
+where filtering takes them (Bruneton, Neyret and Holzschuch 2010), moving ripples made of directional sine waves
 (Finch 2004; tiling and deep water's speeds, Tessendorf 2001; Phillips's equilibrium range, 1958),
 and the city traced through the depth buffer off those ripples and streaked by normalized
 convolution (Knutsson and Westin, 1993), and foam from the game's own water simulation -- along
@@ -143,8 +144,9 @@ shores as Crest's (Bowles et al. 2017) and War Thunder's (Tcheblokov 2015) shore
 fronts by Chentanez and Mueller's breaking test (2010) -- carried along the flow in two phases
 (Vlachos 2010), its pattern Worley's cellular texture (1996) and a fractal sum of noise (Perlin
 1985), as bright as dense sea foam (Koepke 1984) -- and the rooms behind the windows: layered as
-Forza Horizon 4's windows (Harwood, Playground Games, 2019), a picture plane as in van Dongen's
-interior mapping (2008), lit windows scattered at random and offices a floor at a time as in
+Forza Horizon 4's windows (Harwood, Playground Games, 2019), box rooms by van Dongen's interior
+mapping (2008) kept as one picture each as SimCity did (Willmott, Maxis, 2013; Golus's write-up),
+lit windows scattered at random and offices a floor at a time as in
 Young's procedural city (2009), the share lit by the hour after Richardson et al.'s domestic
 lighting model (2009), EnergyPlus's office lighting schedule and Dobler et al.'s observations of
 a city's windows (2015), the lamps' colours from Charity's blackbody table, the pictures' own

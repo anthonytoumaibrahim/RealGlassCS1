@@ -15,12 +15,17 @@ namespace RealGlass.Water
     /// What the game does (RealLight's disassembly, 2026-10-02): Custom/Water/Default adds the theme's
     /// _EnvironmentCubemap x 0.5 for clean water at EVERY angle -- no Fresnel, so a white cubemap gives
     /// white water -- lit by the sun and the ambient, over _WaterColorClean.
-    /// - _WaterColorClean: the theme's (the global, read every frame) x the Brightness slider.
+    /// - _WaterColorClean: the Water color row's (since 2026-10-08, the author: "rather than rely on
+    ///   Theme Mixer to edit the water color, we can do that with our mod"), or the theme's (the
+    ///   global, read every frame: Theme Mixer writes it there, ThemeMixer.Themes.Water.WaterColor.
+    ///   LoadValue), x the Brightness slider.
     /// - _EnvironmentCubemap: a small cube (RealGlass/WaterCube as a hidden camera's skybox,
     ///   Camera.RenderToCubemap) of the theme's own cube x rho(reflected ray's height, at least the
     ///   level) x <see cref="WaterOptics.CubeGain"/>: lit by the game as before, it comes back as the
     ///   theme's sky x real water's reflectance x the Sky slider. Re-drawn only when the slider or the
-    ///   theme's cube changes (Cubemap Replacer, Theme Mixer).
+    ///   theme's cube changes (Cubemap Replacer, Theme Mixer). While the sky layer draws the sky per
+    ///   pixel (<see cref="WaterSkyLayer"/>), the opaque water's material holds a BLACK cube instead:
+    ///   the game adds no sky of its own; ours stays on the transparent material.
     /// - While either is held the global _RGWaterHeld is 1 (else 0): RealLight then leaves the water
     ///   to us (its own copy of these controls).
     /// Given back: the materials' own values, or the theme's where they held none (or RealLight's).
@@ -45,12 +50,16 @@ namespace RealGlass.Water
 
         private readonly Material _material;
         private readonly RenderTexture _cube;
+        // The opaque water's cube while the sky layer draws its sky (WaterSkyLayer): no sky of the game's.
+        private readonly RenderTexture _black;
+        private bool _blackDrawn;
         private readonly GameObject _object;
         private readonly Camera _capture;
         private Material[] _water;
         private Texture[] _originalCube;
         private Color?[] _originalColour;
         private bool _cubeHeld, _colourHeld;
+        private string _heldColour = "";
         private Texture _drawnTheme;
         private float _drawnGain = -1f;
         private float _drawnWeight;
@@ -70,6 +79,15 @@ namespace RealGlass.Water
                 filterMode = FilterMode.Trilinear,
             };
             _cube.Create();
+            _black = new RenderTexture(8, 8, 16, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear)
+            {
+                name = "RealGlassWaterNoSky",
+                hideFlags = HideFlags.HideAndDontSave,
+                dimension = TextureDimension.Cube,
+                wrapMode = TextureWrapMode.Clamp,
+                filterMode = FilterMode.Bilinear,
+            };
+            _black.Create();
 
             _object = new GameObject("RealGlassWaterCubeCamera") { hideFlags = HideFlags.HideAndDontSave };
             _capture = _object.AddComponent<Camera>();
@@ -119,10 +137,24 @@ namespace RealGlass.Water
         /// and the light it is divided by change.
         /// </summary>
         /// <param name="light">The light the game's water lights the cube with (linear, floored: <see cref="WaterOptics.FloorLight"/>).</param>
-        public void HoldCube(float skySlider, Color light)
+        /// <param name="skyLayer">
+        /// The sky layer draws the sky on the opaque water this frame (<see cref="WaterSkyLayer"/>): that
+        /// material gets a black cube, so the game adds no sky of its own; the transparent one (info
+        /// views, the water tool) keeps ours.
+        /// </param>
+        public void HoldCube(float skySlider, Color light, bool skyLayer)
         {
             if (!Take())
                 return;
+
+            if (skyLayer && !_blackDrawn)
+            {
+                // The cube's shader with a gain of 0 draws black whatever it reads (a published sky included).
+                _material.SetVector(IdGain, Vector4.zero);
+                _capture.RenderToCubemap(_black);
+                _blackDrawn = true;
+                _drawnGain = -1f;
+            }
 
             Texture theme = ThemeCube();
             float gain = (float)WaterOptics.CubeGain(skySlider);
@@ -152,24 +184,30 @@ namespace RealGlass.Water
 
             for (int i = 0; i < 2; i++)
             {
-                if (_water[i] != null && _water[i].GetTexture(IdCube) != _cube)
-                    _water[i].SetTexture(IdCube, _cube);
+                Texture want = i == 0 && skyLayer ? _black : _cube;
+                if (_water[i] != null && _water[i].GetTexture(IdCube) != want)
+                    _water[i].SetTexture(IdCube, want);
             }
 
             _cubeHeld = true;
             Shader.SetGlobalFloat(IdHeld, 1f);
         }
 
-        /// <summary>The theme's clean-water colour with the daylight look and brightness, refreshed as the light/theme changes.</summary>
-        public void HoldColour(float brightness, float dayLook)
+        /// <summary>
+        /// The clean water's colour on both water materials: ours (<paramref name="own"/>, sRGB as the
+        /// picker shows it) or, with <paramref name="useTheme"/>, the map theme's (the global the game and
+        /// Theme Mixer set: it is re-read every frame), x the brightness (in linear light). The theme's
+        /// alpha is kept. One log line whenever what is held changes.
+        /// </summary>
+        public void HoldColour(float brightness, bool useTheme, Color32 own)
         {
             if (!Take())
                 return;
 
             Color theme = Shader.GetGlobalColor(IdColour);
-            Color linear = theme.linear;
+            Color source = useTheme ? theme : (Color)own;
             float k = Mathf.Max(0f, brightness);
-            Color colour = WaterAppearance.Colour(linear, k, dayLook).gamma;
+            Color colour = (source.linear * k).gamma;
             colour.a = theme.a;
             for (int i = 0; i < 2; i++)
             {
@@ -177,8 +215,11 @@ namespace RealGlass.Water
                     _water[i].SetColor(IdColour, colour);
             }
 
-            if (!_colourHeld)
-                Log.Msg("water: the water's colour is the theme's x " + Mathf.RoundToInt(k * 100f) + "%");
+            string held = (useTheme ? "the map theme's" : "ours, " + ColorText.Format(own)) + " x " + Mathf.RoundToInt(k * 100f) +
+                          "% (the theme's " + ColorText.Format((Color32)theme) + ")";
+            if (!_colourHeld || held != _heldColour)
+                Log.Msg("water: the water's colour is " + held);
+            _heldColour = held;
             _colourHeld = true;
             Shader.SetGlobalFloat(IdHeld, 1f);
         }
@@ -287,6 +328,8 @@ namespace RealGlass.Water
             UnityEngine.Object.Destroy(_object);
             _cube.Release();
             UnityEngine.Object.Destroy(_cube);
+            _black.Release();
+            UnityEngine.Object.Destroy(_black);
             UnityEngine.Object.Destroy(_material);
         }
     }

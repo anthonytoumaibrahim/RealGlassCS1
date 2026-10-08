@@ -587,7 +587,7 @@ $pairs = @(
     @('FloorHeight', 'FloorHeight'), @('Pillow', 'PanePillow'), @('Tilt', 'PaneTilt'), @('RollerWave', 'RollerWave'),
     @('PaneWeather', 'PaneWeather'), @('EdgeSilver', 'GlassEdgeSilver'), @('Finished', 'ReflectFinished'), @('SkyClouds', 'SkyClouds'),
     @('Neighbours', 'ReflectNeighbours'), @('SteadyGlints', 'SteadyGlints'), @('PanesFollowWindows', 'PanesFollowWindows'),
-    @('Interiors', 'InteriorsEnabled'), @('InteriorsByDay', 'InteriorsByDay'), @('InteriorsLit', 'InteriorsLit'),
+    @('Interiors', 'InteriorsEnabled'), @('InteriorsByDay', 'InteriorsByDay'), @('InteriorsDepth', 'InteriorsDepth'), @('InteriorsLit', 'InteriorsLit'),
     @('InteriorsLateNight', 'InteriorsLateNight'), @('InteriorsSwitching', 'InteriorsSwitching'),
     @('InteriorsBrightness', 'InteriorsBrightness'), @('InteriorsColoured', 'InteriorsColoured'), @('InteriorsCurtains', 'InteriorsCurtains'))
 $mismatch = @()
@@ -699,7 +699,22 @@ Check "the reflection's length 150%: the ray's slope 2/3 of the mirror's" ("{0:F
 Check "  length 100%: the mirror" ("{0:F6}" -f $optics::MirrorSlope(0.3, 1.0)) ("{0:F6}" -f 0.3)
 Check "  below 100% (or unset, 0): read as the mirror" ("{0:F6}" -f $optics::MirrorSlope(0.3, 0.0)) ("{0:F6}" -f 0.3)
 Check "the streaks' default is 0%, the length's 130% (the author's, 2026-10-07)" ("{0} {1}" -f (Default 'WaterCityStreaks'), (Default 'WaterCityLength')) "0 1.3"
-Check "  the sky in the water 80%, the city by night 300%" ("{0} {1}" -f (Default 'WaterSky'), (Default 'WaterCityNight')) "0.8 3"
+Check "  the sky in the water 100% (real water, per ripple), the city by night 300%" ("{0} {1}" -f (Default 'WaterSky'), (Default 'WaterCityNight')) "1 3"
+Check "the water's colour is ours by default (not the theme's)" (Default 'WaterThemeColor') "False"
+
+# The sky per ripple (2026-10-08): the old cube counted each ripple's tilt twice.
+$view = 35.0
+$old = ($optics::OldCubeReflectance($rho, $view, -10.0) + $optics::OldCubeReflectance($rho, $view, 10.0)) / 2.0
+$real = ($optics::FacetReflectance($view, -10.0) + $optics::FacetReflectance($view, 10.0)) / 2.0
+Check "the old cube: a facet 10 deg away at a 35 deg view got the 15 deg ray's 21%" ("{0:F3}" -f $optics::OldCubeReflectance($rho, $view, -10.0)) ("{0:F3}" -f $optics::Lookup($rho, [Math]::Sin(15.0 * [Math]::PI / 180.0)))
+Check "  its true reflectance is 8.3% (Schlick at 65 deg)" ("{0:F3}" -f $optics::FacetReflectance($view, -10.0)) "0.083"
+Check "  so a +-10 deg pair saw about twice the sky (1.8x..2.6x)" ($old / $real -gt 1.8 -and $old / $real -lt 2.6) "True"
+Check "the sky layer: resolved ripples are Schlick on the facet" ("{0:F6}" -f $optics::SkyReflectance($rho, 0.5, 0.0)) ("{0:F6}" -f $optics::Fresnel(0.5))
+Check "  averaged away, the rough sea's table" ("{0:F6}" -f $optics::SkyReflectance($rho, 0.5, 1.0)) ("{0:F6}" -f $optics::Lookup($rho, 0.5))
+$start = 0.0; $span = 0.0
+$optics::SkyRippleMips(1.0, 1.0, [ref]$start, [ref]$span)
+Check "  the shortest ripple (0.5 m) goes at mip 0.64, the longest (16 m) 5 mips later" ("{0:F2} {1:F2}" -f $start, $span) "0.64 5.00"
+Check "the city reflection reaches the far plane (30 km at most)" $optics::MaxDistance 30000
 
 $r = 1.2; $g = 1.1; $b = 1.0
 $optics::FloorLight([ref]$r, [ref]$g, [ref]$b)

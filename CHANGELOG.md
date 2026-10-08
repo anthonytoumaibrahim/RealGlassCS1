@@ -12,8 +12,12 @@ The first Workshop release: realistic glass on every building, at every distance
 - Reflections use a separate depth record of the visible simulated water surface, instead of
   inferring water from sea level and terrain depth. Sloping seabeds, dry areas below sea level,
   elevated lakes and foreground occlusion are covered by GPU regressions.
-- Daylight blue and wave detail: brighter blue clean water and stronger long waves during the
-  day, fading back to the existing colour and wave balance at night. Adjustable from 0 to 100%.
+- The sky in the water is worked out per pixel for each ripple: rippled water no longer reflects
+  about twice the sky it should, so near water shows its own deep color and far water still
+  mirrors the bright sky. It reflects the sky on screen, clouds and sunsets included. Sky
+  reflection's default is 100% (real water).
+- Water color: your own (a deep, dark lake by default) or the map theme's -- no Theme Mixer needed.
+- The city's reflection reaches as far as the camera sees (was 8 km).
 
 ### New
 

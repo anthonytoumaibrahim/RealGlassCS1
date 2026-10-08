@@ -6,7 +6,7 @@ using UnityEngine;
 /// <summary>
 /// Compresses the rooms' pictures (tools/interiors/render-rooms.py's rooms-night.png and
 /// rooms-day.png) into what the mod ships: raw DXT1 with every mip, behind a small header
-/// (Glass/RoomAtlas.cs reads it). Run headless by tools/interiors/build-rooms.ps1:
+/// (Glass/RoomAtlas.cs reads it: its layout, the box rooms' shapes). Run headless by tools/interiors/build-rooms.ps1:
 ///   Unity.exe -batchmode -nographics -quit -projectPath UnityProject -executeMethod RoomAtlasBaker.Bake
 /// with RG_ROOMS_IN (the folder of the two PNGs and rooms-pools.txt) and RG_ROOMS_OUT (where the
 /// .bytes go). The mips are box-filtered: the tiles are powers of two on a power-of-two grid, so no
@@ -15,7 +15,9 @@ using UnityEngine;
 public static class RoomAtlasBaker
 {
     private const string Folder = "Assets/RoomBake";
-    private const int Version = 1;
+
+    /// <summary>2: box rooms -- the back wall's share of the picture, and per kind its box's aspect and depth (2026-10-07).</summary>
+    private const int Version = 2;
     private const int PoolCount = 8;
 
     public static void Bake()
@@ -27,21 +29,27 @@ public static class RoomAtlasBaker
             if (string.IsNullOrEmpty(input) || string.IsNullOrEmpty(output))
                 throw new Exception("RG_ROOMS_IN and RG_ROOMS_OUT must be set");
 
+            var inv = System.Globalization.CultureInfo.InvariantCulture;
             string[] pools = File.ReadAllLines(Path.Combine(input, "rooms-pools.txt"));
             string[] head = pools[0].Split(' ');
             int perRow = int.Parse(head[0]), nightTile = int.Parse(head[1]), dayTile = int.Parse(head[2]), tiles = int.Parse(head[3]);
+            float far = float.Parse(head[4], inv);
             var first = new int[PoolCount];
             var count = new int[PoolCount];
+            var aspect = new float[PoolCount];
+            var depth = new float[PoolCount];
             for (int k = 0; k < PoolCount; k++)
             {
                 string[] p = pools[k + 1].Split(' ');
                 first[k] = int.Parse(p[1]);
                 count[k] = int.Parse(p[2]);
+                aspect[k] = float.Parse(p[3], inv);
+                depth[k] = float.Parse(p[4], inv);
             }
 
             Directory.CreateDirectory(Folder);
-            One(Path.Combine(input, "rooms-night.png"), Path.Combine(output, "rooms-night.bytes"), perRow, nightTile, tiles, first, count);
-            One(Path.Combine(input, "rooms-day.png"), Path.Combine(output, "rooms-day.bytes"), perRow, dayTile, tiles, first, count);
+            One(Path.Combine(input, "rooms-night.png"), Path.Combine(output, "rooms-night.bytes"), perRow, nightTile, tiles, far, first, count, aspect, depth);
+            One(Path.Combine(input, "rooms-day.png"), Path.Combine(output, "rooms-day.bytes"), perRow, dayTile, tiles, far, first, count, aspect, depth);
             AssetDatabase.DeleteAsset(Folder);
             Debug.Log("ROOMS BAKE OK");
         }
@@ -52,7 +60,8 @@ public static class RoomAtlasBaker
         }
     }
 
-    private static void One(string png, string bytes, int perRow, int tilePx, int tiles, int[] first, int[] count)
+    private static void One(string png, string bytes, int perRow, int tilePx, int tiles, float far, int[] first, int[] count,
+                            float[] aspect, float[] depth)
     {
         string asset = Folder + "/" + Path.GetFileName(png);
         File.Copy(png, asset, true);
@@ -92,11 +101,14 @@ public static class RoomAtlasBaker
             w.Write(perRow);
             w.Write(tilePx);
             w.Write(tiles);
+            w.Write(far);
             w.Write(PoolCount);
             for (int k = 0; k < PoolCount; k++)
             {
                 w.Write(first[k]);
                 w.Write(count[k]);
+                w.Write(aspect[k]);
+                w.Write(depth[k]);
             }
             w.Write(data.Length);
             w.Write(data);

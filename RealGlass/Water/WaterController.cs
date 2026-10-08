@@ -6,8 +6,9 @@ namespace RealGlass.Water
 {
     /// <summary>
     /// The F8 panel's Water tab, for one city (on ModController's GameObject, beside the glass;
-    /// independent of the glass's switch): the map's water's brightness, its sky with real water's
-    /// reflectance (<see cref="WaterSurface"/>) and the city in it (<see cref="WaterCityReflection"/>).
+    /// independent of the glass's switch): the map's water's colour and brightness (<see cref="WaterSurface"/>),
+    /// its sky with real water's reflectance per ripple (<see cref="WaterSkyLayer"/>; our cube where it
+    /// cannot draw), the ripples, the foam and the city in it (<see cref="WaterCityReflection"/>).
     /// Off by default (the author, 2026-10-03). Off means nothing is held: the theme's water, and
     /// _RGWaterHeld = 0 so RealLight's copy of these controls may take it.
     /// </summary>
@@ -18,6 +19,7 @@ namespace RealGlass.Water
         private static readonly int IdGameRipples = Shader.PropertyToID("_WaterNormal");
 
         private WaterSurface _surface;
+        private WaterSkyLayer _sky;
         private WaterCityReflection _city;
         private WaterRipples _ripples;
         private WaterFoam _foam;
@@ -36,10 +38,12 @@ namespace RealGlass.Water
                     _table[i] = new Vector4((float)rho[i], 0f, 0f, 0f);
 
                 _surface = WaterSurface.Create();
+                _sky = WaterSkyLayer.Create();
                 _city = WaterCityReflection.Create();
                 _ripples = WaterRipples.Create();
                 _foam = WaterFoam.Create();
-                Log.Msg("water: ready (cube " + (_surface != null ? "yes" : "NO SHADER") + ", city reflection " + (_city != null ? "yes" : "NO SHADER") +
+                Log.Msg("water: ready (cube " + (_surface != null ? "yes" : "NO SHADER") + ", sky layer " + (_sky != null ? "yes" : "NO SHADER") +
+                        ", city reflection " + (_city != null ? "yes" : "NO SHADER") +
                         ", ripples " + (_ripples != null ? "yes" : "NO SHADER") + ", foam " + (_foam != null ? "yes" : "NO SHADER") +
                         "; reflectance " + (rho[WaterOptics.TableSize - 1] * 100.0).ToString("F1") + "% looking down, " + (rho[4] * 100.0).ToString("F0") +
                         "% at 1 deg); " + Describe());
@@ -56,8 +60,8 @@ namespace RealGlass.Water
         {
             if (!On(Settings.WaterEnabled))
                 return "water controls off";
-            return "water controls ON: brightness " + Pct(Settings.WaterBrightness) +
-                   ", daylight look " + Pct(Settings.WaterDayLook) +
+            return "water controls ON: color " + (On(Settings.WaterThemeColor) ? "the map theme's" : Settings.WaterColor != null ? ColorText.Format(Settings.WaterColor.value) : "?") +
+                   ", brightness " + Pct(Settings.WaterBrightness) +
                    ", moving ripples " + (On(Settings.WaterRipples) ? Pct(Settings.WaterRippleStrength) : "off") +
                    ", foam " + (On(Settings.WaterFoam) ? Pct(Settings.WaterFoamAmount) + " (shores " + Pct(Settings.WaterFoamShore) + ", fast water " +
                    Pct(Settings.WaterFoamRapids) + ", wave fronts " + Pct(Settings.WaterFoamFronts) + ")" : "off") +
@@ -111,20 +115,61 @@ namespace RealGlass.Water
 
             Vector3 toSun;
             Color light = WaterLight(out toSun);
-            float dayLook = WaterAppearance.DayAmount(toSun.y, Value(Settings.WaterDayLook, Settings.Defaults.WaterDayLook));
 
+            // First: the sky layer reads the ripples the water is shaded with this frame.
+            RipplesFrame();
+
+            bool skyLayer = false;
             if (_surface != null)
             {
-                _surface.HoldColour(Value(Settings.WaterBrightness, Settings.Defaults.WaterBrightness), dayLook);
+                _surface.HoldColour(Value(Settings.WaterBrightness, Settings.Defaults.WaterBrightness), On(Settings.WaterThemeColor),
+                                    Settings.WaterColor != null ? Settings.WaterColor.value : Settings.Defaults.WaterColor);
                 if (On(Settings.WaterRealSky))
-                    _surface.HoldCube(Value(Settings.WaterSky, Settings.Defaults.WaterSky), light);
+                {
+                    skyLayer = SkyFrame();
+                    _surface.HoldCube(Value(Settings.WaterSky, Settings.Defaults.WaterSky), light, skyLayer);
+                }
                 else
+                {
+                    if (_sky != null)
+                        _sky.Hide("off");
                     _surface.ReleaseCube();
+                }
             }
 
-            RipplesFrame(dayLook);
             FoamFrame();
-            CityFrame(light, toSun);
+            CityFrame(light, toSun, skyLayer);
+        }
+
+        /// <summary>
+        /// The sky on the water per pixel this frame (<see cref="WaterSkyLayer"/>), or not: then our cube
+        /// carries it, as before 2026-10-08 (the layer missing or failed, an info view, the snapshot tool).
+        /// </summary>
+        private bool SkyFrame()
+        {
+            if (_sky == null)
+                return false;
+
+            Camera camera = Camera.main;
+            string why = null;
+            if (camera == null)
+                why = "no camera";
+            else if (Singleton<InfoManager>.exists && Singleton<InfoManager>.instance.CurrentMode != InfoManager.InfoMode.None)
+                why = "an info view is open";
+            else if (ToolsModifierControl.toolController != null && ToolsModifierControl.toolController.CurrentTool is SnapshotTool)
+                why = "the snapshot tool";
+            if (why != null)
+            {
+                _sky.Hide(why);
+                return false;
+            }
+
+            bool ours = _ripples != null && _ripples.Held;
+            double rms = _ripples != null ? _ripples.DecodedRms : WaterOptics.DefaultRippleRms;
+            double slope = WaterOptics.RippleSlope(rms, ours ? Value(Settings.WaterRippleStrength, Settings.Defaults.WaterRippleStrength) : 1.0);
+            return _sky.Show(Value(Settings.WaterSky, Settings.Defaults.WaterSky), ShadedRipples(), slope * slope,
+                             ours ? Value(Settings.WaterRippleSize, Settings.Defaults.WaterRippleSize) : 1.0,
+                             ours ? Value(Settings.WaterWaveSize, Settings.Defaults.WaterWaveSize) : 1.0, camera.transform.position);
         }
 
         /// <summary>The foam on the game's water this frame, or none (off, an info view, the snapshot tool, no sea level).</summary>
@@ -154,7 +199,7 @@ namespace RealGlass.Water
         /// Our moving ripples on the water (drawn this frame), or the game's own again. The game's
         /// texture is measured either way: the city reflection's gain is set against it.
         /// </summary>
-        private void RipplesFrame(float dayLook)
+        private void RipplesFrame()
         {
             if (_ripples == null)
                 return;
@@ -163,7 +208,7 @@ namespace RealGlass.Water
             {
                 _ripples.Draw(Value(Settings.WaterRippleStrength, Settings.Defaults.WaterRippleStrength),
                               Value(Settings.WaterRippleSize, Settings.Defaults.WaterRippleSize),
-                              Value(Settings.WaterWaveSize, Settings.Defaults.WaterWaveSize), dayLook);
+                              Value(Settings.WaterWaveSize, Settings.Defaults.WaterWaveSize));
                 _ripples.Hold();
             }
             else
@@ -205,7 +250,7 @@ namespace RealGlass.Water
             return new Color((float)r, (float)g, (float)b, 1f);
         }
 
-        private void CityFrame(Color lit, Vector3 toSun)
+        private void CityFrame(Color lit, Vector3 toSun, bool skyLayer)
         {
             if (_city == null)
                 return;
@@ -243,11 +288,15 @@ namespace RealGlass.Water
             float nightStrength = Value(Settings.WaterCityNight, Settings.Defaults.WaterCityNight);
             float strength = nightStrength + (dayStrength - nightStrength) * day;
             float skyShare = _surface != null && _surface.CubeHeld ? Value(Settings.WaterSky, Settings.Defaults.WaterSky) : 0f;
+            // The sky the city takes the place of: the live sky the sky layer draws (light already), or
+            // the theme's under our cube (lit by the water's light).
+            Texture sky = skyLayer && _sky.Cube != null ? _sky.Cube : WaterSurface.ThemeCube();
+            Color skyLight = skyLayer && _sky.Cube != null ? Color.white : lit;
 
             double up = WaterOptics.StreakSigma(Value(Settings.WaterCityStreaks, Settings.Defaults.WaterCityStreaks), _spread, camera.fieldOfView);
             double rms = _ripples != null ? _ripples.DecodedRms : WaterOptics.DefaultRippleRms;
             double gain = WaterOptics.CityRippleGain(Value(Settings.WaterCityWaves, Settings.Defaults.WaterCityWaves), rms);
-            _city.SetUniforms(level, strength, skyShare, WaterSurface.ThemeCube(), lit, up, ShadedRipples(), gain,
+            _city.SetUniforms(level, strength, skyShare, sky, skyLight, up, ShadedRipples(), gain,
                               Value(Settings.WaterCityLength, Settings.Defaults.WaterCityLength), camera.farClipPlane);
             _city.Attach(camera);
             CityState("on (sea level " + level.ToString("F1") + " m)");
@@ -273,6 +322,8 @@ namespace RealGlass.Water
                 _ripples.Release();
             if (_foam != null)
                 _foam.Hide();
+            if (_sky != null)
+                _sky.Hide("off");
             if (_surface != null)
                 _surface.GiveBack();
             else
@@ -290,6 +341,8 @@ namespace RealGlass.Water
                     _ripples.Destroy();
                 if (_foam != null)
                     _foam.Destroy();
+                if (_sky != null)
+                    _sky.Destroy();
                 if (_surface != null)
                     _surface.Destroy();
                 Shader.SetGlobalFloat("_RGWaterHeld", 0f);
@@ -302,6 +355,7 @@ namespace RealGlass.Water
             _city = null;
             _ripples = null;
             _foam = null;
+            _sky = null;
             _surface = null;
         }
     }

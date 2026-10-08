@@ -68,9 +68,10 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools\test-reflection-shader
 
 The surface regression uses the runtime capture class and simulated patch data: sloped seabeds,
 elevated and overlapping water, dry cells, foreground occlusion, reused property blocks, empty
-frames, resizing and reattachment. It also checks daylight colour/waves and preservation at night.
+frames, resizing and reattachment.
 The optical suite verifies the reflection against its model, including an elevated lake.
-For a daylight comparison: `tools\preview\water-render.ps1 -DayLooks 0,1 -Ripples 1 -Frames none`.
+For the sky on the water, the cube the game reads against the sky drawn per pixel:
+`tools\preview\foam-render.ps1 -SkyColumns "old:0.8,old:0.3,new:1" -Name sky`.
 These are synthetic scenes; check the final look and frame time in a loaded city before release.
 
 **Look at a change before playing it:** `tools\preview\gpu-render.ps1` draws the REAL glass

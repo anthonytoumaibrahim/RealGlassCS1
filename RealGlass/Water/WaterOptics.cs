@@ -26,6 +26,10 @@ namespace RealGlass.Water
     ///   same slope. The game shades with it as with its own; the city's reflection bends its rays off
     ///   the same ripples (the author, 2026-10-05: "the water doesn't get blurry. BUT, it does get
     ///   distorted a bit, with the waves").
+    /// - THE SKY ON RIPPLED WATER (2026-10-08, <see cref="SkyReflectance"/>): Fresnel on each ripple,
+    ///   worked out per pixel by the sky layer (RealGlass/WaterSky), not baked into the cube the game
+    ///   reads along the ripple's reflected ray (<see cref="OldCubeReflectance"/>: it counted each
+    ///   ripple's tilt twice, about twice the sky on rippled water).
     /// - THE REFLECTION'S LENGTH (<see cref="MirrorSlope"/>): the mod's own stretch, not a model --
     ///   the city's reflection drawn longer than the city is tall, as reflections on open water look
     ///   drawn out toward the viewer (the author, 2026-10-04).
@@ -49,8 +53,13 @@ namespace RealGlass.Water
         /// <summary>The game's water shader adds the cube x this for clean water (Custom/Water/Default, disassembled by RealLight).</summary>
         public const double GameReflectivity = 0.5;
 
-        /// <summary>How far a reflected ray is followed, metres (the far plane's 0.9 when nearer).</summary>
-        public const double MaxDistance = 8000.0;
+        /// <summary>
+        /// How far a reflected ray is followed at most, metres: the reach is the camera's far plane x
+        /// 0.9 up to this (the game's far plane is 20-23 km in the author's city). 8 km until
+        /// 2026-10-08, faded out from 5.6 km: the author found the night reflection's "render distance
+        /// a bit low".
+        /// </summary>
+        public const double MaxDistance = 30000.0;
 
         /// <summary>The least depth behind a surface that still counts as meeting it, metres.</summary>
         public const double Thickness = 30.0;
@@ -243,10 +252,8 @@ namespace RealGlass.Water
         /// </summary>
         public static double[] Ripples(double size, double waveSize)
         {
-            size = Math.Max(MinRippleSize, Math.Min(MaxRippleSize, size));
-            waveSize = Math.Max(MinWaveSize, Math.Min(MaxWaveSize, waveSize));
-            double shortest = RippleShortest * Math.Max(1.0, size);
-            double longest = Math.Max(1.5 * shortest, RippleLongest * size * waveSize);
+            double shortest, longest;
+            RippleRange(size, waveSize, out shortest, out longest);
             var waves = new double[RippleCount * WaveStride];
             double ratio = Math.Pow(shortest / longest, 1.0 / (RippleCount - 1));
             double slope = Math.Sqrt(2.0 / RippleCount);
@@ -274,6 +281,64 @@ namespace RealGlass.Water
             }
 
             return waves;
+        }
+
+        /// <summary>The shortest and the longest ripple (m) at the Ripple size and Wave size sliders (1 = 100%).</summary>
+        public static void RippleRange(double size, double waveSize, out double shortest, out double longest)
+        {
+            size = Math.Max(MinRippleSize, Math.Min(MaxRippleSize, size));
+            waveSize = Math.Max(MinWaveSize, Math.Min(MaxWaveSize, waveSize));
+            shortest = RippleShortest * Math.Max(1.0, size);
+            longest = Math.Max(1.5 * shortest, RippleLongest * size * waveSize);
+        }
+
+        /// <summary>
+        /// For the sky layer (RealGlass/WaterSky): how much of the ripples' slope a pixel averages away,
+        /// by the mip L of the ripple texture the GPU reads there. A wave is averaged away once the mip's
+        /// texels are half its length (fewer than 2 a cycle; a texel at mip 0 is <see cref="RippleTile"/>
+        /// / <see cref="RippleTexels"/>). The waves have equal slopes and lengths in equal ratios
+        /// (<see cref="Ripples"/>), so the share averaged away grows evenly in L: saturate((L - start) /
+        /// span), start the mip where the shortest goes, start + span where the longest does.
+        /// </summary>
+        public static void SkyRippleMips(double size, double waveSize, out double start, out double span)
+        {
+            double shortest, longest;
+            RippleRange(size, waveSize, out shortest, out longest);
+            double texel = RippleTile / RippleTexels;
+            start = Math.Log(shortest / (2.0 * texel), 2.0);
+            span = Math.Max(0.5, Math.Log(longest / shortest, 2.0));
+        }
+
+        /// <summary>
+        /// The sky layer's reflectance (RealGlass/WaterSky, the same sum): a facet seen at cosI (the
+        /// cosine between the eye and its normal) reflects Schlick's Fresnel where its ripples are
+        /// resolved, the rough sea's <paramref name="table"/> where they are averaged away
+        /// (<paramref name="averaged"/> 0..1; Bruneton, Neyret &amp; Holzschuch 2010).
+        /// </summary>
+        public static double SkyReflectance(double[] table, double cosI, double averaged)
+        {
+            double u = Math.Max(0.0, Math.Min(1.0, averaged));
+            return Fresnel(cosI) + (Lookup(table, cosI) - Fresnel(cosI)) * u;
+        }
+
+        /// <summary>
+        /// What the water's cube gave until 2026-10-08 (RealGlass/WaterCube, read by the game along the
+        /// ripple's reflected ray): the rough sea's reflectance by that ray's height, for a view
+        /// <paramref name="viewDown"/> degrees below the level and a facet tilted <paramref name="tilt"/>
+        /// degrees toward the eye in the plane of the view. The ray rises viewDown + 2 tilt; the true
+        /// incidence on the facet is 90 - viewDown - tilt: the cube counted the tilt twice.
+        /// </summary>
+        public static double OldCubeReflectance(double[] table, double viewDown, double tilt)
+        {
+            double up = Math.Max(0.0, viewDown + 2.0 * tilt);
+            return Lookup(table, Math.Sin(up * Math.PI / 180.0));
+        }
+
+        /// <summary>The same facet's true reflectance (Schlick on the facet): incidence 90 - viewDown - tilt degrees.</summary>
+        public static double FacetReflectance(double viewDown, double tilt)
+        {
+            double incidence = 90.0 - viewDown - tilt;
+            return Fresnel(Math.Cos(incidence * Math.PI / 180.0));
         }
 
         /// <summary>

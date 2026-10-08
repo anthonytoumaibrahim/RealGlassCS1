@@ -39,6 +39,12 @@ public static class FoamPreview
         public bool Sources;
         public float Seconds;
         public float Strength;
+        // The sky on the water: 0 the mod's cube until 2026-10-08 (the stand-in's own, x SkyGain); 1 the
+        // sky layer (RealGlass/WaterSky) at the Sky slider SkyGain, the stand-in reflecting none.
+        public int SkyMode;
+        public float SkyGain = 1f;
+        // The water's colour (sRGB, the stand-in's _BodyColour); null: the preview's own.
+        public Color? Body;
     }
 
     /// <summary>A run of frames for the flicker under temporal anti-aliasing (as WaterPreview's).</summary>
@@ -58,11 +64,13 @@ public static class FoamPreview
         public GameObject CameraObject;
         public RenderTexture Target;
         public Light Sun;
-        public Material Skybox, Water, Foam, Reflection, Surface;
+        public Material Skybox, Water, Foam, Reflection, Surface, Sky;
         public Camera Capture;
         public RenderTexture SkyCube;
         public List<Tower> Towers;
-        public List<Renderer> FoamRenderers;
+        public List<Renderer> FoamRenderers, SkyRenderers;
+        public Color BodyColour;
+        public Vector4 SkyInfo;
         public Vector4[] Rows;
         public float RippleRms;
         public RenderTexture Ripples;
@@ -76,12 +84,28 @@ public static class FoamPreview
             if (Tsunami != wantTsunami)
             {
                 Coast.Tsunami = wantTsunami;
-                Coast.Bind(Water, Foam, Surface, Log);
+                Coast.Bind(new[] { Water, Foam, Surface, Sky }, Log);
                 Tsunami = wantTsunami;
             }
 
             Reflection.SetVector("_RGWaterGeom", new Vector4(SeaLevel, strength, 0f, 0f));
             return SetView(view, CameraObject, Sun, Skybox, Capture, SkyCube, Water, Towers);
+        }
+
+        /// <summary>
+        /// The sky on the water for a shot: the old cube (the stand-in's, x gain) or the sky layer at the
+        /// Sky slider gain; the city reflection takes the place of that sky (skyShare = gain, as the mod
+        /// sets it), the stand-in's colour.
+        /// </summary>
+        public void SkyFor(Shot shot, float strength)
+        {
+            bool layer = shot.SkyMode == 1;
+            Water.SetFloat("_SkyGain", layer ? 0f : shot.SkyGain);
+            foreach (Renderer r in SkyRenderers)
+                r.enabled = layer;
+            Shader.SetGlobalVector("_RGWaterSky", new Vector4(shot.SkyGain, SkyInfo.y, SkyInfo.z, 0f));
+            Reflection.SetVector("_RGWaterGeom", new Vector4(SeaLevel, strength, shot.SkyGain, 1f));
+            Water.SetColor("_BodyColour", shot.Body.HasValue ? shot.Body.Value : BodyColour);
         }
 
         /// <summary>The game's clocks at t (SimulationManager: x seconds into the minute, w the same as an angle), and the ripples for it.</summary>
@@ -94,6 +118,7 @@ public static class FoamPreview
                 Ripples.Release();
             Ripples = CityReflectionTest.GenerateRipples(Rows, 0.5f * RippleRms, 1024);
             Water.SetTexture("_WaterNormal", Ripples);
+            Sky.SetTexture("_WaterNormal", Ripples);
             Reflection.SetTexture("_RGRipples", Ripples);
         }
 
@@ -121,6 +146,8 @@ public static class FoamPreview
             string outDir = dir;
             int width = 960, height = 540;
             float streak = 0f, length = 1f, exposureDay = 1f, exposureNight = 1f, rippleRms = 0.3f, cityGain = 0f;
+            var skyRipples = new Vector4(0.64f, 5f, 1024f, 0.0225f);
+            var body = new Color(0.03f, 0.06f, 0.08f, 1f);
             foreach (string raw in File.ReadAllLines(Path.Combine(dir, "foam-preview-input.txt")))
             {
                 string[] p = raw.Split(' ');
@@ -150,8 +177,18 @@ public static class FoamPreview
                 }
                 else if (p[0] == "foam")
                     foam[int.Parse(p[1], CultureInfo.InvariantCulture)] = new Vector4(WaterPreview.F(p[2]), WaterPreview.F(p[3]), WaterPreview.F(p[4]), WaterPreview.F(p[5]));
+                else if (p[0] == "skyripples")
+                    skyRipples = new Vector4(WaterPreview.F(p[1]), WaterPreview.F(p[2]), WaterPreview.F(p[3]), WaterPreview.F(p[4]));
+                else if (p[0] == "body")
+                    body = Hex(p[1]) ?? body;
                 else if (p[0] == "shot")
-                    shots.Add(new Shot { Name = p[1], View = p[2], Foam = p[3] != "0", Sources = p[3] == "2", Seconds = WaterPreview.F(p[4]), Strength = WaterPreview.F(p[5]) });
+                    shots.Add(new Shot
+                    {
+                        Name = p[1], View = p[2], Foam = p[3] != "0", Sources = p[3] == "2", Seconds = WaterPreview.F(p[4]), Strength = WaterPreview.F(p[5]),
+                        SkyMode = p.Length > 6 ? int.Parse(p[6], CultureInfo.InvariantCulture) : 0,
+                        SkyGain = p.Length > 7 ? WaterPreview.F(p[7]) : 1f,
+                        Body = p.Length > 8 ? Hex(p[8]) : null,
+                    });
                 else if (p[0] == "taa")
                 {
                     // frames, warm-up frames, frames a second, jitter spread, stationary blending, sharpen
@@ -173,12 +210,18 @@ public static class FoamPreview
             for (int i = 0; i < names.Length; i++)
                 foamMaterial.SetVector(names[i], foam[i]);
             var water = new Material(AssetDatabase.LoadAssetAtPath<Shader>("Assets/Editor/PreviewGameWater.shader"));
-            water.SetColor("_BodyColour", new Color(0.03f, 0.06f, 0.08f, 1f));
+            water.SetColor("_BodyColour", body);
+
+            // The sky layer (RealGlass/WaterSky) on the same meshes, as WaterSkyLayer draws it.
+            Shader skyShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/RealGlass/WaterSky.shader");
+            log.Add("sky shader " + (skyShader != null ? skyShader.name + " supported=" + skyShader.isSupported : "MISSING"));
+            var skyMaterial = new Material(skyShader);
 
             var coast = new Coast();
             var waterRenderers = new List<Renderer>();
             var foamRenderers = new List<Renderer>();
-            BuildScene(water, foamMaterial, waterRenderers, foamRenderers);
+            var skyRenderers = new List<Renderer>();
+            BuildScene(water, foamMaterial, skyMaterial, waterRenderers, foamRenderers, skyRenderers);
             List<Tower> towers = BuildTowers();
             log.Add("scene: " + waterRenderers.Count + " water tiles, " + towers.Count + " towers");
 
@@ -197,6 +240,8 @@ public static class FoamPreview
                 autoGenerateMips = true,
             };
             skyCube.Create();
+            Shader.SetGlobalTexture("_RGWaterSkyCube", skyCube);
+            Shader.SetGlobalVector("_RGWaterSkyRipples", skyRipples);
             var captureObject = new GameObject("preview sky capture");
             Camera capture = captureObject.AddComponent<Camera>();
             capture.enabled = false;
@@ -220,7 +265,8 @@ public static class FoamPreview
 
             // The city reflection on the sea, as WaterCityReflection.Record records it.
             var reflection = new Material(AssetDatabase.LoadAssetAtPath<Shader>("Assets/RealGlass/CityReflection.shader"));
-            reflection.SetTexture("_RGWaterTheme", WaterPreview.Cube(Color.black));
+            // The sky the city takes the place of: the live sky, light already (the mod's with the sky layer).
+            reflection.SetTexture("_RGWaterTheme", skyCube);
             var cube = WaterPreview.UnitCube();
             int w = Mathf.Max(1, width / 2), h = Mathf.Max(1, height / 2);
             RenderTexture frame = WaterPreview.Target(w, h, true), trace = WaterPreview.Target(w, h, true), streaked = WaterPreview.Target(w, h, false);
@@ -245,7 +291,7 @@ public static class FoamPreview
             buffer.SetRenderTarget(BuiltinRenderTextureType.CameraTarget);
             buffer.DrawMesh(cube, Matrix4x4.identity, reflection, 0, 2);
             camera.AddCommandBuffer(CameraEvent.AfterImageEffectsOpaque, buffer);
-            reflection.SetVector("_RGWaterMarch", new Vector4(8000f, 30f, 0.05f, Mathf.Max(1f, length)));
+            reflection.SetVector("_RGWaterMarch", new Vector4(0.9f * camera.farClipPlane, 30f, 0.05f, Mathf.Max(1f, length)));
             reflection.SetVector("_RGWaterStreak", new Vector4(streak, 1f / h, 0f, 0f));
             reflection.SetVector("_RGWaterWave", new Vector4(cityGain * 2f, 3f, 1f, 0f));
             reflection.SetVector("_RGWaterLight", new Vector4(1f, 1f, 1f, 0f));
@@ -253,15 +299,18 @@ public static class FoamPreview
             var scene = new Scene
             {
                 Coast = coast, Camera = camera, CameraObject = cameraObject, Target = target, Sun = sun, Skybox = skybox, Water = water,
-                Foam = foamMaterial, Reflection = reflection, Surface = surface, Capture = capture, SkyCube = skyCube, Towers = towers, FoamRenderers = foamRenderers,
-                Rows = rows, RippleRms = rippleRms, Log = log,
+                Foam = foamMaterial, Reflection = reflection, Surface = surface, Sky = skyMaterial, Capture = capture, SkyCube = skyCube, Towers = towers,
+                FoamRenderers = foamRenderers, SkyRenderers = skyRenderers, Rows = rows, RippleRms = rippleRms, Log = log, BodyColour = body,
+                SkyInfo = new Vector4(1f, skyCube.width, 7f, 0f),
             };
+            scene.SkyFor(new Shot(), 1f);
             if (seqs.Count > 0)
                 Flicker(seqs, scene, taa, exposureDay, exposureNight, outDir);
 
             foreach (Shot shot in shots)
             {
                 bool night = scene.Set(shot.View, shot.Strength);
+                scene.SkyFor(shot, shot.Strength);
                 scene.ShowFoam(shot.Foam, shot.Sources);
                 scene.Clock(shot.Seconds);
 
@@ -547,8 +596,8 @@ public static class FoamPreview
             return surface;
         }
 
-        /// <summary>The data as the game holds it, on both materials.</summary>
-        public void Bind(Material water, Material foam, Material surfaceMaterial, List<string> log)
+        /// <summary>The data as the game holds it, on every material drawn on the water's meshes.</summary>
+        public void Bind(Material[] materials, List<string> log)
         {
             var heights = new Color32[WaterTexels * WaterTexels];
             for (int j = 0; j < WaterTexels; j++)
@@ -585,7 +634,7 @@ public static class FoamPreview
                 surface[2 + frame] = DataTexture(SurfaceTexels, b, FilterMode.Bilinear);
             }
 
-            foreach (Material m in new[] { water, foam, surfaceMaterial })
+            foreach (Material m in materials)
             {
                 m.SetTexture("_MainTex", heightMap);
                 m.SetTexture("_TerrainHeight", terrainMap);
@@ -693,7 +742,8 @@ public static class FoamPreview
     /// 16 tiles of 128 x 128 quads, 8 m apart, over the 4 km square. The water's are flat: the vertex
     /// program puts each vertex at the simulated surface, as the game's does.
     /// </summary>
-    private static void BuildScene(Material water, Material foam, List<Renderer> waterRenderers, List<Renderer> foamRenderers)
+    private static void BuildScene(Material water, Material foam, Material sky, List<Renderer> waterRenderers, List<Renderer> foamRenderers,
+                                   List<Renderer> skyRenderers)
     {
         var colours = new Color[TerrainTexels * TerrainTexels];
         for (int j = 0; j < TerrainTexels; j++)
@@ -739,8 +789,23 @@ public static class FoamPreview
                 fr.sharedMaterial = foam;
                 fr.shadowCastingMode = ShadowCastingMode.Off;
                 foamRenderers.Add(fr);
+
+                var sgo = new GameObject("sky " + ti + "," + tj);
+                sgo.AddComponent<MeshFilter>().sharedMesh = waterMesh;
+                MeshRenderer sr = sgo.AddComponent<MeshRenderer>();
+                sr.sharedMaterial = sky;
+                sr.shadowCastingMode = ShadowCastingMode.Off;
+                sr.receiveShadows = false;
+                skyRenderers.Add(sr);
             }
         }
+    }
+
+    /// <summary>"#RRGGBB" as a colour (sRGB); null for "-" or anything unreadable.</summary>
+    private static Color? Hex(string text)
+    {
+        Color c;
+        return text != "-" && ColorUtility.TryParseHtmlString(text, out c) ? c : (Color?)null;
     }
 
     private static Mesh Grid(float x0, float z0, int quads, float spacing, bool ground)
