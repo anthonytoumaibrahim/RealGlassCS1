@@ -1120,8 +1120,8 @@ namespace RealGlass.UI
 
         /// <summary>
         /// F8 -> Interiors: rooms behind every building's windows (Glass/Interiors.cs), ours at night;
-        /// off by default (the author, 2026-10-07: "by default it's off for now, and when turned on it
-        /// affects all buildings"). An asset can say otherwise in the building window.
+        /// on by default since 2026-10-11 (off from 2026-10-07: "by default it's off for now, and when
+        /// turned on it affects all buildings"). An asset can say otherwise in the building window.
         /// </summary>
         private static void BuildInteriors()
         {
@@ -1274,7 +1274,7 @@ namespace RealGlass.UI
             });
         }
 
-        /// <summary>F8 -> Water: the map's water (Water/WaterController.cs), off by default, apart from the glass.</summary>
+        /// <summary>F8 -> Water: the map's water (Water/WaterController.cs), on by default, apart from the glass.</summary>
         private static void BuildWater()
         {
             Add(new Row

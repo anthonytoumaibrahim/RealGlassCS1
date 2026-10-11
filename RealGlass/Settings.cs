@@ -205,7 +205,7 @@ namespace RealGlass
         /// </summary>
         public static BoolSetting PanesFollowWindows { get; private set; }
 
-        // ---- F8 -> Interiors (Glass/Interiors.cs; off by default, the author 2026-10-07) --------
+        // ---- F8 -> Interiors (Glass/Interiors.cs; on by default since 2026-10-11) ----------
         // Off: behind the glass by day a dark inside (GlassUniforms), by night the game's own window
         // (round 7). On: rooms behind every building's windows, OURS at night.
 
@@ -247,7 +247,7 @@ namespace RealGlass
         /// <summary>1..6: faces of the live sky cube rendered a frame (6 = the whole cube every frame).</summary>
         public static IntSetting SkyCubeRate { get; private set; }
 
-        // ---- F8 -> Water (Water/WaterController.cs; off by default, the author 2026-10-03) ------
+        // ---- F8 -> Water (Water/WaterController.cs; on by default since 2026-10-11) ------
 
         /// <summary>The Water tab's switch: off, the map's water is the game's and the theme's.</summary>
         public static BoolSetting WaterEnabled { get; private set; }
@@ -379,8 +379,8 @@ namespace RealGlass
             public const bool PaneWeather = true;
             public const bool PanesFollowWindows = true;
 
-            // ---- Interiors ---- (off: "by default it's off for now", the author 2026-10-07)
-            public const bool InteriorsEnabled = false;
+            // ---- Interiors ---- (on since 2026-10-11, the author; off from 2026-10-07)
+            public const bool InteriorsEnabled = true;
             public const bool InteriorsByDay = false;
 
             /// <summary>Full depth (the author, 2026-10-07: "a slider would be better, some people might not prefer the parallax").</summary>
@@ -401,8 +401,8 @@ namespace RealGlass
             public const int SkyCubeSize = 2;         // 256 px
             public const int SkyCubeRate = 6;
 
-            // ---- Water ---- (off; inside it, the author's own settings, 2026-10-07)
-            public const bool WaterEnabled = false;
+            // ---- Water ---- (on since 2026-10-11; inside it, the author's own settings, 2026-10-07)
+            public const bool WaterEnabled = true;
 
             /// <summary>Our own colour, not the theme's (the author, 2026-10-08: "rather than rely on Theme Mixer").</summary>
             public const bool WaterThemeColor = false;

@@ -46,7 +46,7 @@ namespace RealGlass.Glass
         public bool PaneWeather;
         public bool PanesFollowWindows;     // close up, the panes are the windows the asset painted
 
-        // Interiors (Interiors.cs, Interiors.cginc): rooms behind every window, off by default
+        // Interiors (Interiors.cs, Interiors.cginc): rooms behind every window, on by default
         public bool Interiors;              // rooms behind the windows of every building (an asset can say otherwise)
         public bool InteriorsByDay;         // by day too; off: the dark inside by day, the rooms from dusk
         public float InteriorsDepth;        // 0..1: a room with depth behind the glass (1) .. a flat picture on it (0)
@@ -98,7 +98,7 @@ namespace RealGlass.Glass
             p.PaneWeather = true;
             p.PanesFollowWindows = true;
 
-            p.Interiors = false;
+            p.Interiors = true;
             p.InteriorsByDay = false;
             p.InteriorsDepth = 1f;
             p.InteriorsLit = 0.45f;

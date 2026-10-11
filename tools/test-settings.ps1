@@ -726,8 +726,9 @@ $r = 0.0; $g = 0.0; $b = 0.0
 $optics::FloorLight([ref]$r, [ref]$g, [ref]$b)
 Check "  no light at all: 1e-3 each (never a division by 0)" ("{0} {1} {2}" -f $r, $g, $b) "0.001 0.001 0.001"
 
-# The Water tab is off by default (the author, 2026-10-03).
-Check "the water controls are off by default" (Default 'WaterEnabled') "False"
+# The Water tab and the interiors are on by default (the author, 2026-10-11).
+Check "the water controls are on by default" (Default 'WaterEnabled') "True"
+Check "the interiors are on by default" (Default 'InteriorsEnabled') "True"
 
 # ---- the foam (Water/FoamPattern.cs, Water/FoamOptics.cs) ----
 $pattern = $asm.GetType('RealGlass.Water.FoamPattern', $true)

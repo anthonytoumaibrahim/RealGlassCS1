@@ -166,9 +166,9 @@
 
   <!-- ==================== F8 panel: Interiors ==================== -->
   <!-- Rooms behind every building's windows: pictures of real rooms, each with its own lamp and
-       curtain. Off by default; at night only unless "by day too" is ticked. -->
+       curtain. On by default; at night only unless "by day too" is ticked. -->
 
-  <String key="InteriorsEnabled.Label">Rooms behind the windows</String>
+  <String key="InteriorsEnabled.Label">Parallax interiors</String>
 
   <String key="InteriorsByDay.Label">Show the rooms by day too</String>
 
@@ -191,9 +191,9 @@
   <String key="InteriorsCurtains.Label">Windows with curtains or blinds</String>
 
   <!-- ==================== F8 panel: Water ==================== -->
-  <!-- The map's water: its color and brightness, the sky in it, the city in it. Off by default. -->
+  <!-- The map's water: its color and brightness, the sky in it, the city in it. On by default. -->
 
-  <String key="WaterEnabled.Label">Water controls (EXPERIMENTAL)</String>
+  <String key="WaterEnabled.Label">Water controls</String>
 
   <String key="WaterThemeColor.Label">Use the map theme's water color</String>
   <String key="WaterColor.Label">Water color</String>
@@ -276,7 +276,7 @@
 
   <String key="Group.AssetInteriors">Interiors</String>
 
-  <String key="AssetInteriorsEnabled.Label">Rooms behind the windows</String>
+  <String key="AssetInteriorsEnabled.Label">Parallax interiors</String>
 
   <String key="Asset.Global.Button">Global</String>
 

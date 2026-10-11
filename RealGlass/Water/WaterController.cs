@@ -9,7 +9,7 @@ namespace RealGlass.Water
     /// independent of the glass's switch): the map's water's colour and brightness (<see cref="WaterSurface"/>),
     /// its sky with real water's reflectance per ripple (<see cref="WaterSkyLayer"/>; our cube where it
     /// cannot draw), the ripples, the foam and the city in it (<see cref="WaterCityReflection"/>).
-    /// Off by default (the author, 2026-10-03). Off means nothing is held: the theme's water, and
+    /// On by default since 2026-10-11 (off from 2026-10-03). Off means nothing is held: the theme's water, and
     /// _RGWaterHeld = 0 so RealLight's copy of these controls may take it.
     /// </summary>
     public sealed class WaterController : MonoBehaviour

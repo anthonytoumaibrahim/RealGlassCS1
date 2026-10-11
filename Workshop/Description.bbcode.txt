@@ -1,8 +1,8 @@
 Adds a fully customizable glass shader onto every building, mirroring the city around it and a live sky with SSR (works with the clouds in [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3805863507]Volumetric Weather[/url]).
-[h3]Water shader (experimental)[/h3]
-This mod also adds reflections (SSR) and foam into the water, turned off by default.
+[h3]Water shader[/h3]
+This mod also adds reflections (SSR) and foam into the water. To turn it off: press F8 -> Water -> "Water controls".
 [h3]Parallax interiors[/h3]
-Adds rooms behind the windows at night (optionally by day too), with lights that turn on and off with the time of day. Turned off by default: press F8 -> Interiors -> "Rooms behind the windows".
+Adds rooms behind the windows at night (optionally by day too), with lights that turn on and off with the time of day. To turn them off: press F8 -> Interiors -> "Parallax interiors".
 
 [hr][/hr]
 [h1]How to use[/h1]
@@ -20,7 +20,7 @@ The default settings were tested on a vanilla game with no LUT, so they might lo
 Works [i]well[/i] with most vanilla and custom building assets. No conflicts found with Render It!, AD Cloud Replacer, Move It!, TM:PE, FPS Booster and more. Safe to remove: it saves nothing in your cities.
 [h3]Known issues / limitations[/h3]
 [list]
-[*][b]At night, parallax interiors are not lining up with the windows on some buildings[/b]: not all buildings have proper textures that allow the mod to add the glass and interiors properly. Alt+G, select building, then turn off "Rooms behind the windows" to disable interiors for this building.
+[*][b]At night, parallax interiors are not lining up with the windows on some buildings[/b]: not all buildings have proper textures that allow the mod to add the glass and interiors properly. Alt+G, select building, then turn off "Parallax interiors" to disable interiors for this building.
 [*][b]Glass/Water flickering[/b]: this happens due to using TAA. If it's too distracting, try changing your anti-aliasing method.
 [*][b]Reflections are not accurate:[/b] this uses SSR which is approximate, ray tracing is not supported by the game to provide accurate reflections.
 [*][b]Some buildings (especially distant ones) are showing glass in the wrong places:[/b] unfortunately this is not within my control; some buildings don't have proper specular textures (mostly for LODs). Press Alt+G then select the building, and turn down Strength to turn off the shader for this particular building.
