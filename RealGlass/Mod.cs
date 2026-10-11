@@ -47,6 +47,9 @@ namespace RealGlass
         /// <summary>Called by the game via reflection when the mod is disabled.</summary>
         public void OnDisabled()
         {
+            // First: the controller gives the camera and the water back while the patches are
+            // still in place, and nothing of ours runs on in the city after the mod is off.
+            Loader.Shutdown();
             Patcher.Unpatch();
             SettingsXml.Shutdown();
         }

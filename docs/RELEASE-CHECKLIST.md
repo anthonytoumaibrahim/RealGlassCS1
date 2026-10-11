@@ -34,6 +34,29 @@ that repo's `docs/RELEASE-CHECKLIST.md` has the long version.
 - [x] Tests: `tools\test-settings.ps1` and `tools\test-localization.ps1` pass; the three shader
       bundles carry real code for every API (`tools\bundle-apis.ps1`: D3D11 + OpenGL Core, OpenGL
       Core, Metal + OpenGL Core). No shader changed since they were built.
+      Re-run 2026-10-11 (the launch audit): both pass; the bundles (built 2026-10-08 19:35, after
+      the last shader edit at 19:31) carry all eight shaders with real code for every API;
+      `tools\test-reflection-shader.ps1` and `tools\test-water-surface.ps1` pass too; the DLL
+      builds with no warning and embeds the icon, en.xml, the three bundles and both room atlases.
+- [x] The launch audit (2026-10-11): five reviews of the code (the Harmony patches and draw path,
+      the renderer's lifecycle, the water, settings/files/UI, the shaders). Fixed from it:
+      `GlassController._dirty` was static, so the SECOND city of one session ran on an empty
+      GlassParams (glass off with its checkbox on until a setting moved) -- Awake marks it dirty
+      now; `Mod.OnDisabled` now destroys the controller (`Loader.Shutdown`), so a mod disabled in
+      the Content Manager mid-city does not live on into the next one; the system report's
+      settings lines are written for every city (the machine's once); the F8 panel keeps itself
+      on screen when a taller tab opens (the Water tab, 906 of the canvas's 1080 units, ran off
+      the bottom); the Water tab's release no longer leaves copies of the game's globals on the
+      water materials that shadowed Theme Mixer's colour and Cubemap Replacer's cube until a
+      reload (WaterSurface.FollowGlobals / WaterRipples.FollowGlobal); the log file takes no line
+      before Log.Start (a disabled mod's Description lookup appended one to the old session's
+      file); GlassCommon's FacadeId returns 0 for a flat roof pane instead of atan2(0, 0), which
+      OpenGL and Metal may make NaN (a black pane); the full-screen passes carry their uv as
+      float, not UnityCG's half (Apple GPUs honour half: a texel of misregistration at 4K).
+      Credits added for Karis
+      2014 / Pedersen 2016 (the water reflection's history), Sousa 2005 and Akenine-Möller et al.
+      2019 (compiled in, off) to README.md and THIRD-PARTY-NOTICES.md; README's tab count and Mac
+      note, CHANGELOG's stale default and missing features brought up to date.
 - [x] `git grep -i -E "anthony|ibrahim" -- . ":(exclude)README.md" ":(exclude)LICENSE"` is empty.
       (The Workshop description's GitHub link carries the account name, as Volumetric Weather's.)
 - [x] Button icon (2026-09-29): Openclipart's *Window* by ali2013 (public domain, CC0 1.0),
@@ -54,7 +77,15 @@ that repo's `docs/RELEASE-CHECKLIST.md` has the long version.
       closed, `tools\benchmark.ps1` (about 2.5 minutes, hands off; saves
       `docs\benchmark-<date>.txt`).
 - [ ] A true first run: move `RealGlass.xml` aside, load a city, change nothing: the defaults
-      look right, then put the file back.
+      look right, then put the file back. (Every session so far ran the author's own file: Silver
+      reflective, rooms on, water on -- none of them the defaults.)
+- [ ] Two cities in one session (the `_dirty` fix of 2026-10-11): load a city, exit to the main
+      menu, load another: the log says "glass: on" again and the glass shows at once.
+- [ ] Disable the mod in the Content Manager with a city loaded, then enable it again: the panel
+      and button go and come back, the water (if on) is given back, no exception in output_log.
+- [ ] The Water tab on, then off, with Theme Mixer running: its water colour slider still works
+      afterwards (the FollowGlobals fix of 2026-10-11).
+- [ ] The F8 panel's Water tab opens with its last row (City reflection length) on screen.
 - [ ] The editors (added 2026-09-29, untested): in the Asset Editor, a glass building shows its
       glass (the log says "loaded: the asset editor", then "glass: on"), the magenta mask works,
       zooming out shows the LOD's glass, and the Snapshot tool pauses it ("glass: the Snapshot
@@ -82,10 +113,11 @@ stands.
 
 ## 4. Images
 
-- [ ] `Workshop/PreviewImage.png`: 512 × 512, legible as a ~270 px thumbnail.
-- [ ] 5–8 screenshots in `Workshop/Screenshots/`; the first one is shown beside the description.
-      Glass towers by day, the same towers at sunset, a street-level view with the reflections,
-      night (lit windows untouched), the F8 panel.
+- [x] `Workshop/PreviewImage.png`: 512 × 512 (checked 2026-10-11; 411 KB, under 1 MB). Still
+      to decide: `Workshop/PreviewImage (OLD).png` is tracked beside it -- delete it or keep it.
+- [x] 5–8 screenshots in `Workshop/Screenshots/`: six, 1920 × 1080, 311–654 KB each
+      (2026-10-11; the folder is untracked -- the author's). The first one is shown beside the
+      description.
 
 ## 5. Text
 

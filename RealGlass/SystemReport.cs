@@ -19,35 +19,36 @@ namespace RealGlass
     /// </remarks>
     public static class SystemReport
     {
-        private static bool _written;
+        /// <summary>The machine's lines are written once a launch; the settings' lines every city.</summary>
+        private static bool _machineWritten;
 
         public static void Write()
         {
-            if (_written)
-                return;
-
-            _written = true;
-
             try
             {
-                Log.Msg("system: " + Screen.width + "x" + Screen.height +
-                        (Screen.fullScreen ? " fullscreen" : " windowed") +
-                        " | RAM " + SystemInfo.systemMemorySize + " MB" +
-                        " | GPU '" + SystemInfo.graphicsDeviceName + "' " + SystemInfo.graphicsMemorySize + " MB, " +
-                        SystemInfo.graphicsDeviceVersion +
-                        " | Unity " + Application.unityVersion +
-                        ", colour space " + QualitySettings.activeColorSpace);
+                if (!_machineWritten)
+                {
+                    _machineWritten = true;
 
-                Log.Msg("game graphics: shadows=" + GameSetting(global::Settings.shadowsQuality) +
-                        " shadowDistance=" + GameSetting(global::Settings.shadowsDistance) +
-                        " textures=" + GameSetting(global::Settings.texturesQuality) +
-                        " levelOfDetail=" + GameSetting(global::Settings.levelOfDetail) +
-                        " antialiasing=" + GameSetting(global::Settings.antialiasing) +
-                        " anisotropic=" + GameSetting(global::Settings.anisotropicFiltering) +
-                        " dof=" + GameSetting(global::Settings.dofMode) +
-                        "  (read for the record only)");
+                    Log.Msg("system: " + Screen.width + "x" + Screen.height +
+                            (Screen.fullScreen ? " fullscreen" : " windowed") +
+                            " | RAM " + SystemInfo.systemMemorySize + " MB" +
+                            " | GPU '" + SystemInfo.graphicsDeviceName + "' " + SystemInfo.graphicsMemorySize + " MB, " +
+                            SystemInfo.graphicsDeviceVersion +
+                            " | Unity " + Application.unityVersion +
+                            ", colour space " + QualitySettings.activeColorSpace);
 
-                // Every switch that can suppress or replace what is drawn, whatever the logging
+                    Log.Msg("game graphics: shadows=" + GameSetting(global::Settings.shadowsQuality) +
+                            " shadowDistance=" + GameSetting(global::Settings.shadowsDistance) +
+                            " textures=" + GameSetting(global::Settings.texturesQuality) +
+                            " levelOfDetail=" + GameSetting(global::Settings.levelOfDetail) +
+                            " antialiasing=" + GameSetting(global::Settings.antialiasing) +
+                            " anisotropic=" + GameSetting(global::Settings.anisotropicFiltering) +
+                            " dof=" + GameSetting(global::Settings.dofMode) +
+                            "  (read for the record only)");
+                }
+
+                // Every city (a second city in one session may run on other settings): every switch that can suppress or replace what is drawn, whatever the logging
                 // level: the mask view above all (it paints buildings magenta). This is Volumetric
                 // Weather's DebugSkipDrawLight lesson: a switch that outlived its checkbox hid every
                 // vehicle light for a whole session.

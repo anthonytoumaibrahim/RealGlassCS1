@@ -188,6 +188,7 @@ namespace RealGlass.UI
             float content = Mathf.Max(MinContentHeight, _contentHeights[index]);
             _pages[index].height = content;
             height = TitleBarHeight + TabHeight + 2f * Margin + content;
+            KeepOnScreen();
         }
 
         private void CenterOnScreen()
@@ -195,7 +196,25 @@ namespace RealGlass.UI
             UIView view = GetUIView();
             relativePosition = new Vector3(
                 Mathf.Floor((view.fixedWidth - PanelWidth) / 2f),
-                Mathf.Floor((view.fixedHeight - PanelHeight) / 2f));
+                Mathf.Floor((view.fixedHeight - height) / 2f));
+            KeepOnScreen();
+        }
+
+        /// <summary>
+        /// The whole panel on the screen: a taller tab (Water, 21 rows: 906 of the canvas's 1080)
+        /// opened on a panel centred for a shorter one ran off the bottom, its last rows out of
+        /// reach until the panel was dragged up (audit, 2026-10-11).
+        /// </summary>
+        private void KeepOnScreen()
+        {
+            UIView view = GetUIView();
+            if (view == null)
+                return;
+
+            Vector3 at = relativePosition;
+            at.x = Mathf.Max(0f, Mathf.Min(at.x, view.fixedWidth - width));
+            at.y = Mathf.Max(0f, Mathf.Min(at.y, view.fixedHeight - height));
+            relativePosition = at;
         }
 
         public override void OnDestroy()

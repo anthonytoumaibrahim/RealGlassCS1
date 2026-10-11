@@ -50,7 +50,18 @@ namespace RealGlass
         public override void OnLevelUnloading()
         {
             base.OnLevelUnloading();
+            Shutdown();
+        }
 
+        /// <summary>
+        /// Takes the controller down with everything it holds (the panel, the button, the picker,
+        /// the camera's buffers, the water's materials given back). Called when a city unloads, and
+        /// by the mod's OnDisabled: a mod disabled in the Content Manager while a city is loaded
+        /// gets no OnLevelUnloading any more, and without this its controller would live on into
+        /// the next city with the old city's references (audit, 2026-10-11).
+        /// </summary>
+        public static void Shutdown()
+        {
             if (_root == null)
                 return;
 

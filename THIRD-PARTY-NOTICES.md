@@ -139,7 +139,10 @@ Mobley's sea-surface reflectance factor, 1999), per ripple where the ripples are
 where filtering takes them (Bruneton, Neyret and Holzschuch 2010), moving ripples made of directional sine waves
 (Finch 2004; tiling and deep water's speeds, Tessendorf 2001; Phillips's equilibrium range, 1958),
 and the city traced through the depth buffer off those ripples and streaked by normalized
-convolution (Knutsson and Westin, 1993), and foam from the game's own water simulation -- along
+convolution (Knutsson and Westin, 1993), steadied frame to frame by reprojected, neighbourhood-clamped
+history (Karis 2014; Pedersen 2016; with Sousa's distorted mirror, GPU Gems 2, 2005, and a
+ray-cone read, Akenine-Möller et al., Ray Tracing Gems, 2019, compiled in but switched off), and
+foam from the game's own water simulation -- along
 shores as Crest's (Bowles et al. 2017) and War Thunder's (Tcheblokov 2015) shore foam, on rising
 fronts by Chentanez and Mueller's breaking test (2010) -- carried along the flow in two phases
 (Vlachos 2010), its pattern Worley's cellular texture (1996) and a fractal sum of noise (Perlin

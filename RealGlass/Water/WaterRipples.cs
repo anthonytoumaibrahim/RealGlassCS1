@@ -33,6 +33,13 @@ namespace RealGlass.Water
         private readonly RenderTexture _texture;
         private Material[] _water;
         private Texture[] _original;
+
+        // The materials that showed the GLOBAL _WaterNormal when first seen: a release leaves a copy of
+        // it on them (a material property cannot be taken away again in Unity 5.6), kept equal to the
+        // global while ours is not held (FollowGlobal), as WaterSurface does (audit, 2026-10-11).
+        private Material[] _followed;
+        private bool[] _follow;
+
         private bool _held;
         private Texture _measured;
         private double _decodedRms = WaterOptics.DefaultRippleRms;
@@ -226,13 +233,35 @@ namespace RealGlass.Water
                 Texture global = Shader.GetGlobalTexture(IdNormal);
                 for (int i = 0; i < 2; i++)
                 {
+                    bool follow = _follow != null && _follow[i];
                     if (_water[i] != null)
-                        _water[i].SetTexture(IdNormal, _original[i] != null ? _original[i] : global);
+                        _water[i].SetTexture(IdNormal, follow || _original[i] == null ? global : _original[i]);
                 }
             }
 
             _water = null;
             Log.Msg("water: the map's water shades with the game's own ripples again");
+        }
+
+        /// <summary>
+        /// Every frame while ours is not held: a material that showed the global when first seen is
+        /// brought up to the global whenever the global changes (another mod's doing).
+        /// </summary>
+        public void FollowGlobal()
+        {
+            if (_held || _followed == null)
+                return;
+
+            Texture global = Shader.GetGlobalTexture(IdNormal);
+            if (global == null)
+                return;
+
+            for (int i = 0; i < 2; i++)
+            {
+                Material m = _followed[i];
+                if (m != null && _follow[i] && m.GetTexture(IdNormal) != global)
+                    m.SetTexture(IdNormal, global);
+            }
         }
 
         /// <summary>The terrain's two water materials, their own values kept (new materials: the old given back first).</summary>
@@ -256,6 +285,14 @@ namespace RealGlass.Water
                 Texture t = m.GetTexture(IdNormal);
                 if (t != null && t != _texture)
                     _original[i] = t;
+            }
+
+            // Decided once per pair of materials: what they showed when FIRST seen (a later take finds
+            // the copy a release left there).
+            if (_followed == null || _followed[0] != _water[0] || _followed[1] != _water[1])
+            {
+                _followed = new[] { _water[0], _water[1] };
+                _follow = new[] { _original[0] == null, _original[1] == null };
             }
 
             Log.Msg("water: the water materials' own ripple textures: " + Name(_original[0]) + " / " + Name(_original[1]) +

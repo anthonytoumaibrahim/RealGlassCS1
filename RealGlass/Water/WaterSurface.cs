@@ -58,6 +58,16 @@ namespace RealGlass.Water
         private Material[] _water;
         private Texture[] _originalCube;
         private Color?[] _originalColour;
+
+        // Which of the two materials had NO value of their own when first seen (the global was what
+        // they showed). After a release they carry a copy of the global -- Unity 5.6 cannot take a
+        // material property away again -- and that copy would shadow every later change of the global
+        // (Theme Mixer's water colour, Cubemap Replacer's day/night cube) until the city was reloaded.
+        // So while not held they are kept equal to the global (FollowGlobals). Kept across GiveBack: a
+        // second take must not mistake the copy for the material's own (audit, 2026-10-11).
+        private Material[] _followed;
+        private bool[] _followCube, _followColour;
+
         private bool _cubeHeld, _colourHeld;
         private string _heldColour = "";
         private Texture _drawnTheme;
@@ -238,8 +248,9 @@ namespace RealGlass.Water
                 Texture theme = ThemeCube();
                 for (int i = 0; i < 2; i++)
                 {
+                    bool follow = _followCube != null && _followCube[i];
                     if (_water[i] != null)
-                        _water[i].SetTexture(IdCube, _originalCube[i] != null ? _originalCube[i] : theme);
+                        _water[i].SetTexture(IdCube, follow || _originalCube[i] == null ? theme : _originalCube[i]);
                 }
             }
 
@@ -259,8 +270,9 @@ namespace RealGlass.Water
                 Color theme = Shader.GetGlobalColor(IdColour);
                 for (int i = 0; i < 2; i++)
                 {
+                    bool follow = _followColour != null && _followColour[i];
                     if (_water[i] != null)
-                        _water[i].SetColor(IdColour, _originalColour[i].HasValue ? _originalColour[i].Value : theme);
+                        _water[i].SetColor(IdColour, follow || !_originalColour[i].HasValue ? theme : _originalColour[i].Value);
                 }
             }
 
@@ -274,6 +286,39 @@ namespace RealGlass.Water
             ReleaseColour();
             _water = null;
             Shader.SetGlobalFloat(IdHeld, 0f);
+        }
+
+        /// <summary>
+        /// Every frame, held or not: a material that showed the global when first seen keeps showing
+        /// it -- the copy a release left on it is brought up to the global whenever the global moves
+        /// (another mod's doing), as if the property had never been set. Nothing while the value is
+        /// held, nothing when they already agree.
+        /// </summary>
+        public void FollowGlobals()
+        {
+            if (_followed == null)
+                return;
+
+            for (int i = 0; i < 2; i++)
+            {
+                Material m = _followed[i];
+                if (m == null)
+                    continue;
+
+                if (!_cubeHeld && _followCube[i])
+                {
+                    Texture global = ThemeCube();
+                    if (global != null && m.GetTexture(IdCube) != global)
+                        m.SetTexture(IdCube, global);
+                }
+
+                if (!_colourHeld && _followColour[i])
+                {
+                    Color global = Shader.GetGlobalColor(IdColour);
+                    if (m.GetColor(IdColour) != global)
+                        m.SetColor(IdColour, global);
+                }
+            }
         }
 
         private void Held()
@@ -317,6 +362,15 @@ namespace RealGlass.Water
                     if (c == themeColour)
                         _originalColour[i] = c;
                 }
+            }
+
+            // Decided once per pair of materials (a level's): what they showed when FIRST seen. A later
+            // take finds the copies a release left and must not take them for the materials' own.
+            if (_followed == null || _followed[0] != _water[0] || _followed[1] != _water[1])
+            {
+                _followed = new[] { _water[0], _water[1] };
+                _followCube = new[] { _originalCube[0] == null, _originalCube[1] == null };
+                _followColour = new[] { !_originalColour[0].HasValue, !_originalColour[1].HasValue };
             }
 
             return true;

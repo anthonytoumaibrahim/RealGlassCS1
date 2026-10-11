@@ -10,13 +10,14 @@ glass is mostly dark and mostly reflective, far more so seen edge-on than straig
 mirrors what is actually around it, bent a little by every pane -- by day and by night.
 
 **Not on the Workshop yet.** Requires the **Harmony** mod (2040656402); Unified UI is optional.
-Made and tested on Windows (Direct3D 11); the Mac (Metal) and Linux (OpenGL) builds are included
-but untested.
+Made and tested on Windows (Direct3D 11). The Mac build (Metal) ran once on an M1 MacBook, where
+all the glass sometimes vanished for a moment and came back (unexplained); the Linux build
+(OpenGL) is included but untested.
 
 ## Using it
 
 Open the panel with **F8** (or its Unified UI button). Everything about the look is there, on
-four tabs:
+five tabs:
 
 - **Glass** -- the kind of glass (reflective blue, the default; silver reflective, ocean blue, aqua
   blue, sky blue, green, bronze, grey, clear low-E, gold reflective: real products' tints,
@@ -31,6 +32,10 @@ four tabs:
 - **Panes** -- the panes' width and height (a storey), and how they bend what they mirror:
   cushioned (insulating glass bowing in or out), tilted, rippled (toughened glass); up close,
   fitted to the windows each building painted.
+- **Interiors** (off until switched on) -- rooms behind every window at night (and by day if
+  asked): how many are lit, how their lights switch on and off through the night, how bright and
+  how often coloured they are, how many windows have curtains or blinds, and how deep the rooms
+  look.
 - **Water** (off until switched on) -- the map's water: its own color (a deep, dark lake by
   default, or the map theme's -- no Theme Mixer needed) and brightness, the sky in it with real
   water's reflectance on every ripple, and the city in it, with its waves, its streaks and how long
@@ -239,7 +244,17 @@ Every technique here has shipped in a game or is published:
     4(4), 1958). The city in the water is traced through the depth buffer as in (3), from those
     ripples as the game's own water shader reads them; its streaks are a Gaussian up
     and down weighted so only water is averaged -- normalized convolution, Hans Knutsson and
-    Carl-Fredrik Westin, **Normalized and Differential Convolution**, CVPR 1993.
+    Carl-Fredrik Westin, **Normalized and Differential Convolution**, CVPR 1993. Against the
+    flicker of a reflection traced off moving ripples, each frame's trace is blended with the last
+    frame's, reprojected to where the water's point was and clamped to its neighbours' range --
+    Brian Karis, **High-Quality Temporal Supersampling** (SIGGRAPH 2014 Advances in Real-Time
+    Rendering, [slides](https://advances.realtimerendering.com/s2014/)) and Lasse Jon Fuglsang
+    Pedersen, **Temporal Reprojection Anti-Aliasing in INSIDE** (GDC 2016). Two alternatives
+    are compiled into the same shader but switched off: the flat mirror's picture distorted by the
+    ripples' normals (Tiago Sousa, **Generic Refraction Simulation**, GPU Gems 2, chapter 19,
+    2005) and the reflected picture read as wide as a ray cone spreads (Tomas Akenine-Möller et
+    al., **Texture Level of Detail Strategies for Real-Time Ray Tracing**, Ray Tracing Gems,
+    chapter 20, 2019).
 16. The foam: where it goes, from the game's own water simulation -- shoreline foam where the water
     is shallow, as in Crest (Huw Bowles, Daniel Zimmermann et al., **Crest: Novel Ocean
     Rendering Techniques in an Open Source Framework**, SIGGRAPH 2017 Advances in Real-Time

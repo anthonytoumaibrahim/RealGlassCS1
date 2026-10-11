@@ -19,6 +19,14 @@ namespace RealGlass
         private static bool _disabled;
 
         /// <summary>
+        /// True from <see cref="Start"/> on. Before it, nothing goes to the FILE: the Content Manager
+        /// reads Mod.Description of a DISABLED mod too, and the localization line that lookup logs
+        /// would be appended to the previous session's file, one stray line per launch (audit,
+        /// 2026-10-11). The Unity log gets every line regardless.
+        /// </summary>
+        private static bool _started;
+
+        /// <summary>
         /// Next to RealGlass.xml, in the folder the game itself uses: on Windows and Linux the
         /// .NET LocalApplicationData folder (with XDG_DATA_HOME honoured on Linux), on a Mac
         /// ~/Library/Application Support -- where .NET's answer is ~/.local/share, a folder that
@@ -71,6 +79,7 @@ namespace RealGlass
             lock (Sync)
             {
                 _disabled = false;
+                _started = true;
 
                 try
                 {
@@ -153,7 +162,7 @@ namespace RealGlass
 
         private static void Write(string level, string message)
         {
-            if (_disabled)
+            if (_disabled || !_started)
                 return;
 
             lock (Sync)

@@ -28,6 +28,7 @@ Shader "RealGlass/CityReflection"
     CGINCLUDE
     #include "UnityCG.cginc"
     #include "WaterCommon.cginc"
+    #include "FullScreen.cginc"   // vert_full / v2f_full: vert_img with a float uv (Apple GPUs honour half)
 
     // 96 steps over 1 m .. the reach (the far plane's 0.9, ~20 km in the author's city) grow 11% each
     // (64 over 8 km, 15%, until 2026-10-08: the author found the night reflection's reach short). At 32
@@ -279,7 +280,7 @@ Shader "RealGlass/CityReflection"
 
     // The Gaussian up and down: 2 x RG_STREAK + 1 taps over +-3 sigma, from the mip whose texels are
     // half a sigma.
-    float4 fragStreaks(v2f_img i) : SV_Target
+    float4 fragStreaks(v2f_full i) : SV_Target
     {
         float sigma = _RGWaterStreak.x;
         // Under a third of a texel the taps fall on one texel: sharp.
@@ -427,7 +428,7 @@ Shader "RealGlass/CityReflection"
             Blend Off
 
             CGPROGRAM
-            #pragma vertex vert_img
+            #pragma vertex vert_full
             #pragma fragment fragStreaks
             #pragma target 3.5
             ENDCG

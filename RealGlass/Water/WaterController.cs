@@ -108,6 +108,7 @@ namespace RealGlass.Water
             if (!On(Settings.WaterEnabled))
             {
                 Release();
+                FollowGlobals();
                 return;
             }
 
@@ -139,6 +140,19 @@ namespace RealGlass.Water
 
             FoamFrame();
             CityFrame(light, toSun, skyLayer);
+            FollowGlobals();
+        }
+
+        /// <summary>
+        /// What a release left on the water materials stays equal to the game's globals (another
+        /// mod may move them): WaterSurface.FollowGlobals and WaterRipples.FollowGlobal, every frame.
+        /// </summary>
+        private void FollowGlobals()
+        {
+            if (_surface != null)
+                _surface.FollowGlobals();
+            if (_ripples != null)
+                _ripples.FollowGlobal();
         }
 
         /// <summary>

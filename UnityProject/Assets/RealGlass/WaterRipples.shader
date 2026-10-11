@@ -15,6 +15,7 @@ Shader "RealGlass/WaterRipples"
     CGINCLUDE
     #include "UnityCG.cginc"
     #include "Finite.cginc"
+    #include "FullScreen.cginc"   // vert_full / v2f_full: vert_img with a float uv (Apple GPUs honour half)
 
     #define RG_RIPPLES 32
 
@@ -33,7 +34,7 @@ Shader "RealGlass/WaterRipples"
     // game's speed and stops while the game is paused.
     float4 _SimulationTime2;
 
-    float4 frag(v2f_img i) : SV_Target
+    float4 frag(v2f_full i) : SV_Target
     {
         float2 uv = i.uv;
         float hour = _SimulationTime2.y;
@@ -67,7 +68,7 @@ Shader "RealGlass/WaterRipples"
             Blend Off
 
             CGPROGRAM
-            #pragma vertex vert_img
+            #pragma vertex vert_full
             #pragma fragment frag
             #pragma target 3.5
             ENDCG

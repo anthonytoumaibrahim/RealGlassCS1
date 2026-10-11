@@ -171,6 +171,11 @@ float3 FacadeTangent(float3 n)
 // one pattern and the next one round the corner is another.
 float FacadeId(float3 n)
 {
+    // A flat roof pane (a skylight, an atrium) has no heading: atan2(0, 0) is 0 on Direct3D but
+    // undefined on OpenGL and Metal, where a NaN here would spread through the pane's normal to
+    // the whole pixel (a black pane). Such a pane gets the id Direct3D's 0 gives (audit, 2026-10-11).
+    if (dot(n.xz, n.xz) < 1e-6)
+        return 35.0;
     return floor((atan2(n.z, n.x) + 3.14159265) * 11.459);
 }
 

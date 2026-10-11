@@ -92,6 +92,12 @@ namespace RealGlass.Glass
         private void Awake()
         {
             Instance = this;
+
+            // A new city's controller has read nothing yet: the flag is static (the catalog's hooks
+            // set it with no controller in hand), so the first city's reading left it clear, and
+            // the second city of a session would otherwise run on an empty GlassParams -- glass off
+            // with its checkbox on, until a setting moved (audit, 2026-10-11).
+            _dirty = true;
         }
 
         private void Start()

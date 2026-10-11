@@ -23,6 +23,7 @@ Shader "RealGlass/GlassUtil"
     CGINCLUDE
     #include "UnityCG.cginc"
     #include "Finite.cginc"   // Finite: NaN and negatives to 0, infinities to 1000, on every API
+    #include "FullScreen.cginc"   // vert_full / v2f_full: vert_img with a float uv (Apple GPUs honour half)
 
     sampler2D _MainTex;
     ENDCG
@@ -40,13 +41,13 @@ Shader "RealGlass/GlassUtil"
 
             CGPROGRAM
             #pragma target 3.5
-            #pragma vertex vert_img
+            #pragma vertex vert_full
             #pragma fragment frag
 
             sampler2D _RGCityPrev;   // 1x1: last frame's city colour (copied just before this pass)
             float _RGCityBlend;      // this frame's share; 1 on a new target's first frame
 
-            float4 frag(v2f_img i) : SV_Target
+            float4 frag(v2f_full i) : SV_Target
             {
                 // 8 x 4 samples of a coarse mip over the lower half of the screen (v < 0.5 is the
                 // bottom in the screen-position convention the copy keeps).
@@ -74,10 +75,10 @@ Shader "RealGlass/GlassUtil"
 
             CGPROGRAM
             #pragma target 3.5
-            #pragma vertex vert_img
+            #pragma vertex vert_full
             #pragma fragment frag
 
-            float4 frag(v2f_img i) : SV_Target
+            float4 frag(v2f_full i) : SV_Target
             {
                 return float4(Finite(tex2D(_MainTex, i.uv).rgb), 1.0);
             }
@@ -93,11 +94,11 @@ Shader "RealGlass/GlassUtil"
 
             CGPROGRAM
             #pragma target 3.5
-            #pragma vertex vert_img
+            #pragma vertex vert_full
             #pragma fragment frag
             UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
 
-            float4 frag(v2f_img i) : SV_Target
+            float4 frag(v2f_full i) : SV_Target
             {
                 float d = LinearEyeDepth(SAMPLE_DEPTH_TEXTURE_LOD(_CameraDepthTexture, float4(i.uv, 0.0, 0.0)));
                 d = FiniteIn(d, 0.0, 60000.0);
@@ -115,13 +116,13 @@ Shader "RealGlass/GlassUtil"
 
             CGPROGRAM
             #pragma target 3.5
-            #pragma vertex vert_img
+            #pragma vertex vert_full
             #pragma fragment frag
 
             float _RGHiZLevel;       // the level read
             float4 _RGHiZSizes;      // xy that level's size, zw this one's
 
-            float4 frag(v2f_img i) : SV_Target
+            float4 frag(v2f_full i) : SV_Target
             {
                 float2 dst = floor(i.uv * _RGHiZSizes.zw);
                 float2 src = dst * 2.0;
