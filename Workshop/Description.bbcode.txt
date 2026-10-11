@@ -1,7 +1,8 @@
-Breathe life into your city's skyscrapers -- especially the ugly vanilla ones.
 Adds a fully customizable glass shader onto every building, mirroring the city around it and a live sky with SSR (works with the clouds in [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3805863507]Volumetric Weather[/url]).
 [h3]Water shader (experimental)[/h3]
 This mod also adds reflections (SSR) and foam into the water, turned off by default.
+[h3]Parallax interiors[/h3]
+Adds rooms behind the windows at night (optionally by day too), with lights that turn on and off with the time of day. Turned off by default: press F8 -> Interiors -> "Rooms behind the windows".
 
 [hr][/hr]
 [h1]How to use[/h1]
@@ -16,7 +17,7 @@ The default settings were tested on a vanilla game with no LUT, so they might lo
 
 [hr][/hr]
 [h1]Compatibility[/h1]
-Works with (most) vanilla and custom building assets. No conflicts found with Render It!, AD Cloud Replacer, Move It!, TM:PE, FPS Booster and more. Safe to remove: it saves nothing in your cities.
+Works [i]well[/i] with most vanilla and custom building assets. No conflicts found with Render It!, AD Cloud Replacer, Move It!, TM:PE, FPS Booster and more. Safe to remove: it saves nothing in your cities.
 [h3]Known issues / limitations[/h3]
 [list]
 [*][b]At night, parallax interiors are not lining up with the windows on some buildings[/b]: not all buildings have proper textures that allow the mod to add the glass and interiors properly. Alt+G, select building, then turn off "Rooms behind the windows" to disable interiors for this building.
