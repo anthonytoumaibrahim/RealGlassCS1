@@ -1,7 +1,7 @@
 Breathe life into your city's skyscrapers -- especially the ugly vanilla ones.
 Adds a fully customizable glass shader onto every building, mirroring the city around it and a live sky with SSR (works with the clouds in [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3805863507]Volumetric Weather[/url]).
 [h3]Water shader (experimental)[/h3]
-This mod also adds reflections (SSR) and foam into the water, it's turned off by default as it's still under development.
+This mod also adds reflections (SSR) and foam into the water, turned off by default.
 
 [hr][/hr]
 [h1]How to use[/h1]
@@ -17,18 +17,13 @@ The default settings were tested on a vanilla game with no LUT, so they might lo
 [hr][/hr]
 [h1]Compatibility[/h1]
 Works with (most) vanilla and custom building assets. No conflicts found with Render It!, AD Cloud Replacer, Move It!, TM:PE, FPS Booster and more. Safe to remove: it saves nothing in your cities.
-
-[hr][/hr]
-[h1]For asset creators[/h1]
-Anything 70% (default value) or brighter in your specular map is glass, so keep any other specular below that, and give your own LOD textures a specular too.
-
-[hr][/hr]
-[h1]Known issues / limitations[/h1]
+[h3]Known issues / limitations[/h3]
 [list]
+[*][b]At night, parallax interiors are not lining up with the windows on some buildings[/b]: not all buildings have proper textures that allow the mod to add the glass and interiors properly. Alt+G, select building, then turn off "Rooms behind the windows" to disable interiors for this building.
 [*][b]Glass/Water flickering[/b]: this happens due to using TAA. If it's too distracting, try changing your anti-aliasing method.
-[*][b]Glass briefly disappearing on Mac[/b] (and potentially Linux): I'm not sure if this is my slow Mac that's causing this, but if you run into this issue, let me know.
 [*][b]Reflections are not accurate:[/b] this uses SSR which is approximate, ray tracing is not supported by the game to provide accurate reflections.
-[*][b]Some distant buildings are showing glass in the wrong places:[/b] unfortunately this is not within my control; some buildings don't have proper specular textures for LODs. Press Alt+G then select the building, and turn down Strength to turn off the shader for this particular building.
+[*][b]Some buildings (especially distant ones) are showing glass in the wrong places:[/b] unfortunately this is not within my control; some buildings don't have proper specular textures (mostly for LODs). Press Alt+G then select the building, and turn down Strength to turn off the shader for this particular building.
+[*][b]Glass briefly disappearing on Mac[/b] (and potentially Linux): I'm not sure if this is my slow Mac that's causing this, but if you run into this issue, let me know.
 [/list]
 
 [hr][/hr]
