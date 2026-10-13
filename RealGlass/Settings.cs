@@ -463,7 +463,7 @@ namespace RealGlass
             public const float WaterFoamAmount = 0.30f;
             public const float WaterFoamShore = 1f;
             public const float WaterFoamRapids = 0.05f;
-            public const float WaterFoamFronts = 1f;
+            public const float WaterFoamFronts = 0.1f;
         }
 
         private static bool _initialised;

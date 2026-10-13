@@ -769,7 +769,7 @@ Check "  the reflectance is Koepke's dense foam (20-55%)" (($v[20] -ge 0.2) -and
 Check "  the flow carries it as the game's ripples: 0.14 of 1/0.0061 m every 2.5 s" ("{0:F3}" -f $v[21]) ("{0:F3}" -f (0.14 / 0.0061 / 2.5))
 Check "  the advection's cycle divides the game's 60 s clock" ((60.0 % $v[22]) -eq 0.0) "True"
 Check "  a negative share is none" ("{0} {1}" -f ($foamOptics::Vectors(-1.0, -1.0, 1.0, 1.0, 40.0))[23], ($foamOptics::Vectors(-1.0, -1.0, 1.0, 1.0, 40.0))[8]) "0 0"
-Check "the foam's defaults: on, 30%; shores 100%, fast water 5%, fronts 100%" ("{0} {1} {2} {3} {4}" -f (Default 'WaterFoam'), (Default 'WaterFoamAmount'), (Default 'WaterFoamShore'), (Default 'WaterFoamRapids'), (Default 'WaterFoamFronts')) "True 0.3 1 0.05 1"
+Check "the foam's defaults: on, 30%; shores 100%, fast water 5%, fronts 10%" ("{0} {1} {2} {3} {4}" -f (Default 'WaterFoam'), (Default 'WaterFoamAmount'), (Default 'WaterFoamShore'), (Default 'WaterFoamRapids'), (Default 'WaterFoamFronts')) "True 0.3 1 0.05 0.1"
 
 Write-Host ""
 if ($failed -eq 0) { Write-Host "all passed" } else { Write-Host "$failed FAILED"; exit 1 }

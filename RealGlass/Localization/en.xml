@@ -63,7 +63,6 @@
 
   <!-- The status line at the top of the Glass tab. {0} {1} {2}: buildings drawn with glass
        last frame, near / middle distance / far blocks. -->
-  <String key="Status.On">Glass on {0} near, {1} middle and {2} far groups of buildings.</String>
   <String key="Status.Off">The glass is off.</String>
   <String key="Status.Waiting">Waiting for the city's camera.</String>
   <String key="Status.InfoView">Paused while an info view is open.</String>

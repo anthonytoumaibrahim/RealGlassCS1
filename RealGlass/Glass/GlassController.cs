@@ -317,9 +317,7 @@ namespace RealGlass.Glass
             }
 
             GlassDraw.Active = true;
-            // Last frame's draws per tier (the counters only grow between the 5 s log lines).
-            int near = GlassDraw.NearDraws - _lastNear, lod = GlassDraw.LodDraws - _lastLod, far = GlassDraw.GroupDraws - _lastFar;
-            _status = Localization.Get("Status.On", Mathf.Max(near, 0), Mathf.Max(lod, 0), Mathf.Max(far, 0));
+            _status = "";
             _lastNear = GlassDraw.NearDraws;
             _lastLod = GlassDraw.LodDraws;
             _lastFar = GlassDraw.GroupDraws;
