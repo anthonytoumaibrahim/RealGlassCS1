@@ -44,8 +44,10 @@ five tabs:
 **Alt+G** turns the building picker on: click a building, and a small window of its own gives its
 asset its own glass.
 
-The game's options page holds the mod itself: its language, the keys, the button, how far out the
-glass is drawn and what the live sky costs, diagnostics and a reset.
+The game's options page holds the mod itself: its language, the keys, the button, the panel's
+look (Frosted glass, the default, over a blurred copy of the city; See-through; Blue; or Vanilla,
+the game's own), how far out the glass is drawn and what the live sky costs, diagnostics and a
+reset.
 
 Settings are kept in `RealGlass.xml` in the game's data folder (on Windows
 `%LOCALAPPDATA%\Colossal Order\Cities_Skylines`), which you can also edit while the game runs;
@@ -313,7 +315,8 @@ shipped with the mod and the published techniques it builds on are credited in
 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md). The button's icon is
 [*Window*](https://openclipart.org/detail/173814/window) by ali2013 on Openclipart, public domain.
 The rooms behind the windows are pictures cut from [Poly Haven](https://polyhaven.com)'s indoor
-panoramas, CC0 -- with thanks to its photographers.
+panoramas, CC0 -- with thanks to its photographers. The panels' icons are drawn from
+[Lucide](https://lucide.dev)'s, ISC.
 
 Cities: Skylines is © Colossal Order Ltd., published by Paradox Interactive AB. Unity is a
 trademark of Unity Technologies. This is an unofficial fan-made mod, not affiliated with or

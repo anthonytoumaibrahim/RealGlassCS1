@@ -12,6 +12,10 @@
 
 ## The mod
 
+The panels are built with **ModsLibCS1**, a UI library kept as a git submodule at the repository
+root and compiled into the DLL with its sprite sheet. Clone with `git clone --recurse-submodules`,
+or run `git submodule update --init` after a plain clone; without it the build stops and says so.
+
 ```
 dotnet build RealGlass/RealGlass.csproj
 ```

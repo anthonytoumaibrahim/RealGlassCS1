@@ -1,4 +1,5 @@
 using ColossalFramework.UI;
+using ModsLibCS1.UI;
 using RealGlass.PerAsset;
 using UnityEngine;
 
@@ -12,8 +13,10 @@ namespace RealGlass.UI
     /// </summary>
     /// <remarks>
     /// The title bar names the asset; under it, how many stand in this city and whether the asset
-    /// has glass of its own, then "Pick another building" and "Use the Glass tab's settings", then
-    /// the rows. Narrower than the panel (<see cref="RowLayout.Compact"/>), and as tall as its rows.
+    /// has glass of its own, then "Pick another building" and "Restore settings", then the rows,
+    /// each ending in a reset icon that puts that one back to the F8 panel's setting. Narrower than
+    /// the panel (<see cref="RowLayout.Compact"/>), and as tall as its rows. Drawn with ModsLibCS1 in
+    /// the panels' look (<see cref="PanelLook"/>).
     /// </remarks>
     public class AssetPanel : UIPanel
     {
@@ -23,16 +26,21 @@ namespace RealGlass.UI
         private const float ButtonsHeight = 34f;
         private const float Margin = 14f;
 
+        /// <summary>The smallest an asset's long name is drawn in the title bar, as a share of the title's size.</summary>
+        private const float MinTitleShare = 0.7f;
+
         private const float RefreshInterval = 0.25f;
 
         /// <summary>Where to open, when replacing a window that was already on screen. Null = right of the centre.</summary>
         public Vector3? InitialPosition;
 
-        private readonly RowList _rows = new RowList(RowLayout.Compact);
-        private UILabel _title;
+        private Builder _ui;
+        private Frame _frame;
+        private RowList _rows;
         private UILabel _status;
         private UIButton _pick;
         private UIButton _useGlobal;
+        private string _titleShown;
         private float _nextRefreshTime;
 
         private static AssetPanel _instance;
@@ -50,27 +58,29 @@ namespace RealGlass.UI
 
             _instance = this;
 
-            atlas = UIBuilder.Atlas;
-            backgroundSprite = "MenuPanel2";
-            width = PanelWidth;
+            _ui = PanelLook.NewBuilder();
+            _rows = new RowList(_ui, RowLayout.Compact);
+
+            size = new Vector2(PanelWidth, 200f);
             canFocus = true;
             isInteractive = true;
 
-            BuildTitleBar();
+            // Background, title, close button; dragging the title bar moves the whole window.
+            _frame = _ui.AddFrame(this, Mod.DisplayName, Hide);
 
             float inner = PanelWidth - 2f * Margin;
             float y = TitleBarHeight;
 
-            _status = UIBuilder.AddLabel(this, string.Empty, new Vector3(Margin, y + 2f), 0.8f);
+            _status = _ui.AddLabel(this, string.Empty, new Vector3(Margin, y + 2f), _ui.Theme.TextScale);
             _status.autoSize = false;
             _status.size = new Vector2(inner, 20f);
-            _status.textColor = UIBuilder.StatusColour;
+            _ui.Paint(_status, _ui.Theme.Status);
             y += StatusHeight;
 
             float half = (inner - 6f) / 2f;
-            _pick = UIBuilder.AddButton(this, Localization.Get("Asset.Pick"), new Vector2(half, 26f), new Vector3(Margin, y + 4f));
+            _pick = _ui.AddButton(this, Localization.Get("Asset.Pick"), new Vector2(half, 26f), new Vector3(Margin, y + 4f));
             _pick.eventClick += (component, e) => AssetPicker.Toggle();
-            _useGlobal = UIBuilder.AddButton(this, Localization.Get("Asset.UseGlobal"), new Vector2(half, 26f),
+            _useGlobal = _ui.AddButton(this, Localization.Get("Asset.UseGlobal"), new Vector2(half, 26f),
                 new Vector3(Margin + half + 6f, y + 4f));
             _useGlobal.eventClick += (component, e) =>
             {
@@ -83,7 +93,7 @@ namespace RealGlass.UI
             UIPanel page = AddUIComponent<UIPanel>();
             page.size = new Vector2(inner, 10f);
             page.relativePosition = new Vector3(Margin, y);
-            float content = _rows.Build(page, AssetCatalog.Rows);
+            float content = _rows.Build(page, AssetCatalog.Rows, "building window");
             page.height = content;
             height = y + content + Margin;
 
@@ -99,7 +109,7 @@ namespace RealGlass.UI
             };
 
             RefreshValues();
-            Log.Msg("building window built: " + _rows.Count + " controls");
+            Log.Msg("building window built: " + _rows.Count + " controls (" + _ui.Skin + ")");
         }
 
         public override void Update()
@@ -119,10 +129,12 @@ namespace RealGlass.UI
         /// </summary>
         public void RefreshValues()
         {
+            if (_rows == null)
+                return;
+
             AssetCatalog.Sync();
 
-            if (_title != null)
-                _title.text = AssetSelection.HasSelection ? AssetSelection.Title : Mod.DisplayName;
+            ShowTitle(AssetSelection.HasSelection ? AssetSelection.Title : Mod.DisplayName);
             if (_status != null)
                 _status.text = AssetSelection.StatusText();
 
@@ -135,6 +147,26 @@ namespace RealGlass.UI
                 Log.Detail("building window: refreshed " + _rows.Count + " controls, " + touched + " had changed");
         }
 
+        /// <summary>
+        /// The asset's name in the title bar, as the look writes it (capitals in Frosted); a long one
+        /// drawn smaller until it fits (down to <see cref="MinTitleShare"/>), then cut off by the bar.
+        /// </summary>
+        private void ShowTitle(string text)
+        {
+            if (_frame == null || _frame.Title == null || text == _titleShown)
+                return;
+
+            _titleShown = text;
+            UILabel title = _frame.Title;
+            string shown = _ui.Caps(text) ?? string.Empty;
+            float full = _ui.Theme.TitleScale;
+            float wide = _ui.Measure(shown, full) + title.characterSpacing * shown.Length;
+            float room = title.width - 4f;
+
+            title.textScale = wide > room && wide > 0f ? full * Mathf.Max(MinTitleShare, room / wide) : full;
+            title.text = shown;
+        }
+
         private static void SetEnabled(UIComponent part, bool wanted)
         {
             if (part == null || part.isEnabled == wanted)
@@ -142,28 +174,6 @@ namespace RealGlass.UI
 
             part.isEnabled = wanted;
             part.opacity = wanted ? 1f : 0.45f;
-        }
-
-        private void BuildTitleBar()
-        {
-            _title = UIBuilder.AddLabel(this, Mod.DisplayName, new Vector3(Margin, Margin), 1f);
-            _title.autoSize = false;
-            _title.size = new Vector2(PanelWidth - Margin - TitleBarHeight, TitleBarHeight - Margin);
-
-            UIButton close = AddUIComponent<UIButton>();
-            close.atlas = atlas;
-            close.size = new Vector2(32f, 32f);
-            close.relativePosition = new Vector3(PanelWidth - 36f, 4f);
-            close.normalBgSprite = "buttonclose";
-            close.hoveredBgSprite = "buttonclosehover";
-            close.pressedBgSprite = "buttonclosepressed";
-            close.eventClick += (component, e) => Hide();
-
-            // Dragging the title bar moves the whole window.
-            UIDragHandle drag = AddUIComponent<UIDragHandle>();
-            drag.target = this;
-            drag.size = new Vector2(PanelWidth - 40f, TitleBarHeight);
-            drag.relativePosition = Vector3.zero;
         }
 
         /// <summary>Right of the screen's centre, where the F8 panel (centred) leaves room for it.</summary>

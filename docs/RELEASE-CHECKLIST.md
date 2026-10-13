@@ -86,6 +86,11 @@ that repo's `docs/RELEASE-CHECKLIST.md` has the long version.
 - [ ] The Water tab on, then off, with Theme Mixer running: its water colour slider still works
       afterwards (the FollowGlobals fix of 2026-10-11).
 - [ ] The F8 panel's Water tab opens with its last row (City reflection length) on screen.
+- [ ] The panels on ModsLibCS1 (2026-10-13): every Panel look (Frosted, See-through, Blue,
+      Vanilla) with the F8 panel and the building window open -- every tab, the Water tab
+      scrolling to its last row, a reset icon, "Kind of glass" as a list, a colour pick, the HUD
+      button with Unified UI off, a look changed with both open. Log: "panel look:", "panel: ...
+      names ... values ...", "panel: every tab N high", no "drawing Vanilla instead".
 - [ ] The editors (added 2026-09-29, untested): in the Asset Editor, a glass building shows its
       glass (the log says "loaded: the asset editor", then "glass: on"), the magenta mask works,
       zooming out shows the LOD's glass, and the Snapshot tool pauses it ("glass: the Snapshot
@@ -141,6 +146,10 @@ stands.
 
 - [ ] **Make the GitHub repository public**: `RealGlassCS1` (the remote `origin`) was PRIVATE on
       2026-09-29, and the description links it.
+- [ ] **ModsLibCS1 public too, and its pinned commit pushed** (2026-10-13: the panels are built with
+      it, a submodule at the repo root): a public repo with a private submodule can't be built by
+      anyone else, and GitHub shows the submodule's link as a 404. `git submodule status` shows no
+      `+`, `-` or `U`, and nothing is dirty inside `ModsLibCS1`.
 - [ ] *Add/Remove Required Items* → Harmony, `2040656402`.
 - [ ] Screenshots; tags beyond the automatic `Mod`; the description renders (the table, the links).
 - [ ] Visibility **Public**.

@@ -23,7 +23,10 @@ namespace RealGlass.UI
         /// <summary>A line of text the UI keeps up to date. The F8 panel only.</summary>
         Status,
 
-        /// <summary>A choice over <see cref="Row.ChoiceValues"/>: a slider of names in the panel, a dropdown on the options page.</summary>
+        /// <summary>
+        /// A choice over <see cref="Row.ChoiceValues"/>: in the panel a row of buttons, or a list when the
+        /// names don't fit (Vanilla: a slider of names); a dropdown on the options page.
+        /// </summary>
         Choice,
 
         /// <summary>A colour: swatch and picker, a text field, Copy, Paste, reset. The F8 panel only.</summary>
@@ -297,10 +300,43 @@ namespace RealGlass.UI
             if (Colour != null) Colour.value = DefaultColour;
         }
 
-        /// <summary>A colour row at its default: what greys out its reset button.</summary>
+        /// <summary>A colour row at its default.</summary>
         public bool IsDefaultColour
         {
             get { return Colour == null || ColorText.Same(Colour.value, DefaultColour); }
+        }
+
+        /// <summary>
+        /// A row with a setting of its own the panel's reset button can put back: a slider (not a
+        /// hidden one), a switch, a choice, a key or a colour. (Volumetric Weather's.)
+        /// </summary>
+        public bool CanReset
+        {
+            get { return Float != null || Bool != null || Int != null || Key != null || Colour != null; }
+        }
+
+        /// <summary>At its shipping default: what fades the row's reset button.</summary>
+        public bool IsAtDefault
+        {
+            get
+            {
+                if (Float != null && !Mathf.Approximately(Float.value, DefaultFloat)) return false;
+                if (Bool != null && Bool.value != DefaultBool) return false;
+                if (Int != null && Int.value != DefaultInt) return false;
+                if (Key != null && Key.value != DefaultKey) return false;
+                if (Colour != null && !IsDefaultColour) return false;
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// Where the row's reset button goes back to, as words on hover: the default here, the F8
+        /// panel's setting in the building window (whose reset is <see cref="ClearOverride"/>). An
+        /// icon has no label of its own to say it.
+        /// </summary>
+        public string ResetHint
+        {
+            get { return Localization.Get(ClearOverride != null ? "Asset.Global.Hint" : "Reset.Default"); }
         }
     }
 
@@ -504,6 +540,35 @@ namespace RealGlass.UI
             // Written to disk NOW rather than with the slider changes a second later. A switch is
             // a decision, and "I ticked it and it was off again next time" is the one report a
             // settings page must never earn.
+            SettingsXml.SaveNow();
+
+            if (row.AfterChange != null)
+                row.AfterChange();
+
+            RefreshAllUIs();
+        }
+
+        /// <summary>
+        /// A row's reset button in the F8 panel (Volumetric Weather's): that one row back to its
+        /// default, as if the player had moved it there -- saved now, its live hook run, every UI
+        /// refreshed. A switch goes through <see cref="ApplyToggle"/> like a click. Not under the
+        /// preset's guard, on purpose: a colour, reflectivity or clarity put back by hand turns the
+        /// kind of glass to Custom as moving it would, and the kind of glass put back writes its three.
+        /// </summary>
+        public static void ResetRow(Row row)
+        {
+            if (row == null || !row.CanReset || row.IsAtDefault)
+                return;
+
+            Log.Msg("setting: " + row.Name + " reset to its default (the row's reset button)");
+
+            if (row.Kind == RowKind.Toggle && row.Bool != null)
+            {
+                ApplyToggle(row, row.DefaultBool);
+                return;
+            }
+
+            row.ResetToDefault();
             SettingsXml.SaveNow();
 
             if (row.AfterChange != null)
@@ -1543,6 +1608,31 @@ namespace RealGlass.UI
                 Key = Settings.PickerKey,
                 DefaultKey = Settings.DefaultPickerKey,
                 Profiled = false,
+            });
+
+            // The panels' look (ModsLibCS1, Volumetric Weather's row). Stored by value, append only;
+            // listed with the default (Frosted glass) first and the old look last. A change rebuilds
+            // the F8 panel and the building window where they stand, and the HUD button, which wears
+            // the look too.
+            Add(new Row
+            {
+                Kind = RowKind.Choice,
+                Options = OptionsPage.General,
+                Int = Settings.PanelSkin,
+                DefaultInt = Settings.Defaults.PanelSkin,
+                ChoiceKeys = new[] { "PanelSkin.Frosted", "PanelSkin.SeeThrough", "PanelSkin.GameBlue", "PanelSkin.Vanilla" },
+                ChoiceValues = new[]
+                {
+                    (int)ModsLibCS1.UI.Skin.Frosted, (int)ModsLibCS1.UI.Skin.SeeThrough,
+                    (int)ModsLibCS1.UI.Skin.GameBlue, (int)ModsLibCS1.UI.Skin.Vanilla,
+                },
+                Profiled = false,
+                AfterChange = () =>
+                {
+                    Log.Msg("setting: panel look = " + PanelLook.Skin);
+                    ModController.RebuildPanel();
+                    ModController.RefreshButton();
+                },
             });
 
             Add(new Row

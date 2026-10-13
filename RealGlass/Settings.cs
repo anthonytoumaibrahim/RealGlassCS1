@@ -53,6 +53,13 @@ namespace RealGlass
         /// </summary>
         public static SavedInputKey PickerKey { get; private set; }
 
+        /// <summary>
+        /// THE PANELS' LOOK (ModsLibCS1.UI.Skin), stored by VALUE (append only): 0 See-through, 1
+        /// Game blue, 2 Vanilla (the panels as they were), 3 Frosted, the default -- Volumetric
+        /// Weather's row. The F8 panel, the building window and the HUD button wear it.
+        /// </summary>
+        public static IntSetting PanelSkin { get; private set; }
+
         /// <summary>Puts the panel's button in Unified UI's bar (when that is there), else on the HUD.</summary>
         public static BoolSetting UseUnifiedUI { get; private set; }
 
@@ -322,6 +329,9 @@ namespace RealGlass
 
             /// <summary>The game's own language.</summary>
             public const int Language = 0;
+
+            /// <summary>Frosted glass (ModsLibCS1.UI.Skin.Frosted), as in Volumetric Weather.</summary>
+            public const int PanelSkin = 3;
             public const bool UseUnifiedUI = true;
             public const bool DetailedLogging = false;
 
@@ -553,6 +563,7 @@ namespace RealGlass
                 Language = new IntSetting("Language", Defaults.Language);
                 PanelKey = new SavedInputKey("PanelKey", InMemory, DefaultPanelKey, false);
                 PickerKey = new SavedInputKey("PickerKey", InMemory, DefaultPickerKey, false);
+                PanelSkin = new IntSetting("PanelSkin", Defaults.PanelSkin);
                 UseUnifiedUI = new BoolSetting("UseUnifiedUI", Defaults.UseUnifiedUI);
 
                 GlassDistance = new IntSetting("GlassDistance", Defaults.GlassDistance);

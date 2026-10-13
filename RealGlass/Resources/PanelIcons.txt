@@ -1,0 +1,8 @@
+# A mod's own icons, made by ModsLibCS1's tools/make-icons.ps1 from PanelIcons.lucide.txt. Do not edit by hand.
+# name x y width height left right top bottom  (pixels; y from the TOP of the sheet)
+sheet 128 64
+icon-building-2 1 1 24 24 0 0 0 0
+icon-sparkles 28 1 24 24 0 0 0 0
+icon-grid-2x2 55 1 24 24 0 0 0 0
+icon-sofa 82 1 24 24 0 0 0 0
+icon-waves 1 28 24 24 0 0 0 0

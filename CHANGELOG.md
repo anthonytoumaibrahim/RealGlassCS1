@@ -45,7 +45,11 @@ The first Workshop release: realistic glass on every building, at every distance
   for painted panes, the depth pyramid) takes its budget from one table of four tiers, ready for
   a quality choice; the mod runs the highest.
 - **The panel on F8** (or its Unified UI button), five tabs, every setting of the mod. (F7, the
-  first choice, is the game's own debug-output key.)
+  first choice, is the game's own debug-output key.) Its look, the building window's and the
+  button's is picked on the options page: Frosted glass (the default, over a blurred copy of the
+  city), See-through, Blue, or Vanilla, the game's own. In the new looks the tabs are icons, every
+  tab is one height with the settings scrolling inside it, choices are a row of buttons (a list
+  when the names don't fit), and every setting has a reset icon at the end of its row.
 - **In the editors**: the Asset Editor (the edited building, its sub-meshes and, zoomed out, its
   LOD) and the Scenario Editor as well as cities. The glass pauses while the Snapshot tool is in
   use, so an asset's thumbnails and snapshots show it as the game draws it.

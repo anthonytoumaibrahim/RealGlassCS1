@@ -11,7 +11,8 @@
 #     reads them from the built rows), the tab names, the building window's rows, and every
 #     key-shaped string literal in *.cs (Glass\ included);
 #   - English has no key nothing asks for (dead text a translator would translate for nothing),
-#     and no tooltip (the author, 2026-10-04: none, the labels say it);
+#     and no tooltip (the author, 2026-10-04: none, the labels say it -- only an icon with no
+#     label says what it does on hover: the reset icons, "Reset.Default" / "Asset.Global.Hint");
 #   - a translation has no key English lacks, and says which English keys it has not done yet;
 #   - wrapped texts come out as one line, \n as a real break.
 # The same key check runs in the game at startup (SettingsCatalog.LogLayout), from the real rows.
@@ -95,7 +96,7 @@ Write-Host "      ($assetRows rows in the building window)"
 
 # Key-shaped literals anywhere in the code ("Unit.Pixels", "Colour.Copy"...), including the ones
 # picked by a ?: that a Localization.Get("...") search would miss.
-$prefixes = 'Mod|Tab|Key|Status|Unit|Readout|File|Language|Group|ResetAll|Colour|GlassPreset|SsrQuality|SkyReflection|OffscreenFill|GlassDistance|Asset|AssetFile|Picker'
+$prefixes = 'Mod|Tab|Key|Status|Unit|Readout|File|Language|Group|ResetAll|Reset|Colour|GlassPreset|SsrQuality|SkyReflection|OffscreenFill|GlassDistance|Asset|AssetFile|Picker'
 foreach ($file in Get-ChildItem $root -Recurse -Filter *.cs | Where-Object { $_.FullName -notmatch '\\(bin|obj)\\' }) {
     foreach ($m in [regex]::Matches((Get-Content $file.FullName -Raw), "`"((?:$prefixes)\.[A-Z][A-Za-z.]*[A-Za-z])`"")) {
         [void]$needed.Add($m.Groups[1].Value)

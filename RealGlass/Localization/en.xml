@@ -278,7 +278,8 @@
 
   <String key="AssetInteriorsEnabled.Label">Parallax interiors</String>
 
-  <String key="Asset.Global.Button">Global</String>
+  <!-- On hover over a row's reset icon here (an icon has no label of its own). -->
+  <String key="Asset.Global.Hint">Back to the global setting</String>
 
   <!-- By the cursor while the building picker is on. {0}: the building's asset, as the game names it. -->
   <String key="Picker.Building">{0}\nClick: its glass. Right-click: stop.</String>
@@ -296,6 +297,13 @@
   <String key="PanelKey.Label">Open this panel</String>
 
   <String key="PickerKey.Label">Pick a building: its asset's own glass</String>
+
+  <!-- The F8 panel's and the building window's look. Vanilla is the game's own look. -->
+  <String key="PanelSkin.Label">Panel look</String>
+  <String key="PanelSkin.Frosted">Frosted glass</String>
+  <String key="PanelSkin.SeeThrough">See-through</String>
+  <String key="PanelSkin.GameBlue">Blue</String>
+  <String key="PanelSkin.Vanilla">Vanilla</String>
 
   <String key="UseUnifiedUI.Label">Show icon in Unified UI</String>
 
@@ -337,7 +345,9 @@
   <String key="Colour.Copy">Copy</String>
   <String key="Colour.Copied">Copied</String>
   <String key="Colour.Paste">Paste</String>
-  <String key="Colour.Reset">Default</String>
+
+  <!-- On hover over a row's reset icon in the F8 panel (an icon has no label of its own). -->
+  <String key="Reset.Default">Back to the default</String>
 
   <!-- ==================== Slider readouts ==================== -->
 

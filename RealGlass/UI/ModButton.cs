@@ -59,8 +59,21 @@ namespace RealGlass.UI
             // takes the focus: the button would stay lit. Blue means the mouse is on it, only.
             canFocus = false;
 
-            atlas = UIView.GetAView().defaultAtlas;
-            string[] sprites = PickBackground(atlas);
+            // The panels' look (Volumetric Weather's): the new looks' own button sprites; Vanilla, or
+            // a look whose sprites are missing, the game's as before.
+            ModsLibCS1.UI.Builder look = PanelLook.NewBuilder();
+            ModsLibCS1.UI.SkinSprites own = look.Theme.Sprites;
+            string[] sprites = null;
+            if (own.OwnSheet && own.Hud != null && look.Atlas != null && look.Atlas[own.Hud] != null)
+            {
+                atlas = look.Atlas;
+                sprites = new[] { own.Hud, own.HudHover ?? own.Hud, own.HudHover ?? own.Hud, own.Hud };
+            }
+            else
+            {
+                atlas = UIView.GetAView().defaultAtlas;
+                sprites = PickBackground(atlas);
+            }
             if (sprites != null)
             {
                 normalBgSprite = sprites[0];

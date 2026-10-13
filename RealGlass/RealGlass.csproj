@@ -25,6 +25,16 @@
     <LibsDir>$(MSBuildProjectDirectory)\..\libs</LibsDir>
   </PropertyGroup>
 
+  <!-- ModsLibCS1 (git submodule at the repo root): the panels' controls and looks, compiled INTO
+       this DLL with its sprite sheet. A clone made without its submodules stops here, saying why. -->
+  <PropertyGroup>
+    <ModsLibCS1Props>$(MSBuildThisFileDirectory)..\ModsLibCS1\ModsLibCS1.props</ModsLibCS1Props>
+  </PropertyGroup>
+  <Import Project="$(ModsLibCS1Props)" Condition="Exists('$(ModsLibCS1Props)')" />
+  <Target Name="CheckModsLibCS1" BeforeTargets="BeforeBuild" Condition="!Exists('$(ModsLibCS1Props)')">
+    <Error Text="ModsLibCS1 is missing: run git submodule update --init" />
+  </Target>
+
   <ItemGroup>
     <EmbeddedResource Include="Resources\GlassIcon.png" />
     <!-- Every language file, as "Localization.<code>.xml": Localization.cs finds them by name. -->

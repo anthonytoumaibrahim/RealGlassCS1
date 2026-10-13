@@ -2,13 +2,14 @@ using System;
 using System.Collections.Generic;
 using ColossalFramework;
 using ColossalFramework.UI;
+using ModsLibCS1.UI;
 using UnityEngine;
 
 namespace RealGlass.UI
 {
     /// <summary>
     /// One colour row of the in-game panel:
-    ///   name | swatch | #RRGGBB field | Copy | Paste | Default
+    ///   name | swatch | #RRGGBB field | Copy | Paste | reset
     /// (Volumetric Weather's colour row.)
     /// </summary>
     /// <remarks>
@@ -36,11 +37,9 @@ namespace RealGlass.UI
         private const float InvalidShownFor = 3f;
         private const float CopiedShownFor = 1.5f;
 
-        private static readonly Color32 TextColour = new Color32(0, 0, 0, 255);
-        private static readonly Color32 InvalidColour = new Color32(190, 30, 30, 255);
-
         private static bool _probed;
 
+        private readonly Builder _ui;
         private readonly Row _row;
         private readonly UILabel _name;
         private readonly UIColorField _swatch;
@@ -55,21 +54,30 @@ namespace RealGlass.UI
         private float _invalidUntil = -1f;
         private float _copiedUntil = -1f;
 
-        public ColourRow(UIComponent parent, float y, Row row, RowLayout layout)
+        public ColourRow(Builder ui, UIComponent parent, float y, Row row, RowLayout layout)
         {
+            _ui = ui;
             _row = row;
             _shown = Current;
             _logged = ColorText.Format(_shown);
 
+            float textWidth = layout.ColourTextWidth;
             float buttonWidth = layout.ColourButtonWidth;
 
-            UILabel name = UIBuilder.AddLabel(parent, row.Label, new Vector3(0f, y + 8f), 0.8f);
-            name.autoSize = false;
-            name.size = new Vector2(layout.LabelWidth, 20f);
+            // The page's names' column (RowList widens it for long names).
+            UILabel name = _ui.AddName(parent, row.Label, new Vector3(0f, y + 8f), _ui.LabelWidth);
             _parts.Add(name);
             _name = name;
 
-            float x = layout.LabelWidth + 4f;
+            // The parts end where every row's controls end (before the reset). Beside a wide names'
+            // column they reach left into it as far as the row's own name leaves room, as a choice
+            // row's buttons do (Volumetric Weather: past it, Paste ran under the reset icon).
+            float parts = SwatchSize + Gap + textWidth + Gap + buttonWidth + Gap + buttonWidth;
+            float column = _ui.LabelWidth + 4f;
+            float x = Mathf.Max(Mathf.Min(column, parent.width - _ui.ResetColumn - parts),
+                _ui.NameWidth(row.Label) + ChoiceFit.NameRoom);
+            if (x < column)
+                name.width = x - 4f;
 
             _swatch = CreateSwatch(parent, new Vector3(x, y + 4f));
             if (_swatch != null)
@@ -94,48 +102,35 @@ namespace RealGlass.UI
 
             x += SwatchSize + Gap;
 
-            _text = CreateText(parent, new Vector3(x, y + 4f), layout.ColourTextWidth);
+            _text = _ui.AddTextField(parent, new Vector2(textWidth, 26f), new Vector3(x, y + 4f), 64);
             _text.text = ColorText.Format(_shown);
             _text.eventTextSubmitted += (component, text) => Submit(text);
             _text.eventTextCancelled += (component, text) => ShowValid();
             _parts.Add(_text);
 
-            x += layout.ColourTextWidth + Gap;
+            x += textWidth + Gap;
 
-            _copy = UIBuilder.AddButton(parent, Localization.Get("Colour.Copy"), new Vector2(buttonWidth, 26f), new Vector3(x, y + 4f));
+            _copy = _ui.AddButton(parent, Localization.Get("Colour.Copy"), new Vector2(buttonWidth, 26f), new Vector3(x, y + 4f));
             _copy.canFocus = false;
             _copy.eventClick += (component, e) => Copy();
             _parts.Add(_copy);
 
             x += buttonWidth + Gap;
 
-            UIButton paste = UIBuilder.AddButton(parent, Localization.Get("Colour.Paste"), new Vector2(buttonWidth, 26f), new Vector3(x, y + 4f));
+            UIButton paste = _ui.AddButton(parent, Localization.Get("Colour.Paste"), new Vector2(buttonWidth, 26f), new Vector3(x, y + 4f));
             paste.canFocus = false;
             paste.eventClick += (component, e) => Paste();
             _parts.Add(paste);
 
-            // Right-aligned. Not in Parts: it greys out on its own rule (already the default). In the
-            // building window it is "Global": the asset follows the global colour again.
-            _reset = CreateReset(parent, y, row.ClearOverride != null,
-                row.ClearOverride != null ? UIBuilder.GlobalButtonWidth : buttonWidth);
-            _reset.eventClick += (component, e) =>
-            {
-                if (_row.ClearOverride != null)
-                {
-                    if (_row.Overridden == null || !_row.Overridden())
-                        return;
+            // The row's reset: the same icon as every other row's (it was a "Default" text button),
+            // right-aligned. In the building window it is "back to the Glass tab's colour": the asset
+            // follows the global colour again. Not in Parts: it fades on its own rule (already there).
+            _reset = _ui.AddReset(parent, y, row.ResetHint);
+            if (_reset != null)
+                _reset.eventClick += (component, e) => Reset();
 
-                    _row.ClearOverride();
-                    SettingsCatalog.RefreshAllUIs();
-                    return;
-                }
-
-                if (_row.IsDefaultColour)
-                    return;
-
-                Store(_row.DefaultColour);
-                Commit("reset to the default");
-            };
+            // The faint line under the row, in the looks that draw one.
+            _ui.AddRowLine(parent, y);
 
             Probe();
             Refresh();
@@ -185,10 +180,10 @@ namespace RealGlass.UI
                 if (_copiedUntil >= 0f && now > _copiedUntil)
                 {
                     _copiedUntil = -1f;
-                    _copy.text = Localization.Get("Colour.Copy");
+                    _copy.text = _ui.Caps(Localization.Get("Colour.Copy"));
                 }
 
-                _reset.isEnabled = ResetWanted;
+                Builder.SetResetEnabled(_reset, ResetWanted);
             }
             finally
             {
@@ -218,7 +213,7 @@ namespace RealGlass.UI
                 _refreshing = false;
             }
 
-            _reset.isEnabled = ResetWanted;
+            Builder.SetResetEnabled(_reset, ResetWanted);
 
             // Only for a real change: the picker fires on every frame of a drag, most of them
             // with the colour it already had.
@@ -229,8 +224,28 @@ namespace RealGlass.UI
             }
         }
 
+        /// <summary>The reset icon: the default back, or (the building window) the Glass tab's colour.</summary>
+        private void Reset()
+        {
+            if (_row.ClearOverride != null)
+            {
+                if (_row.Overridden == null || !_row.Overridden())
+                    return;
+
+                _row.ClearOverride();
+                SettingsCatalog.RefreshAllUIs();
+                return;
+            }
+
+            if (_row.IsDefaultColour)
+                return;
+
+            Store(_row.DefaultColour);
+            Commit("reset to the default");
+        }
+
         /// <summary>
-        /// The reset is not in Parts (it greys out on its own rule: already the default), so it
+        /// The reset is not in Parts (it fades on its own rule: already where it goes back to), so it
         /// follows the row's own switch here -- the glass colour greys out with the glass.
         /// </summary>
         private bool ResetWanted
@@ -280,7 +295,7 @@ namespace RealGlass.UI
             try
             {
                 Clipboard.text = ColorText.Format(Current);
-                _copy.text = Localization.Get("Colour.Copied");
+                _copy.text = _ui.Caps(Localization.Get("Colour.Copied"));
                 _copiedUntil = Time.realtimeSinceStartup + CopiedShownFor;
             }
             catch (Exception e)
@@ -319,7 +334,7 @@ namespace RealGlass.UI
         {
             _invalidUntil = -1f;
             _text.text = ColorText.Format(_shown);
-            _text.textColor = TextColour;
+            _text.textColor = _ui.Theme.FieldText;
         }
 
         /// <summary>What could not be read stays on show in red for a moment, then goes back.</summary>
@@ -330,34 +345,8 @@ namespace RealGlass.UI
                 shown = shown.Substring(0, 40);
 
             _text.text = shown;
-            _text.textColor = InvalidColour;
+            _text.textColor = _ui.Theme.Invalid;
             _invalidUntil = Time.realtimeSinceStartup + InvalidShownFor;
-        }
-
-        private static UITextField CreateText(UIComponent parent, Vector3 position, float width)
-        {
-            UITextField field = parent.AddUIComponent<UITextField>();
-            field.atlas = UIBuilder.Atlas;
-            field.size = new Vector2(width, 26f);
-            field.relativePosition = position;
-            field.normalBgSprite = "TextFieldPanelHovered";
-            field.hoveredBgSprite = "TextFieldPanelHovered";
-            field.focusedBgSprite = "TextFieldPanel";
-            field.disabledBgSprite = "TextFieldPanelHovered";
-            field.selectionSprite = "EmptySprite";
-            field.selectionBackgroundColor = new Color32(0, 172, 234, 255);
-            field.color = new Color32(255, 255, 255, 255);
-            field.textColor = TextColour;
-            field.textScale = 0.85f;
-            field.padding = new RectOffset(6, 6, 6, 3);
-            field.maxLength = 64;
-            field.builtinKeyNavigation = true;
-            field.isInteractive = true;
-            field.readOnly = false;
-            field.canFocus = true;
-            field.selectOnFocus = true;
-            field.submitOnFocusLost = true;
-            return field;
         }
 
         /// <summary>The game's own colour field, cloned out of the transport-line template.</summary>
@@ -400,18 +389,6 @@ namespace RealGlass.UI
                          "); the row works without its swatch");
                 return null;
             }
-        }
-
-        /// <summary>
-        /// A "Default" text button, right-aligned: Volumetric Weather's author preferred the text to
-        /// an icon (the game's IconUndo sprite is not in the in-game atlas anyway).
-        /// </summary>
-        private static UIButton CreateReset(UIComponent parent, float y, bool global, float width)
-        {
-            UIButton button = UIBuilder.AddButton(parent, Localization.Get(global ? "Asset.Global.Button" : "Colour.Reset"),
-                new Vector2(width, 26f), new Vector3(parent.width - width, y + 4f));
-            button.canFocus = false;
-            return button;
         }
 
         /// <summary>Once per launch: whether the game's picker was found, so a plain-looking row explains itself.</summary>
