@@ -1222,6 +1222,18 @@ namespace RealGlass.UI
                 AfterChange = Changed,
             });
 
+            // On: up close the rooms are the LOD models' storey grid, so a building changing model
+            // keeps its rooms; off: they follow the windows the asset painted (and switch at the LOD).
+            Add(new Row
+            {
+                Kind = RowKind.Toggle,
+                Panel = PanelPage.Interiors,
+                Bool = Settings.InteriorsMatchLods,
+                DefaultBool = Settings.Defaults.InteriorsMatchLods,
+                Enabled = InteriorsOn,
+                AfterChange = State("rooms the same up close and on LODs", OnOff(Settings.InteriorsMatchLods)),
+            });
+
             Add(new Row
             {
                 Kind = RowKind.Percent,

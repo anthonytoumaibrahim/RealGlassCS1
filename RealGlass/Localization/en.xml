@@ -173,6 +173,8 @@
 
   <String key="InteriorsDepth.Label">Room depth</String>
 
+  <String key="InteriorsMatchLods.Label">Same rooms up close and on LODs</String>
+
   <String key="Group.RoomLights">Lights at night</String>
 
   <String key="InteriorsLit.Label">Lit rooms</String>

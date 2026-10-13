@@ -81,6 +81,7 @@ namespace RealGlass
                         " | rooms=" + On(Settings.InteriorsEnabled, Settings.Defaults.InteriorsEnabled) +
                         " byDay=" + On(Settings.InteriorsByDay, Settings.Defaults.InteriorsByDay) +
                         " depth=" + Percent(Settings.InteriorsDepth, Settings.Defaults.InteriorsDepth) +
+                        " matchLods=" + On(Settings.InteriorsMatchLods, Settings.Defaults.InteriorsMatchLods) +
                         " lit=" + Percent(Settings.InteriorsLit, Settings.Defaults.InteriorsLit) +
                         " lateNight=" + On(Settings.InteriorsLateNight, Settings.Defaults.InteriorsLateNight) +
                         " switching=" + Percent(Settings.InteriorsSwitching, Settings.Defaults.InteriorsSwitching) +

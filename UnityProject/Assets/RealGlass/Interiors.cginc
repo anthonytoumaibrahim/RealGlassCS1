@@ -24,7 +24,7 @@
 
 float4 _RGRooms;          // x rooms on every building (1), y by day too (1), z the clock (game hours), w game hours a room keeps its light (0: for good)
 float4 _RGRooms2;         // x a lit room's average light (brightness x Interiors.LitRoomLuminance), y the coloured lights' share, z the curtains' share, w pictures loaded (1)
-float4 _RGRooms3;         // x room depth: 0 a flat picture on the glass .. 1 a box room behind it
+float4 _RGRooms3;         // x room depth: 0 a flat picture on the glass .. 1 a box room behind it; y 1: up close the storey grid too (the LODs' rooms)
 float4 _RGRoomShare;      // the share of rooms lit now: x homes, y offices and industry, z shops, w hotels, leisure, public
 float4 _RGRoomAtlasInfo;  // x tiles a row, y a night tile's pixels, z a day tile's pixels, w the back wall's share of a picture
 float4 _RGRoomPools[8];   // per kind of room (Interiors.Pool*): x its first tile, y how many, z its box's aspect, w its depth (half-heights)
@@ -311,7 +311,10 @@ float RoomsBehind(float3 P, float3 n, float3 t, float3 V, float baseY, float foo
 
     // The room: the window the asset painted here (close up), else a cell one storey tall and a
     // room wide along the facade. Its place in the grid (column, storey) names it, the same on every
-    // tier as far as can be: a painted window by its middle.
+    // tier as far as can be: a painted window by its middle. With _RGRooms3.y, the grid up close too:
+    // the LOD models have no painted windows to find, so a building changing model keeps its rooms.
+    if (_RGRooms3.y > 0.5)
+        painted = float4(0.0, 0.0, 0.0, 0.0);
     float storeyH = max(_RGPane2.z, 2.0);
     float along = dot(P, t);
     float cellW = kind > 0.5 && kind < 1.5 || kind > 6.5 ? 6.0 : (kind > 5.5 && kind < 6.5 ? 8.0 : 3.6);

@@ -136,7 +136,7 @@ namespace RealGlass.Glass
             Shader.SetGlobalVector(_rooms2, new Vector4(Mathf.Max(p.InteriorsBrightness, 0f) * LitRoomLuminance,
                                                         Mathf.Clamp(p.InteriorsColoured, 0f, 1f), Mathf.Clamp01(p.InteriorsCurtains),
                                                         show && loaded ? 1f : 0f));
-            Shader.SetGlobalVector(_rooms3, new Vector4(Mathf.Clamp01(p.InteriorsDepth), 0f, 0f, 0f));
+            Shader.SetGlobalVector(_rooms3, new Vector4(Mathf.Clamp01(p.InteriorsDepth), p.InteriorsMatchLods ? 1f : 0f, 0f, 0f));
             Shader.SetGlobalVector(_share, Shares(p, f.Hour));
             if (!loaded)
                 return;

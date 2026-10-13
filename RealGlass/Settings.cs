@@ -225,6 +225,9 @@ namespace RealGlass
         /// <summary>0..1: the rooms as boxes with depth behind the glass (1) or flat pictures on it (0).</summary>
         public static FloatSetting InteriorsDepth { get; private set; }
 
+        /// <summary>Up close, the rooms laid out as on the LOD models (the storey grid), so nothing switches when a building changes model; off, they follow the asset's painted windows.</summary>
+        public static BoolSetting InteriorsMatchLods { get; private set; }
+
         /// <summary>0.05..0.9: the share of rooms lit at the busiest hour.</summary>
         public static FloatSetting InteriorsLit { get; private set; }
 
@@ -396,6 +399,9 @@ namespace RealGlass
             /// <summary>Full depth (the author, 2026-10-07: "a slider would be better, some people might not prefer the parallax").</summary>
             public const float InteriorsDepth = 1f;
 
+            /// <summary>On (the author, 2026-10-14: in a big city the rooms "switch" where buildings change to their LODs; an option, some "would prefer accurate position on LODs").</summary>
+            public const bool InteriorsMatchLods = true;
+
             /// <summary>Under half at the busiest hour: "you'll likely never find ALL interiors lit up".</summary>
             public const float InteriorsLit = 0.45f;
             public const bool InteriorsLateNight = true;
@@ -531,6 +537,7 @@ namespace RealGlass
                 InteriorsEnabled = new BoolSetting("InteriorsEnabled", Defaults.InteriorsEnabled);
                 InteriorsByDay = new BoolSetting("InteriorsByDay", Defaults.InteriorsByDay);
                 InteriorsDepth = new FloatSetting("InteriorsDepth", Defaults.InteriorsDepth);
+                InteriorsMatchLods = new BoolSetting("InteriorsMatchLods", Defaults.InteriorsMatchLods);
                 InteriorsLit = new FloatSetting("InteriorsLit", Defaults.InteriorsLit);
                 InteriorsLateNight = new BoolSetting("InteriorsLateNight", Defaults.InteriorsLateNight);
                 InteriorsSwitching = new FloatSetting("InteriorsSwitching", Defaults.InteriorsSwitching);
