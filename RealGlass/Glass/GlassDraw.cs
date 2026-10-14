@@ -35,6 +35,7 @@ namespace RealGlass.Glass
 
         private static int _idMain, _idXys, _idAci, _idState, _idMainSt, _idObjectIndex;
         private static bool _ids;
+        private static bool _loggedLodSkipped;
 
         /// <summary>What a building material gives the glass: its three maps, or nothing (not glass-capable).</summary>
         private sealed class Maps
@@ -209,6 +210,21 @@ namespace RealGlass.Glass
             }
         }
 
+        /// <summary>
+        /// The game's Building.RenderLod did not run for info (another mod's prefix skipped it; see
+        /// GlassPatches.RenderLodPatch): no middle-distance glass there. One line a city, naming the
+        /// first asset: a report can then say which mod hides what.
+        /// </summary>
+        public static void NoteLodSkipped(BuildingInfoBase info)
+        {
+            if (_loggedLodSkipped)
+                return;
+
+            _loggedLodSkipped = true;
+            Log.Msg("glass: the game's middle-distance draw did not run for '" + (info != null ? info.name : "?") +
+                    "' (another mod skipped Building.RenderLod): no glass is drawn where the game drew nothing");
+        }
+
         /// <summary>Forget every cached material and layer (a city unloads, or the atlas changed).</summary>
         public static void Reset()
         {
@@ -219,6 +235,7 @@ namespace RealGlass.Glass
             NearDraws = LodDraws = GroupDraws = NearSkipped = 0;
             Active = false;
             Failed = false;
+            _loggedLodSkipped = false;
         }
     }
 }

@@ -86,6 +86,11 @@ that repo's `docs/RELEASE-CHECKLIST.md` has the long version.
 - [ ] The Water tab on, then off, with Theme Mixer running: its water colour slider still works
       afterwards (the FollowGlobals fix of 2026-10-11).
 - [ ] The F8 panel's Water tab opens with its last row (City reflection length) on screen.
+- [ ] Lumina's Dynamic Resolution / SSAA (the camera fix of 2026-10-14): Lumina only applies it
+      when a city LOADS (its button just saves the setting), so turn it on, then load a city.
+      The glass reflects the city and the water's city reflection shows, at SSAA 1 and above.
+      Log: "camera: the city is drawn by the game's camera 'Main Camera' (disabled: another
+      mod renders it itself), while Camera.main is 'Lumina dynamic resolution'".
 - [ ] The panels on ModsLibCS1 (2026-10-13): every Panel look (Frosted, See-through, Blue,
       Vanilla) with the F8 panel and the building window open -- every tab, the Water tab
       scrolling to its last row, a reset icon, "Kind of glass" as a list, a colour pick, the HUD

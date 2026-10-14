@@ -99,6 +99,12 @@ namespace RealGlass.Glass
     /// mesh and sets m_lodCount back to 0 -- so the prefix notes the count, and the postfix draws
     /// again with the arrays it left in BuildingManager.m_materialBlock.
     /// </summary>
+    /// <remarks>
+    /// The game's RenderLod ends by setting m_lodCount to 0 on every path (IL, 2026-10-14). If it is
+    /// still set, the original did not run: another mod's prefix skipped it (Harmony runs the
+    /// postfixes anyway), and the block holds the arrays of whichever asset was drawn before -- the
+    /// glass would land on that asset's positions. Then nothing is drawn.
+    /// </remarks>
     [HarmonyPatch(typeof(Building), nameof(Building.RenderLod), new[] { typeof(RenderManager.CameraInfo), typeof(BuildingInfoBase) })]
     public static class RenderLodPatch
     {
@@ -122,6 +128,12 @@ namespace RealGlass.Glass
 
             try
             {
+                if (info == null || info.m_lodCount != 0)
+                {
+                    GlassDraw.NoteLodSkipped(info);
+                    return;
+                }
+
                 GlassDraw.DrawLod(info, __state, Singleton<BuildingManager>.instance.m_materialBlock);
             }
             catch (Exception e)

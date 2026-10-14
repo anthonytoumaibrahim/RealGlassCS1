@@ -52,6 +52,10 @@ namespace RealGlass.Glass
         private DepthTextureMode _originalDepthMode;
         private GlassParams _params;
 
+        // The rooms' clock (Clock): game hours, and the frame it was counted to (-1 = not yet).
+        private double _clockHours;
+        private double _clockFrame = -1.0;
+
         /// <summary>
         /// Called by the settings catalog after any glass setting changed (every glass row's
         /// AfterChange), and once after a Reset. Cheap: the controller re-reads next frame.
@@ -213,7 +217,7 @@ namespace RealGlass.Glass
             }
 
             GlassParams p = _params;
-            Camera camera = Camera.main;
+            Camera camera = GameCamera.Get();
             bool infoView = Singleton<InfoManager>.exists && Singleton<InfoManager>.instance.CurrentMode != InfoManager.InfoMode.None;
             bool snapshot = IsTakingSnapshots();
             bool failed = GlassDraw.Failed;
@@ -465,18 +469,39 @@ namespace RealGlass.Glass
             f.ColorMapHeight = RenderManager.OBJECT_COLORMAP_HEIGHT;
 
             // The game's clock, for the rooms' lights: the hour (as the sky has it), and the hours
-            // since day 0 -- SimulationManager.Update's own sum, a day being DAYTIME_FRAMES (65536)
-            // frames (IL 2026-10-07) -- wrapped at 256 days. It runs with the game's speed and stops
-            // when the game is paused.
+            // since day 0, wrapped at 256 days. It runs with the game's speed and stops when the game
+            // is paused.
             if (Singleton<SimulationManager>.exists)
             {
                 SimulationManager sm = Singleton<SimulationManager>.instance;
                 f.Hour = sm.m_currentDayTimeHour;
-                uint frames = sm.m_referenceFrameIndex + sm.m_dayTimeOffsetFrames;
-                double hours = ((double)frames + sm.m_referenceTimer) * 24.0 / SimulationManager.DAYTIME_FRAMES;
-                f.Clock = (float)(hours - Interiors.ClockWrap * System.Math.Floor(hours / Interiors.ClockWrap));
+                f.Clock = (float)Clock(sm);
             }
             return f;
+        }
+
+        /// <summary>
+        /// The rooms' clock in game hours. It starts as SimulationManager.Update's own sum (frame +
+        /// day-time offset, a day being DAYTIME_FRAMES frames; IL 2026-10-07) and is then counted
+        /// up frame by frame at the day's CURRENT length, never recomputed from the total.
+        /// DAYTIME_FRAMES is a static field, not a constant: Real Time rewrites it, and
+        /// m_dayTimeOffsetFrames with it, whenever its day or night speed changes (IL of Real Time,
+        /// 2026-10-14). The whole sum over a new day length would jump by days and switch every
+        /// room's light at once; counted up, a new speed only changes how fast the rooms change.
+        /// </summary>
+        private double Clock(SimulationManager sm)
+        {
+            double frame = (double)sm.m_referenceFrameIndex + sm.m_referenceTimer;
+            double day = Math.Max(SimulationManager.DAYTIME_FRAMES, 1u);
+            double step = frame - _clockFrame;
+            if (_clockFrame < 0.0 || step < 0.0)
+                _clockHours = ((double)(sm.m_referenceFrameIndex + sm.m_dayTimeOffsetFrames) + sm.m_referenceTimer) * 24.0 / day;
+            else
+                _clockHours += step * 24.0 / day;
+
+            _clockFrame = frame;
+            _clockHours -= Interiors.ClockWrap * Math.Floor(_clockHours / Interiors.ClockWrap);
+            return _clockHours;
         }
 
         /// <summary>

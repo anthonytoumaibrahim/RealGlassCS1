@@ -254,8 +254,9 @@ namespace RealGlass.Water
 
         private static string Simulation(TerrainManager terrain, float seaLevel)
         {
-            CameraController controller = ToolsModifierControl.cameraController;
-            Vector3 focus = controller != null ? controller.m_currentPosition : (Camera.main != null ? Camera.main.transform.position : Vector3.zero);
+            CameraController controller = GameCamera.Controller;
+            Camera camera = GameCamera.Get();
+            Vector3 focus = controller != null ? controller.m_currentPosition : (camera != null ? camera.transform.position : Vector3.zero);
             TerrainPatch patch = null;
             int px = Mathf.Clamp(Mathf.FloorToInt((focus.x + 8640f) / 1920f), 0, 8), pz = Mathf.Clamp(Mathf.FloorToInt((focus.z + 8640f) / 1920f), 0, 8);
             foreach (TerrainPatch p in terrain.m_patches)

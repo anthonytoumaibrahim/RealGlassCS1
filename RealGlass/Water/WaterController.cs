@@ -164,7 +164,7 @@ namespace RealGlass.Water
             if (_sky == null)
                 return false;
 
-            Camera camera = Camera.main;
+            Camera camera = GameCamera.Get();
             string why = null;
             if (camera == null)
                 why = "no camera";
@@ -269,7 +269,7 @@ namespace RealGlass.Water
             if (_city == null)
                 return;
 
-            Camera camera = Camera.main;
+            Camera camera = GameCamera.Get();
             string why = null;
             float level = float.NaN;
             if (!On(Settings.WaterCity))
