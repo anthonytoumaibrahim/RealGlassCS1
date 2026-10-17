@@ -3,7 +3,8 @@
 // the water lands where the foam layer lands). Its look as PreviewWater.shader's: the game's ripple
 // normal from _WaterNormal, carried along the flow exactly as the game's pixel program does
 // (WaterGame.cginc's RGGameWaterNormal, which the sky layer shares), plus the surface's own slope; the
-// sky as the mod's cube had it (x _SkyGain; 0 under the sky layer); the sun's highlight (exponent 512).
+// sky as the mod's cube had it (x _SkyGain; 0 under the sky layer); the sun's highlight (exponent 512,
+// x _SpecGain: the game's x its material's _SpecColor, which the mod turns off under the sun's glitter).
 // The shore: the game's water fades with its thickness along the view, 1 - 10 / (3 t + 10) (its
 // clean-water constant). How the game composites that is not known (its blend state is not in the
 // player's data): here it is an alpha over the terrain, so thin water shows the beach through it.
@@ -17,6 +18,7 @@ Shader "Hidden/RealGlassPreviewGameWater"
         _Sky ("", Cube) = "" {}
         _BodyColour ("", Color) = (0.03, 0.06, 0.08, 1)
         _SkyGain ("", Float) = 1
+        _SpecGain ("", Float) = 0.6
     }
 
     SubShader
@@ -37,6 +39,7 @@ Shader "Hidden/RealGlassPreviewGameWater"
 
             samplerCUBE _Sky;
             float _SkyGain;
+            float _SpecGain;
             float4 _BodyColour;
             float4 _PreviewSun;      // xyz: toward the sun; w: its intensity
             float4 _PreviewSunColour;
@@ -83,7 +86,7 @@ Shader "Hidden/RealGlassPreviewGameWater"
                 float3 h = normalize(v + l);
                 float sun = _PreviewSun.w;
                 float3 body = _BodyColour.rgb * (_PreviewAmbient.rgb + _PreviewSunColour.rgb * sun * saturate(dot(n, l)));
-                float3 glint = _PreviewSunColour.rgb * sun * pow(saturate(dot(n, h)), 512.0) * 0.6;
+                float3 glint = _PreviewSunColour.rgb * sun * pow(saturate(dot(n, h)), 512.0) * _SpecGain;
 
                 float scene = LinearEyeDepth(SAMPLE_DEPTH_TEXTURE_PROJ(_CameraDepthTexture, UNITY_PROJ_COORD(i.screen)));
                 float thick = max(scene - i.screen.w, 0.0);

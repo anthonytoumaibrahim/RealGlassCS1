@@ -39,7 +39,8 @@ five tabs:
 - **Water** (off until switched on) -- the map's water: its own color (a deep, dark lake by
   default, or the map theme's -- no Theme Mixer needed) and brightness, the sky in it with real
   water's reflectance on every ripple, and the city in it, with its waves, its streaks and how long
-  it is drawn; foam along the shores, on fast water and on wave fronts.
+  it is drawn; ocean waves raised by the wind you set, with their choppiness, and the sun's glitter
+  on them; foam along the shores, on fast water and on wave fronts.
 
 **Alt+G** turns the building picker on: click a building, and a small window of its own gives its
 asset its own glass.
@@ -95,8 +96,13 @@ the log is `RealGlass.log`, next to it.
   running at real water's speeds, as rough as the game's own unless set otherwise. The game keeps
   shading with it as with its own -- its sky, its sun's glints, its foam, its flow along rivers --
   and the city's reflection bends off the same ripples. They keep the game's own clock: they stop
-  when the game is paused. Only the map's water and the game's own lighting of it are touched;
-  buildings keep the theme's sky.
+  when the game is paused. By default those ripples are **ocean waves**: thousands of waves from
+  a measured wind sea's spectrum, as film and games build oceans, summed on the GPU every frame --
+  long swells and short chop together, sharper at the crests -- running the way the game's own
+  wind blows when the city loads. The **sun's glitter** is the sun (the moon at night) mirrored by
+  every one of those waves: up close single glints, further out the road of light toward a low sun,
+  as wide as the waves too small to see make it. Only the map's water and the game's own lighting
+  of it are touched; buildings keep the theme's sky.
 - **Water reflections follow the surface**, including elevated lakes and rivers: a separate depth
   pass draws the game's simulated water meshes with their own patch data. The seabed cannot stand
   in for the surface, and dry depressions, banks and foreground buildings are excluded. Reflection
@@ -243,7 +249,31 @@ Every technique here has shipped in a game or is published:
     omega^2 = g k (Jerry Tessendorf, **Simulating Ocean Water**, SIGGRAPH course notes, 2001),
     every octave of wavelength with the same slope as in the equilibrium range (O. M. Phillips,
     **The equilibrium range in the spectrum of wind-generated waves**, Journal of Fluid Mechanics
-    4(4), 1958). The city in the water is traced through the depth buffer as in (3), from those
+    4(4), 1958). As **ocean waves** (the default) the ripples are instead an inverse FFT of a wind
+    sea's spectrum, as Tessendorf (above) builds an ocean -- two cascades tiling the texture, the
+    crests made choppy by the sideways displacement's Jacobian, the transform in radix-2 self-sorting
+    steps (Thomas G. Stockham Jr., **High-speed convolution and correlation**, AFIPS Spring Joint
+    Computer Conference, 1966) -- the spectrum fetch-limited JONSWAP (K. Hasselmann et al.,
+    **Measurements of wind-wave growth and swell decay during the Joint North Sea Wave Project
+    (JONSWAP)**, Deutsche Hydrographische Zeitschrift, Supplement A8(12), 1973) spread over directions as
+    M. A. Donelan, J. Hamilton and W. H. Hui measured (**Directional spectra of wind-generated
+    waves**, Philosophical Transactions of the Royal Society A 315, 1985), both as Christopher J.
+    Horvath gathers them for graphics (**Empirical directional wave spectra for computer graphics**,
+    DigiPro 2015); the amplitudes drawn with SplitMix64 (Guy L. Steele Jr., Doug Lea and Christine
+    H. Flood, **Fast Splittable Pseudorandom Number Generators**, OOPSLA 2014); the waves too short
+    for the texture carried on down to the gravity-capillary limit (T. Elfouhaily, B. Chapron, K.
+    Katsaros and D. Vandemark, **A unified directional spectrum for long and short wind-driven
+    waves**, Journal of Geophysical Research 102(C7), 1997). The sun's glitter is the sun mirrored
+    by a sea of facets whose slopes are Gaussian about the ripple texture's own, as wide as its
+    mipmaps averaged away (Marc Olano and Dan Baker, **LEAN Mapping**, I3D 2010) and the waves too
+    short for it make them -- the microfacet model of Bruce Walter, Stephen R. Marschner, Hongsong
+    Li and Kenneth E. Torrance (**Microfacet Models for Refraction through Rough Surfaces**, EGSR
+    2007) with the masking of Gaussian slopes by Bruce G. Smith (**Geometrical shadowing of a random
+    rough surface**, IEEE Transactions on Antennas and Propagation 15(5), 1967), as Bruneton et al.
+    (above) light the sun on the sea; erfc as Milton Abramowitz and Irene A. Stegun give it
+    (**Handbook of Mathematical Functions**, 1964, 7.1.26). The idea came from web-ocean
+    ([github.com/Noniv/web-ocean](https://github.com/Noniv/web-ocean), MIT), whose README names
+    these techniques; none of its code is used. The city in the water is traced through the depth buffer as in (3), from those
     ripples as the game's own water shader reads them; its streaks are a Gaussian up
     and down weighted so only water is averaged -- normalized convolution, Hans Knutsson and
     Carl-Fredrik Westin, **Normalized and Differential Convolution**, CVPR 1993. Against the

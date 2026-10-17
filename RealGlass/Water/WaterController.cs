@@ -28,10 +28,25 @@ namespace RealGlass.Water
         private bool _failed;
         private string _cityState = "";
 
+        // The ocean waves' heading (degrees from +x toward +z): the game's wind as the city loaded. Not
+        // followed after that: a new heading is a new sea, and the waves would jump to it.
+        private double _heading = WaterSpectrum.DefaultHeading;
+
         private void Start()
         {
             try
             {
+                string wind = "no weather: " + _heading.ToString("F0") + " deg";
+                if (Singleton<WeatherManager>.exists)
+                {
+                    float a = Singleton<WeatherManager>.instance.m_windDirection;
+                    if (!float.IsNaN(a) && !float.IsInfinity(a))
+                    {
+                        _heading = WaterSpectrum.HeadingFromGameWind(a);
+                        wind = "the game's wind (" + a.ToString("F0") + " deg) toward " + _heading.ToString("F0") + " deg";
+                    }
+                }
+
                 double[] rho = WaterOptics.BuildTable(WaterOptics.SlopeVariance(WaterOptics.SkyWind));
                 _table = new Vector4[WaterOptics.TableSize];
                 for (int i = 0; i < _table.Length; i++)
@@ -46,7 +61,7 @@ namespace RealGlass.Water
                         ", city reflection " + (_city != null ? "yes" : "NO SHADER") +
                         ", ripples " + (_ripples != null ? "yes" : "NO SHADER") + ", foam " + (_foam != null ? "yes" : "NO SHADER") +
                         "; reflectance " + (rho[WaterOptics.TableSize - 1] * 100.0).ToString("F1") + "% looking down, " + (rho[4] * 100.0).ToString("F0") +
-                        "% at 1 deg); " + Describe());
+                        "% at 1 deg); the ocean waves run with " + wind + "; " + Describe());
             }
             catch (Exception e)
             {
@@ -62,10 +77,12 @@ namespace RealGlass.Water
                 return "water controls off";
             return "water controls ON: color " + (On(Settings.WaterThemeColor) ? "the map theme's" : Settings.WaterColor != null ? ColorText.Format(Settings.WaterColor.value) : "?") +
                    ", brightness " + Pct(Settings.WaterBrightness) +
-                   ", moving ripples " + (On(Settings.WaterRipples) ? Pct(Settings.WaterRippleStrength) : "off") +
+                   ", moving ripples " + (On(Settings.WaterRipples) ? Pct(Settings.WaterRippleStrength) +
+                   (On(Settings.WaterOceanWaves) ? " as ocean waves (wind " + Value(Settings.WaterWind, Settings.Defaults.WaterWind).ToString("F1") +
+                    " m/s, choppiness " + Pct(Settings.WaterChop) + ")" : " as 32 waves (size " + Pct(Settings.WaterRippleSize) + ", wave size " + Pct(Settings.WaterWaveSize) + ")") : "off") +
                    ", foam " + (On(Settings.WaterFoam) ? Pct(Settings.WaterFoamAmount) + " (shores " + Pct(Settings.WaterFoamShore) + ", fast water " +
                    Pct(Settings.WaterFoamRapids) + ", wave fronts " + Pct(Settings.WaterFoamFronts) + ")" : "off") +
-                   ", real sky " + (On(Settings.WaterRealSky) ? Pct(Settings.WaterSky) : "off") +
+                   ", real sky " + (On(Settings.WaterRealSky) ? Pct(Settings.WaterSky) + ", sun glitter " + Pct(Settings.WaterGlitter) : "off") +
                    ", city " + (On(Settings.WaterCity) ? Pct(Settings.WaterCityDay) + " day / " + Pct(Settings.WaterCityNight) + " night, waves " +
                    Pct(Settings.WaterCityWaves) + ", streaks " + Pct(Settings.WaterCityStreaks) + ", length " + Pct(Settings.WaterCityLength) : "off");
         }
@@ -183,7 +200,8 @@ namespace RealGlass.Water
             double slope = WaterOptics.RippleSlope(rms, ours ? Value(Settings.WaterRippleStrength, Settings.Defaults.WaterRippleStrength) : 1.0);
             return _sky.Show(Value(Settings.WaterSky, Settings.Defaults.WaterSky), ShadedRipples(), slope * slope,
                              ours ? Value(Settings.WaterRippleSize, Settings.Defaults.WaterRippleSize) : 1.0,
-                             ours ? Value(Settings.WaterWaveSize, Settings.Defaults.WaterWaveSize) : 1.0, camera.transform.position);
+                             ours ? Value(Settings.WaterWaveSize, Settings.Defaults.WaterWaveSize) : 1.0, camera.transform.position,
+                             ours ? _ripples.Ocean : null, slope, Value(Settings.WaterGlitter, Settings.Defaults.WaterGlitter));
         }
 
         /// <summary>The foam on the game's water this frame, or none (off, an info view, the snapshot tool, no sea level).</summary>
@@ -222,7 +240,9 @@ namespace RealGlass.Water
             {
                 _ripples.Draw(Value(Settings.WaterRippleStrength, Settings.Defaults.WaterRippleStrength),
                               Value(Settings.WaterRippleSize, Settings.Defaults.WaterRippleSize),
-                              Value(Settings.WaterWaveSize, Settings.Defaults.WaterWaveSize));
+                              Value(Settings.WaterWaveSize, Settings.Defaults.WaterWaveSize),
+                              On(Settings.WaterOceanWaves), Value(Settings.WaterWind, Settings.Defaults.WaterWind), _heading,
+                              Value(Settings.WaterChop, Settings.Defaults.WaterChop));
                 _ripples.Hold();
             }
             else

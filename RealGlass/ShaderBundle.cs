@@ -46,6 +46,9 @@ namespace RealGlass
         /// <summary>The Water tab: the sky in the water, per pixel, drawn on the game's own water meshes.</summary>
         public const string WaterSky = "RealGlass/WaterSky";
 
+        /// <summary>The Water tab: the ripples as an ocean's waves, by an inverse FFT of a wind-sea spectrum.</summary>
+        public const string WaterWaves = "RealGlass/WaterWaves";
+
         /// <summary>
         /// "RealGlass.Resources.realglass-win.bundle" and so on: the csproj's LogicalName for each
         /// bundle, with the name from <see cref="BundleFor"/> in between.

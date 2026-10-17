@@ -16,7 +16,12 @@
 #   ... -SkyColumns "old:0.8,old:0.3,new:1"   columns of the sky on the water instead of the foam's:
 #                             old:g = the mod's cube until 2026-10-08 (the stand-in's) at Sky slider g,
 #                             new:g = the sky layer (RealGlass/WaterSky) at g; an optional third part
-#                             is the water's colour (new:1:#0E222B); foam on in every column
+#                             is the water's colour (new:1:#0E222B, "-" for the default); a fourth the
+#                             ripples, "sines" (the 32 waves, default) or "fft" (WaterSpectrum's waves,
+#                             RealGlass/WaterWaves); a fifth the sun's glitter on the sky layer (1 = real
+#                             water; 0 or none: the game's own highlight kept) -- new:1:-:fft:1
+#   ... -Spectrum "7,50000,30,1,1"   the FFT waves: wind m/s, fetch m, heading deg, seed, choppiness
+#   ... -Views "glitter30,glitter300"   web-ocean's views: 30 / 300 m over the sea, into a low sun
 #   ... -Body "#0E222B"       the stand-in water's colour for every shot (default the preview's own)
 #   ... -RippleRms 0.527      the game's ripple texture's decoded rms (default WaterOptics' fallback, 0.3;
 #                             the author's game measured 0.527)
@@ -46,6 +51,7 @@ param(
     [double]$ExposureNight = 2.5,
     [string]$SkyColumns = "",
     [string]$Body = "",
+    [string]$Spectrum = "7,50000,30,1,1",
     [double]$RippleRms = -1.0,
     [string]$Name = "foam",
     [ValidateSet("d3d11", "glcore")]
@@ -94,6 +100,7 @@ $optics::SkyRippleMips(1.0, 1.0, [ref]$start, [ref]$span)
 $slope = $optics::RippleSlope($rms, 1.0)
 $lines.Add("skyripples " + (N $start) + " " + (N $span) + " " + $optics::RippleTexels + " " + (N ($slope * $slope)))
 if ($Body -ne "") { $lines.Add("body " + $Body) }
+if ($Spectrum -ne "") { $lines.Add("spectrum " + ($Spectrum.Split(',') -join " ")) }
 $lines.Add("citygain " + (N ($optics::CityRippleGain(1.0, $rms))))
 $spread = $optics::Spread($optics::SlopeVariance($optics::CityWind))
 $lines.Add("streak " + (N ($optics::StreakSigma($Streaks, $spread, 45.0))))
@@ -109,10 +116,14 @@ if ($SkyColumns -ne "") {
         $mode = if ($part[0] -eq "new") { 1 } else { 0 }
         $gain = [double]::Parse($part[1], $inv)
         $colour = if ($part.Count -gt 2) { $part[2] } else { "-" }
+        $waves = if ($part.Count -gt 3 -and $part[3] -eq "fft") { 1 } else { 0 }
+        $glint = if ($part.Count -gt 4) { [double]::Parse($part[4], $inv) } else { 0.0 }
         $what = if ($mode -eq 1) { "sky per pixel" } else { "cube (until now)" }
         $label = "{0}, sky {1:P0}" -f $what, $gain
         if ($colour -ne "-") { $label += ", " + $colour }
-        $columns.Add(@{ Foam = 1; Seconds = 443.0; Mode = $mode; Gain = $gain; Body = $colour; Label = $label })
+        $label += if ($waves -eq 1) { ", FFT waves" } else { ", 32 waves" }
+        $label += if ($glint -gt 0.0) { (", sun glitter {0:P0}" -f $glint) } else { ", the game's sun highlight" }
+        $columns.Add(@{ Foam = 1; Seconds = 443.0; Mode = $mode; Gain = $gain; Body = $colour; Waves = $waves; Glitter = $glint; Label = $label })
     }
 }
 else {
@@ -134,7 +145,7 @@ foreach ($view in $rows) {
     $strength = if ($view -like "night*") { $Night } else { $Day }
     for ($c = 0; $c -lt $columns.Count; $c++) {
         $col = $columns[$c]
-        $sky = if ($col.ContainsKey("Mode")) { " {0} {1} {2}" -f $col.Mode, (N $col.Gain), $col.Body } else { "" }
+        $sky = if ($col.ContainsKey("Mode")) { " {0} {1} {2} {3} {4}" -f $col.Mode, (N $col.Gain), $col.Body, $col.Waves, (N $col.Glitter) } else { "" }
         $lines.Add(("shot {0}_{1} {0} {2} {3} {4}" -f $view, $c, $col.Foam, (N $col.Seconds), (N $strength)) + $sky)
     }
 }

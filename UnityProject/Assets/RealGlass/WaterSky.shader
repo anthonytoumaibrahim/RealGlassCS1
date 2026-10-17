@@ -23,6 +23,16 @@
 //   ONTO      Blend One OneMinusSrcAlpha, premultiplied: the water as the game drew it x (1 - F) + the
 //             sky x F -- light that is reflected is not also let through. Queue Geometry+2, before the
 //             game's fog: far water hazes as the game's own water does.
+//   THE SUN'S GLITTER (2026-10-17, with the FFT waves: WaterSpectrum.cs): the sun's reflection off a
+//             sea of facets whose slopes are Gaussian about the ripple texture's own (LEAN mapping,
+//             Olano & Baker 2010: the mean from the filtered normal, the covariance from what the
+//             mips averaged away -- WaterSpectrum.Table, by the mip the GPU reads each of the game's
+//             two reads at -- plus the waves too short for the texture). The microfacet sum for a
+//             distant light, E F p(slope of h) / (4 cos v cos^4 h), Smith's masking for Gaussian
+//             slopes (Bruneton, Neyret & Holzschuch 2010, after Walter et al. 2007): far away the
+//             averaged-away slopes widen it into the glitter path toward a low sun; close up the
+//             texture's own facets catch it. Added over the water; the game's own highlight (exponent
+//             512 on its normal, x the material's _SpecColor) is turned off meanwhile.
 Shader "RealGlass/WaterSky"
 {
     // _MainTex is the game's (the block sets it per patch); declared so that its _MainTex_ST is the
@@ -69,6 +79,77 @@ Shader "RealGlass/WaterSky"
             // texture's texels a side, w: the ripples' mean square slope at full detail (both directions).
             float4 _RGWaterSkyRipples;
 
+            // The FFT waves' averaging (WaterSpectrum.Table at the ripples' strength, in the texture's
+            // slope units): entry e = mip e - 1 of the ripple texture, the slopes averaged away (xx, zz,
+            // xz) and their share of all the texture holds.
+            float4 _RGWaterSkyWaves[12];
+
+            // xyz: the slopes of the waves too short for the texture (xx, zz, xz, same units); w: 1 =
+            // the table above is in use, 0 = the 32 waves' averaging (_RGWaterSkyRipples) as before.
+            float4 _RGWaterSkyTail;
+
+            // The sun's glitter. xyz: toward the sun (unit); w: its strength (1 = real water, 0 = none).
+            float4 _RGWaterSun;
+
+            // The sun's light, linear (the game's light: colour x intensity).
+            float4 _RGWaterSunColour;
+
+            // The mip (fractional, -1 = magnified) the GPU reads a ripple texture of _RGWaterSkyRipples.z
+            // texels at: anisotropic filtering (4 x) takes the longer footprint over up to 4 taps, so the
+            // mip is the shorter axis's, or a quarter of the longer; the box it averages over is the
+            // footprint itself -- taken here as one square of the same area.
+            float RippleMip(float2 uv)
+            {
+                float2 dx = ddx(uv) * _RGWaterSkyRipples.z, dy = ddy(uv) * _RGWaterSkyRipples.z;
+                float major = max(length(dx), length(dy)), minor = min(length(dx), length(dy));
+                return 0.5 * log2(max(major * max(major * 0.25, minor), 1e-12));
+            }
+
+            float4 WavesAt(float mip)
+            {
+                float e = clamp(mip + 1.0, 0.0, 11.0);
+                float i = floor(e);
+                float4 lo = _RGWaterSkyWaves[(int)i];
+                float4 hi = _RGWaterSkyWaves[(int)min(i + 1.0, 11.0)];
+                return lerp(lo, hi, e - i);
+            }
+
+            // Smith's Lambda for Gaussian slopes of covariance s (xx, zz, xz), seen from w (unit, up y):
+            // (e^(-a^2) / (a sqrt(pi)) - erfc(a)) / 2, a = cos / (sqrt(2 s_w) sin), s_w the slopes'
+            // variance along w's azimuth; erfc by Abramowitz & Stegun 7.1.26.
+            float SmithLambda(float3 w, float3 s)
+            {
+                float2 az = w.xz;
+                float across = max(dot(az, az), 1e-8);
+                float sw = (az.x * az.x * s.x + 2.0 * az.x * az.y * s.z + az.y * az.y * s.y) / across;
+                float a = max(w.y, 1e-4) / sqrt(2.0 * max(sw, 1e-8) * across);
+                float t = 1.0 / (1.0 + 0.3275911 * a);
+                float erfc = t * (0.254829592 + t * (-0.284496736 + t * (1.421413741 + t * (-1.453152027 + t * 1.061405429)))) * exp(-a * a);
+                return max(0.0, 0.5 * (exp(-a * a) / (a * 1.7724539) - erfc));
+            }
+
+            // The sun's light off the facets about the normal n (the texture's, filtered) whose slopes
+            // spread by s, toward the eye v.
+            float3 SunGlitter(float3 v, float3 n, float3 s)
+            {
+                float3 l = _RGWaterSun.xyz;
+                float3 h = SafeNormalize(v + l, float3(0.0, 1.0, 0.0));
+                float zv = max(v.y, 1e-3), zh = max(h.y, 1e-3), zn = max(n.y, 1e-3);
+                float2 d = float2(-h.x, -h.z) / zh - float2(-n.x, -n.z) / zn;
+                float sxx = s.x + 1e-5, szz = s.y + 1e-5, sxz = s.z;
+                float det = max(sxx * szz - sxz * sxz, 1e-12);
+                float q = (szz * d.x * d.x - 2.0 * sxz * d.x * d.y + sxx * d.y * d.y) / det;
+                float p = exp(-0.5 * q) / (6.2831853 * sqrt(det));
+                float c = 1.0 - saturate(dot(v, h));
+                float c2 = c * c;
+                float fresnel = 0.0204 + 0.9796 * c2 * c2 * c;
+                float3 sd = float3(sxx, szz, sxz);
+                float masking = 1.0 + SmithLambda(v, sd) + SmithLambda(l, sd);
+                float lit = l.y > 0.0 ? 1.0 : 0.0;
+                // x pi: the game's light is Unity's (a white Lambert surface shows it at its colour).
+                return _RGWaterSunColour.rgb * (lit * 3.14159265 * fresnel * p / (4.0 * zv * zh * zh * zh * zh * masking));
+            }
+
             struct v2f
             {
                 float4 pos : SV_POSITION;
@@ -104,12 +185,32 @@ Shader "RealGlass/WaterSky"
                 float own = i.screen.w;
                 float shown = scene + 0.5 + 0.002 * own - own;
 
-                float2 uvA;
-                float3 n = RGGameWaterNormal(world.xz, sa, sb, uvA);
-                // How much of the ripples' slope this pixel averages away: the mip the GPU reads the first
-                // copy at, by the pixel's longer footprint (anisotropic filtering keeps the other).
-                float texels = max(length(ddx(uvA)), length(ddy(uvA))) * _RGWaterSkyRipples.z;
-                float u = saturate((log2(max(texels, 1e-6)) - _RGWaterSkyRipples.x) / max(_RGWaterSkyRipples.y, 0.5));
+                RGGameRippleReads reads = RGGameRipplePlaces(world.xz, sb);
+                float3 n = RGGameWaterNormalAt(reads, sa);
+                // The slopes this pixel averages away (shaded: x (speed + 0.5) as the game shades the
+                // texture's), and their share of all the ripples' slope.
+                float u;
+                float3 averaged;
+                float gain = reads.speed + 0.5;
+                if (_RGWaterSkyTail.w > 0.5)
+                {
+                    // The FFT waves: each of the game's two reads at its own mip, B transposed (its slopes
+                    // are the texture's swapped and negated), weighted as the game crossfades them.
+                    float4 wa = WavesAt(RippleMip(reads.uvA));
+                    float4 wb = WavesAt(RippleMip(reads.uvB));
+                    float ka = 1.0 - reads.blend, kb = reads.blend;
+                    averaged = gain * gain * (ka * ka * wa.xyz + kb * kb * wb.yxz + _RGWaterSkyTail.xyz);
+                    u = lerp(wa.w, wb.w, reads.blend);
+                }
+                else
+                {
+                    // The 32 waves: how much of their slope the mip the GPU reads the first copy at has
+                    // averaged away, by the pixel's longer footprint (anisotropic filtering keeps the other).
+                    float texels = max(length(ddx(reads.uvA)), length(ddy(reads.uvA))) * _RGWaterSkyRipples.z;
+                    u = saturate((log2(max(texels, 1e-6)) - _RGWaterSkyRipples.x) / max(_RGWaterSkyRipples.y, 0.5));
+                    float each = 0.5 * u * max(_RGWaterSkyRipples.w, 0.0);
+                    averaged = float3(each, each, 0.0);
+                }
 
                 float3 v = SafeNormalize(_WorldSpaceCameraPos - world, float3(0.0, 1.0, 0.0));
                 float cosI = saturate(dot(v, n));
@@ -122,14 +223,15 @@ Shader "RealGlass/WaterSky"
                 r.y = abs(r.y);
                 // The averaged-away slopes spread the reflected rays by 2 sigma in each plane: as wide in
                 // the cube's texels (a face spans pi / 2).
-                float spread = 2.0 * sqrt(0.5 * u * max(_RGWaterSkyRipples.w, 0.0));
+                float spread = 2.0 * sqrt(0.5 * max(averaged.x + averaged.y, 0.0));
                 float lod = clamp(log2(max(1.0, spread * _RGWaterSky.y * 0.6366198)), 0.0, max(_RGWaterSky.z, 0.0));
                 float3 sky = Finite(RGSkyLight(texCUBElod(_RGWaterSkyCube, float4(r, lod)).rgb, r));
 
                 float a = FiniteAlpha(reflectance * max(_RGWaterSky.x, 0.0));
+                float3 glitter = _RGWaterSun.w > 0.0 ? Finite(SunGlitter(v, n, averaged) * _RGWaterSun.w) : float3(0.0, 0.0, 0.0);
                 clip(shown);
                 clip(wet);
-                return float4(sky * a, a);
+                return float4(sky * a + glitter, a);
             }
             ENDCG
         }

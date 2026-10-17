@@ -45,6 +45,10 @@ public static class FoamPreview
         public float SkyGain = 1f;
         // The water's colour (sRGB, the stand-in's _BodyColour); null: the preview's own.
         public Color? Body;
+        // The ripples: 0 the 32 waves (RealGlass/WaterRipples), 1 the FFT waves (RealGlass/WaterWaves).
+        public int Waves;
+        // The sun's glitter on the sky layer (1 = real water; 0 none, the game's own highlight kept).
+        public float Glitter;
     }
 
     /// <summary>A run of frames for the flicker under temporal anti-aliasing (as WaterPreview's).</summary>
@@ -77,6 +81,13 @@ public static class FoamPreview
         public bool? Tsunami;
         public List<string> Log;
 
+        // The ripples' generators: the 32 waves' material, the FFT waves (null without a "spectrum"
+        // line), which one this shot uses, and the FFT's choppiness.
+        public Material Generator;
+        public WaterWaves Waves;
+        public int WaveMode;
+        public float Chop;
+
         /// <summary>The data, light and camera for a view (true at night).</summary>
         public bool Set(string view, float strength)
         {
@@ -106,6 +117,29 @@ public static class FoamPreview
             Shader.SetGlobalVector("_RGWaterSky", new Vector4(shot.SkyGain, SkyInfo.y, SkyInfo.z, 0f));
             Reflection.SetVector("_RGWaterGeom", new Vector4(SeaLevel, strength, shot.SkyGain, 1f));
             Water.SetColor("_BodyColour", shot.Body.HasValue ? shot.Body.Value : BodyColour);
+
+            // The ripples' generator, the sky layer's averaging (the FFT waves' table, at the ripples'
+            // root-mean-square slope, or the 32 waves' own), and the sun's glitter: the game's highlight
+            // off while it draws (the mod sets the material's _SpecColor to black).
+            WaveMode = shot.Waves == 1 && Waves != null ? 1 : 0;
+            float rms = 0.5f * RippleRms;
+            var table = new Vector4[WaterSpectrum.TableLevels];
+            Vector4 tail = Vector4.zero;
+            if (WaveMode == 1)
+            {
+                WaterSpectrum s = Waves.Spectrum;
+                float ms = rms * rms;
+                for (int e = 0; e < table.Length; e++)
+                    table[e] = new Vector4((float)s.Table[4 * e] * ms, (float)s.Table[4 * e + 1] * ms, (float)s.Table[4 * e + 2] * ms, (float)s.Table[4 * e + 3]);
+                tail = new Vector4((float)s.TailXX * ms, (float)s.TailZZ * ms, (float)s.TailXZ * ms, 1f);
+            }
+            Shader.SetGlobalVectorArray("_RGWaterSkyWaves", table);
+            Shader.SetGlobalVector("_RGWaterSkyTail", tail);
+            Vector3 toSun = -Sun.transform.forward;
+            Shader.SetGlobalVector("_RGWaterSun", new Vector4(toSun.x, toSun.y, toSun.z, layer ? shot.Glitter : 0f));
+            Color light = Sun.color.linear * Sun.intensity;
+            Shader.SetGlobalVector("_RGWaterSunColour", new Vector4(light.r, light.g, light.b, 0f));
+            Water.SetFloat("_SpecGain", layer && shot.Glitter > 0f ? 0f : 0.6f);
         }
 
         /// <summary>The game's clocks at t (SimulationManager: x seconds into the minute, w the same as an angle), and the ripples for it.</summary>
@@ -114,9 +148,27 @@ public static class FoamPreview
             float minute = t % 60f;
             Shader.SetGlobalVector("_SimulationTime", new Vector4(minute, minute / 60f, 2f * Mathf.PI * minute, 2f * Mathf.PI * minute / 60f));
             Shader.SetGlobalVector("_SimulationTime2", new Vector4(t, t / 3600f, 0f, 0f));
-            if (Ripples != null)
-                Ripples.Release();
-            Ripples = CityReflectionTest.GenerateRipples(Rows, 0.5f * RippleRms, 1024);
+            // As WaterRipples draws them: one ARGB32 linear texture with mips, anisotropic 4, redrawn.
+            if (Ripples == null)
+            {
+                Ripples = new RenderTexture(1024, 1024, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear)
+                {
+                    useMipMap = true,
+                    autoGenerateMips = true,
+                    wrapMode = TextureWrapMode.Repeat,
+                    filterMode = FilterMode.Trilinear,
+                    anisoLevel = 4,
+                };
+                Ripples.Create();
+            }
+            if (WaveMode == 1)
+                Waves.Draw(Ripples, 0.5f * RippleRms, Chop);
+            else
+            {
+                Generator.SetVectorArray("_RGRippleWaves", Rows);
+                Generator.SetVector("_RGRipple", new Vector4(0.5f * RippleRms, 0f, 0f, 0f));
+                Graphics.Blit(Texture2D.blackTexture, Ripples, Generator, 0);
+            }
             Water.SetTexture("_WaterNormal", Ripples);
             Sky.SetTexture("_WaterNormal", Ripples);
             Reflection.SetTexture("_RGRipples", Ripples);
@@ -148,6 +200,8 @@ public static class FoamPreview
             float streak = 0f, length = 1f, exposureDay = 1f, exposureNight = 1f, rippleRms = 0.3f, cityGain = 0f;
             var skyRipples = new Vector4(0.64f, 5f, 1024f, 0.0225f);
             var body = new Color(0.03f, 0.06f, 0.08f, 1f);
+            // The FFT waves' spectrum (wind m/s, fetch m, heading degrees, seed, choppiness), if asked for.
+            double[] waveSpec = null;
             foreach (string raw in File.ReadAllLines(Path.Combine(dir, "foam-preview-input.txt")))
             {
                 string[] p = raw.Split(' ');
@@ -181,6 +235,8 @@ public static class FoamPreview
                     skyRipples = new Vector4(WaterPreview.F(p[1]), WaterPreview.F(p[2]), WaterPreview.F(p[3]), WaterPreview.F(p[4]));
                 else if (p[0] == "body")
                     body = Hex(p[1]) ?? body;
+                else if (p[0] == "spectrum")
+                    waveSpec = new double[] { WaterPreview.F(p[1]), WaterPreview.F(p[2]), WaterPreview.F(p[3]), WaterPreview.F(p[4]), WaterPreview.F(p[5]) };
                 else if (p[0] == "shot")
                     shots.Add(new Shot
                     {
@@ -188,6 +244,8 @@ public static class FoamPreview
                         SkyMode = p.Length > 6 ? int.Parse(p[6], CultureInfo.InvariantCulture) : 0,
                         SkyGain = p.Length > 7 ? WaterPreview.F(p[7]) : 1f,
                         Body = p.Length > 8 ? Hex(p[8]) : null,
+                        Waves = p.Length > 9 ? int.Parse(p[9], CultureInfo.InvariantCulture) : 0,
+                        Glitter = p.Length > 10 ? WaterPreview.F(p[10]) : 0f,
                     });
                 else if (p[0] == "taa")
                 {
@@ -302,7 +360,20 @@ public static class FoamPreview
                 Foam = foamMaterial, Reflection = reflection, Surface = surface, Sky = skyMaterial, Capture = capture, SkyCube = skyCube, Towers = towers,
                 FoamRenderers = foamRenderers, SkyRenderers = skyRenderers, Rows = rows, RippleRms = rippleRms, Log = log, BodyColour = body,
                 SkyInfo = new Vector4(1f, skyCube.width, 7f, 0f),
+                Generator = new Material(AssetDatabase.LoadAssetAtPath<Shader>("Assets/RealGlass/WaterRipples.shader")),
             };
+            if (waveSpec != null)
+            {
+                Shader wavesShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/RealGlass/WaterWaves.shader");
+                log.Add("waves shader " + (wavesShader != null ? wavesShader.name + " supported=" + wavesShader.isSupported : "MISSING"));
+                var spectrum = new WaterSpectrum(waveSpec[0], waveSpec[1], waveSpec[2], (uint)waveSpec[3]);
+                scene.Waves = new WaterWaves(wavesShader);
+                scene.Waves.Upload(spectrum);
+                scene.Chop = (float)waveSpec[4];
+                log.Add(string.Format(CultureInfo.InvariantCulture,
+                    "spectrum: wind {0} m/s, fetch {1} km, heading {2} deg: {3} waves, peak {4:F1} m; choppiness {5}; tail {6:F3} of the texture's slopes",
+                    waveSpec[0], waveSpec[1] / 1000.0, waveSpec[2], spectrum.WaveCount, spectrum.PeakWavelength, waveSpec[4], spectrum.TailXX + spectrum.TailZZ));
+            }
             scene.SkyFor(new Shot(), 1f);
             if (seqs.Count > 0)
                 Flicker(seqs, scene, taa, exposureDay, exposureNight, outDir);
@@ -906,7 +977,9 @@ public static class FoamPreview
     private static bool SetView(string view, GameObject cameraObject, Light sun, Material skybox, Camera capture, RenderTexture skyCube, Material water, List<Tower> towers)
     {
         bool night = view.StartsWith("night", StringComparison.Ordinal);
-        bool sunset = view.StartsWith("sunset", StringComparison.Ordinal);
+        // "glitter" views: the sunset's sun, the camera far out at sea looking into it (web-ocean's).
+        bool glitter = view.StartsWith("glitter", StringComparison.Ordinal);
+        bool sunset = view.StartsWith("sunset", StringComparison.Ordinal) || glitter;
         foreach (Tower t in towers)
             t.Renderer.sharedMaterial = night ? t.Night : t.Day;
 
@@ -930,7 +1003,16 @@ public static class FoamPreview
         // The views: the coast from a city camera's usual height, close over the beach, high above,
         // over the river's rapid, and at sea before the tsunami's front (sunset and night: the coast).
         Vector3 eye, at;
-        if (view == "tsunamiclose")
+        if (glitter)
+        {
+            // 30 m (or 300 m) over the sea at its far edge, facing the sun's way (10 deg south of
+            // east), the horizon a little above the middle (or the sea filling most of the frame).
+            bool high = view.EndsWith("300", StringComparison.Ordinal);
+            float pitch = (high ? 11f : 2.5f) * Mathf.Deg2Rad, yaw = -10f * Mathf.Deg2Rad;
+            eye = new Vector3(-1950f, SeaLevel + (high ? 300f : 30f), 150f);
+            at = eye + new Vector3(Mathf.Cos(pitch) * Mathf.Cos(yaw), -Mathf.Sin(pitch), Mathf.Cos(pitch) * Mathf.Sin(yaw)) * 1000f;
+        }
+        else if (view == "tsunamiclose")
         {
             eye = new Vector3(-940f, 150f, -120f);
             at = new Vector3(-640f, SeaLevel, 40f);

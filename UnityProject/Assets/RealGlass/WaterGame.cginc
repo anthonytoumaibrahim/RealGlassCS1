@@ -124,29 +124,57 @@ void RGGameSurface(float2 uv, out float4 a, out float4 b)
     b = b0 + _TerrainStatus.y * (tex2D(_SurfaceBNew, uv) - b0);
 }
 
-// The water's normal as the game shades it (the opaque water's forward pixel program, 2026-10-06):
-// _WaterNormal read twice -- at world xz x 0.0061, and at (z, x) x 0.0057 with its channels swapped --
-// each carried along the flow in two phases half a 2.5 s cycle apart (Vlachos 2010), crossfaded;
-// decoded x 2 - 1, x 0.5 x (0.5 + the flow's speed), plus the simulated surface's own slope (_SurfaceA).
-// Left out: the foam's damping and the rain rings. uvA: the first read's uv (its derivatives say how
-// far the ripples are averaged away at this pixel).
-float3 RGGameWaterNormal(float2 xz, float4 sa, float4 sb, out float2 uvA)
+// Where the game reads its ripple texture at world xz (the opaque water's forward pixel program,
+// 2026-10-06): twice -- at xz x 0.0061 (uvA), and at (z, x) x 0.0057 with its channels swapped (uvB:
+// a mirrored, inverted copy) -- each carried along the flow in two phases half a 2.5 s cycle apart
+// (Vlachos 2010), crossfaded by blend (the weight on B). speed: the flow's, which scales the slopes.
+struct RGGameRippleReads
 {
+    float2 uvA;
+    float2 uvB;
+    float blend;
+    float speed;
+};
+
+RGGameRippleReads RGGameRipplePlaces(float2 xz, float4 sb)
+{
+    RGGameRippleReads r;
     float2 flow = sb.xz * 2.0 - 1.0;
-    float speed = max(abs(flow.x), abs(flow.y));
+    r.speed = max(abs(flow.x), abs(flow.y));
     float phase = _SimulationTime.x * 0.4 + 0.2 * cos(0.06 * xz.x) * cos(0.06 * xz.y);
     float f = frac(phase);
     float g = frac(phase + 0.5) - 0.5;
-    uvA = xz * 0.0061 - 0.14 * (f - 0.5) * flow;
-    float4 a = tex2D(_WaterNormal, uvA);
-    float4 b = tex2D(_WaterNormal, xz.yx * 0.0057 - 0.14 * g * flow.yx);
-    float blend = 2.0 * abs(0.5 - f);
-    float2 ripple = lerp(float2(a.w, a.y), float2(b.y, b.w), blend) * 2.0 - 1.0;
+    r.uvA = xz * 0.0061 - 0.14 * (f - 0.5) * flow;
+    r.uvB = xz.yx * 0.0057 - 0.14 * g * flow.yx;
+    r.blend = 2.0 * abs(0.5 - f);
+    return r;
+}
+
+// The water's normal as the game shades it from those reads: decoded x 2 - 1 (x from .w, y from .y;
+// B's swapped), x 0.5, plus the simulated surface's own slope (_SurfaceA), the sum x (the flow's speed
+// + 0.5) -- so a ripple texture's slope s (WaterRipples' units: the texture holds -2 s) is shaded as
+// s x (speed + 0.5). (Until 2026-10-17 the surface's slope was added after that gain, not under it:
+// the game's directional and point-light programs both scale it.) Left out: the foam's damping
+// (0.5 - 0.2 foam in place of 0.5) and the rain rings.
+float3 RGGameWaterNormalAt(RGGameRippleReads r, float4 sa)
+{
+    float4 a = tex2D(_WaterNormal, r.uvA);
+    float4 b = tex2D(_WaterNormal, r.uvB);
+    float2 ripple = lerp(float2(a.w, a.y), float2(b.y, b.w), r.blend) * 2.0 - 1.0;
     float2 tilt = sa.xz * 2.0 - 1.0;
-    float2 n2 = ripple * 0.5 * (speed + 0.5) + float2(tilt.x, -tilt.y);
+    float2 n2 = (ripple * 0.5 + float2(tilt.x, -tilt.y)) * (r.speed + 0.5);
     n2 /= max(length(n2), 1.0);
     float3 nt = float3(n2, sqrt(max(1.0 - dot(n2, n2), 0.0)));
     return normalize(float3(nt.x, nt.z, -nt.y));
+}
+
+// The same in one call. uvA: the first read's uv (its derivatives say how far the ripples are
+// averaged away at this pixel).
+float3 RGGameWaterNormal(float2 xz, float4 sa, float4 sb, out float2 uvA)
+{
+    RGGameRippleReads r = RGGameRipplePlaces(xz, sb);
+    uvA = r.uvA;
+    return RGGameWaterNormalAt(r, sa);
 }
 
 // What the game's vertex program makes of a water mesh vertex: its world position (the simulated

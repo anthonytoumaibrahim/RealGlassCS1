@@ -673,6 +673,11 @@ namespace RealGlass.UI
             return Localization.Get("Unit.Metres", value.ToString("F1"));
         }
 
+        private static string MetresPerSecond(float value)
+        {
+            return Localization.Get("Unit.MetresPerSecond", value.ToString("F1"));
+        }
+
         private static string Steps(float value)
         {
             return value.ToString("F0");
@@ -729,6 +734,16 @@ namespace RealGlass.UI
         private static bool WaterRipplesOn()
         {
             return WaterOn() && (Settings.WaterRipples == null || Settings.WaterRipples.value);
+        }
+
+        private static bool WaterOceanOn()
+        {
+            return WaterRipplesOn() && (Settings.WaterOceanWaves == null || Settings.WaterOceanWaves.value);
+        }
+
+        private static bool WaterSinesOn()
+        {
+            return WaterRipplesOn() && Settings.WaterOceanWaves != null && !Settings.WaterOceanWaves.value;
         }
 
         private static bool WaterFoamOn()
@@ -1418,7 +1433,43 @@ namespace RealGlass.UI
                 Enabled = WaterRipplesOn,
             });
 
-            // 100%: 16 m down to 0.5 m; every length x the slider, the slopes kept (WaterOptics.Ripples).
+            // The ripples as an ocean's waves (Water/WaterSpectrum.cs; the author, 2026-10-17, after
+            // web-ocean: "Yes to both"): thousands of waves from a wind-sea spectrum, by an FFT.
+            Add(new Row
+            {
+                Kind = RowKind.Toggle,
+                Panel = PanelPage.Water,
+                Bool = Settings.WaterOceanWaves,
+                DefaultBool = Settings.Defaults.WaterOceanWaves,
+                Enabled = WaterRipplesOn,
+                AfterChange = WaterState("ocean waves", OnOff(Settings.WaterOceanWaves)),
+            });
+
+            // The wind the ocean waves are raised by: their lengths (JONSWAP's peak), not their roughness.
+            Add(new Row
+            {
+                Kind = RowKind.Value,
+                Panel = PanelPage.Water,
+                Float = Settings.WaterWind,
+                DefaultFloat = Settings.Defaults.WaterWind,
+                Min = 2f, Max = 20f, Step = 0.5f,
+                Format = MetresPerSecond,
+                Enabled = WaterOceanOn,
+            });
+
+            // 100%: the crests as sharp as Tessendorf's lambda 1 makes them (the pictures').
+            Add(new Row
+            {
+                Kind = RowKind.Percent,
+                Panel = PanelPage.Water,
+                Float = Settings.WaterChop,
+                DefaultFloat = Settings.Defaults.WaterChop,
+                Min = 0f, Max = 200f, Step = 5f,
+                Enabled = WaterOceanOn,
+            });
+
+            // The 32 waves' (ocean waves off). 100%: 16 m down to 0.5 m; every length x the slider, the
+            // slopes kept (WaterOptics.Ripples).
             Add(new Row
             {
                 Kind = RowKind.Percent,
@@ -1426,7 +1477,7 @@ namespace RealGlass.UI
                 Float = Settings.WaterRippleSize,
                 DefaultFloat = Settings.Defaults.WaterRippleSize,
                 Min = 50f, Max = 300f, Step = 5f,
-                Enabled = WaterRipplesOn,
+                Enabled = WaterSinesOn,
             });
 
             // 100%: the longest wave as the ripple size makes it; lower = calmer water, short ripples only.
@@ -1437,7 +1488,7 @@ namespace RealGlass.UI
                 Float = Settings.WaterWaveSize,
                 DefaultFloat = Settings.Defaults.WaterWaveSize,
                 Min = 5f, Max = 100f, Step = 5f,
-                Enabled = WaterRipplesOn,
+                Enabled = WaterSinesOn,
             });
 
             // The foam (Water/WaterFoam.cs): on the game's own water, from its simulation.
@@ -1511,6 +1562,18 @@ namespace RealGlass.UI
                 Float = Settings.WaterSky,
                 DefaultFloat = Settings.Defaults.WaterSky,
                 Min = 0f, Max = 300f, Step = 5f,
+                Enabled = WaterSkyOn,
+            });
+
+            // The sun's glitter (Water/WaterSkyLayer.cs): 100% is real water's -- a sunset's path
+            // blinds as it does in a photograph; the game's own highlight is off while it draws.
+            Add(new Row
+            {
+                Kind = RowKind.Percent,
+                Panel = PanelPage.Water,
+                Float = Settings.WaterGlitter,
+                DefaultFloat = Settings.Defaults.WaterGlitter,
+                Min = 0f, Max = 200f, Step = 5f,
                 Enabled = WaterSkyOn,
             });
 

@@ -1,4 +1,6 @@
 using System;
+using System.Diagnostics;
+using System.Threading;
 using ColossalFramework;
 using UnityEngine;
 
@@ -19,9 +21,17 @@ namespace RealGlass.Water
     /// - Only the two water MATERIALS hold it (as the sky cube): the global the game set stays its own,
     ///   and is what is given back.
     /// - Redrawn only when the game's clock moved (paused: nothing to draw) or the strength changed.
+    /// - OCEAN WAVES (2026-10-17, the Ocean waves row): the same texture drawn by <see cref="WaterWaves"/>
+    ///   from a <see cref="WaterSpectrum"/> -- thousands of waves from a wind-sea spectrum, by an FFT --
+    ///   at the same root-mean-square slope. The spectrum (~0.1 s of maths) is built on a worker
+    ///   thread whenever the wind or the heading changes, and put on the GPU on the main thread; the
+    ///   32 waves are drawn until the first one is ready, and wherever the FFT's float textures are
+    ///   not supported.
     /// </remarks>
     public sealed class WaterRipples
     {
+        /// <summary>The ocean's one realisation (the pictures': every city sees the same sea for a wind).</summary>
+        public const uint OceanSeed = 1u;
         private static readonly int IdNormal = Shader.PropertyToID("_WaterNormal");
         private static readonly int IdWaves = Shader.PropertyToID("_RGRippleWaves");
         private static readonly int IdRipple = Shader.PropertyToID("_RGRipple");
@@ -48,9 +58,27 @@ namespace RealGlass.Water
         private double _size = 1.0;
         private double _waveSize = 1.0;
 
-        private WaterRipples(Shader shader)
+        // The ocean waves: the FFT (null where it cannot run), the spectrum on the GPU, and the one a
+        // worker thread is building or has built (under _lock).
+        private readonly WaterWaves _waves;
+        private WaterSpectrum _spectrum;
+        private readonly object _lock = new object();
+        private WaterSpectrum _ready;
+        private long _readyMs;
+        private string _buildError;
+        private bool _building;
+        private double _wantWind = double.NaN, _wantHeading = double.NaN;
+        private double _haveWind = double.NaN, _haveHeading = double.NaN;
+        private bool _uploaded;
+        private int _drawnMode = -1;
+        private float _drawnChop = float.NaN;
+        private bool _oceanShown;
+
+        private WaterRipples(Shader shader, Shader waves)
         {
             _material = new Material(shader) { name = "RealGlass water ripples", hideFlags = HideFlags.HideAndDontSave };
+            if (waves != null)
+                _waves = new WaterWaves(waves);
             _material.SetVectorArray(IdWaves, Rows());
             _texture = new RenderTexture(WaterOptics.RippleTexels, WaterOptics.RippleTexels, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear)
             {
@@ -69,7 +97,25 @@ namespace RealGlass.Water
         public static WaterRipples Create()
         {
             Shader shader = ShaderBundle.Get(ShaderBundle.WaterRipples);
-            return shader != null && shader.isSupported ? new WaterRipples(shader) : null;
+            if (shader == null || !shader.isSupported)
+                return null;
+
+            // The FFT reads and writes 32-bit floats (spectra, transforms): without them, the 32 waves.
+            Shader waves = ShaderBundle.Get(ShaderBundle.WaterWaves);
+            bool floats = SystemInfo.SupportsTextureFormat(TextureFormat.RGBAFloat) && SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.ARGBFloat);
+            if (waves == null || !waves.isSupported || !floats)
+            {
+                Log.Msg("water: no ocean waves here (" + (waves == null ? "no shader" : !waves.isSupported ? "shader not supported" : "no 32-bit float textures") +
+                        "): the ripples are the 32 waves");
+                waves = null;
+            }
+            return new WaterRipples(shader, waves);
+        }
+
+        /// <summary>The ocean's spectrum the texture holds now (null: the 32 waves): the sky layer's averaging.</summary>
+        public WaterSpectrum Ocean
+        {
+            get { return _drawnMode == 1 ? _spectrum : null; }
         }
 
         /// <summary>The ripple texture (the city reflection reads it as the game does).</summary>
@@ -117,10 +163,44 @@ namespace RealGlass.Water
             return rows;
         }
 
-        /// <summary>This frame's ripples at <paramref name="strength"/> (1 = as rough as the game's own texture).</summary>
-        public void Draw(float strength, float size, float waveSize)
+        /// <summary>
+        /// This frame's ripples at <paramref name="strength"/> (1 = as rough as the game's own texture):
+        /// with <paramref name="ocean"/>, the ocean's waves for a <paramref name="wind"/> m/s wind toward
+        /// <paramref name="heading"/> (degrees from +x toward +z) at choppiness <paramref name="chop"/>,
+        /// once their spectrum is built; else (and meanwhile) the 32 waves at the size sliders.
+        /// </summary>
+        public void Draw(float strength, float size, float waveSize, bool ocean, float wind, double heading, float chop)
         {
             Measure();
+            double slope = WaterOptics.RippleSlope(_decodedRms, strength);
+            Vector4 clock = Shader.GetGlobalVector(IdClock);
+            if (ocean && _waves != null)
+            {
+                Request(wind, heading);
+                TakeReady();
+                if (_spectrum != null)
+                {
+                    if (_drawnMode == 1 && !_uploaded && clock.y == _drawnHour && Math.Abs(slope - _drawnSlope) < 1e-6 && chop == _drawnChop)
+                        return;
+
+                    _waves.Draw(_texture, (float)slope, chop);
+                    if (!_oceanShown)
+                        Log.Msg("water: the ripples are ocean waves (root-mean-square slope " + slope.ToString("F3") + ", choppiness " + (chop * 100f).ToString("F0") + "%)");
+                    _oceanShown = true;
+                    _uploaded = false;
+                    _drawnMode = 1;
+                    _drawnHour = clock.y;
+                    _drawnSlope = slope;
+                    _drawnChop = chop;
+                    return;
+                }
+            }
+            else if (_oceanShown)
+            {
+                _oceanShown = false;
+                Log.Msg("water: the ripples are the 32 waves again");
+            }
+
             if (Math.Abs(size - _size) > 1e-4 || Math.Abs(waveSize - _waveSize) > 1e-4)
             {
                 _size = size;
@@ -130,10 +210,9 @@ namespace RealGlass.Water
                 Log.Msg("water: ripple size " + (size * 100f).ToString("F0") + "%, wave size " + (waveSize * 100f).ToString("F0") + "%");
             }
 
-            double slope = WaterOptics.RippleSlope(_decodedRms, strength);
-            Vector4 clock = Shader.GetGlobalVector(IdClock);
-            if (clock.y == _drawnHour && Math.Abs(slope - _drawnSlope) < 1e-6)
+            if (_drawnMode == 0 && clock.y == _drawnHour && Math.Abs(slope - _drawnSlope) < 1e-6)
                 return;
+            _drawnMode = 0;
 
             _material.SetVector(IdRipple, new Vector4((float)slope, 0f, 0f, 0f));
             Graphics.Blit(Texture2D.blackTexture, _texture, _material, 0);
@@ -143,6 +222,99 @@ namespace RealGlass.Water
                         " m; root-mean-square slope " + slope.ToString("F3") + ")");
             _drawnHour = clock.y;
             _drawnSlope = slope;
+        }
+
+        /// <summary>
+        /// The ocean's spectrum for this wind and heading: nothing when it is the one held or being built;
+        /// else a worker thread builds it (one at a time: a wind slider being dragged ends in its last value).
+        /// </summary>
+        private void Request(double wind, double heading)
+        {
+            lock (_lock)
+            {
+                _wantWind = wind;
+                _wantHeading = heading;
+                if (_building || (wind == _haveWind && heading == _haveHeading))
+                    return;
+                _building = true;
+            }
+
+            ThreadPool.QueueUserWorkItem(Build);
+        }
+
+        /// <summary>The worker: builds what is wanted, again while the wanted changed meanwhile. Never throws (a thread's exception would end the game).</summary>
+        private void Build(object unused)
+        {
+            while (true)
+            {
+                double wind, heading;
+                lock (_lock)
+                {
+                    wind = _wantWind;
+                    heading = _wantHeading;
+                }
+
+                WaterSpectrum built = null;
+                string error = null;
+                long ms = 0;
+                try
+                {
+                    Stopwatch watch = Stopwatch.StartNew();
+                    built = new WaterSpectrum(wind, WaterSpectrum.SeaFetch, heading, OceanSeed);
+                    ms = watch.ElapsedMilliseconds;
+                }
+                catch (Exception e)
+                {
+                    error = e.GetType().Name + ": " + e.Message;
+                }
+
+                lock (_lock)
+                {
+                    _haveWind = wind;
+                    _haveHeading = heading;
+                    if (built != null)
+                    {
+                        _ready = built;
+                        _readyMs = ms;
+                    }
+                    else
+                        _buildError = error;
+                    if (_wantWind == wind && _wantHeading == heading)
+                    {
+                        _building = false;
+                        return;
+                    }
+                }
+            }
+        }
+
+        /// <summary>A spectrum the worker finished onto the GPU (main thread), with its log line.</summary>
+        private void TakeReady()
+        {
+            WaterSpectrum ready;
+            long ms;
+            string error;
+            lock (_lock)
+            {
+                ready = _ready;
+                _ready = null;
+                ms = _readyMs;
+                error = _buildError;
+                _buildError = null;
+            }
+
+            if (error != null)
+                Log.Warn("water: the ocean waves could not be built (" + error + "); the 32 waves until the wind changes");
+            if (ready == null)
+                return;
+
+            _waves.Upload(ready);
+            _spectrum = ready;
+            _uploaded = true;
+            Log.Msg("water: ocean waves built: " + ready.WaveCount + " waves from a " + ready.WindSpeed.ToString("F1") + " m/s wind over " +
+                    (ready.Fetch / 1000.0).ToString("F0") + " km toward " + ready.Heading.ToString("F0") + " deg, the longest " +
+                    ready.PeakWavelength.ToString("F0") + " m at the peak; the waves too short for the texture add " +
+                    ((ready.TailXX + ready.TailZZ) * 100.0).ToString("F0") + "% to its slopes (" + ms + " ms on a worker thread)");
         }
 
         /// <summary>
@@ -308,6 +480,8 @@ namespace RealGlass.Water
         public void Destroy()
         {
             Release();
+            if (_waves != null)
+                _waves.Destroy();
             _texture.Release();
             UnityEngine.Object.Destroy(_texture);
             UnityEngine.Object.Destroy(_material);

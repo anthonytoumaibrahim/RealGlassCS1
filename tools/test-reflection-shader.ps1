@@ -17,7 +17,8 @@
 #   - RIPPLES (RealGlass/WaterRipples' texture, read as the game reads it, the gain the mod sets):
 #     the wall and the sky untouched, the middle of the reflection still the wall's.
 # Then the ripple generator itself, texel by texel, and the mod's measurement of the game's ripple
-# texture on a DXT5 stand-in (WaterRippleTest.cs).
+# texture on a DXT5 stand-in (WaterRippleTest.cs). Last the ocean waves' FFT against its CPU reference,
+# on Direct3D 11 and OpenGL Core (WaterWavesTest.cs).
 # Run after build-bundle.ps1 (the shader compiles) and a DLL build:
 #
 #   powershell -NoProfile -ExecutionPolicy Bypass -File tools\test-reflection-shader.ps1
@@ -401,5 +402,25 @@ foreach ($case in $cubeCases) {
 }
 Remove-Item (Join-Path $project "cube-test-output.txt") -ErrorAction SilentlyContinue
 Remove-Item (Join-Path $project "cube-test-input.txt") -ErrorAction SilentlyContinue
+
+# ---- the ocean waves (UnityProject\Assets\Editor\WaterWavesTest.cs) ---------------------------
+# The FFT on the GPU against WaterSpectrum's CPU reference, field by field, and the composed ripple
+# texture byte by byte -- on Direct3D 11 and on OpenGL Core (a NaN only OpenGL made, 2026-10-17).
+foreach ($api in @("d3d11", "glcore")) {
+    $out = Join-Path $project "waves-test-output.txt"
+    if (Test-Path $out) { Remove-Item $out -Force }
+    $wavesArgs = @("-batchmode", "-quit", "-projectPath", "`"$project`"", "-executeMethod", "WaterWavesTest.Run",
+        "-logFile", "`"$(Join-Path $project 'waves-test.log')`"")
+    if ($api -eq "glcore") { $wavesArgs += "-force-glcore" }
+    $proc = Start-Process -FilePath $Unity -WindowStyle Hidden -Wait -PassThru -ArgumentList $wavesArgs
+    if (-not (Test-Path $out)) { Write-Host "FAIL  Unity wrote no output (exit $($proc.ExitCode)); see UnityProject\waves-test.log"; exit 1 }
+    $got = Get-Content $out
+    Write-Host ("ocean waves, {0}: {1}" -f $api, $got[0])
+    foreach ($line in ($got | Where-Object { $_ -like "ok *" -or $_ -like "FAIL*" -or $_ -like "EXCEPTION*" })) {
+        Write-Host ("  " + $line)
+        if ($line -notlike "ok *") { $failed++ }
+    }
+    Remove-Item $out -ErrorAction SilentlyContinue
+}
 Write-Host ""
 if ($failed -eq 0) { Write-Host "all passed" } else { Write-Host "$failed FAILED"; exit 1 }

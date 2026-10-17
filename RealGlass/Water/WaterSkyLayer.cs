@@ -26,6 +26,11 @@ namespace RealGlass.Water
     /// - Only on the OPAQUE water material: the transparent one is the info views' and the water tool's,
     ///   which keep our cube of the old kind. Off in info views and under the snapshot tool (an asset's
     ///   pictures ship to players without the mod), as the foam.
+    /// - THE SUN'S GLITTER (2026-10-17, the Sun glitter row; the shader's header has the model): the
+    ///   light the water is lit by (RenderManager.MainLight: the sun, the moon at night) off a sea of
+    ///   facets, as rough as the ripples' averaged-away slopes -- the ocean's spectrum's table
+    ///   (<see cref="WaterSpectrum.Table"/>) when the ripples are the ocean waves. While it draws, the
+    ///   game's own highlight (its water material's _SpecColor) is black; given back when it stops.
     /// </remarks>
     public sealed class WaterSkyLayer
     {
@@ -42,6 +47,11 @@ namespace RealGlass.Water
         private static readonly int IdRipples = Shader.PropertyToID("_RGWaterSkyRipples");
         private static readonly int IdNormal = Shader.PropertyToID("_WaterNormal");
         private static readonly int IdMainTex = Shader.PropertyToID("_MainTex");
+        private static readonly int IdWaves = Shader.PropertyToID("_RGWaterSkyWaves");
+        private static readonly int IdTail = Shader.PropertyToID("_RGWaterSkyTail");
+        private static readonly int IdSun = Shader.PropertyToID("_RGWaterSun");
+        private static readonly int IdSunColour = Shader.PropertyToID("_RGWaterSunColour");
+        private static readonly int IdSpecColor = Shader.PropertyToID("_SpecColor");
 
         // Read by the draw hook on every one of the game's terrain draws: kept to plain fields.
         private static Material s_material;
@@ -53,6 +63,15 @@ namespace RealGlass.Water
         private readonly GlassSky _sky;
         private bool _shown;
         private string _why = "";
+
+        // The ocean table on the material (null: none), and the game's highlight held off: on which
+        // material, and the colour to give back (null: it had none of its own, the global's then).
+        private readonly Vector4[] _table = new Vector4[WaterSpectrum.TableLevels];
+        private WaterSpectrum _tableSpectrum;
+        private double _tableSlope = -1.0;
+        private Material _specHeld;
+        private Color? _specOwn;
+        private bool _glitterShown;
 
         private WaterSkyLayer(Shader shader)
         {
@@ -106,7 +125,11 @@ namespace RealGlass.Water
         /// <param name="rippleSize">The Ripple size slider (1 = 100%; the game's own ripples: 1).</param>
         /// <param name="waveSize">The Wave size slider (likewise).</param>
         /// <param name="eye">Where the sky's cube is rendered from (the camera).</param>
-        public bool Show(float skySlider, Texture ripples, double slopeVariance, double rippleSize, double waveSize, Vector3 eye)
+        /// <param name="ocean">The ocean waves' spectrum the ripples hold (null: the 32 waves or the game's).</param>
+        /// <param name="slope">The ripples' root-mean-square slope (the texture's units: the ocean table's scale).</param>
+        /// <param name="glitter">The Sun glitter row (1 = real water; 0 = none, the game's own highlight kept).</param>
+        public bool Show(float skySlider, Texture ripples, double slopeVariance, double rippleSize, double waveSize, Vector3 eye,
+                         WaterSpectrum ocean, double slope, float glitter)
         {
             string why = null;
             Material water = Singleton<TerrainManager>.exists ? Singleton<TerrainManager>.instance.m_waterMaterial : null;
@@ -142,6 +165,8 @@ namespace RealGlass.Water
             _material.SetTexture(IdNormal, ripples);
             _material.SetVector(IdSky, new Vector4(Mathf.Max(0f, skySlider), CubeSize, Mathf.Max(0, _sky.Mips - 1), 0f));
             _material.SetVector(IdRipples, new Vector4((float)start, (float)span, Mathf.Max(1, ripples.width), (float)Math.Max(0.0, slopeVariance)));
+            Ocean(ocean, slope);
+            Glitter(water, glitter);
 
             s_material = _material;
             s_gameWater = water;
@@ -158,9 +183,85 @@ namespace RealGlass.Water
             return true;
         }
 
+        /// <summary>
+        /// The ocean's averaging on the layer: its table and tail at the ripples' mean-square slope
+        /// (_RGWaterSkyTail.w = 1), or none (w = 0: the 32 waves' own averaging). Set when either changes.
+        /// </summary>
+        private void Ocean(WaterSpectrum ocean, double slope)
+        {
+            if (ocean == _tableSpectrum && Math.Abs(slope - _tableSlope) < 1e-6)
+                return;
+
+            _tableSpectrum = ocean;
+            _tableSlope = slope;
+            float ms = (float)(slope * slope);
+            Vector4 tail = Vector4.zero;
+            for (int e = 0; e < _table.Length; e++)
+            {
+                _table[e] = ocean == null ? Vector4.zero
+                    : new Vector4((float)ocean.Table[4 * e] * ms, (float)ocean.Table[4 * e + 1] * ms, (float)ocean.Table[4 * e + 2] * ms, (float)ocean.Table[4 * e + 3]);
+            }
+            if (ocean != null)
+                tail = new Vector4((float)ocean.TailXX * ms, (float)ocean.TailZZ * ms, (float)ocean.TailXZ * ms, 1f);
+            _material.SetVectorArray(IdWaves, _table);
+            _material.SetVector(IdTail, tail);
+        }
+
+        /// <summary>
+        /// The sun's glitter this frame: the light the water is lit by (RenderManager.MainLight, the moon
+        /// at night; none when it is off), and the game's own highlight off on its material meanwhile.
+        /// </summary>
+        private void Glitter(Material water, float strength)
+        {
+            Light light = Singleton<RenderManager>.exists ? Singleton<RenderManager>.instance.MainLight : null;
+            bool on = strength > 0f && light != null;
+            Vector3 toLight = light != null ? -light.transform.forward : Vector3.down;
+            Color colour = light != null && light.enabled ? light.color.linear * light.intensity : Color.black;
+            _material.SetVector(IdSun, new Vector4(toLight.x, toLight.y, toLight.z, on ? strength : 0f));
+            _material.SetVector(IdSunColour, new Vector4(colour.r, colour.g, colour.b, 0f));
+
+            if (on)
+                HoldSpec(water);
+            else
+                ReleaseSpec();
+            if (on != _glitterShown)
+                Log.Msg("water: the sun's glitter " + (on ? "on (" + (strength * 100f).ToString("F0") + "%)" : "off" + (strength > 0f ? " (no main light)" : "")));
+            _glitterShown = on;
+        }
+
+        /// <summary>The game's own highlight off on its opaque water material (its _SpecColor black), its own colour kept.</summary>
+        private void HoldSpec(Material water)
+        {
+            if (_specHeld != null && _specHeld != water)
+                ReleaseSpec();
+            if (_specHeld == null)
+            {
+                _specHeld = water;
+                _specOwn = water.HasProperty(IdSpecColor) ? water.GetColor(IdSpecColor) : (Color?)null;
+                Log.Msg("water: the game's own sun highlight on the water off while the glitter draws (its _SpecColor " +
+                        (_specOwn.HasValue ? ColorText.Format((Color32)_specOwn.Value) + " x " + _specOwn.Value.a.ToString("F2") : "none of the material's: the global " +
+                         ColorText.Format((Color32)Shader.GetGlobalColor(IdSpecColor))) + ")");
+            }
+            if (water.GetColor(IdSpecColor) != Color.black)
+                water.SetColor(IdSpecColor, Color.black);
+        }
+
+        /// <summary>The game's highlight back: the material's own colour, or the global's where it had none.</summary>
+        private void ReleaseSpec()
+        {
+            if (_specHeld == null)
+                return;
+            _specHeld.SetColor(IdSpecColor, _specOwn.HasValue ? _specOwn.Value : Shader.GetGlobalColor(IdSpecColor));
+            _specHeld = null;
+            _specOwn = null;
+            Log.Msg("water: the game's own sun highlight on the water again");
+        }
+
         /// <summary>No sky layer (nothing drawn: the hook passes the game's draws straight through).</summary>
         public void Hide(string why)
         {
+            ReleaseSpec();
+            _glitterShown = false;
             s_active = false;
             if (_shown || (why != _why && why.Length > 0 && why != "off"))
                 Log.Msg("water: the sky layer off (" + why + ")");

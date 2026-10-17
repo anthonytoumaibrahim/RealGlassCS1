@@ -771,5 +771,66 @@ Check "  the advection's cycle divides the game's 60 s clock" ((60.0 % $v[22]) -
 Check "  a negative share is none" ("{0} {1}" -f ($foamOptics::Vectors(-1.0, -1.0, 1.0, 1.0, 40.0))[23], ($foamOptics::Vectors(-1.0, -1.0, 1.0, 1.0, 40.0))[8]) "0 0"
 Check "the foam's defaults: on, 30%; shores 100%, fast water 5%, fronts 10%" ("{0} {1} {2} {3} {4}" -f (Default 'WaterFoam'), (Default 'WaterFoamAmount'), (Default 'WaterFoamShore'), (Default 'WaterFoamRapids'), (Default 'WaterFoamFronts')) "True 0.3 1 0.05 0.1"
 
+# ---- the FFT waves (WaterSpectrum; the GPU against it: UnityProject\Assets\Editor\WaterWavesTest.cs) --
+$spectrumType = $asm.GetType('RealGlass.Water.WaterSpectrum', $true)
+# The GPU's steps (Stockham, radix 2) against the inverse DFT's definition, on a random line of 64.
+$wsN = 64; $wsRnd = New-Object Random 5
+$wsRe = New-Object double[] $wsN; $wsIm = New-Object double[] $wsN
+for ($i = 0; $i -lt $wsN; $i++) { $wsRe[$i] = $wsRnd.NextDouble() - 0.5; $wsIm[$i] = $wsRnd.NextDouble() - 0.5 }
+$wsDre = New-Object double[] $wsN; $wsDim = New-Object double[] $wsN
+for ($j = 0; $j -lt $wsN; $j++) {
+    for ($k = 0; $k -lt $wsN; $k++) {
+        $ang = 2.0 * [Math]::PI * $j * $k / $wsN
+        $wsDre[$j] += $wsRe[$k] * [Math]::Cos($ang) - $wsIm[$k] * [Math]::Sin($ang)
+        $wsDim[$j] += $wsRe[$k] * [Math]::Sin($ang) + $wsIm[$k] * [Math]::Cos($ang)
+    }
+}
+$spectrumType::Inverse1D($wsRe, $wsIm)
+$wsWorst = 0.0
+for ($j = 0; $j -lt $wsN; $j++) { $wsWorst = [Math]::Max($wsWorst, [Math]::Max([Math]::Abs($wsRe[$j] - $wsDre[$j]), [Math]::Abs($wsIm[$j] - $wsDim[$j]))) }
+Check "the FFT's steps are the inverse DFT (sum X e^(+i k x), 64 points)" ($wsWorst -lt 1e-9) "True"
+
+$ws = [Activator]::CreateInstance($spectrumType, @([double]7.0, [double]50000.0, [double]30.0, [uint32]1))
+$ws2 = [Activator]::CreateInstance($spectrumType, @([double]7.0, [double]50000.0, [double]30.0, [uint32]1))
+$ws3 = [Activator]::CreateInstance($spectrumType, @([double]7.0, [double]50000.0, [double]30.0, [uint32]2))
+# Texel (20, 3) of cascade 1: a wave it holds.
+$wsAt = 4 * (3 * 256 + 20)
+Check "the waves: one seed, one sea (and another seed, another)" ("{0} {1} {2}" -f ($ws.H0[1][$wsAt] -ne 0.0), ($ws.H0[1][$wsAt] -eq $ws2.H0[1][$wsAt]), ($ws.H0[1][$wsAt] -eq $ws3.H0[1][$wsAt])) "True True False"
+Check "  a 7 m/s wind over 50 km: JONSWAP's peak 25-35 m long" (($ws.PeakWavelength -gt 25.0) -and ($ws.PeakWavelength -lt 35.0)) "True"
+$wsWhole = $true
+foreach ($c in 0, 1) { for ($t = 0; $t -lt 65536; $t += 97) { $cy = $ws.H0[$c][4 * $t + 2]; if ($cy -lt 1.0 -or $cy -ne [Math]::Round($cy)) { $wsWhole = $false } } }
+Check "  every wave a whole number of cycles an hour (the game's hour clock wraps with no jump)" $wsWhole "True"
+$wsSym = $true; $wsTwice = $false
+for ($m = -127; $m -le 127; $m += 3) {
+    for ($q = -127; $q -le 127; $q += 5) {
+        foreach ($c in 0, 1) { if ($spectrumType::Holds($c, $m, $q) -ne $spectrumType::Holds($c, -$m, -$q)) { $wsSym = $false } }
+        if ($spectrumType::Holds(1, $m, $q) -and $spectrumType::Holds(0, 4 * $m, 4 * $q)) { $wsTwice = $true }
+    }
+}
+Check "  every wave held has its -k twin (a real surface); none held by both cascades" ("{0} {1}" -f $wsSym, $wsTwice) "True False"
+$wsSpread = 0.0
+for ($t = 0; $t -lt 2000; $t++) { $th = -[Math]::PI + ($t + 0.5) * 2.0 * [Math]::PI / 2000; $wsSpread += $spectrumType::Spreading(1.3, $th) * 2.0 * [Math]::PI / 2000 }
+Check "  Donelan-Banner's spreading is a unit over the circle" ("{0:F4}" -f $wsSpread) "1.0000"
+$hx = $null; $hz = $null; $dxx = $null; $dzz = $null; $dxz = $null; $hh = $null
+$wsMs = 0.0
+foreach ($c in 0, 1) {
+    $ws.Fields($c, 0.123, [ref]$hx, [ref]$hz, [ref]$dxx, [ref]$dzz, [ref]$dxz, [ref]$hh)
+    $sum = 0.0
+    for ($t = 0; $t -lt $hx.Length; $t++) { $sum += $hx[$t] * $hx[$t] + $hz[$t] * $hz[$t] }
+    $wsMs += $sum / $hx.Length
+}
+Check "  scaled to a unit mean-square slope (both cascades, one moment of the hour: within 5%)" ([Math]::Abs($wsMs - 1.0) -lt 0.05) "True"
+$wsTable = $ws.Table
+$wsRising = $true
+for ($e = 1; $e -lt 12; $e++) { if ($wsTable[4 * $e + 3] -lt $wsTable[4 * ($e - 1) + 3]) { $wsRising = $false } }
+Check "  what the mips average away: none magnified, more each mip, all of it by the last" ("{0} {1} {2:F3}" -f $wsTable[3], $wsRising, $wsTable[47]) "0 True 1.000"
+$wsCoxMunk = $optics::SlopeVariance(7.0)
+$wsAll = $ws.RawMeanSquare * (1.0 + $ws.TailXX + $ws.TailZZ)
+Check ("  the texture's slopes + the tail down to 1.7 cm within 15% of Cox & Munk's sea at 7 m/s ({0:F4} vs {1:F4})" -f $wsAll, $wsCoxMunk) ([Math]::Abs($wsAll / $wsCoxMunk - 1.0) -lt 0.15) "True"
+# The game's wind (WeatherManager.m_windDirection a): _WindDirection = (sin a, 0, cos a), its WindZone
+# turned to a + 180: a = 0 blows toward -z (heading 270), a = 90 toward -x (180).
+Check "  the waves run with the game's wind: 0 deg -> 270, 90 -> 180, 225 -> 45" ("{0:F0} {1:F0} {2:F0}" -f $spectrumType::HeadingFromGameWind(0.0), $spectrumType::HeadingFromGameWind(90.0), $spectrumType::HeadingFromGameWind(225.0)) "270 180 45"
+Check "the ocean waves' defaults: on, 7 m/s, choppiness 100%; the sun's glitter 35%" ("{0} {1} {2} {3}" -f (Default 'WaterOceanWaves'), (Default 'WaterWind'), (Default 'WaterChop'), (Default 'WaterGlitter')) "True 7 1 0.35"
+
 Write-Host ""
 if ($failed -eq 0) { Write-Host "all passed" } else { Write-Host "$failed FAILED"; exit 1 }

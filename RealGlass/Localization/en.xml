@@ -206,6 +206,12 @@
 
   <String key="WaterRippleStrength.Label">Ripple strength</String>
 
+  <String key="WaterOceanWaves.Label">Ocean waves</String>
+
+  <String key="WaterWind.Label">Wind speed</String>
+
+  <String key="WaterChop.Label">Choppiness</String>
+
   <String key="WaterRippleSize.Label">Ripple size</String>
 
   <String key="WaterWaveSize.Label">Wave size</String>
@@ -227,6 +233,8 @@
   <String key="WaterRealSky.Label">Reflect the sky like real water</String>
 
   <String key="WaterSky.Label">Sky reflection</String>
+
+  <String key="WaterGlitter.Label">Sun glitter</String>
 
   <String key="Group.WaterCity">The city in the water</String>
 
@@ -354,6 +362,7 @@
 
   <String key="Unit.Percent">{0}%</String>
   <String key="Unit.Metres">{0} m</String>
+  <String key="Unit.MetresPerSecond">{0} m/s</String>
   <String key="Unit.Pixels">{0} px</String>
   <String key="Unit.FacesPerFrame">{0} per frame</String>
 

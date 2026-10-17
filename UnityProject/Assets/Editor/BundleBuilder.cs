@@ -30,6 +30,7 @@ public static class BundleBuilder
         "Assets/RealGlass/WaterFoam.shader",
         "Assets/RealGlass/WaterSurfaceMask.shader",
         "Assets/RealGlass/WaterSky.shader",
+        "Assets/RealGlass/WaterWaves.shader",
     };
 
     /// <summary>

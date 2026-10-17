@@ -86,6 +86,12 @@ that repo's `docs/RELEASE-CHECKLIST.md` has the long version.
 - [ ] The Water tab on, then off, with Theme Mixer running: its water colour slider still works
       afterwards (the FollowGlobals fix of 2026-10-11).
 - [ ] The F8 panel's Water tab opens with its last row (City reflection length) on screen.
+- [ ] Ocean waves and the sun's glitter (2026-10-17): the log has "ocean waves built: ... waves
+      ... (N ms on a worker thread)", "the ripples are ocean waves", "the sun's glitter on (35%)"
+      and the game's own _SpecColor; a sunset over the sea shows a road of light, the moon's at
+      night; Wind speed moved shows longer or shorter waves within a second, never a hitch;
+      Ocean waves off brings the 32 waves back (and Ripple size / Wave size live again); frame
+      times as before within a millisecond.
 - [ ] Lumina's Dynamic Resolution / SSAA (the camera fix of 2026-10-14): Lumina only applies it
       when a city LOADS (its button just saves the setting), so turn it on, then load a city.
       The glass reflects the city and the water's city reflection shows, at SSAA 1 and above.
