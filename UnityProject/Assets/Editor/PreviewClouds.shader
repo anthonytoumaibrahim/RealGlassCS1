@@ -29,6 +29,7 @@ Shader "RealGlass/Preview/Clouds"
 
             float _UseDepth;
             float4 _PreviewCloudLight;   // rgb: the clouds' sunlit colour
+            float _PreviewOvercast;      // 0 the broken layer .. 1 a closed deck (the preview's "Overcast=")
             sampler2D_float _CameraDepthTexture;
 
             struct v2f
@@ -93,7 +94,7 @@ Shader "RealGlass/Preview/Clouds"
                 }
 
                 float2 p = (origin.xz + dir.xz * t) / 2200.0;
-                float cover = saturate((Fbm(p) - 0.47) * 3.5) * saturate(dir.y * 10.0);
+                float cover = saturate((Fbm(p) - 0.47 + _PreviewOvercast * 0.6) * 3.5) * saturate(dir.y * 10.0);
                 float shade = lerp(0.62, 1.0, saturate(Fbm(p * 1.7 + 5.3) * 1.3));
                 return float4(_PreviewCloudLight.rgb * shade * cover, cover);
             }

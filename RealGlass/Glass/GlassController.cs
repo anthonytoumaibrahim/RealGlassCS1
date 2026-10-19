@@ -43,6 +43,7 @@ namespace RealGlass.Glass
         private bool _layersKnown;
         private bool _wasOn;
         private bool _loggedClouds;
+        private bool _loggedDistant;
         private string _lastState = "";
         private float _nextDetail;
         private int _frames;
@@ -273,7 +274,9 @@ namespace RealGlass.Glass
             GlassFrame f = ReadFrame(camera);
             int size = Settings.IsInitialised ? Settings.SkyCubePixels : 128;
             int rate = Settings.IsInitialised ? Settings.SkyCubeRate.value : 1;
-            _sky.Update(p.SkySource == 0, size, rate, Shader.GetGlobalTexture("_EnvironmentCubemap"), camera.transform.position, p.SkyClouds);
+            float dusk = GlassUniforms.Dusk(f.SunY, p.SkyDusk);
+            _sky.Update(p.SkySource == 0, size, rate, Shader.GetGlobalTexture("_EnvironmentCubemap"), camera.transform.position, p.SkyClouds,
+                        true, _util, dusk);
             if (_sky.DrawsClouds != _loggedClouds)
             {
                 _loggedClouds = _sky.DrawsClouds;
@@ -282,7 +285,16 @@ namespace RealGlass.Glass
                     : "glass: the live sky has no clouds (" + (p.SkySource != 0 ? "the game's map is the sky" :
                         (!p.SkyClouds ? "switched off" : "no '" + GlassSky.CloudVolumeName + "' drawing")) + ")");
             }
+            if (_sky.DrawsDistantClouds != _loggedDistant)
+            {
+                _loggedDistant = _sky.DrawsDistantClouds;
+                Log.Msg(_loggedDistant
+                    ? "glass: the live sky carries Volumetric Weather's distant clouds ('" + GlassSky.DistantCloudsName + "' drawn into it)"
+                    : "glass: the live sky has no distant clouds (" + (p.SkySource != 0 ? "the game's map is the sky" :
+                        (!p.SkyClouds ? "switched off" : "no '" + GlassSky.DistantCloudsName + "' drawing")) + ")");
+            }
             f.CubeMips = _sky.Mips;
+            f.CloudAlpha = _sky.CloudAlpha;
 
             // The buildings round the view, from above: what a reflection meets off screen.
             if (p.Neighbours)
@@ -335,8 +347,10 @@ namespace RealGlass.Glass
                            "frame " + ms.ToString("F1") + " ms; copy " + (copied ? _screen.Width + "x" + _screen.Height : "OFF " + _screen.Problem) +
                            (copied ? (_screen.Finished ? " + the finished picture" : " (no finished picture)") : "") +
                            "; sky " + (p.SkySource == 0 ? _sky.FacesDone + "/6 faces " + _sky.Mips + " mips" + (_sky.DrawsClouds ? " with clouds" : "") +
+                               (_sky.DrawsDistantClouds ? " + distant clouds" : "") + (_sky.CloudAlpha ? ", x" + dusk.ToString("F2") + " at dusk" : "") +
                                (_sky.Problem.Length > 0 ? " " + _sky.Problem : "") : "the game's map") +
-                           "; daylight " + GlassUniforms.Daylight(f.SunY).ToString("F2") + ", sun (" + f.SunR.ToString("F2") + " " + f.SunG.ToString("F2") + " " + f.SunB.ToString("F2") +
+                           "; daylight " + GlassUniforms.Daylight(f.SunY).ToString("F2") + ", sun " +
+                           (Mathf.Asin(Mathf.Clamp(f.SunY, -1f, 1f)) * Mathf.Rad2Deg).ToString("F1") + " deg (" + f.SunR.ToString("F2") + " " + f.SunG.ToString("F2") + " " + f.SunB.ToString("F2") +
                            "), ground " + f.GroundY.ToString("F0") + " m, " + f.Temperature.ToString("F0") + " C; " +
                            (p.Neighbours ? (_heights.Map.Live ? "city heights " + _heights.Map.LiveCount + " buildings, highest roof " +
                                _heights.Map.LiveTop.ToString("F0") + " m, " + _heights.LastMs.ToString("F1") + " ms over " + _heights.LastFrames + " frames"
@@ -549,7 +563,8 @@ namespace RealGlass.Glass
                    ", glass above " + Pct(p.Threshold) + (p.NightWindows ? " + night windows" : "") + (p.ShowMask ? ", SHOWING THE MASK" : "") +
                    "; trace " + (p.Trace ? "q" + p.Quality : "off") + (p.Finished ? " of the finished picture" : " of the copy") +
                    (p.Neighbours ? " + city heights" : "") + (p.SteadyGlints ? ", steady glints" : "") +
-                   ", brightness " + Pct(p.ReflectionBrightness) + ", sky " + (p.SkySource == 0 ? (p.SkyClouds ? "live with clouds" : "live") : "game map") +
+                   ", brightness " + Pct(p.ReflectionBrightness) + ", sky " + (p.SkySource == 0 ? (p.SkyClouds ? "live with clouds" : "live") +
+                       ", dims at dusk " + Pct(p.SkyDusk) : "game map") +
                    ", fill " + p.OffscreenFill + ", glint " + Pct(p.SunGlint) + ", smooth " + Pct(p.Smoothness) +
                    "; panes " + p.PaneWidth.ToString("F1") + " x " + p.FloorHeight.ToString("F1") + " m, pillow " + Pct(p.Pillow) + ", tilt " + Pct(p.Tilt) +
                    ", roller " + Pct(p.RollerWave) + (p.PaneWeather ? " (weather)" : "") + (p.PanesFollowWindows ? ", following the windows" : "") +

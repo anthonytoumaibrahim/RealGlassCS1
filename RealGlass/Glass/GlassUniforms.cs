@@ -28,8 +28,22 @@ namespace RealGlass.Glass
         /// </summary>
         public const float InsideByDay = 0.10f;
 
+        /// <summary>
+        /// The clear sky's light on level ground by the sun's height, every half degree from 0 to 10,
+        /// as a share of its light with the sun 10 degrees up: Bird &amp; Riordan's spectral clear-sky
+        /// model (SPCTRAL2, 1986) for 60 km of visibility over ground that gives back 15% (at 0, the
+        /// first half degree of twilight: 10x darker every 2.6 degrees). A real sky darkens all through
+        /// the sun's last ten degrees; the game's stays at noon's until the sun is 3.16 degrees up.
+        /// </summary>
+        private static readonly float[] ClearSkyBelow10 =
+        {
+            0.0206f, 0.0319f, 0.0724f, 0.1191f, 0.1700f, 0.2236f, 0.2789f, 0.3351f, 0.3916f, 0.4479f, 0.5036f,
+            0.5586f, 0.6126f, 0.6655f, 0.7172f, 0.7676f, 0.8167f, 0.8645f, 0.9109f, 0.9561f, 1.0000f,
+        };
+
         private static int _glass, _tint, _mask, _refl, _trace, _fill, _pane, _pane2, _light,
-                           _sunDir, _sunColor, _ambSky, _ambGround, _glass2, _colorMap, _features, _budget, _budget2;
+                           _sunDir, _sunColor, _ambSky, _ambGround, _glass2, _colorMap, _features, _budget, _budget2,
+                           _sunThrough;
         private static bool _ids;
 
         private static void Ids()
@@ -54,6 +68,7 @@ namespace RealGlass.Glass
             _features = Shader.PropertyToID("_RGFeatures");
             _budget = Shader.PropertyToID("_RGBudget");
             _budget2 = Shader.PropertyToID("_RGBudget2");
+            _sunThrough = Shader.PropertyToID("_RGSunThrough");
             _ids = true;
         }
 
@@ -61,6 +76,44 @@ namespace RealGlass.Glass
         public static float Daylight(float sunY)
         {
             return Smooth(-0.10f, 0.10f, sunY);
+        }
+
+        /// <summary>The clear sky's light at this sun height (degrees), as a share of its light at 10: 1 above.</summary>
+        public static float ClearSky(float elevation)
+        {
+            float x = Mathf.Clamp(elevation, 0f, 10f) * 2f;
+            int i = Mathf.Min((int)x, ClearSkyBelow10.Length - 2);
+            return Mathf.Lerp(ClearSkyBelow10[i], ClearSkyBelow10[i + 1], x - i);
+        }
+
+        /// <summary>
+        /// The game's own sky by the sun's height, as a share of its sky by day: DayNightProperties'
+        /// DayTime, clamp01(atan(5.35 max(sun y, -0.1975)) / 1.1 + 0.739), which scales the whole day
+        /// sky (IL): 1 with the sun above 3.16 degrees, 0.74 at the horizon, 0 near -11.
+        /// </summary>
+        public static float GameSkyDay(float sunY)
+        {
+            return Mathf.Clamp01(Mathf.Atan(5.35f * Mathf.Max(sunY, -0.1975f)) / 1.1f + 0.739f);
+        }
+
+        /// <summary>
+        /// What the sky in the glass is multiplied by (GlassUtil's SkyBackground pass in the live sky's
+        /// cube, under the clouds): the clear sky's light at the sun's height (ClearSky) to the power
+        /// strength -- 1 the real fall, 0.5 half as many stops of it -- over the game's own sky's
+        /// (GameSkyDay), never above 1. The glass's sky is then the dimmer of the two: the real sky's
+        /// light down to the horizon and held there below it, the game's own fade wherever that is
+        /// darker, so it only darkens through twilight and the game's night sky is left as it is.
+        /// </summary>
+        public static float Dusk(float sunY, float strength)
+        {
+            strength = Mathf.Clamp01(strength);
+            if (strength <= 0f)
+                return 1f;
+
+            float elevation = Mathf.Asin(Mathf.Clamp(sunY, -1f, 1f)) * Mathf.Rad2Deg;
+            float target = Mathf.Pow(ClearSky(elevation), strength);
+            float game = GameSkyDay(sunY);
+            return game <= target ? 1f : target / game;
         }
 
         /// <summary>
@@ -133,6 +186,10 @@ namespace RealGlass.Glass
             Shader.SetGlobalVector(_pane2, new Vector4(p.PaneWeather ? BowBias(f.Temperature) : 0f, RollerLength, Mathf.Max(p.FloorHeight, 1f), 0f));
             Shader.SetGlobalVector(_light, new Vector4(daylight, InsideByDay, 0f, 0f));
             Shader.SetGlobalVector(_sunDir, new Vector4(f.SunX, f.SunY, f.SunZ, sunUp));
+            // The sun's disc through the clouds: where the live sky's cube carries them, their opacity
+            // is its alpha (GlassSky), read in the sun's direction two mips down (a cloud's edge
+            // crossing the sun fades it over a degree or so, not a texel).
+            Shader.SetGlobalVector(_sunThrough, new Vector4(f.CloudAlpha ? 1f : 0f, Mathf.Min(2f, Mathf.Max(f.CubeMips - 1, 0)), 0f, 0f));
             Shader.SetGlobalVector(_sunColor, new Vector4(f.SunR, f.SunG, f.SunB, 0f));
             Shader.SetGlobalVector(_ambSky, new Vector4(f.AmbSkyR, f.AmbSkyG, f.AmbSkyB, 0f));
             Shader.SetGlobalVector(_ambGround, new Vector4(f.AmbGroundR, f.AmbGroundG, f.AmbGroundB, 0f));

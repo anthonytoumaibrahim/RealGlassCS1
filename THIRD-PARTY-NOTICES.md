@@ -181,7 +181,9 @@ lit windows scattered at random and offices a floor at a time as in
 Young's procedural city (2009), the share lit by the hour after Richardson et al.'s domestic
 lighting model (2009), EnergyPlus's office lighting schedule and Dobler et al.'s observations of
 a city's windows (2015), the lamps' colours from Charity's blackbody table, the pictures' own
-windows filled by normalized convolution (Knutsson and Westin, 1993) --
+windows filled by normalized convolution (Knutsson and Westin, 1993) -- and the reflected sky's
+light at dusk after Bird and Riordan's clear-sky spectral model (SPCTRAL2, 1986) with Kasten and
+Young's air mass (1989) --
 listed with links in
 `README.md`. Apart from the ray tracer above, the implementations were written for this mod.
 
@@ -189,8 +191,8 @@ Other mods were read to understand the game's behaviour and to stay compatible w
 xdedss's CS_SSR (its note that the game's camera keeps no glossiness in any screen buffer), and
 Volumetric Weather, Volumetric Explosions and RealFlag, by the same author, whose foundations
 (settings, panel, logging, localization, tools) this mod's are. When Volumetric Weather runs,
-Real Glass draws that mod's own cloud volume (found by its object's name) into its reflected
-sky; nothing of it is copied. algernon's BOB was read for how its building picker works (a tool
+Real Glass draws that mod's own cloud volume and distant clouds (found by their objects' names)
+into its reflected sky; nothing of it is copied. algernon's BOB was read for how its building picker works (a tool
 of the game's kind, Escape handled before the game's own) and for keeping its per-building data in
 a file of its own rather than in the save; Network Anarchy's keys, so the picker's default key
 does not clash with its grid key. No code from any other mod is included.

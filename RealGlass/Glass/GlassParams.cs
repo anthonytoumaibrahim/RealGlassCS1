@@ -30,7 +30,8 @@ namespace RealGlass.Glass
         public int Quality;                 // 0 Low .. 3 Ultra
         public float ReflectionBrightness;  // 0..3
         public int SkySource;               // 0 live sky, 1 the game's environment map
-        public bool SkyClouds;              // the live sky carries the clouds (Volumetric Weather's volume)
+        public bool SkyClouds;              // the live sky carries the clouds (Volumetric Weather's volume and distant clouds)
+        public float SkyDusk;               // 0..1: how far the sky in the glass follows a clear sky's fall in the sun's last ten degrees (GlassUniforms.Dusk)
         public int OffscreenFill;           // 0 mirrored screen, 1 city colour, 2 sky only
         public float SunGlint;              // 0..3
         public bool SteadyGlints;           // specular anti-aliasing of the bent panes
@@ -85,6 +86,7 @@ namespace RealGlass.Glass
             p.ReflectionBrightness = 0.55f;
             p.SkySource = 0;
             p.SkyClouds = true;
+            p.SkyDusk = 1.00f;
             p.OffscreenFill = 0;
             p.SunGlint = 3.00f;
             p.SteadyGlints = true;
@@ -128,6 +130,7 @@ namespace RealGlass.Glass
         public float Temperature;                // degrees C (the game's weather)
         public int ScreenHeight;                 // pixels
         public int CubeMips;                     // mip levels of the sky cube
+        public bool CloudAlpha;                  // the sky cube's alpha is the clouds' opacity (GlassSky.CloudAlpha)
         public int ColorMapWidth;                // the game's object colour map, whose texel a building's
         public int ColorMapHeight;               // colour index names (RenderManager.OBJECT_COLORMAP_*)
         public float Hour;                       // the game's time of day, 0..24

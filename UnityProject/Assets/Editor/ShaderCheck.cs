@@ -27,7 +27,7 @@ public static class ShaderCheck
         "Assets/RealGlass/WaterWaves.shader",
     };
 
-    private static readonly int[] Passes = { 1, 5, 1, 4, 1, 1, 1, 1, 3 };
+    private static readonly int[] Passes = { 1, 6, 1, 4, 1, 1, 1, 1, 3 };
 
     public static void Run()
     {

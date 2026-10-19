@@ -132,6 +132,8 @@
 
   <String key="SkyClouds.Label">Clouds in the live sky</String>
 
+  <String key="SkyDusk.Label">Sky dims at dusk</String>
+
   <String key="OffscreenFill.Label">Below the horizon</String>
   <String key="OffscreenFill.Mirror">Mirrored screen</String>
   <String key="OffscreenFill.City">City color</String>

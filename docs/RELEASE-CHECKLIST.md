@@ -97,6 +97,11 @@ that repo's `docs/RELEASE-CHECKLIST.md` has the long version.
       The glass reflects the city and the water's city reflection shows, at SSAA 1 and above.
       Log: "camera: the city is drawn by the game's camera 'Main Camera' (disabled: another
       mod renders it itself), while Camera.main is 'Lumina dynamic resolution'".
+- [ ] The sky in the glass at dusk and under cloud (2026-10-19): with Volumetric Weather's distant
+      clouds on, the log has "the live sky carries Volumetric Weather's distant clouds" and they show
+      in the glass; at sunset the 5 s line's "x... at dusk" falls below 1 under 10 degrees and the
+      glass darkens with it (Reflections -> Sky dims at dusk 0% gives the old look back); under a
+      closed deck no sun glint on the glass. Run once on Mac/Linux too: GlassUtil has a 6th pass.
 - [ ] The panels on ModsLibCS1 (2026-10-13): every Panel look (Frosted, See-through, Blue,
       Vanilla) with the F8 panel and the building window open -- every tab, the Water tab
       scrolling to its last row, a reset icon, "Kind of glass" as a list, a colour pick, the HUD

@@ -53,10 +53,11 @@ float4 _RGPane2;      // x bow bias -1 (all sunk) .. +1 (all bulging), y roller-
 float4 _RGLight;      // x daylight 0 (night) .. 1 (day), y the inside by day (x the sky's light), z -, w -
 float4 _RGSunDir;     // xyz towards the sun (world), w sun above the horizon 0..1
 float4 _RGSunColor;   // rgb the sun's radiance (colour x intensity)
+float4 _RGSunThrough; // x 1 while the sky cube's alpha is the clouds' opacity (GlassSky), y the mip it is read at
 float4 _RGAmbSky;     // rgb light from the sky (trilight "sky")
 float4 _RGAmbGround;  // rgb light from below (trilight "ground")
 float4 _RGFeatures;   // x the buildings round in the reflections, y -, z -, w steady glints
-float4 _RGDebug;      // x: 0 off; the GPU preview's checks (1 trace, 2 depth, 3 screen copy, 5 the finished
+float4 _RGDebug;      // x: 0 off; the GPU preview's checks (12 the sun through the clouds; 1 trace, 2 depth, 3 screen copy, 5 the finished
                       // picture reprojected, magenta off it; 6 the city walk: green a building met, blue none,
                       // red no map; 8 the painted pane found: green, its border yellow, red none; 9 the
                       // hierarchical depth at level y, red where it is wrong; 10 the painted lines kept:
@@ -557,6 +558,17 @@ float3 SkyRadiance(float3 R, float roughness)
     return Finite(texCUBElod(_RGSky, float4(R, roughness * _RGFill.z)).rgb);
 }
 
+// How much of the sun's disc the clouds leave, 0..1: the live sky's cube holds their opacity in its
+// alpha (GlassSky: cleared after the skybox, then their premultiplied blend), so it is read where the
+// sun is. The sun's own light in the glass -- its glint, the sunny side of a mirrored neighbour -- is
+// its direct beam, which a cloud in front of the disc takes away (Beer-Lambert); the clouds' own
+// light is already in what the glass mirrors. 1 where the cube has no such alpha (the game's map).
+float SunThrough()
+{
+    float cloud = _RGSunThrough.x > 0.5 ? texCUBElod(_RGSky, float4(_RGSunDir.xyz, _RGSunThrough.y)).a : 0.0;
+    return 1.0 - FiniteIn(cloud, 0.0, 1.0);
+}
+
 // The city's average colour (1x1).
 float3 CityColour()
 {
@@ -739,7 +751,7 @@ float3 NeighbourRadiance(float3 H, float3 R, float3 nb, float span, float roughn
 
     float3 Rn = reflect(R, nb);
     float3 mirrored = Rn.y > 0.0 ? SkyRadiance(Rn, max(roughness, 0.3)) : city;
-    float sunSide = saturate(dot(nb, _RGSunDir.xyz)) * saturate(_RGSunDir.w);
+    float sunSide = saturate(dot(nb, _RGSunDir.xyz)) * saturate(_RGSunDir.w) * SunThrough();
     float3 body = seen * (0.7 + 0.6 * sunSide);
     float y = max(H.y - _RGFill.y, 0.0);
     float band = step(frac(y / _RGPane2.z), 0.2) * detail;
@@ -764,7 +776,7 @@ float3 SunGlint(float3 n, float3 V, float F, float roughness)
     float d = nh * nh * (a2 - 1.0) + 1.0;
     float D = a2 / (3.14159265 * d * d);
     float spec = min(D * F * 0.25 / nv, 60.0);
-    return _RGSunColor.rgb * spec * nl * saturate(_RGSunDir.w) * _RGRefl.z;
+    return _RGSunColor.rgb * spec * nl * saturate(_RGSunDir.w) * _RGRefl.z * SunThrough();
 }
 
 #endif

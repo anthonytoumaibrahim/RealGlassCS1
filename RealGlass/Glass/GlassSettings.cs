@@ -34,6 +34,7 @@ namespace RealGlass.Glass
             p.ReflectionBrightness = Settings.ReflectionBrightness.value;
             p.SkySource = Settings.SkyReflection.value;
             p.SkyClouds = Settings.SkyClouds.value;
+            p.SkyDusk = Settings.SkyDusk.value;
             p.OffscreenFill = Settings.OffscreenFill.value;
             p.SunGlint = Settings.SunGlint.value;
             p.SteadyGlints = Settings.SteadyGlints.value;

@@ -48,6 +48,9 @@ public static class GlassPreview
     /// <summary>The variant's "Debug=n": the shader's check view (0 = the picture); "Level=n": the level view 9 shows.</summary>
     private static float _debug, _debugLevel;
 
+    /// <summary>The variant's "Overcast=x": the clouds' stand-in from its broken layer (0) to a closed deck (1).</summary>
+    private static float _overcast;
+
     /// <summary>The game's object colour map (RenderManager.OBJECT_COLORMAP_WIDTH x HEIGHT in the game: 512 x 256).</summary>
     private const int ColorMapWidth = 512, ColorMapHeight = 256;
 
@@ -822,17 +825,29 @@ public static class GlassPreview
     private static Color[] RenderView(Scene s, string view, string variant, float sunIntensity, out string info)
     {
         // The light of the moment.
-        // "night" (the aerial camera) and "nightclose" (the close one) are both by night.
+        // "night" (the aerial camera) and "nightclose" (the close one) are both by night. "view@e"
+        // (e.g. "street@4"): that camera with the sun e degrees up, lit as the game lights it then --
+        // its sun and its sky x DayTime (GlassUniforms.GameSkyDay: noon's above 3.16 degrees), the
+        // low sun's colour below 10.
+        float? duskElev = null;
+        int at = view.IndexOf('@');
+        if (at > 0)
+        {
+            duskElev = float.Parse(view.Substring(at + 1), CultureInfo.InvariantCulture);
+            view = view.Substring(0, at);
+        }
         bool night = view.StartsWith("night");
-        float sunElev = view == "low" ? 7f : (night ? -12f : 42f);
+        float sunElev = duskElev ?? (view == "low" ? 7f : (night ? -12f : 42f));
         float sunYaw = view == "low" ? 200f : 140f;
         Vector3 toSun = Quaternion.Euler(-sunElev, sunYaw, 0f) * Vector3.forward;
+        float gameDay = duskElev.HasValue ? GlassUniforms.GameSkyDay(toSun.y) : 1f;
+        bool lowSun = view == "low" || (duskElev.HasValue && sunElev < 10f);
         s.Sun.transform.rotation = Quaternion.LookRotation(-toSun);
-        s.Sun.color = view == "low" ? new Color(1f, 0.72f, 0.45f) : new Color(1f, 0.96f, 0.9f);
-        s.Sun.intensity = night ? 0f : (view == "low" ? sunIntensity * 0.8f : sunIntensity);
+        s.Sun.color = lowSun ? new Color(1f, 0.72f, 0.45f) : new Color(1f, 0.96f, 0.9f);
+        s.Sun.intensity = night ? 0f : (duskElev.HasValue ? sunIntensity * gameDay : (view == "low" ? sunIntensity * 0.8f : sunIntensity));
         s.Moon.transform.rotation = Quaternion.LookRotation(-(Quaternion.Euler(-35f, 20f, 0f) * Vector3.forward));
         s.Moon.intensity = night ? 0.06f : 0f;
-        s.Sky.SetFloat("_Exposure", night ? 0.05f : (view == "low" ? 1.0f : 1.3f));
+        s.Sky.SetFloat("_Exposure", night ? 0.05f : (duskElev.HasValue ? 1.3f * gameDay : (view == "low" ? 1.0f : 1.3f)));
         s.Sky.SetFloat("_SunSize", 0.035f);
         s.Sky.SetFloat("_AtmosphereThickness", view == "low" ? 1.3f : 1.0f);
         RenderSettings.ambientSkyColor = night ? new Color(0.012f, 0.015f, 0.03f) : (view == "low" ? new Color(0.42f, 0.44f, 0.55f) : new Color(0.45f, 0.55f, 0.72f));
@@ -871,6 +886,7 @@ public static class GlassPreview
         GlassParams p = GlassParams.Default();
         _debug = 0f;
         _debugLevel = 0f;
+        _overcast = 0f;
         _tier = "near";
         _quality = GlassQuality.Ultra;
         _hizOff = false;
@@ -930,10 +946,12 @@ public static class GlassPreview
         s.Clouds.transform.position = camPos;
         Color cloudLight = night ? new Color(0.01f, 0.012f, 0.02f) : sunLin * 0.55f + sky;
         Shader.SetGlobalVector("_PreviewCloudLight", new Vector4(cloudLight.r, cloudLight.g, cloudLight.b, 0f));
+        Shader.SetGlobalFloat("_PreviewOvercast", _overcast);
 
         // No game map here: its stand-in is the live sky WITHOUT clouds (the game's map is a
         // static picture); the live sky proper carries them.
-        s.SkyCube.Update(true, 128, 6, null, camPos, p.SkySource == 0 && p.SkyClouds);
+        s.SkyCube.Update(true, 128, 6, null, camPos, p.SkySource == 0 && p.SkyClouds, true, s.Util, GlassUniforms.Dusk(toSun.y, p.SkyDusk));
+        f.CloudAlpha = s.SkyCube.CloudAlpha;
         f.CubeMips = s.SkyCube.Mips;
         s.City.Bind(p.Neighbours);
         GlassQuality q = GlassQuality.ForTier(_quality);
@@ -1065,6 +1083,11 @@ public static class GlassPreview
             if (kv[0].Trim().Equals("Tier", StringComparison.OrdinalIgnoreCase))
             {
                 _tier = kv[1].Trim().ToLowerInvariant();
+                continue;
+            }
+            if (kv[0].Trim().Equals("Overcast", StringComparison.OrdinalIgnoreCase))
+            {
+                _overcast = float.Parse(kv[1].Trim(), CultureInfo.InvariantCulture);
                 continue;
             }
             if (kv[0].Trim().Equals("Hour", StringComparison.OrdinalIgnoreCase))

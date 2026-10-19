@@ -143,7 +143,9 @@ namespace RealGlass.Water
                 why = "no ripple texture";
             else
             {
-                _sky.Update(true, CubeSize, FacesPerFrame, null, eye, true);
+                // The game's sky with the volumetric clouds, as it always was: not the glass's dusk
+                // or distant clouds.
+                _sky.Update(true, CubeSize, FacesPerFrame, null, eye, true, false, null, 1f);
                 if (_sky.Problem.Length > 0 || _sky.Cube == null)
                     why = "the live sky: " + (_sky.Problem.Length > 0 ? _sky.Problem : "no cube");
             }

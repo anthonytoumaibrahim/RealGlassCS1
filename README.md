@@ -68,9 +68,12 @@ the log is `RealGlass.log`, next to it.
   farthest depths, whole blocks of the screen at a step where nothing can be met, so a reflection
   reaches across a 4K screen; then, for what is not on screen, a
   live picture of the game's own sky, kept up to date a side at a time, with the clouds
-  Volumetric Weather draws drawn into it too. Below the horizon, where a raised camera's
-  reflections mostly point, a facade mirrors the street at its feet: that spot is found on
-  screen, and where it is off screen the picture is mirrored back in at the edge. What is
+  Volumetric Weather draws drawn into it too, its distant clouds included. In the sun's last ten
+  degrees that sky dims as a clear sky does (the game's own keeps noon's light until the sun is
+  three degrees up), and the sun's glint goes behind the clouds that cover it. Below the
+  horizon, where a raised camera's reflections mostly point, a facade mirrors the street at its
+  feet: that spot is found on screen, and where it is off screen the picture is mirrored back in
+  at the edge. What is
   mirrored is the previous frame's FINISHED picture, put back where each point was: the city's
   haze, the clouds, the lamps' glow at night and the other towers' glass are all in the glass.
 - **The buildings around**, where the screen cannot show them: the city seen from above -- every
@@ -322,6 +325,12 @@ Every technique here has shipped in a game or is published:
     colour table ([vendian.org](http://www.vendian.org/mncharity/dir3/blackbody/)). The pictures are
     cut from [Poly Haven](https://polyhaven.com/hdris/indoor)'s indoor panoramas (CC0), the rooms'
     own daylit windows filled from round them by normalized convolution (Knutsson and Westin, 15).
+18. The sky at dusk: how a clear sky's light falls in the sun's last ten degrees, from Richard Bird
+    and Carol Riordan, **Simple Solar Spectral Model for Direct and Diffuse Irradiance on Horizontal
+    and Tilted Planes at the Earth's Surface for Cloudless Atmospheres** (SPCTRAL2), Journal of
+    Climate and Applied Meteorology 25(1), 1986, with Fritz Kasten and Andrew Young's air mass
+    (**Revised optical air mass tables and approximation formula**, Applied Optics 28(22), 1989).
+    The sun's glint behind a cloud: its direct beam through the cloud's opacity (Beer-Lambert).
 
 ## Building
 

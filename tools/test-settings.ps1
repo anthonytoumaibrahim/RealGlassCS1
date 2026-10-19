@@ -585,7 +585,7 @@ $pairs = @(
     @('SkySource', 'SkyReflection'), @('OffscreenFill', 'OffscreenFill'), @('SunGlint', 'SunGlint'),
     @('Smoothness', 'GlassSmoothness'), @('EdgeFade', 'SsrEdgeFade'), @('PaneWidth', 'PaneWidth'),
     @('FloorHeight', 'FloorHeight'), @('Pillow', 'PanePillow'), @('Tilt', 'PaneTilt'), @('RollerWave', 'RollerWave'),
-    @('PaneWeather', 'PaneWeather'), @('EdgeSilver', 'GlassEdgeSilver'), @('Finished', 'ReflectFinished'), @('SkyClouds', 'SkyClouds'),
+    @('PaneWeather', 'PaneWeather'), @('EdgeSilver', 'GlassEdgeSilver'), @('Finished', 'ReflectFinished'), @('SkyClouds', 'SkyClouds'), @('SkyDusk', 'SkyDusk'),
     @('Neighbours', 'ReflectNeighbours'), @('SteadyGlints', 'SteadyGlints'), @('PanesFollowWindows', 'PanesFollowWindows'),
     @('Interiors', 'InteriorsEnabled'), @('InteriorsByDay', 'InteriorsByDay'), @('InteriorsDepth', 'InteriorsDepth'), @('InteriorsMatchLods', 'InteriorsMatchLods'),@('InteriorsLit', 'InteriorsLit'),
     @('InteriorsLateNight', 'InteriorsLateNight'), @('InteriorsSwitching', 'InteriorsSwitching'),
@@ -600,6 +600,31 @@ Check "GlassParams.Default() = Settings.Defaults, row by row" ($mismatch -join "
 $c = Default 'GlassColor'
 $tint = "{0:F4} {1:F4} {2:F4}" -f $paramsType.GetField('TintR').GetValue($gp), $paramsType.GetField('TintG').GetValue($gp), $paramsType.GetField('TintB').GetValue($gp)
 Check "  and the glass colour" $tint ("{0:F4} {1:F4} {2:F4}" -f ($c.r / 255.0), ($c.g / 255.0), ($c.b / 255.0))
+
+# ---- the sky in the glass at dusk (Glass\GlassUniforms.cs) ----------------------------------
+# The clear sky's light in the sun's last ten degrees (SPCTRAL2) over the game's own sky's
+# (DayTime: noon's above 3.16 degrees), never above 1; held at the horizon's below it.
+$uniforms = $asm.GetType('RealGlass.Glass.GlassUniforms', $true)
+function SinDeg([double]$d) { return [single][Math]::Sin($d * [Math]::PI / 180.0) }
+Check "dusk: the clear sky's table is 1 at 10 degrees, half at 5" ("{0:F4} {1:F4}" -f $uniforms::ClearSky(10.0), $uniforms::ClearSky(5.0)) "1.0000 0.5036"
+Check "  the game's sky: full above 3.16 degrees, 0.74 at the horizon, none at -12" ("{0:F3} {1:F3} {2:F3}" -f $uniforms::GameSkyDay((SinDeg 3.5)), $uniforms::GameSkyDay([single]0), $uniforms::GameSkyDay((SinDeg -12))) "1.000 0.739 0.000"
+Check "  the sky in the glass untouched with the sun 10 degrees up and more" ("{0:F4} {1:F4}" -f $uniforms::Dusk((SinDeg 10), [single]1), $uniforms::Dusk((SinDeg 40), [single]1)) "1.0000 1.0000"
+$at5 = $uniforms::Dusk((SinDeg 5), [single]1)
+Check "  5 degrees: the clear sky's half; at 50% its square root" ("{0:F4} {1:F4}" -f $at5, $uniforms::Dusk((SinDeg 5), [single]0.5)) ("0.5036 {0:F4}" -f [Math]::Sqrt($at5))
+Check "  at the horizon: the clear sky's over the game's own fade" ("{0:F4}" -f $uniforms::Dusk([single]0, [single]1)) ("{0:F4}" -f (0.0206 / $uniforms::GameSkyDay([single]0)))
+Check "  0%: the game's sky as it is, at any height" ("{0:F4} {1:F4}" -f $uniforms::Dusk([single]0, [single]0), $uniforms::Dusk((SinDeg 3), [single]0)) "1.0000 1.0000"
+Check "  night: the game's own night sky, untouched" ("{0:F4}" -f $uniforms::Dusk((SinDeg -12), [single]1)) "1.0000"
+$rises = @()
+foreach ($strength in @(1.0, 0.5, 0.25)) {
+    $last = 2.0
+    for ($e = 15.0; $e -ge -14.0; $e -= 0.25) {
+        $y = SinDeg $e
+        $glassSky = $uniforms::GameSkyDay($y) * $uniforms::Dusk($y, [single]$strength)
+        if ($glassSky -gt $last + 1e-6) { $rises += "$strength at $e" }
+        $last = $glassSky
+    }
+}
+Check "  the sky in the glass only darkens as the sun goes down (100%, 50%, 25%)" ($rises -join "; ") ""
 
 # ---- the rooms behind the glass (Glass\Interiors.cs) ----------------------------------------
 # Which rooms are lit at an hour, how long a room keeps its light, and a building's texel.

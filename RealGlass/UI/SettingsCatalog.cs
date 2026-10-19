@@ -1056,6 +1056,18 @@ namespace RealGlass.UI
                 AfterChange = State("clouds in the live sky", OnOff(Settings.SkyClouds)),
             });
 
+            // The live sky's own sky at the sun's height (GlassUniforms.Dusk): drawn into its cube.
+            Add(new Row
+            {
+                Kind = RowKind.Percent,
+                Panel = PanelPage.Reflections,
+                Float = Settings.SkyDusk,
+                DefaultFloat = Settings.Defaults.SkyDusk,
+                Min = 0f, Max = 100f, Step = 5f,
+                Enabled = LiveSkyOn,
+                AfterChange = Changed,
+            });
+
             // Whether or not screen reflections are on: with them off, nothing on screen is ever
             // hit, and this is what every reflection below the horizon shows.
             Add(new Row

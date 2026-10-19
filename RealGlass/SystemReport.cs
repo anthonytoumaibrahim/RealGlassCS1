@@ -73,6 +73,7 @@ namespace RealGlass
                         " quality=" + QualityName(Int(Settings.SsrQuality, Settings.Defaults.SsrQuality)) +
                         " sky=" + (Int(Settings.SkyReflection, Settings.Defaults.SkyReflection) == 0 ? "live" : "game's map") +
                         " skyClouds=" + On(Settings.SkyClouds, Settings.Defaults.SkyClouds) +
+                        " skyDusk=" + Percent(Settings.SkyDusk, Settings.Defaults.SkyDusk) +
                         " offscreen=" + FillName(Int(Settings.OffscreenFill, Settings.Defaults.OffscreenFill)) +
                         " skyCube=" + Settings.SkyCubePixels + "px x" + Int(Settings.SkyCubeRate, Settings.Defaults.SkyCubeRate) + "/frame" +
                         " | panes: storey=" + (Settings.FloorHeight != null ? Settings.FloorHeight.value : Settings.Defaults.FloorHeight).ToString("F1") + "m" +

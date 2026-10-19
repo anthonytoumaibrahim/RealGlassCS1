@@ -159,8 +159,15 @@ namespace RealGlass
         /// <summary>0: the live sky (a small cube of the game's own sky, kept up to date). 1: the game's static environment map.</summary>
         public static IntSetting SkyReflection { get; private set; }
 
-        /// <summary>The live sky carries the clouds in the sky (Volumetric Weather's, when it draws them).</summary>
+        /// <summary>The live sky carries the clouds in the sky (Volumetric Weather's, when it draws them: its volume and its distant clouds).</summary>
         public static BoolSetting SkyClouds { get; private set; }
+
+        /// <summary>
+        /// 0..1: how far the sky in the glass follows a clear sky's fall in the sun's last ten degrees
+        /// (the game's own sky keeps noon's light until the sun is 3 degrees up): 1 the real fall,
+        /// 0.5 half as many stops of it, 0 the game's sky as it is (Glass/GlassUniforms.Dusk).
+        /// </summary>
+        public static FloatSetting SkyDusk { get; private set; }
 
         /// <summary>
         /// What a reflection shows below the horizon when nothing on screen is hit: 0 the screen
@@ -389,6 +396,7 @@ namespace RealGlass
             public const float ReflectionBrightness = 0.55f;
             public const int SkyReflection = 0;       // the live sky, with the clouds
             public const bool SkyClouds = true;
+            public const float SkyDusk = 1f;          // the clear sky's own fall
             public const int OffscreenFill = 0;       // the mirrored screen
             public const float SunGlint = 3f;
             public const bool SteadyGlints = true;
@@ -544,6 +552,7 @@ namespace RealGlass
                 ReflectionBrightness = new FloatSetting("ReflectionBrightness", Defaults.ReflectionBrightness);
                 SkyReflection = new IntSetting("SkyReflection", Defaults.SkyReflection);
                 SkyClouds = new BoolSetting("SkyClouds", Defaults.SkyClouds);
+                SkyDusk = new FloatSetting("SkyDusk", Defaults.SkyDusk);
                 OffscreenFill = new IntSetting("OffscreenFill", Defaults.OffscreenFill);
                 SunGlint = new FloatSetting("SunGlint", Defaults.SunGlint);
                 SteadyGlints = new BoolSetting("SteadyGlints", Defaults.SteadyGlints);

@@ -7,6 +7,8 @@
 //   Pass 2 "HiZ0", pass 3 "HiZMin", pass 4 "HiZCopy": the hierarchical depth the glass traces its
 //   reflections over (GlassScreen.cs builds it: level 0 the linear eye depth, each further level
 //   the nearest and the farthest of the level below, drawn into its mip).
+//   Pass 5 "SkyBackground": not on the main camera -- in the live sky's cube (GlassSky.cs), between
+//   the skybox and the clouds: the sky's light at the sun's height, and alpha cleared for the clouds.
 //
 // Both let only finite, non-negative light through. A NaN or an infinity in the picture spreads
 // to a whole block of every coarser mip, and a blend keeps it for good: NaN x 0.9 is NaN, frame
@@ -183,6 +185,39 @@ Shader "RealGlass/GlassUtil"
             float4 frag(v2f i) : SV_Target
             {
                 return float4(tex2Dlod(_RGHiZSource, float4(i.uv, 0.0, 0.0)).rg, 0.0, 0.0);
+            }
+            ENDCG
+        }
+
+        Pass
+        {
+            // The live sky's own sky, in each face of its cube, after the sky camera's skybox and
+            // before the clouds are drawn over it (GlassSky.cs): its light x _RGSkyDusk.x -- the
+            // clear sky's light at the sun's height, which the game's sky does not follow
+            // (GlassUniforms.Dusk) -- and its alpha set to 0. A multiply (Blend DstColor Zero), so
+            // alpha = 0 x what the skybox left; the clouds then blend premultiplied over it, which
+            // leaves their opacity there, 1 - prod(1 - a): how much of the sun's disc they hide,
+            // which the glass reads in the sun's direction. A quad given in clip space covers the
+            // face; nothing to read, so no flip.
+            Name "SkyBackground"
+            Blend DstColor Zero
+
+            CGPROGRAM
+            #pragma target 3.5
+            #pragma vertex vert
+            #pragma fragment frag
+
+            float4 _RGSkyDusk;   // x the multiplier on the sky's light
+
+            float4 vert(float4 vertex : POSITION) : SV_POSITION
+            {
+                return float4(vertex.xy, 0.5, 1.0);
+            }
+
+            float4 frag() : SV_Target
+            {
+                float k = FiniteIn(_RGSkyDusk.x, 0.0, 1.0);
+                return float4(k, k, k, 0.0);
             }
             ENDCG
         }

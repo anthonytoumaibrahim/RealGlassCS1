@@ -392,6 +392,8 @@ Shader "RealGlass/Glass"
                 float wall = lines * detailKept;
                 if (_RGDebug.x > 9.5 && _RGDebug.x < 10.5)
                     return float4(lerp(float3(0.05, 0.15, 0.6), float3(1.0, 0.85, 0.2), lines), 1.0);   // 10: the painted lines (yellow) on the glass (blue)
+                if (_RGDebug.x > 11.5 && _RGDebug.x < 12.5)
+                    return float4(SunThrough().xxx, 1.0);   // 12: the sun's disc through the clouds (white all of it, black none)
                 // Through the glass the light takes its colour once. The reflection, twice: a
                 // reflective coating sits behind the tinted lite (Solarcool on the second surface,
                 // every tinted preset), so what it mirrors crosses the tint going in and coming
