@@ -18,10 +18,12 @@ The first Workshop release: realistic glass on every building, at every distance
 - **Reflections**: the city on screen -- the finished picture, with its haze, clouds, lamps and
   the other glass -- the buildings around where the screen cannot show them (a map of the city's
   roof heights, walked by every ray that misses the screen: the towers across a street, not open
-  sky), the live sky with Volumetric Weather's clouds in it (or the game's own sky picture), the
-  sun's glint, steady far away; below the horizon, the screen mirrored at its edge. More
-  reflective edge-on, and silvery there as coated glass is. The screen is traced over a pyramid of
-  its depths, so reflections reach across a 4K screen.
+  sky), the live sky with Volumetric Weather's clouds in it, its distant clouds included (or the
+  game's own sky picture), the sun's glint, steady far away and hidden where the clouds cover the
+  sun; below the horizon, the screen mirrored at its edge. More reflective edge-on, and silvery
+  there as coated glass is. At sunrise and sunset the mirrored sky dims as a clear sky's light
+  does in the sun's last ten degrees. The screen is traced over a pyramid of its depths, so
+  reflections reach across a 4K screen.
 - **Panes** that bend the reflections: cushioned, tilted, rippled, bulging with the weather; up
   close, each pane is one of the windows the building painted.
 - **Painted detail kept**: a full-glass tower's painted floors, slab bands and frames show through
@@ -39,8 +41,10 @@ The first Workshop release: realistic glass on every building, at every distance
   save.
 - **Water** (its own tab, off by default, experimental): the map's water in your own colour or the
   theme's, the sky reflected as real water reflects it (worked out per ripple), the city mirrored
-  in it by day and by night, moving ripples in place of the game's frozen ones, and foam along the
-  shores, on fast water and on wave fronts.
+  in it by day and by night, moving ripples in place of the game's frozen ones -- by default ocean
+  waves raised by the wind you set, with their choppiness, running with the game's own wind, and
+  the sun's glitter (the moon's at night) on them -- and foam along the shores, on fast water and
+  on wave fronts.
 - **Quality in one place**: every costly part of the glass (the walk over the city, the searches
   for painted panes, the depth pyramid) takes its budget from one table of four tiers, ready for
   a quality choice; the mod runs the highest.

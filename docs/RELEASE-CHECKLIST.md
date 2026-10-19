@@ -38,6 +38,11 @@ that repo's `docs/RELEASE-CHECKLIST.md` has the long version.
       the last shader edit at 19:31) carry all eight shaders with real code for every API;
       `tools\test-reflection-shader.ps1` and `tools\test-water-surface.ps1` pass too; the DLL
       builds with no warning and embeds the icon, en.xml, the three bundles and both room atlases.
+      Re-run 2026-10-19 (the launch sweep, after the dusk round): all four tools pass; the bundles
+      (built 2026-10-19 18:44:56, after the last shader edit at 18:44:07) carry all nine shaders
+      with real code for every API (GlassUtil's 6 passes); the deployed DLL 1.0.0.33757 (built
+      18:45:15, byte-identical to bin\Debug's) embeds the icon, en.xml, the three bundles at their
+      on-disk sizes and both room atlases, and no .cs changed between it and HEAD 22718d3.
 - [x] The launch audit (2026-10-11): five reviews of the code (the Harmony patches and draw path,
       the renderer's lifecycle, the water, settings/files/UI, the shaders). Fixed from it:
       `GlassController._dirty` was static, so the SECOND city of one session ran on an empty
@@ -69,6 +74,12 @@ that repo's `docs/RELEASE-CHECKLIST.md` has the long version.
 
 - [ ] A session on build 1.0.0.x with Detailed logging on: the log's first line says 1.0.0,
       F8 opens the panel and F7 only the game's debug panel, and the log has no WARN or ERROR.
+      Seen 2026-10-19 (the 19:09 session on 1.0.0.33757, 4K, Detailed logging on): first line
+      "Real Glass 1.0.0 (build 1.0.0.33757)", no WARN or ERROR in 230 lines, 8 Harmony classes
+      and "other mods patching the same methods: none", the panel used (a row's reset icon, the
+      water and ocean-wave switches); output_log.txt has no exception from RealGlass (its one
+      "RealGlassHotkey is not found" line is the game's for every mod with an in-memory settings
+      file: Volumetric Weather, Move It, Skyve get the same). Left to confirm by eye: F7.
 - [x] **The performance table** (2026-09-29, from the log of the 20:34 session, not the
       benchmark): the one glass-off window between glass-on ones at 4K, same view (ground
       85-87 m, 1,500-1,650 buildings in the city map): on 21.3 ms, off 20.6 ms, on 21.4 ms ->
@@ -92,6 +103,11 @@ that repo's `docs/RELEASE-CHECKLIST.md` has the long version.
       night; Wind speed moved shows longer or shorter waves within a second, never a hitch;
       Ocean waves off brings the 32 waves back (and Ripple size / Wave size live again); frame
       times as before within a millisecond.
+      The log half seen 2026-10-19 (the 19:09 session): "ocean waves built: 54440 waves from a
+      12.5 m/s wind over 50 km toward 263 deg ... (84 ms on a worker thread)", "the ripples are
+      ocean waves", "the sun's glitter on (35%)" with the game's _SpecColor #7F7F7F, Ocean waves
+      off then on again logged with the waves rebuilt; frames 20-37 ms at 4K, as before. The
+      road of light and the moon's, and Wind speed moved, are his to see.
 - [ ] Lumina's Dynamic Resolution / SSAA (the camera fix of 2026-10-14): Lumina only applies it
       when a city LOADS (its button just saves the setting), so turn it on, then load a city.
       The glass reflects the city and the water's city reflection shows, at SSAA 1 and above.
@@ -102,25 +118,39 @@ that repo's `docs/RELEASE-CHECKLIST.md` has the long version.
       in the glass; at sunset the 5 s line's "x... at dusk" falls below 1 under 10 degrees and the
       glass darkens with it (Reflections -> Sky dims at dusk 0% gives the old look back); under a
       closed deck no sun glint on the glass. Run once on Mac/Linux too: GlassUtil has a 6th pass.
+      Seen 2026-10-19 (the 19:09 session, at night, sun -18.7 deg): "the live sky carries
+      Volumetric Weather's distant clouds ('VolumetricCloudsSkyLayer' drawn into it)", and the
+      5 s line's "with clouds + distant clouds, x1.00 at dusk"; the dusk factor itself was not
+      exercised (no sunset in that session: his verdict "Perfect, well done" was by eye). Mac /
+      Linux still to run.
 - [ ] The panels on ModsLibCS1 (2026-10-13): every Panel look (Frosted, See-through, Blue,
       Vanilla) with the F8 panel and the building window open -- every tab, the Water tab
       scrolling to its last row, a reset icon, "Kind of glass" as a list, a colour pick, the HUD
       button with Unified UI off, a look changed with both open. Log: "panel look:", "panel: ...
       names ... values ...", "panel: every tab N high", no "drawing Vanilla instead".
+      The log half seen 2026-10-19 (the 19:09 session, Frosted): "panel look: Frosted", "panel:
+      Glass tab names 218 wide ... values 41", "panel: every tab 524 high (the Glass tab's 524, at
+      most 600), the rest scrolling (panel 628 high)", "Kind of glass" -> dropdown, no "Vanilla
+      instead"; a reset icon and the Water tab's switches used. The other three looks, the
+      building window, a colour pick and the HUD button are his to see.
 - [ ] The editors (added 2026-09-29, untested): in the Asset Editor, a glass building shows its
       glass (the log says "loaded: the asset editor", then "glass: on"), the magenta mask works,
       zooming out shows the LOD's glass, and the Snapshot tool pauses it ("glass: the Snapshot
       tool is in use") and the glass comes back after. A scenario in the Scenario Editor has glass.
       F8 and the panel look as in a city (their sprites were read from a city's UIView atlas).
-- [ ] `output_log.txt` has no exception from RealGlass.
+- [x] `output_log.txt` has no exception from RealGlass (2026-10-19, the 19:09 session's file:
+      the DLL loaded as 1.0.0.33757, the mod's own lines mirrored, nothing else). Re-check on the
+      final build.
 
 ## 3. The folder that gets uploaded
 
 The Workshop uploads `%LOCALAPPDATA%\Colossal Order\Cities_Skylines\Addons\Mods\RealGlass` as it
 stands.
 
-- [ ] Exactly four files: `RealGlass.dll`, `UnifiedUILib.dll`, `CitiesHarmony.API.dll` (no PDB)
-      and `THIRD-PARTY-NOTICES.md` (2026-09-29): BSD 2-Clause asks a binary redistribution to
+- [x] Exactly four files: `RealGlass.dll`, `UnifiedUILib.dll`, `CitiesHarmony.API.dll` (no PDB)
+      and `THIRD-PARTY-NOTICES.md` (2026-09-29; seen so on 2026-10-19: the four files, the two
+      libraries and the notices byte-identical to `libs\` and the repo's): BSD 2-Clause asks a
+      binary redistribution to
       carry McGuire & Mara's notice "in the documentation and/or other materials provided with
       the distribution", and MIT its notice "in all copies" -- a GitHub link is not with the
       distribution. Deployed by the next full build.
@@ -130,15 +160,16 @@ stands.
       failure" and no glass at all. 26 installed mods ship their own copy the same way (Move It!,
       TM:PE, Find It!...), most of them the same 2.2.12.31246 as ours. It is the library, not the
       Unified UI mod, which stays optional.
-- [ ] The deployed build is the one tested in step 2.
+- [ ] The deployed build is the one tested in step 2. (2026-10-19: the deployed 1.0.0.33757 is
+      the 19:09 session's and HEAD 22718d3's sources; holds until the next build.)
 
 ## 4. Images
 
-- [x] `Workshop/PreviewImage.png`: 512 × 512 (checked 2026-10-11; 411 KB, under 1 MB). Still
-      to decide: `Workshop/PreviewImage (OLD).png` is tracked beside it -- delete it or keep it.
-- [x] 5–8 screenshots in `Workshop/Screenshots/`: six, 1920 × 1080, 311–654 KB each
-      (2026-10-11; the folder is untracked -- the author's). The first one is shown beside the
-      description.
+- [x] `Workshop/PreviewImage.png`: 512 × 512 (checked 2026-10-19; 402 KB, under 1 MB). Still
+      to decide: `Workshop/PreviewImage_old.png` (512 × 512, 398 KB) is tracked beside it --
+      delete it or keep it; it is never deployed either way.
+- [x] 5–8 screenshots in `Workshop/Screenshots/`: six JPEGs, 1920 × 1080, 311–587 KB each
+      (2026-10-19; tracked since 93ff84e). The first one is shown beside the description.
 
 ## 5. Text
 
@@ -148,6 +179,11 @@ stands.
       baked from the main model's; shortened to the author's voice). Cut to a tl;dr on
       2026-09-29 evening at the author's request ("this mod is just a one-time thing"): one line
       per section, the Features as the four tabs; about 2,800 of 8,000 characters Steam's way.
+      Rewritten by the author since (2026-10-19's text): one line on the glass, a Water shader and
+      a Parallax interiors section (each naming its F8 switch: "Water controls", "Parallax
+      interiors" -- both are the rows' labels in en.xml), How to use, Compatibility with known
+      issues (TAA flicker, SSR, LOD glass, the Mac blink), Source code, Reporting a bug; about
+      4,060 of 8,000 characters Steam's way; the links Volumetric Weather, Harmony, GitHub.
 - [x] `Workshop/ChangeNotes/1.0.0.bbcode.txt`.
 
 ## 6. Publish
