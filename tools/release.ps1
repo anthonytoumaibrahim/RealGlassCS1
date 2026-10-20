@@ -38,8 +38,8 @@ param(
 $ErrorActionPreference = "Continue"
 
 $root = Split-Path -Parent $PSScriptRoot
-# The published item's id: EMPTY until the first upload. Put it here the day it exists.
-$workshopId = ""
+# The published item's id (the first upload, 1.0.0, 2026-10-20).
+$workshopId = "3823419476"
 $workshop = "C:\Program Files (x86)\Steam\steamapps\workshop\content\255710\$workshopId"
 $deployed = "$env:LOCALAPPDATA\Colossal Order\Cities_Skylines\Addons\Mods\RealGlass"
 $parked = "$env:LOCALAPPDATA\Colossal Order\Cities_Skylines\RealGlass-dev-parked"

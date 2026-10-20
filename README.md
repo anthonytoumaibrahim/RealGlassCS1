@@ -9,7 +9,8 @@ the building: a faint, even reflection of a fixed sky picture, the same at every
 glass is mostly dark and mostly reflective, far more so seen edge-on than straight on, and it
 mirrors what is actually around it, bent a little by every pane -- by day and by night.
 
-**Not on the Workshop yet.** Requires the **Harmony** mod (2040656402); Unified UI is optional.
+**[Subscribe on the Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3823419476)**.
+Requires the **Harmony** mod (2040656402); Unified UI is optional.
 Made and tested on Windows (Direct3D 11). The Mac build (Metal) ran once on an M1 MacBook, where
 all the glass sometimes vanished for a moment and came back (unexplained); the Linux build
 (OpenGL) is included but untested.

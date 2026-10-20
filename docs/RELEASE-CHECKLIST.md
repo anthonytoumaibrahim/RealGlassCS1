@@ -196,9 +196,11 @@ stands.
       failure" and no glass at all. 26 installed mods ship their own copy the same way (Move It!,
       TM:PE, Find It!...), most of them the same 2.2.12.31246 as ours. It is the library, not the
       Unified UI mod, which stays optional.
-- [ ] The deployed build is the one tested in step 2. (2026-10-19: the deployed 1.0.0.33757 is
-      the 19:09 session's and HEAD 22718d3's sources. 2026-10-20: replaced by 1.0.0.23909, the
-      GitHub release's build -- same sources, not yet loaded in the game.)
+- [x] The deployed build is the one tested in step 2. (2026-10-19: the deployed 1.0.0.33757 is
+      the 19:09 session's and HEAD 22718d3's sources. 2026-10-20: the UPLOADED build is
+      **1.0.0.26356**, built from deb3524: the 19:09 session's code plus the name (Mod.cs, en.xml,
+      AssemblyInfo) and nothing else; `tools\release.ps1 -DryRun` passed on it the same afternoon,
+      AMD included. Its first city load is step 8's check.)
 
 ## 4. Images
 
@@ -225,6 +227,9 @@ stands.
 
 ## 6. Publish
 
+**Done 2026-10-20**: item **3823419476**
+(https://steamcommunity.com/sharedfiles/filedetails/?id=3823419476), hidden at first.
+
 1. Content Manager → **Mods** → Real Glass & Water → **Share**.
 2. The game makes `WorkshopStagingArea\<GUID>\` with its own `PreviewImage.png` and the mod folder
    under `Content\`. Click the folder button and overwrite that `PreviewImage.png` with ours;
@@ -237,7 +242,8 @@ stands.
       2026-09-29, and the description links it. PUBLIC since 2026-10-20, before the upload (his
       call); the repo, the v1.0.0 release and ModsLibCS1 answer HTTP 200 without a login. Checked
       first: CLAUDE.md and the plans were never committed, no token patterns in all history, no
-      email address in any tracked file.
+      email address in any tracked file. (Later that day it was private again, with the v1.0.0
+      tag and release gone; public again by the upload.)
 - [x] **ModsLibCS1 public too, and its pinned commit pushed** (2026-10-20: public, a52d4f8 on
       its remote, `git submodule status` clean) (2026-10-13: the panels are built with
       it, a submodule at the repo root): a public repo with a private submodule can't be built by
@@ -249,13 +255,19 @@ stands.
 
 ## 8. After publishing
 
-- [ ] Park the local `Addons\Mods\RealGlass` (move it aside, never delete) so it cannot load
-      beside the subscribed copy.
-- [ ] Subscribe and load a city on the published copy.
-- [ ] README: replace "Not on the Workshop yet" with the item's link. CHANGELOG: the published file
-      id. `tools\release.ps1`: the id into `$workshopId`. (Tag `v1.0.0`: already on 7ab4208, the
-      GitHub release's commit; it stays if the Workshop gets the same build.)
-- [x] **1.0.0 on GitHub, 2026-10-20, BEFORE the Workshop** (his call: "release on GH. We'll do the
+- [x] Park the local `Addons\Mods\RealGlass` (move it aside, never delete) so it cannot load
+      beside the subscribed copy. (2026-10-20: moved to `Cities_Skylines\RealGlass-dev-parked`.)
+- [ ] Subscribe and load a city on the published copy. (2026-10-20: subscribed; the four files in
+      `steamapps\workshop\content\255710\3823419476` are byte-identical to the uploaded ones,
+      1.0.0.26356. The city load is still to do.)
+- [x] README: replace "Not on the Workshop yet" with the item's link. CHANGELOG: the published file
+      id. `tools\release.ps1`: the id into `$workshopId` (2026-10-20, 3823419476).
+- [x] **The GitHub release of 1.0.0, again** (2026-10-20, after the upload): tag `v1.0.0`
+      (annotated) on deb3524, the uploaded build's commit, pushed; release "Real Glass & Water
+      1.0.0", Latest, `RealGlass-1.0.0.zip` 3,598,896 bytes = the four files of the subscribed
+      folder, DLL 1.0.0.26356 (sha256 8592272F91E8C11E...). The first one (on 7ab4208, before the
+      rename) was gone by the upload: no tag, no release.
+- [x] ~~1.0.0 on GitHub, 2026-10-20, BEFORE the Workshop~~ (gone since, see above) (his call: "release on GH. We'll do the
       workshop release a bit later"): `tools\release.ps1` run for real on 7ab4208 ("Release
       1.0.0"), every check and all five tests passed (AMD: 185 programs, no spills); tag `v1.0.0`
       (annotated) on 7ab4208, pushed; release "Real Glass 1.0.0", Latest, `RealGlass-1.0.0.zip`

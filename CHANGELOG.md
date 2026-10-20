@@ -6,7 +6,7 @@ the mod's name in the game.
 ## 1.0.0 — 2026-10-20
 
 The first Workshop release: realistic glass on every building, at every distance, and realistic
-water.
+water. Published on the Steam Workshop as item 3823419476.
 
 ### New
 
