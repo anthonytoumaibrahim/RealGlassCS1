@@ -3,7 +3,7 @@
 All notable changes to Real Glass. The version is `Mod.Version` in `RealGlass/Mod.cs`, shown after
 the mod's name in the game.
 
-## 1.0.0 — unreleased
+## 1.0.0 — 2026-10-20
 
 The first Workshop release: realistic glass on every building, at every distance.
 

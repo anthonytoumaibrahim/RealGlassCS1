@@ -95,7 +95,11 @@ that repo's `docs/RELEASE-CHECKLIST.md` has the long version.
       80 × 80, recorded in THIRD-PARTY-NOTICES.md and README.md; `tools/make-icon.ps1`, which
       drew the old one over this file, deleted. Still to see: how it reads at 40 px on the
       Unified UI bar and on the HUD button.
-- [ ] `CHANGELOG.md`: date the 1.0.0 section on upload day.
+- [x] `CHANGELOG.md`: the 1.0.0 section dated 2026-10-20, the day of the GitHub release (the
+      author's call: GitHub first, the Workshop "a bit later", as Volumetric Weather's 1.5.0).
+      The date stays if the Workshop upload is the same build. If the build changes before the
+      upload, the number is his call (Volumetric Weather's 1.5.0 was withdrawn and released again
+      under the same number on 2026-10-20).
 
 ## 2. Verified in the game
 
