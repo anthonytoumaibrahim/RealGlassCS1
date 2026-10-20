@@ -1,7 +1,10 @@
 param(
     [Parameter(Mandatory = $true)][string]$Name,
     [string]$AssetFile = "C:\Program Files (x86)\Steam\steamapps\common\Cities_Skylines\Cities_Data\resources.assets",
-    [string]$OutDir = (Join-Path $env:TEMP "rg_shaderdump")
+    [string]$OutDir = (Join-Path $env:TEMP "rg_shaderdump"),
+    # Also write each program's compiled bytes beside its listing (<name>.NN.ps.dxbc), for tools
+    # that take the shipped bytecode itself -- test-amd.ps1 feeds them to AMD's compiler.
+    [switch]$Raw
 )
 
 # Disassembles one of the game's compiled shaders, so its maths can be read instead of
@@ -95,7 +98,7 @@ public static class ShaderDump
     static uint U32(byte[] b, int o) { return BitConverter.ToUInt32(b, o); }
     static int AlignFrom(int v, int origin) { return origin + ((v - origin + 3) & ~3); }
 
-    public static string Run(string assetFile, string shaderName, string outDir)
+    public static string Run(string assetFile, string shaderName, string outDir, bool raw)
     {
         var log = new StringBuilder();
         byte[] data = File.ReadAllBytes(assetFile);
@@ -182,6 +185,7 @@ public static class ShaderDump
             string kind = text.Contains("ps_") ? "ps" : (text.Contains("vs_") ? "vs" : "xx");
             string path = Path.Combine(outDir, safe + "." + count.ToString("00") + "." + kind + ".asm");
             File.WriteAllText(path, text);
+            if (raw) File.WriteAllBytes(Path.ChangeExtension(path, ".dxbc"), dxbc);
             log.AppendLine("  [" + count + "] " + kind + "  " + size + " bytes -> " + path);
 
             count++;
@@ -195,4 +199,4 @@ public static class ShaderDump
 '@
 
 Add-Type -TypeDefinition $src -Language CSharp
-[ShaderDump]::Run($AssetFile, $Name, $OutDir)
+[ShaderDump]::Run($AssetFile, $Name, $OutDir, [bool]$Raw)

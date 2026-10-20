@@ -408,3 +408,4 @@ tools/preview/out/
 
 # CLAUDE.md holds the author's local notes for Claude Code and is not shared.
 /CLAUDE.md
+/.claude/settings.local.json

@@ -62,8 +62,35 @@ that repo's `docs/RELEASE-CHECKLIST.md` has the long version.
       2014 / Pedersen 2016 (the water reflection's history), Sousa 2005 and Akenine-Möller et al.
       2019 (compiled in, off) to README.md and THIRD-PARTY-NOTICES.md; README's tab count and Mac
       note, CHANGELOG's stale default and missing features brought up to date.
-- [x] `git grep -i -E "anthony|ibrahim" -- . ":(exclude)README.md" ":(exclude)LICENSE"` is empty.
-      (The Workshop description's GitHub link carries the account name, as Volumetric Weather's.)
+- [x] No personal name in the repo's files but README.md and LICENSE: `tools\release.ps1` checks
+      it (the words of `git config user.name`, whole words, so the GitHub account in the Workshop
+      description's link and in `.gitmodules` is not one, as in Volumetric Weather's). Until
+      2026-10-20 this line spelled the name in a `git grep` command, so that grep never came back
+      empty.
+- [ ] **`tools\release.ps1`** (2026-10-20, Volumetric Weather's, for this mod): `-DryRun` runs
+      every check with nothing copied or moved; the real run is the release. It checks the game
+      closed, the tree committed, ModsLibCS1 pinned and pushed, `Mod.Version` newer than the last
+      `v*` tag, the changelog dated, the name check above, the bundles newer than every `.shader`
+      / `.cginc`; builds; checks the deployed DLL's version, that it embeds the three bundles, both
+      room atlases, the icon and en.xml at their sizes on disk, each bundle through
+      `bundle-apis.ps1`, the four shipped files (the libraries and notices the repo's); runs
+      test-settings, test-localization, test-reflection-shader, test-water-surface and
+      **test-amd**. Until `$workshopId` is set (the first upload) it stops there: Share uploads
+      `Addons\Mods\RealGlass`. After that it copies the four files into the subscribed folder and
+      parks the local copy.
+      First dry run 2026-10-20 (359 s): every check passed but the two expected stops -- the
+      tree not yet committed (these tools) and `## 1.0.0 — unreleased`. Its build recompiled
+      (1.0.0.23237, same sources); the tested 1.0.0.33757 was put back in `Addons\Mods`
+      afterwards, byte for byte.
+- [ ] **The AMD compile check, every release** (`tools\test-amd.ps1`, Volumetric Weather's of
+      2026-10-07): every program of the shipped Windows bundle through AMD's compiler (Radeon GPU
+      Analyzer, `Documents\Projects\RGA`): RX 7000 / RX 9000 by RGA's Direct3D 12 mode, RX 6000 /
+      RX 5000 / Vega by its Direct3D 11 mode -- both from the shipped BYTES (`--dxbc`), no
+      recompile. Fails on a program that does not compile, spills, or keeps AMD's compiler busy
+      past 120 s. Baseline and what it cannot see: docs/AMD-COMPILE-CHECK.md (local).
+      First run 2026-10-20 on the bundles of 2026-10-19: all 185 programs compile on the five
+      chips, no spills; the glass's pixel program 106-122 VGPRs, the heaviest. Run again on the
+      release build.
 - [x] Button icon (2026-09-29): Openclipart's *Window* by ali2013 (public domain, CC0 1.0),
       80 × 80, recorded in THIRD-PARTY-NOTICES.md and README.md; `tools/make-icon.ps1`, which
       drew the old one over this file, deleted. Still to see: how it reads at 40 px on the
@@ -212,7 +239,17 @@ stands.
       beside the subscribed copy.
 - [ ] Subscribe and load a city on the published copy.
 - [ ] README: replace "Not on the Workshop yet" with the item's link. CHANGELOG: the published file
-      id. Tag `v1.0.0` on the commit that was uploaded.
+      id. `tools\release.ps1`: the id into `$workshopId`. Tag `v1.0.0` on the commit that was
+      uploaded.
+- [ ] Push the tag, then make it a **GitHub release** (every release, as Volumetric Weather's): a
+      zip of exactly the four uploaded files in a `RealGlass/` folder (from `Addons\Mods\RealGlass`
+      for the first upload, the subscribed folder after), notes = what the version brings + a link
+      to `CHANGELOG.md` at the tag + how to install by hand (the folder into `Addons\Mods`, Harmony
+      `2040656402` subscribed), `--latest`.
+      `gh release create vX.Y.Z RealGlass-X.Y.Z.zip --title "Real Glass X.Y.Z" --notes-file ... --latest`
+      The tag must be on GitHub first: with no remote tag, `gh` makes one at main's tip. The
+      repository must be public by then (step 7), or the release is seen by its owner only.
+      Next change opens `## X.Y.Z — unreleased` in CHANGELOG.md.
 - [ ] Every later update is shared from the SUBSCRIBED folder (`steamapps\workshop\content\255710\
       <id>`), whose button reads **Update**: sharing from `Addons\Mods` creates a second item.
       Volumetric Weather's CLAUDE.md, "Publishing an update", has the steps.

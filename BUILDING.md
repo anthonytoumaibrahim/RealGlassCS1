@@ -78,6 +78,28 @@ For the sky on the water, the cube the game reads against the sky drawn per pixe
 `tools\preview\foam-render.ps1 -SkyColumns "old:0.8,old:0.3,new:1" -Name sky`.
 These are synthetic scenes; check the final look and frame time in a loaded city before release.
 
+AMD's compiler (Radeon GPU Analyzer, free: github.com/GPUOpen-Tools/radeon_gpu_analyzer; runs on
+any GPU, looked for in `Documents\Projects\RGA` or `$env:RG_RGA`):
+
+```
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\test-amd.ps1
+```
+
+builds the exact programs in the shipped Windows bundle for RX 7000 and RX 9000 (through RGA's
+Direct3D 12 mode) and for RX 6000, RX 5000 and Vega (Direct3D 11), and fails on a program that
+does not compile or spills registers.
+
+## Releasing
+
+```
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\release.ps1 -DryRun
+```
+
+runs every check of a release without changing anything: the tree committed, the submodule
+pushed, the version new and dated in the changelog, the bundles newer than the shaders, the build
+and what the DLL embeds, the four shipped files, the tests above. Without `-DryRun` it also
+stages an update in the subscribed Workshop folder and parks the local copy.
+
 **Look at a change before playing it:** `tools\preview\gpu-render.ps1` draws the REAL glass
 shader in Unity 5.6, in the game's legacy deferred lighting, over test towers painted the way
 the game's assets are, and lays the frames out as a sheet in `tools\preview\out\`.
