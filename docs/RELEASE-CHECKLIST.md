@@ -192,7 +192,8 @@ stands.
       TM:PE, Find It!...), most of them the same 2.2.12.31246 as ours. It is the library, not the
       Unified UI mod, which stays optional.
 - [ ] The deployed build is the one tested in step 2. (2026-10-19: the deployed 1.0.0.33757 is
-      the 19:09 session's and HEAD 22718d3's sources; holds until the next build.)
+      the 19:09 session's and HEAD 22718d3's sources. 2026-10-20: replaced by 1.0.0.23909, the
+      GitHub release's build -- same sources, not yet loaded in the game.)
 
 ## 4. Images
 
@@ -243,9 +244,20 @@ stands.
       beside the subscribed copy.
 - [ ] Subscribe and load a city on the published copy.
 - [ ] README: replace "Not on the Workshop yet" with the item's link. CHANGELOG: the published file
-      id. `tools\release.ps1`: the id into `$workshopId`. Tag `v1.0.0` on the commit that was
-      uploaded.
-- [ ] Push the tag, then make it a **GitHub release** (every release, as Volumetric Weather's): a
+      id. `tools\release.ps1`: the id into `$workshopId`. (Tag `v1.0.0`: already on 7ab4208, the
+      GitHub release's commit; it stays if the Workshop gets the same build.)
+- [x] **1.0.0 on GitHub, 2026-10-20, BEFORE the Workshop** (his call: "release on GH. We'll do the
+      workshop release a bit later"): `tools\release.ps1` run for real on 7ab4208 ("Release
+      1.0.0"), every check and all five tests passed (AMD: 185 programs, no spills); tag `v1.0.0`
+      (annotated) on 7ab4208, pushed; release "Real Glass 1.0.0", Latest, `RealGlass-1.0.0.zip`
+      3,598,777 bytes = the four files of `Addons\Mods\RealGlass`, DLL **1.0.0.23909** (4,743,680
+      bytes, sha256 900235AF59869E53...), the same sources as the 1.0.0.33757 he played on
+      2026-10-19 (no code changed since 22718d3). The repository is still PRIVATE: the release is
+      seen by its owner only until step 7 makes it public.
+      **The Workshop upload must be this same build**: `Addons\Mods\RealGlass` holds it now; any
+      `dotnet build` before the Share replaces it with another build number (then rebuild the zip
+      and replace the release's asset, or re-release). Load a city on it once before the Share.
+- [ ] Every later release: push the tag, then make it a **GitHub release** (as Volumetric Weather's): a
       zip of exactly the four uploaded files in a `RealGlass/` folder (from `Addons\Mods\RealGlass`
       for the first upload, the subscribed folder after), notes = what the version brings + a link
       to `CHANGELOG.md` at the tag + how to install by hand (the folder into `Addons\Mods`, Harmony
