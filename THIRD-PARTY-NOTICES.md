@@ -1,6 +1,6 @@
 # Third-Party Notices
 
-Real Glass is an unofficial mod for Cities: Skylines 1. This file records what in the repository
+Real Glass & Water is an unofficial mod for Cities: Skylines 1. This file records what in the repository
 is not original work, and what is credited rather than incorporated.
 
 The repository contains no game code and no game assets. The game's DLLs are referenced from
@@ -191,7 +191,7 @@ Other mods were read to understand the game's behaviour and to stay compatible w
 xdedss's CS_SSR (its note that the game's camera keeps no glossiness in any screen buffer), and
 Volumetric Weather, Volumetric Explosions and RealFlag, by the same author, whose foundations
 (settings, panel, logging, localization, tools) this mod's are. When Volumetric Weather runs,
-Real Glass draws that mod's own cloud volume and distant clouds (found by their objects' names)
+Real Glass & Water draws that mod's own cloud volume and distant clouds (found by their objects' names)
 into its reflected sky; nothing of it is copied. algernon's BOB was read for how its building picker works (a tool
 of the game's kind, Escape handled before the game's own) and for keeping its per-building data in
 a file of its own rather than in the save; Network Anarchy's keys, so the picker's default key

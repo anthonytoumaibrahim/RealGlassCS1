@@ -1,11 +1,12 @@
 # Changelog
 
-All notable changes to Real Glass. The version is `Mod.Version` in `RealGlass/Mod.cs`, shown after
+All notable changes to Real Glass & Water. The version is `Mod.Version` in `RealGlass/Mod.cs`, shown after
 the mod's name in the game.
 
 ## 1.0.0 — 2026-10-20
 
-The first Workshop release: realistic glass on every building, at every distance.
+The first Workshop release: realistic glass on every building, at every distance, and realistic
+water.
 
 ### New
 
@@ -31,7 +32,7 @@ The first Workshop release: realistic glass on every building, at every distance
 - **Behind the glass**: by day the dark inside of a building, through the glass's colour and
   clarity; by night each window exactly as the game and its asset light it -- the glass only adds
   the reflections.
-- **Rooms behind the windows** (the Interiors tab, off by default): at night every window shows a
+- **Rooms behind the windows** (the Interiors tab, on by default): at night every window shows a
   real room, chosen by what the building is, with its own lamp and curtain; how many are lit
   follows the hour and changes slowly through the night; room depth, brightness, coloured lights
   and curtains are sliders. An asset can be left out with the building picker.
@@ -39,7 +40,7 @@ The first Workshop release: realistic glass on every building, at every distance
   window of its own gives its asset -- every copy of it, in every city -- its own strength, painted
   detail, kind of glass and say on what counts as glass. Kept in RealGlassAssets.xml, never in a
   save.
-- **Water** (its own tab, off by default, experimental): the map's water in your own colour or the
+- **Water** (its own tab, on by default, experimental): the map's water in your own colour or the
   theme's, the sky reflected as real water reflects it (worked out per ripple), the city mirrored
   in it by day and by night, moving ripples in place of the game's frozen ones -- by default ocean
   waves raised by the wind you set, with their choppiness, running with the game's own wind, and

@@ -1,8 +1,8 @@
-# Real Glass
+# Real Glass & Water
 
-Realistic glass for **Cities: Skylines** (the first game): towers that mirror the sky and the
-city around them, and look like the kind of glass real towers are clad in -- not a flat painted
-colour.
+Realistic glass and water for **Cities: Skylines** (the first game): towers that mirror the sky
+and the city around them, and look like the kind of glass real towers are clad in -- not a flat
+painted colour -- and water that mirrors them in turn, with ocean waves and foam.
 
 In the game, glass is whatever an asset's author painted shiny, and it is shaded like the rest of
 the building: a faint, even reflection of a fixed sky picture, the same at every angle. Real
@@ -32,11 +32,11 @@ five tabs:
 - **Panes** -- the panes' width and height (a storey), and how they bend what they mirror:
   cushioned (insulating glass bowing in or out), tilted, rippled (toughened glass); up close,
   fitted to the windows each building painted.
-- **Interiors** (off until switched on) -- rooms behind every window at night (and by day if
+- **Interiors** (on by default) -- rooms behind every window at night (and by day if
   asked): how many are lit, how their lights switch on and off through the night, how bright and
   how often coloured they are, how many windows have curtains or blinds, and how deep the rooms
   look.
-- **Water** (off until switched on) -- the map's water: its own color (a deep, dark lake by
+- **Water** (on by default) -- the map's water: its own color (a deep, dark lake by
   default, or the map theme's -- no Theme Mixer needed) and brightness, the sky in it with real
   water's reflectance on every ripple, and the city in it, with its waves, its streaks and how long
   it is drawn; ocean waves raised by the wind you set, with their choppiness, and the sun's glitter
@@ -85,7 +85,7 @@ the log is `RealGlass.log`, next to it.
   them), with its floors by day.
 - **Steady glints**: where a pane's bend changes within a pixel far away, its glint and its
   reflection widen to match (specular anti-aliasing) instead of sparkling as the camera moves.
-- **The water** (its own tab, off unless switched on): the game's water adds the map theme's sky
+- **The water** (its own tab, on by default): the game's water adds the map theme's sky
   at the same strength from every angle, so a white sky turns the sea white. With the tab on, the
   water's sky follows real water's reflectance instead -- worked out on every pixel for the ripple
   there, about 2% looking straight down, about half toward the horizon, and the averaged
@@ -129,8 +129,8 @@ the log is `RealGlass.log`, next to it.
   reflections on top. By night, each window exactly as the game draws it: which windows are lit,
   how brightly and in what colour is every asset's own night texture and the game's timing, and
   the mod leaves it alone -- it only adds the reflections. Unless the rooms are on:
-- **Rooms behind the windows** (the Interiors tab, off unless switched on; then on every building,
-  and an asset can be left out with the building picker): at night every window shows a room --
+- **Rooms behind the windows** (the Interiors tab, on by default, on every building; an asset can
+  be left out with the building picker): at night every window shows a room --
   a photograph of a real room, chosen by what the building is (homes, offices, shops, hotels,
   restaurants, hospitals and schools, workshops), with depth: a room behind the window whose floor,
   ceiling and walls move as the camera does (or a flat picture on the glass: the room depth is a

@@ -2,8 +2,8 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using RealGlass;
 
-[assembly: AssemblyTitle("Real Glass")]
-[assembly: AssemblyDescription("Realistic glass for Cities: Skylines' buildings: reflections of the city and the sky, real glass tints. Requires Harmony.")]
+[assembly: AssemblyTitle("Real Glass & Water")]
+[assembly: AssemblyDescription("Realistic glass and water for Cities: Skylines: reflections of the city and the sky, real glass tints, ocean waves. Requires Harmony.")]
 [assembly: AssemblyProduct("RealGlass")]
 [assembly: ComVisible(false)]
 

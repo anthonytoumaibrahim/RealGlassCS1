@@ -1,4 +1,9 @@
-# Release checklist — Steam Workshop (Real Glass 1.0.0)
+# Release checklist — Steam Workshop (Real Glass & Water 1.0.0)
+
+The mod's name is **Real Glass & Water** since 2026-10-20 (the author, before the first upload;
+it was Real Glass). The player-visible name is `Mod.DisplayName`; everything internal keeps
+`RealGlass`: the folder, the DLL, RealGlass.xml / RealGlassAssets.xml / RealGlass.log, the
+namespace, the Harmony ID, the button IDs, the repository.
 
 Everything that has to be true before the first upload, in the order the steps block each other.
 The facts about the game's upload flow were read from its IL for Volumetric Weather
@@ -9,10 +14,10 @@ that repo's `docs/RELEASE-CHECKLIST.md` has the long version.
 
 | Piece | Defined where | Notes |
 | --- | --- | --- |
-| Mod name and version in Content Manager | `Mod.DisplayName`, `Mod.Version` in `Mod.cs` | "Real Glass 1.0.0" |
+| Mod name and version in Content Manager | `Mod.DisplayName`, `Mod.Version` in `Mod.cs` | "Real Glass & Water 1.0.0" |
 | Mod description in Content Manager | `Mod.Description` in `Localization/en.xml` | "Realistic glass on buildings" |
 | Button icon | `RealGlass/Resources/GlassIcon.png` | Embedded; 80 × 80 RGBA, transparent background (Unified UI and the HUD button draw it at 40 and 36) |
-| Workshop title | Typed into the game's Share panel | Pre-filled from the folder name `RealGlass`: type **Real Glass** |
+| Workshop title | Typed into the game's Share panel | Pre-filled from the folder name `RealGlass`: type **Real Glass & Water** |
 | Workshop description | `Workshop/Description.bbcode.txt`, pasted into the panel | BBCode; Steam caps it at 8000 characters counting each line break twice and each apostrophe as `&#39;` |
 | Change note | `Workshop/ChangeNotes/1.0.0.bbcode.txt` | Pasted into the same panel |
 | Preview image | `Workshop/PreviewImage.png`, dropped into the STAGING folder at upload | 512 × 512 PNG, under 1 MB. A copy in the mod folder is never used as the preview |
@@ -220,17 +225,21 @@ stands.
 
 ## 6. Publish
 
-1. Content Manager → **Mods** → Real Glass → **Share**.
+1. Content Manager → **Mods** → Real Glass & Water → **Share**.
 2. The game makes `WorkshopStagingArea\<GUID>\` with its own `PreviewImage.png` and the mod folder
    under `Content\`. Click the folder button and overwrite that `PreviewImage.png` with ours;
    check the thumbnail changed on screen.
-3. Title **Real Glass**, the description, the change note. **Share**.
+3. Title **Real Glass & Water**, the description, the change note. **Share**.
 
 ## 7. On the Steam page, straight away
 
-- [ ] **Make the GitHub repository public**: `RealGlassCS1` (the remote `origin`) was PRIVATE on
-      2026-09-29, and the description links it.
-- [ ] **ModsLibCS1 public too, and its pinned commit pushed** (2026-10-13: the panels are built with
+- [x] **Make the GitHub repository public**: `RealGlassCS1` (the remote `origin`) was PRIVATE on
+      2026-09-29, and the description links it. PUBLIC since 2026-10-20, before the upload (his
+      call); the repo, the v1.0.0 release and ModsLibCS1 answer HTTP 200 without a login. Checked
+      first: CLAUDE.md and the plans were never committed, no token patterns in all history, no
+      email address in any tracked file.
+- [x] **ModsLibCS1 public too, and its pinned commit pushed** (2026-10-20: public, a52d4f8 on
+      its remote, `git submodule status` clean) (2026-10-13: the panels are built with
       it, a submodule at the repo root): a public repo with a private submodule can't be built by
       anyone else, and GitHub shows the submodule's link as a 404. `git submodule status` shows no
       `+`, `-` or `U`, and nothing is dirty inside `ModsLibCS1`.
@@ -262,7 +271,7 @@ stands.
       for the first upload, the subscribed folder after), notes = what the version brings + a link
       to `CHANGELOG.md` at the tag + how to install by hand (the folder into `Addons\Mods`, Harmony
       `2040656402` subscribed), `--latest`.
-      `gh release create vX.Y.Z RealGlass-X.Y.Z.zip --title "Real Glass X.Y.Z" --notes-file ... --latest`
+      `gh release create vX.Y.Z RealGlass-X.Y.Z.zip --title "Real Glass & Water X.Y.Z" --notes-file ... --latest`
       The tag must be on GitHub first: with no remote tag, `gh` makes one at main's tip. The
       repository must be public by then (step 7), or the release is seen by its owner only.
       Next change opens `## X.Y.Z — unreleased` in CHANGELOG.md.

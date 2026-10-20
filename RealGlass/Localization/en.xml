@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Real Glass: every text a player reads, in English. The source for every translation.
+  Real Glass & Water: every text a player reads, in English. The source for every translation.
 
   To translate: copy this file, name it with the game's code for your language (de.xml, es.xml,
   fr.xml, ko.xml, pl.xml, pt.xml, ru.xml, zh.xml), set code and name below, and translate the
@@ -21,16 +21,16 @@
   <!-- ==================== The mod ==================== -->
 
   <!-- One line in the game's mods list: about 30 characters fit before it wraps. -->
-  <String key="Mod.Description">Realistic glass on buildings</String>
+  <String key="Mod.Description">Realistic glass and water</String>
   <String key="Mod.Unsupported">
-    Real Glass could not draw its glass on this computer, so it has switched itself off:
+    Real Glass &amp; Water could not draw its glass on this computer, so it has switched itself off:
     nothing in this city is changed by it.\n\n
     The mod needs Metal or OpenGL 3.3, and the game does not have either here. If the game is
     started with a launch option that changes its graphics (Steam: right-click the game,
     Properties, Launch Options), remove it and restart the game.
   </String>
   <String key="Mod.UnsupportedLinux">
-    Real Glass could not draw its glass on this computer, so it has switched itself off:
+    Real Glass &amp; Water could not draw its glass on this computer, so it has switched itself off:
     nothing in this city is changed by it.\n\n
     The mod needs OpenGL 3.3, and the game does not have it here. If the game is started with a
     launch option that changes its graphics (Steam: right-click the game, Properties, Launch
@@ -40,7 +40,7 @@
     and pick a Proton version.
   </String>
   <String key="Mod.UnsupportedWindows">
-    Real Glass could not draw its glass on this PC, so it has switched itself off: nothing in
+    Real Glass &amp; Water could not draw its glass on this PC, so it has switched itself off: nothing in
     this city is changed by it.\n\n
     The usual causes:\n
     - the game is started with a launch option such as -force-d3d9, or -force-glcore on a
@@ -374,7 +374,7 @@
 
   <!-- One line of the file per \n: a bullet wrapped here stays one line there. -->
   <String key="File.Header">
-    Real Glass settings.\n
+    Real Glass &amp; Water settings.\n
     \n
     You can edit this file while the game is running: the mod reads it again within a
     second of it being saved, and the panels follow.\n
@@ -406,7 +406,7 @@
 
   <!-- One line of the file per \n. -->
   <String key="AssetFile.Header">
-    Real Glass: the glass each building asset has of its own, on every copy of it, in every
+    Real Glass &amp; Water: the glass each building asset has of its own, on every copy of it, in every
     city. Nothing of it is kept in your saves.\n
     \n
     One Asset element per asset, holding only what it does not take from RealGlass.xml, under

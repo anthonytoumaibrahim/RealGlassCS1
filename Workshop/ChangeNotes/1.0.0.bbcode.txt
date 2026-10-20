@@ -1,5 +1,5 @@
 [h1]Version 1.0.0[/h1]
 [b]New[/b]
 [list]
-[*][b]First release[/b]: realistic glass on every building, mirroring the city and a live sky, in ten kinds of real glass. Every setting is in the in-game panel (F8).
+[*][b]First release[/b]: realistic glass on every building, mirroring the city and a live sky, in ten kinds of real glass, and realistic water with ocean waves, reflections and foam. Every setting is in the in-game panel (F8).
 [/list]

@@ -38,7 +38,7 @@ This mod was made with substantial help from AI. I set the goals, made the desig
 Please include the following:
 [olist]
 [*][b]The game's log[/b], [i]output_log.txt[/i]. In Steam, right-click Cities: Skylines → [i]Manage → Browse local files[/i], then open the [i]Cities_Data[/i] folder. On a Mac it is [i]~/Library/Logs/Unity/Player.log[/i], on Linux [i]~/.config/unity3d/Colossal Order/Cities_Skylines/Player.log[/i].
-[*][b]The mod's own log[/b], [i]RealGlass.log[/i]. Tick [i]Detailed logging[/i] (Options → Real Glass) first, then make the problem happen again. To find it, paste this into File Explorer's address bar:
+[*][b]The mod's own log[/b], [i]RealGlass.log[/i]. Tick [i]Detailed logging[/i] (Options → Real Glass & Water) first, then make the problem happen again. To find it, paste this into File Explorer's address bar:
 [code]%LOCALAPPDATA%\Colossal Order\Cities_Skylines[/code]
 On a Mac it is in [i]~/Library/Application Support/Colossal Order/Cities_Skylines[/i], on Linux in [i]~/.local/share/Colossal Order/Cities_Skylines[/i].
 [*][b]What happened[/b]: what you did and expected, screenshots, your graphics card and your other mods.

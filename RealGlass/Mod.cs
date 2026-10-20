@@ -10,7 +10,7 @@ namespace RealGlass
         /// panel's title, button tooltips, dialog titles, the log's first line. Files, the
         /// assembly, the namespace and the button IDs stay "RealGlass".
         /// </summary>
-        public const string DisplayName = "Real Glass";
+        public const string DisplayName = "Real Glass & Water";
 
         /// <summary>
         /// The release a player has: raised once per Workshop upload (the third number for a
