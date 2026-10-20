@@ -126,8 +126,16 @@ that repo's `docs/RELEASE-CHECKLIST.md` has the long version.
 - [ ] A true first run: move `RealGlass.xml` aside, load a city, change nothing: the defaults
       look right, then put the file back. (Every session so far ran the author's own file: Silver
       reflective, rooms on, water on -- none of them the defaults.)
-- [ ] Two cities in one session (the `_dirty` fix of 2026-10-11): load a city, exit to the main
+- [x] Two cities in one session (the `_dirty` fix of 2026-10-11): load a city, exit to the main
       menu, load another: the log says "glass: on" again and the glass shows at once.
+      Seen 2026-10-20 on his Mac (the Workshop copy, 1.0.0.26356): the same city loaded twice in
+      one session, fine by eye; the log was not read.
+- [x] Without Volumetric Weather (the mod has no reference to it; GlassSky looks for its two
+      renderers by name every 2 s). Seen 2026-10-20 (the 15:31 session, Windows, 4K, the Workshop
+      copy 1.0.0.26356 from `workshop\content\255710\3823419476`, Volumetric Weather not loaded):
+      "glass: on", the water ready, the live sky 6/6 faces, no cloud line, frames 19.7-19.8 ms; no
+      WARN or ERROR in 81 lines, no exception in output_log, "other mods patching the same
+      methods: none". His words: "it worked".
 - [ ] Disable the mod in the Content Manager with a city loaded, then enable it again: the panel
       and button go and come back, the water (if on) is given back, no exception in output_log.
 - [ ] The Water tab on, then off, with Theme Mixer running: its water colour slider still works
@@ -157,7 +165,8 @@ that repo's `docs/RELEASE-CHECKLIST.md` has the long version.
       Seen 2026-10-19 (the 19:09 session, at night, sun -18.7 deg): "the live sky carries
       Volumetric Weather's distant clouds ('VolumetricCloudsSkyLayer' drawn into it)", and the
       5 s line's "with clouds + distant clouds, x1.00 at dusk"; the dusk factor itself was not
-      exercised (no sunset in that session: his verdict "Perfect, well done" was by eye). Mac /
+      exercised (no sunset in that session: his verdict "Perfect, well done" was by eye). Mac ran
+      the Workshop build on 2026-10-20 with no problem seen (GlassUtil's 6 passes on Metal);
       Linux still to run.
 - [ ] The panels on ModsLibCS1 (2026-10-13): every Panel look (Frosted, See-through, Blue,
       Vanilla) with the F8 panel and the building window open -- every tab, the Water tab
@@ -257,9 +266,11 @@ stands.
 
 - [x] Park the local `Addons\Mods\RealGlass` (move it aside, never delete) so it cannot load
       beside the subscribed copy. (2026-10-20: moved to `Cities_Skylines\RealGlass-dev-parked`.)
-- [ ] Subscribe and load a city on the published copy. (2026-10-20: subscribed; the four files in
+- [x] Subscribe and load a city on the published copy. (2026-10-20: subscribed; the four files in
       `steamapps\workshop\content\255710\3823419476` are byte-identical to the uploaded ones,
-      1.0.0.26356. The city load is still to do.)
+      1.0.0.26356. Then loaded on his MAC from the Workshop, a city, back to the menu, the city
+      again: "worked perfectly fine". By eye; the Mac's log was not read. And on Windows the same
+      afternoon, without Volumetric Weather: a clean log, see below.)
 - [x] README: replace "Not on the Workshop yet" with the item's link. CHANGELOG: the published file
       id. `tools\release.ps1`: the id into `$workshopId` (2026-10-20, 3823419476).
 - [x] **The GitHub release of 1.0.0, again** (2026-10-20, after the upload): tag `v1.0.0`
