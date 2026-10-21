@@ -69,6 +69,14 @@ public static class GlassPreview
 
         /// <summary>The middle tier's test: 8 copies of this building's LOD mesh (uv in the atlas), as BuildingInfoBase.InitMeshData makes them.</summary>
         public Mesh Combined8;
+
+        /// <summary>"Lod=turned": this building's LOD is laid out otherwise (its texture and its uv turned
+        /// about the diagonal) -- it looks the same, but its model's maps through its uv are elsewhere.</summary>
+        public bool Turned;
+        public Mesh Combined8Turned;
+
+        /// <summary>Its rectangle in the LOD atlases (uv).</summary>
+        public Vector4 AtlasRect;
     }
 
     private sealed class Scene
@@ -95,6 +103,15 @@ public static class GlassPreview
         public Texture2D AtlasMain, AtlasXys, AtlasAci;
         public Material GlassLod, GlassGroup;
         public Mesh Baked;
+
+        // "Lod=dull": the LOD textures without a shine map (the game's dull default, as an asset whose
+        // LOD has no _lod_s gets); "Lod=turned": that, and every third building's LOD laid out
+        // otherwise; "Lod=wrong": the LOD's shine moved half a slot along (glass where its model has wall).
+        public Texture2D AtlasXysDull, AtlasMainTurned, AtlasXysTurnedDull, AtlasAciTurned, AtlasXysWrong;
+        public Mesh BakedTurned;
+
+        /// <summary>The model's glass on its LOD (the mod's LodGlass, same file).</summary>
+        public LodGlass LodGlass = new LodGlass();
 
         /// <summary>The stand-in for Volumetric Weather's cloud volume (PreviewClouds.shader), found by its name.</summary>
         public GameObject Clouds;
@@ -144,6 +161,10 @@ public static class GlassPreview
 
     /// <summary>The variant's "Tier=near|lod|group": which of the game's three paths the glass is drawn through.</summary>
     private static string _tier = "near";
+
+    /// <summary>The variant's "Lod=own|dull|turned|wrong": the LOD atlases (above); "LodMode=auto|model|own": every asset's say.</summary>
+    private static string _lod = "own";
+    private static int _lodMode = LodGlass.ModeAuto;
 
     /// <summary>The variant's "Budget=0..3": the GlassQuality tier (the mod runs Ultra).</summary>
     private static int _quality = GlassQuality.Ultra;
@@ -222,6 +243,7 @@ public static class GlassPreview
         s.SkyCube.Destroy();
         s.City.Destroy();
         s.Assets.Destroy();
+        s.LodGlass.Destroy();
         s.Camera.targetTexture = null;
         UnityEngine.Object.DestroyImmediate(s.Camera.gameObject);
         UnityEngine.Object.DestroyImmediate(s.Target);
@@ -347,14 +369,11 @@ public static class GlassPreview
         var main = new Color[atlasW * atlasH];
         var xys = new Color[atlasW * atlasH];
         var aci = new Color[atlasW * atlasH];
-        var baked = new List<Vector3>();
-        var bakedN = new List<Vector3>();
-        var bakedT = new List<Vector4>();
-        var bakedUv = new List<Vector2>();
-        var bakedUv2 = new List<Vector2>();
-        var bakedUv3 = new List<Vector2>();
-        var bakedUv4 = new List<Vector2>();
-        var bakedTris = new List<int>();
+        var mainT = new Color[atlasW * atlasH];
+        var xysT = new Color[atlasW * atlasH];
+        var aciT = new Color[atlasW * atlasH];
+        var bakedSet = new BakedLists();
+        var bakedTurnedSet = new BakedLists();
 
         for (int i = 0; i < s.Buildings.Count; i++)
         {
@@ -363,99 +382,37 @@ public static class GlassPreview
             if (sy + slotH > atlasH)
                 throw new Exception("the preview's LOD atlas is full");
 
+            // Every third tower's LOD laid out otherwise ("Lod=turned"); the full-glass towers stay.
+            b.Turned = b.Kind != "punched" && b.Kind != "fullglass" && b.Kind != "fullglass2" && i % 3 == 0;
+
             // Each atlas texel the AVERAGE of the facade texels it covers, as a baked LOD texture
             // is a downsampled one: a point sample of every fourth mullion would draw moire that no
             // game atlas has.
             Color[] srcMain = b.Main.GetPixels(0), srcXys = b.Xys.GetPixels(0), srcAci = b.Aci.GetPixels(0);
             int srcW = b.Main.width, srcH = b.Main.height;
-            for (int y = 0; y < slotH; y++)
-            {
-                int y0 = y * srcH / slotH, y1 = Mathf.Max(y0 + 1, (y + 1) * srcH / slotH);
-                for (int x = 0; x < slotW; x++)
-                {
-                    int x0 = x * srcW / slotW, x1 = Mathf.Max(x0 + 1, (x + 1) * srcW / slotW);
-                    Color m = Color.clear, xy = Color.clear, ac = Color.clear;
-                    for (int yy = y0; yy < y1; yy++)
-                    {
-                        for (int xx = x0; xx < x1; xx++)
-                        {
-                            int j = yy * srcW + xx;
-                            m += srcMain[j];
-                            xy += srcXys[j];
-                            ac += srcAci[j];
-                        }
-                    }
-                    float n = (y1 - y0) * (x1 - x0);
-                    int k = (sy + y) * atlasW + sx + x;
-                    main[k] = m / n;
-                    xys[k] = xy / n;
-                    aci[k] = ac / n;
-                }
-            }
+            FillSlot(main, atlasW, sx, sy, slotW, slotH, srcMain, srcW, srcH, false);
+            FillSlot(xys, atlasW, sx, sy, slotW, slotH, srcXys, srcW, srcH, false);
+            FillSlot(aci, atlasW, sx, sy, slotW, slotH, srcAci, srcW, srcH, false);
+            FillSlot(mainT, atlasW, sx, sy, slotW, slotH, srcMain, srcW, srcH, b.Turned);
+            FillSlot(xysT, atlasW, sx, sy, slotW, slotH, srcXys, srcW, srcH, b.Turned);
+            FillSlot(aciT, atlasW, sx, sy, slotW, slotH, srcAci, srcW, srcH, b.Turned);
 
             var rect = new Rect((float)sx / atlasW, (float)sy / atlasH, (float)slotW / atlasW, (float)slotH / atlasH);
-            Vector3[] v0 = b.Mesh.vertices;
-            Vector3[] n0 = b.Mesh.normals;
-            Vector4[] t0 = b.Mesh.tangents;
-            Vector2[] uv0 = b.Mesh.uv;
-            int[] tri0 = b.Mesh.triangles;
-
-            // Eight copies, as the game's combined LOD mesh.
-            var cv = new List<Vector3>();
-            var cn = new List<Vector3>();
-            var ct = new List<Vector4>();
-            var cuv = new List<Vector2>();
-            var cuv3 = new List<Vector2>();
-            var cuv4 = new List<Vector2>();
-            var cc = new List<Color32>();
-            var ctri = new List<int>();
-            for (int copy = 0; copy < 8; copy++)
-            {
-                int start = cv.Count;
-                for (int j = 0; j < v0.Length; j++)
-                {
-                    cv.Add(v0[j]);
-                    cn.Add(n0[j]);
-                    ct.Add(t0[j]);
-                    cuv.Add(new Vector2(rect.x + uv0[j].x * rect.width, rect.y + uv0[j].y * rect.height));
-                    cuv3.Add(new Vector2(rect.x, rect.y));
-                    cuv4.Add(new Vector2(rect.width, rect.height));
-                    cc.Add(new Color32(255, 255, 255, (byte)(copy * 32)));
-                }
-                foreach (int t in tri0)
-                    ctri.Add(start + t);
-            }
-
-            b.Combined8 = new Mesh();
-            b.Combined8.SetVertices(cv);
-            b.Combined8.SetNormals(cn);
-            b.Combined8.SetTangents(ct);
-            b.Combined8.SetUVs(0, cuv);
-            b.Combined8.SetUVs(2, cuv3);
-            b.Combined8.SetUVs(3, cuv4);
-            b.Combined8.colors32 = cc.ToArray();
-            b.Combined8.SetTriangles(ctri, 0);
-
-            // Baked into the city block, in world space.
-            int bs = baked.Count;
-            for (int j = 0; j < v0.Length; j++)
-            {
-                baked.Add(b.Matrix.MultiplyPoint3x4(v0[j]));
-                bakedN.Add(b.Matrix.MultiplyVector(n0[j]).normalized);
-                Vector3 tw = b.Matrix.MultiplyVector(new Vector3(t0[j].x, t0[j].y, t0[j].z)).normalized;
-                bakedT.Add(new Vector4(tw.x, tw.y, tw.z, t0[j].w));
-                bakedUv.Add(new Vector2(rect.x + uv0[j].x * rect.width, rect.y + uv0[j].y * rect.height));
-                bakedUv2.Add(new Vector2(b.ObjectIndex.x, b.ObjectIndex.y));   // PopulateGroupData: uvs2 = the colour index
-                bakedUv3.Add(new Vector2(rect.x, rect.y));
-                bakedUv4.Add(new Vector2(rect.width, rect.height));
-            }
-            foreach (int t in tri0)
-                bakedTris.Add(bs + t);
+            b.AtlasRect = new Vector4(rect.x, rect.y, rect.width, rect.height);
+            b.Combined8 = Combined(b, rect, false);
+            b.Combined8Turned = b.Turned ? Combined(b, rect, true) : b.Combined8;
+            Bake(bakedSet, b, rect, false);
+            Bake(bakedTurnedSet, b, rect, b.Turned);
         }
 
         s.AtlasMain = Tex(atlasW, atlasH, main, false);
         s.AtlasXys = Tex(atlasW, atlasH, xys, true);
         s.AtlasAci = Tex(atlasW, atlasH, aci, true);
+        s.AtlasXysDull = Tex(atlasW, atlasH, Dull(xys), true);
+        s.AtlasMainTurned = Tex(atlasW, atlasH, mainT, false);
+        s.AtlasXysTurnedDull = Tex(atlasW, atlasH, Dull(xysT), true);
+        s.AtlasAciTurned = Tex(atlasW, atlasH, aciT, true);
+        s.AtlasXysWrong = Tex(atlasW, atlasH, Moved(xys, atlasW, atlasH, slotW), true);
         foreach (Material m in new[] { s.GlassLod, s.GlassGroup })
         {
             m.SetTexture("_MainTex", s.AtlasMain);
@@ -463,20 +420,271 @@ public static class GlassPreview
             m.SetTexture("_ACIMap", s.AtlasAci);
         }
 
-        s.Baked = new Mesh();
-        s.Baked.SetVertices(baked);
-        s.Baked.SetNormals(bakedN);
-        s.Baked.SetTangents(bakedT);
-        s.Baked.SetUVs(0, bakedUv);
-        s.Baked.SetUVs(1, bakedUv2);
-        s.Baked.SetUVs(2, bakedUv3);
-        s.Baked.SetUVs(3, bakedUv4);
-        var white = new Color32[baked.Count];
-        for (int i = 0; i < white.Length; i++)
-            white[i] = new Color32(255, 255, 255, 255);
-        s.Baked.colors32 = white;
-        s.Baked.SetTriangles(bakedTris, 0);
-        s.Baked.RecalculateBounds();
+        s.Baked = bakedSet.Mesh();
+        s.BakedTurned = bakedTurnedSet.Mesh();
+    }
+
+    /// <summary>
+    /// One building's slot of an atlas: each texel the average of the source texels it covers. turned:
+    /// the slot laid out about the diagonal -- its texel at (s, t) is the source's at (t, s), as an
+    /// LOD whose uv are the model's turned (u, v) -> (v, u) needs.
+    /// </summary>
+    private static void FillSlot(Color[] dst, int atlasW, int sx, int sy, int slotW, int slotH, Color[] src, int srcW, int srcH, bool turned)
+    {
+        for (int y = 0; y < slotH; y++)
+        {
+            for (int x = 0; x < slotW; x++)
+            {
+                float s0 = (float)x / slotW, s1 = (float)(x + 1) / slotW, t0 = (float)y / slotH, t1 = (float)(y + 1) / slotH;
+                float u0 = turned ? t0 : s0, u1 = turned ? t1 : s1, v0 = turned ? s0 : t0, v1 = turned ? s1 : t1;
+                int x0 = Mathf.Min(srcW - 1, (int)(u0 * srcW)), x1 = Mathf.Max(x0 + 1, Mathf.Min(srcW, (int)(u1 * srcW)));
+                int y0 = Mathf.Min(srcH - 1, (int)(v0 * srcH)), y1 = Mathf.Max(y0 + 1, Mathf.Min(srcH, (int)(v1 * srcH)));
+                Color sum = Color.clear;
+                for (int yy = y0; yy < y1; yy++)
+                {
+                    for (int xx = x0; xx < x1; xx++)
+                        sum += src[yy * srcW + xx];
+                }
+                dst[(sy + y) * atlasW + sx + x] = sum / ((y1 - y0) * (x1 - x0));
+            }
+        }
+    }
+
+    /// <summary>The same shine map with no shine anywhere (z = 1): what an LOD with no _lod_s gets.</summary>
+    private static Color[] Dull(Color[] xys)
+    {
+        var dull = new Color[xys.Length];
+        for (int i = 0; i < xys.Length; i++)
+            dull[i] = new Color(xys[i].r, xys[i].g, 1f, xys[i].a);
+        return dull;
+    }
+
+    /// <summary>Each slot's shine moved half a slot along (wrapping round it), and a third up: glass where its model has wall.</summary>
+    private static Color[] Moved(Color[] xys, int atlasW, int atlasH, int slotW)
+    {
+        var moved = new Color[xys.Length];
+        for (int y = 0; y < atlasH; y++)
+        {
+            for (int x = 0; x < atlasW; x++)
+            {
+                int slot = x / slotW * slotW, from = slot + (x - slot + slotW / 2) % slotW;
+                int fromY = (y / 256) * 256 + (y % 256 + 85) % 256;
+                Color c = xys[y * atlasW + x];
+                moved[y * atlasW + x] = new Color(c.r, c.g, xys[fromY * atlasW + from].b, c.a);
+            }
+        }
+        return moved;
+    }
+
+    /// <summary>A building's LOD uv: its model's, or turned about the diagonal.</summary>
+    private static Vector2 LodUv(Vector2 uv, bool turned)
+    {
+        return turned ? new Vector2(uv.y, uv.x) : uv;
+    }
+
+    /// <summary>Eight copies of a building's LOD mesh, as the game's combined LOD mesh.</summary>
+    private static Mesh Combined(Building b, Rect rect, bool turned)
+    {
+        Vector3[] v0 = b.Mesh.vertices;
+        Vector3[] n0 = b.Mesh.normals;
+        Vector4[] t0 = b.Mesh.tangents;
+        Vector2[] uv0 = b.Mesh.uv;
+        int[] tri0 = b.Mesh.triangles;
+        var cv = new List<Vector3>();
+        var cn = new List<Vector3>();
+        var ct = new List<Vector4>();
+        var cuv = new List<Vector2>();
+        var cuv3 = new List<Vector2>();
+        var cuv4 = new List<Vector2>();
+        var cc = new List<Color32>();
+        var ctri = new List<int>();
+        for (int copy = 0; copy < 8; copy++)
+        {
+            int start = cv.Count;
+            for (int j = 0; j < v0.Length; j++)
+            {
+                Vector2 uv = LodUv(uv0[j], turned);
+                cv.Add(v0[j]);
+                cn.Add(n0[j]);
+                ct.Add(t0[j]);
+                cuv.Add(new Vector2(rect.x + uv.x * rect.width, rect.y + uv.y * rect.height));
+                cuv3.Add(new Vector2(rect.x, rect.y));
+                cuv4.Add(new Vector2(rect.width, rect.height));
+                cc.Add(new Color32(255, 255, 255, (byte)(copy * 32)));
+            }
+            foreach (int t in tri0)
+                ctri.Add(start + t);
+        }
+
+        var mesh = new Mesh();
+        mesh.SetVertices(cv);
+        mesh.SetNormals(cn);
+        mesh.SetTangents(ct);
+        mesh.SetUVs(0, cuv);
+        mesh.SetUVs(2, cuv3);
+        mesh.SetUVs(3, cuv4);
+        mesh.colors32 = cc.ToArray();
+        mesh.SetTriangles(ctri, 0);
+        return mesh;
+    }
+
+    /// <summary>The city baked into one world-space mesh, as BuildingAI.PopulateGroupData bakes a block.</summary>
+    private sealed class BakedLists
+    {
+        public readonly List<Vector3> V = new List<Vector3>(), N = new List<Vector3>();
+        public readonly List<Vector4> T = new List<Vector4>();
+        public readonly List<Vector2> Uv = new List<Vector2>(), Uv2 = new List<Vector2>(), Uv3 = new List<Vector2>(), Uv4 = new List<Vector2>();
+        public readonly List<int> Tris = new List<int>();
+
+        public Mesh Mesh()
+        {
+            var m = new Mesh();
+            m.SetVertices(V);
+            m.SetNormals(N);
+            m.SetTangents(T);
+            m.SetUVs(0, Uv);
+            m.SetUVs(1, Uv2);
+            m.SetUVs(2, Uv3);
+            m.SetUVs(3, Uv4);
+            var white = new Color32[V.Count];
+            for (int i = 0; i < white.Length; i++)
+                white[i] = new Color32(255, 255, 255, 255);
+            m.colors32 = white;
+            m.SetTriangles(Tris, 0);
+            m.RecalculateBounds();
+            return m;
+        }
+    }
+
+    private static void Bake(BakedLists l, Building b, Rect rect, bool turned)
+    {
+        Vector3[] v0 = b.Mesh.vertices;
+        Vector3[] n0 = b.Mesh.normals;
+        Vector4[] t0 = b.Mesh.tangents;
+        Vector2[] uv0 = b.Mesh.uv;
+        int bs = l.V.Count;
+        for (int j = 0; j < v0.Length; j++)
+        {
+            Vector2 uv = LodUv(uv0[j], turned);
+            l.V.Add(b.Matrix.MultiplyPoint3x4(v0[j]));
+            l.N.Add(b.Matrix.MultiplyVector(n0[j]).normalized);
+            Vector3 tw = b.Matrix.MultiplyVector(new Vector3(t0[j].x, t0[j].y, t0[j].z)).normalized;
+            l.T.Add(new Vector4(tw.x, tw.y, tw.z, t0[j].w));
+            l.Uv.Add(new Vector2(rect.x + uv.x * rect.width, rect.y + uv.y * rect.height));
+            l.Uv2.Add(new Vector2(b.ObjectIndex.x, b.ObjectIndex.y));   // PopulateGroupData: uvs2 = the colour index
+            l.Uv3.Add(new Vector2(rect.x, rect.y));
+            l.Uv4.Add(new Vector2(rect.width, rect.height));
+        }
+        foreach (int t in b.Mesh.triangles)
+            l.Tris.Add(bs + t);
+    }
+
+    /// <summary>
+    /// The variant's LOD atlases ("Lod=own|dull|turned|wrong") on the LOD and far materials, and the
+    /// mod's LodGlass run over them as it runs in a city: every building's LOD read back, compared
+    /// with its model by their geometry, decided at the variant's settings (LodGlass, Threshold,
+    /// "LodMode"), the mask made, uploaded and bound. Its verdicts for the frame's log line.
+    /// </summary>
+    private static string PrepareLod(Scene s, GlassParams p)
+    {
+        bool turned = _lod == "turned";
+        Texture2D atlasMain = turned ? s.AtlasMainTurned : s.AtlasMain;
+        Texture2D atlasXys = _lod == "dull" ? s.AtlasXysDull : (turned ? s.AtlasXysTurnedDull : (_lod == "wrong" ? s.AtlasXysWrong : s.AtlasXys));
+        Texture2D atlasAci = turned ? s.AtlasAciTurned : s.AtlasAci;
+        foreach (Material m in new[] { s.GlassLod, s.GlassGroup })
+        {
+            m.SetTexture("_MainTex", atlasMain);
+            m.SetTexture("_XYSMap", atlasXys);
+            m.SetTexture("_ACIMap", atlasAci);
+        }
+
+        int maskW, maskH;
+        LodGlass.MaskSize(atlasXys.width, atlasXys.height, out maskW, out maskH);
+        var entries = new List<LodGlassEntry>();
+        foreach (Building b in s.Buildings)
+        {
+            bool t = turned && b.Turned;
+            Vector3[] v = b.Mesh.vertices;
+            Vector2[] uv = b.Mesh.uv;
+            var pos = new float[v.Length * 3];
+            var modelUv = new float[uv.Length * 2];
+            var lodUv = new float[uv.Length * 2];
+            for (int j = 0; j < v.Length; j++)
+            {
+                pos[3 * j] = v[j].x;
+                pos[3 * j + 1] = v[j].y;
+                pos[3 * j + 2] = v[j].z;
+            }
+            for (int j = 0; j < uv.Length; j++)
+            {
+                Vector2 l = LodUv(uv[j], t);
+                modelUv[2 * j] = uv[j].x;
+                modelUv[2 * j + 1] = uv[j].y;
+                lodUv[2 * j] = l.x;
+                lodUv[2 * j + 1] = l.y;
+            }
+            var e = new LodGlassEntry
+            {
+                Asset = b.Kind + (t ? " (turned)" : ""),
+                Name = b.Kind,
+                Rect = b.AtlasRect,
+                ModelXys = b.Xys,
+                ModelSt = new Vector4(1f, 1f, 0f, 0f),
+                ModelClamp = b.Xys.wrapMode == TextureWrapMode.Clamp,
+                ModelPos = pos,
+                ModelUv = modelUv,
+                ModelTri = b.Mesh.triangles,
+                LodPos = (float[])pos.Clone(),
+                LodUv = lodUv,
+                LodTri = b.Mesh.triangles,
+                Mode = _lodMode,
+                Threshold = p.Threshold,
+            };
+            LodGlass.SideFor(e, maskW, maskH);
+            entries.Add(e);
+        }
+
+        for (int start = 0; start < entries.Count; start += LodGlass.PerBatch)
+        {
+            if (!s.LodGlass.ReadBack(entries, start, Math.Min(LodGlass.PerBatch, entries.Count - start), atlasXys, s.Util))
+                throw new Exception("LodGlass.ReadBack: " + s.LodGlass.Problem);
+        }
+        s.LodGlass.FreeReadBack();
+        foreach (LodGlassEntry e in entries)
+            LodGlass.Transfer(e);
+        LodGlass.DecideAll(entries, p.LodGlass);
+        var borrowing = new List<LodGlassEntry>();
+        foreach (LodGlassEntry e in entries)
+        {
+            if (LodGlass.Borrows(e.Verdict))
+                borrowing.Add(e);
+        }
+        if (!s.LodGlass.Upload(borrowing.Count > 0 ? LodGlass.BuildMask(borrowing, maskW, maskH) : null, maskW, maskH))
+            throw new Exception("LodGlass.Upload: " + s.LodGlass.Problem);
+        s.LodGlass.Bind();
+
+        var counts = new int[9];
+        float reachMin = 2f, agreeMin = 2f, agreeMax = -2f;
+        foreach (LodGlassEntry e in entries)
+        {
+            counts[e.Verdict]++;
+            reachMin = Mathf.Min(reachMin, e.Reach);
+            if (e.ModelShare >= LodGlass.MinShare)
+            {
+                agreeMin = Mathf.Min(agreeMin, e.Agreement);
+                agreeMax = Mathf.Max(agreeMax, e.Agreement);
+            }
+        }
+        return "lod " + _lod + " mode " + _lodMode + ": agree " + counts[LodGlass.VerdictAgrees] + ", no glass " + counts[LodGlass.VerdictNoGlass] +
+               ", the model's " + counts[LodGlass.VerdictBorrowed] + ", shape " + counts[LodGlass.VerdictShapeDiffers] +
+               ", forced " + counts[LodGlass.VerdictForced] + ", kept " + counts[LodGlass.VerdictKeptOwn] + ", off " + counts[LodGlass.VerdictOff] +
+               ", failed " + counts[LodGlass.VerdictFailed] + "; reach >= " + Fmt2(reachMin) + ", alike " + Fmt2(agreeMin) + ".." + Fmt2(agreeMax) +
+               "; mask " + s.LodGlass.MaskWidth + "x" + s.LodGlass.MaskHeight + " for " + borrowing.Count + (s.LodGlass.Flipped ? ", read back flipped" : "");
+    }
+
+    private static string Fmt2(float v)
+    {
+        return v > 1.5f || v < -1.5f ? "-" : v.ToString("F2", CultureInfo.InvariantCulture);
     }
 
     /// <summary>
@@ -891,6 +1099,8 @@ public static class GlassPreview
         _overcast = 0f;
         _litShare = 0.25f;
         _tier = "near";
+        _lod = "own";
+        _lodMode = LodGlass.ModeAuto;
         _quality = GlassQuality.Ultra;
         _hizOff = false;
         _budgetOverrides.Clear();
@@ -928,6 +1138,7 @@ public static class GlassPreview
         }
         s.Assets.Upload();
         s.Assets.Bind();
+        string lodInfo = PrepareLod(s, p);
         Shader.SetGlobalVector("_RGDebug", new Vector4(_debug, _debugLevel, 0f, 0f));
         GlassFrame f = new GlassFrame();
         f.SunX = toSun.x; f.SunY = toSun.y; f.SunZ = toSun.z;
@@ -991,7 +1202,7 @@ public static class GlassPreview
                " | sky cube " + (p.SkySource == 0 ? s.SkyCube.FacesDone + " faces, " + s.SkyCube.Mips + " mips" + (s.SkyCube.Problem.Length > 0 ? " " + s.SkyCube.Problem : "") : "game map") +
                " | stride " + GlassUniforms.Stride(p.Quality, s.Height).ToString("0", CultureInfo.InvariantCulture) + " x " +
                GlassUniforms.StepCount(p.Quality).ToString("0", CultureInfo.InvariantCulture) +
-               " | budget " + q + " | hi-z " + s.Screen.HiZLevels + " levels";
+               " | budget " + q + " | hi-z " + s.Screen.HiZLevels + " levels | " + lodInfo;
         return pixels;
     }
 
@@ -1037,8 +1248,9 @@ public static class GlassPreview
                 lodBlock.SetVectorArray("_BuildingStates", states);
                 lodBlock.SetVectorArray("_ObjectIndices", indices);
                 Vector3 c = b.Matrix.MultiplyPoint3x4(Vector3.zero);
-                b.Combined8.bounds = new Bounds(c + Vector3.up * 150f, new Vector3(400f, 400f, 400f));
-                Graphics.DrawMesh(b.Combined8, Matrix4x4.identity, s.GlassLod, 0, s.Camera, 0, lodBlock, false, false);
+                Mesh lodMesh = _lod == "turned" ? b.Combined8Turned : b.Combined8;
+                lodMesh.bounds = new Bounds(c + Vector3.up * 150f, new Vector3(400f, 400f, 400f));
+                Graphics.DrawMesh(lodMesh, Matrix4x4.identity, s.GlassLod, 0, s.Camera, 0, lodBlock, false, false);
             }
             else if (_tier == "near")
             {
@@ -1048,7 +1260,7 @@ public static class GlassPreview
         }
 
         if (drawGlass && _tier == "group")
-            Graphics.DrawMesh(s.Baked, Matrix4x4.identity, s.GlassGroup, 0, s.Camera, 0, null, false, false);
+            Graphics.DrawMesh(_lod == "turned" ? s.BakedTurned : s.Baked, Matrix4x4.identity, s.GlassGroup, 0, s.Camera, 0, null, false, false);
     }
 
     /// <summary>"glass:Trace=0;Reflectivity=0.3" -> the defaults with those GlassParams fields set.</summary>
@@ -1087,6 +1299,19 @@ public static class GlassPreview
             if (kv[0].Trim().Equals("Tier", StringComparison.OrdinalIgnoreCase))
             {
                 _tier = kv[1].Trim().ToLowerInvariant();
+                continue;
+            }
+            if (kv[0].Trim().Equals("Lod", StringComparison.OrdinalIgnoreCase))
+            {
+                _lod = kv[1].Trim().ToLowerInvariant();
+                if (_lod != "own" && _lod != "dull" && _lod != "turned" && _lod != "wrong")
+                    throw new Exception("Lod=own|dull|turned|wrong, not '" + kv[1] + "'");
+                continue;
+            }
+            if (kv[0].Trim().Equals("LodMode", StringComparison.OrdinalIgnoreCase))
+            {
+                string mode = kv[1].Trim().ToLowerInvariant();
+                _lodMode = mode == "model" ? LodGlass.ModeModel : (mode == "own" ? LodGlass.ModeOwn : LodGlass.ModeAuto);
                 continue;
             }
             if (kv[0].Trim().Equals("Overcast", StringComparison.OrdinalIgnoreCase))

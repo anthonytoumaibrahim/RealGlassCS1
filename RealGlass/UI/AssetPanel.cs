@@ -22,7 +22,8 @@ namespace RealGlass.UI
     {
         private const float PanelWidth = 520f;
         private const float TitleBarHeight = 40f;
-        private const float StatusHeight = 24f;
+        /// <summary>Two lines: the copies in this city, then what the asset's LODs show (LodGlass).</summary>
+        private const float StatusHeight = 42f;
         private const float ButtonsHeight = 34f;
         private const float Margin = 14f;
 
@@ -73,7 +74,8 @@ namespace RealGlass.UI
 
             _status = _ui.AddLabel(this, string.Empty, new Vector3(Margin, y + 2f), _ui.Theme.TextScale);
             _status.autoSize = false;
-            _status.size = new Vector2(inner, 20f);
+            _status.wordWrap = true;
+            _status.size = new Vector2(inner, StatusHeight - 4f);
             _ui.Paint(_status, _ui.Theme.Status);
             y += StatusHeight;
 

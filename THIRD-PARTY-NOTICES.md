@@ -186,7 +186,11 @@ a city's windows (2015), the lamps' colours from Charity's blackbody table, the 
 windows filled by normalized convolution (Knutsson and Westin, 1993) -- and the reflected sky's
 light at dusk after Bird and Riordan's clear-sky spectral model (SPCTRAL2, 1986) with Kasten and
 Young's air mass (1989) -- and for picking Procedural Objects' buildings, Kay and Kajiya's slab
-test (1986) and Möller and Trumbore's ray/triangle test (1997) --
+test (1986) and Möller and Trumbore's ray/triangle test (1997) -- and, for LODs whose glass is not
+their model's, the model's carried onto the LOD after Cignoni, Montani, Rocchini and Scopigno's
+attribute-preserving resampling of simplified meshes (1998), through Fujimoto, Tanaka and Iwata's
+uniform grid (1986), Möller and Trumbore's test and Williams's mip-maps (1983), the two glasses
+compared by Jaccard's index (1912) --
 listed with links in
 `README.md`. Apart from the ray tracer above, the implementations were written for this mod.
 

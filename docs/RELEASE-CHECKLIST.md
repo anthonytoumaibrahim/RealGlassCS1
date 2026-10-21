@@ -169,7 +169,12 @@ that repo's `docs/RELEASE-CHECKLIST.md` has the long version.
       empty line at the top while the glass draws; turning the glass off shows "The glass is off."
       above the switch. Water's first row reads "Realistic water". The building window: tooltips,
       no folding.
-- [ ] Procedural Objects' buildings (2026-10-21, for 1.1.0; build 1.0.0.22624): the log has
+- [x] Procedural Objects' buildings (2026-10-21, for 1.1.0; build 1.0.0.22624). IN HIS GAME
+      2026-10-21 13:53 (build 1.0.0.23997, 4K, with VW): "PO integration works fine". Log clean (no
+      WARN/ERROR; no exception of ours in output_log): PO 1.7.8 found, 40 buildings among 568
+      objects, 40 with the glass, 150-350 PO draws a second; Alt+Period picked one ("its object
+      18", Quad's Eclipse, 1 in this city). Not exercised: a change to a converted building's
+      asset, a game without PO. Was: the log has
       "procedural objects: 1.7.8 is here" and "procedural objects: N buildings among its M
       objects, G with the glass" (with Detailed logging the 5 s line counts "Procedural Objects"
       draws); a converted building shows the same glass as a real copy beside it, also when it is
@@ -180,6 +185,36 @@ that repo's `docs/RELEASE-CHECKLIST.md` has the long version.
       in front; a click opens its asset's window ("assets: picked a building of Procedural Objects
       (its object N)"), the count includes the converted copies, and a change shows on them at
       once. Without Procedural Objects: "procedural objects: not installed", nothing else.
+- [ ] LODs show the model's glass. IN HIS GAME 2026-10-21 14:59 (build 1.0.0.26727, 4K, with VW):
+      log clean; 1129 LODs of 974 assets compared in 18.0 s (2071 ms on the main thread: frames
+      36-40 ms while comparing against 36 ms after); 48 agree, 719 neither has glass, 327 take the
+      model's glass (63 had none, 264 had it elsewhere: mostly alike 0.4-0.59, vanilla LODs among
+      them, e.g. H5_4x3_Highrise_09 0.51, H3 4x4 Office01 0.48), 35 shaped unlike (sub-meshes met 0%,
+      none with glass), 0 failed; State Tower met 98% (gap 0.04 m), model 42% glass, LOD 0% -> the
+      model's; the mask 4096 x 4096 made in 134 ms on a worker, uploaded in 9 ms. Not exercised yet:
+      the switch, the building window's "Glass on its LOD" on an asset with an LOD (his pick was a
+      Procedural Objects building), a newly placed asset. Was (2026-10-21, for 1.1.0; his ask after State Tower 2848409378 and
+      Tour Incity 1407415712 lost their glass and rooms zooming out). The log has "glass: LOD
+      atlases ... <format> N mips", then "lod glass: comparing N LODs of M building assets in the
+      city with their models (K worker threads; a W x H mask for the 8192 x 8192 atlas)", then
+      "lod glass: compared N LODs in X s (Y ms of it on the main thread): A agree with their model,
+      B neither has glass, C take the model's glass (D had none of their own, E had it elsewhere),
+      F shaped unlike their model ..., G could not be compared", the lists "taking their model's
+      glass: '...' met 97% (gap 0.01 m), model 52% glass, LOD 0%, alike 0.00; ..." and "shaped
+      unlike their model: ...", and "lod glass: C LODs of H assets show their model's glass (a 4096
+      x 4096 mask, made in X ms on a worker, uploaded in Y ms)". The 5 s line ends "lod glass N/N
+      compared, C showing the model's". In the city: State Tower and Tour Incity keep their glass
+      (and their rooms at night) zoomed out, middle and far; Alt+Period on one says "Its LOD's glass
+      differs: it shows the model's."; "Glass on its LOD" -> The LOD's own takes it away, back to
+      Automatic brings it back; the Glass tab's "LODs show the model's glass" off takes every
+      borrowed glass away ("lod glass: no LOD shows its model's glass now"). No hitch while it
+      compares (X s, the main thread's Y ms spread over frames), and placing a new asset adds its
+      LODs within ~10 s. To judge from his log: the limits (MinAgreement 0.6, MinReach 0.6) against
+      the listed numbers. Offline (2026-10-21): 129 installed buildings read from their packages:
+      6 agree (alike 0.61-0.92), 43 take the model's (met 71-100%), 62 no glass. Tests:
+      test-settings, LodGlassTest on D3D11 + glcore (the Alpha8 mask with its mips by
+      LoadRawTextureData probed there); Metal: 16 samplers in the LOD/far variants (the limit);
+      test-amd 195 programs, no spills.
 - [ ] Dynamic waves (2026-10-21, for 1.1.0; build 1.0.0.23710): Water tab, "Dynamic waves" after
       "Ocean waves", on; "Wind speed" greyed out while it is on. The log has "water: dynamic waves:
       the sea's wind 7.0 m/s under 0% rain" on a dry load (higher if it loads raining); with
@@ -188,6 +223,8 @@ that repo's `docs/RELEASE-CHECKLIST.md` has the long version.
       few game hours -- longer, rougher waves, the glitter wider -- and it calms more slowly after;
       paused, it holds. Turned off: the Wind speed row works exactly as in 1.0.0 (drag it: "ocean
       waves built" at that wind). With Volumetric Weather its storms raise the sea too.
+      2026-10-21 15:01 (build 1.0.0.26727): dynamic waves 7.0 m/s at a dry load; switched off, the
+      sea rebuilt at his Wind speed (12.5 m/s); back on, 7.0 m/s again. No rain that session.
 - [ ] Rooms when a building's lights come on (2026-10-21, for 1.1.0; build 1.0.0.23997): at night,
       rooms on, watch a tower until the game switches its lights on (it lights the whole building
       at once). The rooms stay as they were: no flat glow over them, no bright lines where frames

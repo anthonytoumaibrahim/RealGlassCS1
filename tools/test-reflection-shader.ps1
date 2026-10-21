@@ -17,8 +17,9 @@
 #   - RIPPLES (RealGlass/WaterRipples' texture, read as the game reads it, the gain the mod sets):
 #     the wall and the sky untouched, the middle of the reflection still the wall's.
 # Then the ripple generator itself, texel by texel, and the mod's measurement of the game's ripple
-# texture on a DXT5 stand-in (WaterRippleTest.cs). Last the ocean waves' FFT against its CPU reference,
-# on Direct3D 11 and OpenGL Core (WaterWavesTest.cs).
+# texture on a DXT5 stand-in (WaterRippleTest.cs). Then the ocean waves' FFT against its CPU reference,
+# on Direct3D 11 and OpenGL Core (WaterWavesTest.cs). Last the glass's: the model's glass carried onto
+# an LOD laid out otherwise, read back, its mask uploaded and read back, on both APIs (LodGlassTest.cs).
 # Run after build-bundle.ps1 (the shader compiles) and a DLL build:
 #
 #   powershell -NoProfile -ExecutionPolicy Bypass -File tools\test-reflection-shader.ps1
@@ -416,6 +417,28 @@ foreach ($api in @("d3d11", "glcore")) {
     if (-not (Test-Path $out)) { Write-Host "FAIL  Unity wrote no output (exit $($proc.ExitCode)); see UnityProject\waves-test.log"; exit 1 }
     $got = Get-Content $out
     Write-Host ("ocean waves, {0}: {1}" -f $api, $got[0])
+    foreach ($line in ($got | Where-Object { $_ -like "ok *" -or $_ -like "FAIL*" -or $_ -like "EXCEPTION*" })) {
+        Write-Host ("  " + $line)
+        if ($line -notlike "ok *") { $failed++ }
+    }
+    Remove-Item $out -ErrorAction SilentlyContinue
+}
+
+# ---- the model's glass on its LOD (UnityProject\Assets\Editor\LodGlassTest.cs) -----------------
+# The read-back of a model's shine map and two LODs' rectangles of an atlas, texel by texel; then a
+# tower whose LOD is laid out unlike its model compared, its mask uploaded (Alpha8, every mip by
+# LoadRawTextureData) and read back byte for byte -- on Direct3D 11 and on OpenGL Core, whose
+# render targets run the other way up.
+foreach ($api in @("d3d11", "glcore")) {
+    $out = Join-Path $project "lod-glass-test-output.txt"
+    if (Test-Path $out) { Remove-Item $out -Force }
+    $lodArgs = @("-batchmode", "-quit", "-projectPath", "`"$project`"", "-executeMethod", "LodGlassTest.Run",
+        "-logFile", "`"$(Join-Path $project 'lod-glass-test.log')`"")
+    if ($api -eq "glcore") { $lodArgs += "-force-glcore" }
+    $proc = Start-Process -FilePath $Unity -WindowStyle Hidden -Wait -PassThru -ArgumentList $lodArgs
+    if (-not (Test-Path $out)) { Write-Host "FAIL  Unity wrote no output (exit $($proc.ExitCode)); see UnityProject\lod-glass-test.log"; exit 1 }
+    $got = Get-Content $out
+    Write-Host ("LOD glass, {0}: {1}" -f $api, $got[0])
     foreach ($line in ($got | Where-Object { $_ -like "ok *" -or $_ -like "FAIL*" -or $_ -like "EXCEPTION*" })) {
         Write-Host ("  " + $line)
         if ($line -notlike "ok *") { $failed++ }

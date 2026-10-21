@@ -24,7 +24,7 @@ namespace RealGlass.PerAsset
 
         // What the rows show: the picked asset's glass.
         private static FloatSetting _strength, _detail, _reflectivity, _clarity, _own, _threshold;
-        private static IntSetting _preset;
+        private static IntSetting _preset, _lodGlass;
         private static ColorSetting _colour;
         private static BoolSetting _nightWindows, _interiors;
 
@@ -62,6 +62,7 @@ namespace RealGlass.PerAsset
             _threshold = new FloatSetting("AssetGlassThreshold", Settings.Defaults.GlassThreshold, false);
             _nightWindows = new BoolSetting("AssetGlassNightWindows", Settings.Defaults.GlassNightWindows, false);
             _interiors = new BoolSetting("AssetInteriorsEnabled", Settings.Defaults.InteriorsEnabled, false);
+            _lodGlass = new IntSetting("AssetLodGlass", Glass.LodGlass.ModeAuto, false);
 
             var rows = new List<Row>();
 
@@ -147,6 +148,23 @@ namespace RealGlass.PerAsset
                     "lit-at-night windows count as glass: " + (_nightWindows.value ? "yes" : "no")),
             });
 
+            // Its LODs' glass (the Glass tab's "LODs show the model's glass", for this asset):
+            // Automatic follows that switch and the comparison; the model's whatever the LOD has;
+            // the LOD's own always. The status line says what Automatic found.
+            rows.Add(new Row
+            {
+                Kind = RowKind.Choice,
+                Int = _lodGlass,
+                DefaultInt = Glass.LodGlass.ModeAuto,
+                ChoiceKeys = new[] { "Asset.LodGlass.Auto", "Asset.LodGlass.Model", "Asset.LodGlass.Own" },
+                ChoiceValues = new[] { Glass.LodGlass.ModeAuto, Glass.LodGlass.ModeModel, Glass.LodGlass.ModeOwn },
+                Enabled = Editable,
+                Overridden = () => Has(r => r.LodGlass.HasValue),
+                ClearOverride = () => Change(r => r.LodGlass = null, "LOD glass back to automatic"),
+                AfterChange = () => Change(r => r.LodGlass = _lodGlass.value == Glass.LodGlass.ModeAuto ? (bool?)null : _lodGlass.value == Glass.LodGlass.ModeModel,
+                    "LOD glass: " + (_lodGlass.value == Glass.LodGlass.ModeModel ? "the model's" : (_lodGlass.value == Glass.LodGlass.ModeOwn ? "its own" : "automatic"))),
+            });
+
             // The rooms behind its windows (the Interiors tab's switch, for this asset): off keeps the
             // game's own windows on every copy of it.
             rows.Add(new Row
@@ -224,6 +242,8 @@ namespace RealGlass.PerAsset
             _threshold.value = r != null && r.Threshold.HasValue ? r.Threshold.Value : Settings.GlassThreshold.value;
             _nightWindows.value = r != null && r.NightWindows.HasValue ? r.NightWindows.Value : Settings.GlassNightWindows.value;
             _interiors.value = r != null && r.Interiors.HasValue ? r.Interiors.Value : Settings.InteriorsEnabled.value;
+            _lodGlass.value = r == null || !r.LodGlass.HasValue ? Glass.LodGlass.ModeAuto
+                : (r.LodGlass.Value ? Glass.LodGlass.ModeModel : Glass.LodGlass.ModeOwn);
 
             _colour.value = r != null && r.Colour.HasValue ? r.Colour.Value : (hasPreset ? preset.Colour : Settings.GlassColor.value);
             _reflectivity.value = r != null && r.Reflectivity.HasValue ? r.Reflectivity.Value

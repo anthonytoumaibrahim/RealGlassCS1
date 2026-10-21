@@ -121,6 +121,11 @@
 
   <String key="GlassNightWindows.Label">Windows lit at night are glass</String>
 
+  <!-- An asset's LOD (its low-detail model, drawn from the middle distance on) whose glass is not
+       its full model's (none, or in other places): it shows the model's glass instead. -->
+  <String key="LodGlassFromModel.Label">LODs show the model's glass</String>
+  <String key="LodGlassFromModel.Tooltip">Where a building's far-off LOD has no glass, or has it elsewhere.</String>
+
   <String key="GlassShowMask.Label">Show what counts as glass</String>
   <String key="GlassShowMask.Tooltip">Paints the glass magenta, to check the two settings above.</String>
 
@@ -372,6 +377,23 @@
 
   <String key="AssetGlassNightWindows.Label">Windows lit at night are glass</String>
 
+  <!-- The glass of the asset's LOD (its low-detail model, drawn from the middle distance on). -->
+  <String key="AssetLodGlass.Label">Glass on its LOD</String>
+  <String key="AssetLodGlass.Tooltip">Automatic: the full model's glass where the LOD's differs.</String>
+  <String key="Asset.LodGlass.Auto">Automatic</String>
+  <String key="Asset.LodGlass.Model">The model's</String>
+  <String key="Asset.LodGlass.Own">The LOD's own</String>
+
+  <!-- The status line's second line: what the asset's LOD shows. -->
+  <String key="Asset.Lod.Agrees">Its LOD's glass matches the model's.</String>
+  <String key="Asset.Lod.NoGlass">Neither the model nor its LOD has glass.</String>
+  <String key="Asset.Lod.Borrowed">Its LOD's glass differs: it shows the model's.</String>
+  <String key="Asset.Lod.ShapeDiffers">Its LOD is shaped unlike the model: left as it is.</String>
+  <String key="Asset.Lod.Forced">Its LOD shows the model's glass.</String>
+  <String key="Asset.Lod.KeptOwn">Its LOD keeps its own glass.</String>
+  <String key="Asset.Lod.Off">Its LOD's glass differs; the Glass tab leaves it as it is.</String>
+  <String key="Asset.Lod.Failed">Its LOD could not be compared with the model (see the log).</String>
+
   <String key="Group.AssetInteriors">Interiors</String>
 
   <String key="AssetInteriorsEnabled.Label">Parallax interiors</String>
@@ -508,7 +530,8 @@
     the same names and in the same units:\n
     - a percentage the way its slider shows it: 47 means 47%; GlassThreshold goes from 10 to 95
     (lower than in RealGlass.xml: it is this asset's alone);\n
-    - GlassColor as #RRGGBB; GlassNightWindows as true or false;\n
+    - GlassColor as #RRGGBB; GlassNightWindows, InteriorsEnabled and LodGlassFromModel as true
+    or false (LodGlassFromModel: its LOD shows the model's glass, or keeps its own);\n
     - GlassPreset as the number of a kind of glass (0 Custom, 1 to 10, as in RealGlass.xml);
     a kind of glass alone gives its color, reflectivity and clarity.\n
     \n

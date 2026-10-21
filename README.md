@@ -25,7 +25,8 @@ five tabs:
   reflectance and transmittance), or your own colour;
   how much of the building's own painted colour to keep; how much it reflects head-on and at an
   angle, and how silvery it turns seen edge-on; how much light it lets through; and what counts
-  as glass. "Show what counts as glass" paints it magenta, to check.
+  as glass, including whether LODs show their model's glass. "Show what counts as glass" paints
+  it magenta, to check.
 - **Reflections** -- the city on screen in the glass (the finished picture: haze, clouds, lamps,
   the other glass), the buildings around where the screen cannot show them, the live sky with its
   clouds or the game's own sky picture, what shows below the horizon when nothing on screen is
@@ -71,6 +72,16 @@ the log is `RealGlass.log`, next to it.
 - **What is glass** is read from each asset's own specular map -- the shininess its author
   painted, the same value the game's shader reads -- and, optionally, the windows it lights up at
   night.
+- **LODs show the model's glass** (on by default): many assets' low-detail models were given no
+  specular map of their own, or one that marks other places, so the building lost its glass, and
+  its rooms, from the middle distance on. Once a city, every LOD standing in it is compared with its
+  full model at the same points of the building: each texel of the LOD's texture is a point on the
+  LOD's surface, the model is met there along the surface's normal, and its shine read where it was
+  met -- whatever the layout of either texture. Where most of the LOD meets its model and the two
+  glasses disagree (none on the LOD, or glass elsewhere), the model's glass, carried over that way,
+  is drawn where the LOD sits in the game's LOD atlas, and the middle and far buildings show it.
+  An LOD whose glass agrees with its model's keeps its own; one shaped too unlike its model is left
+  as it is. The building window can ask for the model's glass anyway, or never.
 - **Reflections**, layered as in the games that do glass cities well: first what is on screen,
   traced through the depth buffer (screen-space ray tracing) -- over a pyramid of its nearest and
   farthest depths, whole blocks of the screen at a step where nothing can be met, so a reflection
@@ -352,6 +363,17 @@ Every technique here has shipped in a game or is published:
     test of Timothy Kay and James Kajiya, **Ray Tracing Complex Scenes**, SIGGRAPH 1986; then
     against the triangles of the nearest boxes, Tomas Möller and Ben Trumbore, **Fast, Minimum
     Storage Ray/Triangle Intersection**, Journal of Graphics Tools 2(1), 1997.
+20. The model's glass on its LOD: each texel of the simplified mesh's texture met with the full
+    mesh along its normal and given the full mesh's value there -- Paolo Cignoni, Claudio Montani,
+    Claudio Rocchini and Roberto Scopigno, **A General Method for Preserving Attribute Values on
+    Simplified Meshes**, IEEE Visualization 1998 (the game's own asset importer bakes an LOD's
+    textures from its model this way when the author gives none); the full mesh's triangles found
+    through a uniform grid, Akira Fujimoto, Takayuki Tanaka and Kansei Iwata, **ARTS: Accelerated
+    Ray-Tracing System**, IEEE Computer Graphics and Applications 6(4), 1986, and met by Möller and
+    Trumbore's test (19); its shine read from a mip as wide as the texel (Lance Williams,
+    **Pyramidal Parametrics**, SIGGRAPH 1983); whether the LOD's own glass agrees with its model's,
+    by the share of the two glasses that is both (Paul Jaccard, **The Distribution of the Flora in
+    the Alpine Zone**, New Phytologist 11(2), 1912).
 
 ## Building
 

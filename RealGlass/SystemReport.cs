@@ -66,6 +66,7 @@ namespace RealGlass
                         " strength=" + Percent(Settings.GlassStrength, Settings.Defaults.GlassStrength) +
                         " threshold=" + Percent(Settings.GlassThreshold, Settings.Defaults.GlassThreshold) +
                         " nightWindows=" + On(Settings.GlassNightWindows, Settings.Defaults.GlassNightWindows) +
+                        " lodGlassFromModel=" + On(Settings.LodGlassFromModel, Settings.Defaults.LodGlassFromModel) +
                         " | reflections: screen=" + On(Settings.SsrEnabled, Settings.Defaults.SsrEnabled) +
                         " finishedPicture=" + On(Settings.ReflectFinished, Settings.Defaults.ReflectFinished) +
                         " neighbours=" + On(Settings.ReflectNeighbours, Settings.Defaults.ReflectNeighbours) +

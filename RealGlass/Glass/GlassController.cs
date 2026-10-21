@@ -23,6 +23,7 @@ namespace RealGlass.Glass
         private readonly GlassSky _sky = new GlassSky();
         private readonly CityHeights _heights = new CityHeights();
         private readonly AssetMap _assets = new AssetMap();
+        private readonly LodGlassMap _lodGlass = new LodGlassMap();
         private readonly RoomAtlas _rooms = new RoomAtlas();
         private bool _roomsTried;
         private string _loggedRooms = "";
@@ -81,6 +82,13 @@ namespace RealGlass.Glass
             GlassController c = Instance;
             if (c != null)
                 c._assets.RefreshAsset(info, _dirty ? GlassSettings.Read() : c._params);
+        }
+
+        /// <summary>What this asset's LODs show (LodGlass.Verdict*), for its building window; NotMeasured outside a city or before they are compared.</summary>
+        public static int LodVerdictOf(BuildingInfo info)
+        {
+            GlassController c = Instance;
+            return c != null && info != null ? c._lodGlass.VerdictOf(info.name) : LodGlass.VerdictNotMeasured;
         }
 
         /// <summary>A layer any building asset draws on (its m_prefabDataLayer): where group meshes get glass.</summary>
@@ -271,6 +279,7 @@ namespace RealGlass.Glass
             GlassDraw.Tiers = Settings.IsInitialised ? Settings.GlassDistance.value : 2;
             ProceduralBuildings.Refresh();
             BindAtlases();
+            _lodGlass.Update(p, _atlasXys, _util);
             WatchCamera(camera);
 
             GlassFrame f = ReadFrame(camera);
@@ -361,6 +370,7 @@ namespace RealGlass.Glass
                                : "city heights being drawn") : "no city heights") +
                            "; hi-z " + (copied ? _screen.HiZLevels + " levels" : "-") +
                            "; rooms " + (rooms ? DescribeRooms(p, f) : "off") +
+                           "; " + _lodGlass.Describe() +
                            "; shaders seen: " + GlassDraw.DescribeShaders());
                 ResetCounters();
             }
@@ -441,7 +451,8 @@ namespace RealGlass.Glass
 
         private static string Describe(Texture t)
         {
-            return t == null ? "none" : t.name + " " + t.width + "x" + t.height;
+            var t2 = t as Texture2D;
+            return t == null ? "none" : t.name + " " + t.width + "x" + t.height + (t2 != null ? " " + t2.format + " " + t2.mipmapCount + " mips" : "");
         }
 
         /// <summary>The scene as the glass needs it: the game's sun, its ambient, the ground, the weather.</summary>
@@ -564,7 +575,8 @@ namespace RealGlass.Glass
                    "), clarity " + Pct(p.Clarity) +
                    ", tint #" + Hex(p.TintR) + Hex(p.TintG) + Hex(p.TintB) + " own " + Pct(p.OwnColour) + ", painted detail " + Pct(p.PaintedDetail) +
                    ", strength " + Pct(p.Strength) +
-                   ", glass above " + Pct(p.Threshold) + (p.NightWindows ? " + night windows" : "") + (p.ShowMask ? ", SHOWING THE MASK" : "") +
+                   ", glass above " + Pct(p.Threshold) + (p.NightWindows ? " + night windows" : "") +
+                   (p.LodGlass ? ", LODs take their model's glass where theirs differs" : ", LODs keep their own glass") + (p.ShowMask ? ", SHOWING THE MASK" : "") +
                    "; trace " + (p.Trace ? "q" + p.Quality : "off") + (p.Finished ? " of the finished picture" : " of the copy") +
                    (p.Neighbours ? " + city heights" : "") + (p.SteadyGlints ? ", steady glints" : "") +
                    ", brightness " + Pct(p.ReflectionBrightness) + ", sky " + (p.SkySource == 0 ? (p.SkyClouds ? "live with clouds" : "live") +
@@ -609,6 +621,7 @@ namespace RealGlass.Glass
             _sky.Destroy();
             _heights.Destroy();
             _assets.Destroy();
+            _lodGlass.Destroy();
             _rooms.Destroy();
             ProceduralBuildings.Reset();
             RestoreCamera();

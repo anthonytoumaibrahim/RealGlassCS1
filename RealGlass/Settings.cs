@@ -135,6 +135,12 @@ namespace RealGlass
         /// <summary>Windows the asset lights up at night count as glass too.</summary>
         public static BoolSetting GlassNightWindows { get; private set; }
 
+        /// <summary>
+        /// An LOD whose glass is not its model's -- none, or elsewhere -- takes its model's on the middle
+        /// and far tiers (Glass/LodGlass.cs). An asset can say otherwise (its building window).
+        /// </summary>
+        public static BoolSetting LodGlassFromModel { get; private set; }
+
         /// <summary>A check: paints what counts as glass magenta instead of drawing it.</summary>
         public static BoolSetting GlassShowMask { get; private set; }
 
@@ -407,6 +413,8 @@ namespace RealGlass
             public const float GlassStrength = 0.85f;
             public const float GlassThreshold = 0.70f;
             public const bool GlassNightWindows = true;
+            /// <summary>On: an LOD with no glass, or glass elsewhere, shows its model's (the author, 2026-10-21).</summary>
+            public const bool LodGlassFromModel = true;
             public const bool GlassShowMask = false;
 
             // ---- Reflections ----
@@ -577,6 +585,7 @@ namespace RealGlass
                 GlassStrength = new FloatSetting("GlassStrength", Defaults.GlassStrength);
                 GlassThreshold = new FloatSetting("GlassThreshold", Defaults.GlassThreshold);
                 GlassNightWindows = new BoolSetting("GlassNightWindows", Defaults.GlassNightWindows);
+                LodGlassFromModel = new BoolSetting("LodGlassFromModel", Defaults.LodGlassFromModel);
                 GlassShowMask = new BoolSetting("GlassShowMask", Defaults.GlassShowMask);
 
 

@@ -152,7 +152,26 @@ namespace RealGlass.PerAsset
                 Copies = CountCopies(Info);
             }
 
-            return Localization.Get(Record != null ? "Asset.Own" : "Asset.Global", Copies);
+            string status = Localization.Get(Record != null ? "Asset.Own" : "Asset.Global", Copies);
+            string lod = LodText(GlassController.LodVerdictOf(Info));
+            return lod.Length > 0 ? status + "\n" + lod : status;
+        }
+
+        /// <summary>What the asset's LODs show (LodGlass's verdict), the status line's second line; "" while nothing is known.</summary>
+        private static string LodText(int verdict)
+        {
+            switch (verdict)
+            {
+                case LodGlass.VerdictAgrees: return Localization.Get("Asset.Lod.Agrees");
+                case LodGlass.VerdictNoGlass: return Localization.Get("Asset.Lod.NoGlass");
+                case LodGlass.VerdictBorrowed: return Localization.Get("Asset.Lod.Borrowed");
+                case LodGlass.VerdictShapeDiffers: return Localization.Get("Asset.Lod.ShapeDiffers");
+                case LodGlass.VerdictForced: return Localization.Get("Asset.Lod.Forced");
+                case LodGlass.VerdictKeptOwn: return Localization.Get("Asset.Lod.KeptOwn");
+                case LodGlass.VerdictOff: return Localization.Get("Asset.Lod.Off");
+                case LodGlass.VerdictFailed: return Localization.Get("Asset.Lod.Failed");
+                default: return "";
+            }
         }
 
         /// <summary>The asset's title as the game shows it; its name where it has none.</summary>
@@ -185,6 +204,7 @@ namespace RealGlass.PerAsset
             if (r.Threshold.HasValue) s += "glass above " + Pct(r.Threshold.Value) + ", ";
             if (r.NightWindows.HasValue) s += "lit windows " + (r.NightWindows.Value ? "are glass" : "are not glass") + ", ";
             if (r.Interiors.HasValue) s += (r.Interiors.Value ? "rooms" : "no rooms") + " behind the windows, ";
+            if (r.LodGlass.HasValue) s += "its LODs " + (r.LodGlass.Value ? "show the model's glass" : "keep their own glass") + ", ";
             return s.Length > 0 ? s.Substring(0, s.Length - 2) : "nothing of its own";
         }
 

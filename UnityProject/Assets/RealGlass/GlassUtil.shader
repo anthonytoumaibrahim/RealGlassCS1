@@ -9,6 +9,8 @@
 //   the nearest and the farthest of the level below, drawn into its mip).
 //   Pass 5 "SkyBackground": not on the main camera -- in the live sky's cube (GlassSky.cs), between
 //   the skybox and the clouds: the sky's light at the sun's height, and alpha cleared for the clouds.
+//   Pass 6 "LodSample": not on a camera either -- while a city's LODs are compared with their
+//   models (LodGlass.cs): a model's shine map and its LOD's own, each as one tile to read back.
 //
 // Both let only finite, non-negative light through. A NaN or an infinity in the picture spreads
 // to a whole block of every coarser mip, and a blend keeps it for good: NaN x 0.9 is NaN, frame
@@ -218,6 +220,57 @@ Shader "RealGlass/GlassUtil"
             {
                 float k = FiniteIn(_RGSkyDusk.x, 0.0, 1.0);
                 return float4(k, k, k, 0.0);
+            }
+            ENDCG
+        }
+
+        Pass
+        {
+            // One LOD's tile of the read-back (LodGlass.ReadBack), each texel at its centre: r its
+            // model's shine over the whole shine map, g the LOD's own over its texture (its rectangle
+            // of the game's LOD atlas) -- each read at the mip a tile wide (_RGLodInfo.y, .z), so a
+            // texel is the average of what it covers. _RGLodInfo.x = 1: the marker tile instead (its
+            // lower half and upper half two known colours: which way the read-back rows run).
+            Name "LodSample"
+
+            CGPROGRAM
+            #pragma target 3.5
+            #pragma vertex vert
+            #pragma fragment frag
+
+            float4 _RGLodTarget;     // this tile in its target, texture space: x, y, width, height
+            float4 _RGLodRect;       // the LOD's rectangle in the atlas, uv: x, y, width, height
+            float4 _RGLodInfo;       // x 1 the marker, y the model map's mip, z the atlas's mip
+            sampler2D _RGLodModel, _RGLodAtlasXys;
+
+            struct v2f
+            {
+                float4 pos : SV_POSITION;
+                float2 uv : TEXCOORD0;
+            };
+
+            v2f vert(float4 vertex : POSITION, float2 uv : TEXCOORD0)
+            {
+                v2f o;
+                float2 t = _RGLodTarget.xy + uv * _RGLodTarget.zw;
+                o.pos = float4(t * 2.0 - 1.0, 0.5, 1.0);
+                // Texture space in the target on every API: the first row the sampler reads is the
+                // top on Direct3D and Metal, where clip space's y runs the other way.
+            #if UNITY_UV_STARTS_AT_TOP
+                o.pos.y = -o.pos.y;
+            #endif
+                o.uv = uv;
+                return o;
+            }
+
+            float4 frag(v2f i) : SV_Target
+            {
+                if (_RGLodInfo.x > 0.5)
+                    return i.uv.y < 0.5 ? float4(0.0, 1.0, 0.0, 1.0) : float4(1.0, 0.0, 1.0, 0.0);
+
+                float model = 1.0 - tex2Dlod(_RGLodModel, float4(i.uv, 0.0, FiniteIn(_RGLodInfo.y, 0.0, 14.0))).z;
+                float lod = 1.0 - tex2Dlod(_RGLodAtlasXys, float4(_RGLodRect.xy + i.uv * _RGLodRect.zw, 0.0, FiniteIn(_RGLodInfo.z, 0.0, 14.0))).z;
+                return float4(FiniteIn(model, 0.0, 1.0), FiniteIn(lod, 0.0, 1.0), 0.0, 1.0);
             }
             ENDCG
         }

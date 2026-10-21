@@ -20,6 +20,7 @@ namespace RealGlass.Glass
         public float Strength;              // 0..1: our glass over the game's
         public float Threshold;             // 0.4..0.95: what counts as glass (the asset's shininess)
         public bool NightWindows;           // windows lit at night count as glass
+        public bool LodGlass;               // an LOD whose glass differs from its model's (none, or elsewhere) takes the model's (LodGlass.cs)
         public bool ShowMask;
         public float EdgeSilver;            // 0..1: how far the reflection's colour turns silver edge-on (1 = as physics has it)
 
@@ -76,6 +77,7 @@ namespace RealGlass.Glass
             p.Strength = 0.85f;
             p.Threshold = 0.70f;
             p.NightWindows = true;
+            p.LodGlass = true;
             p.ShowMask = false;
             p.EdgeSilver = 1.00f;
 

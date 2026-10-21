@@ -465,6 +465,22 @@ Check "rooms per asset: written under the global switch's name" ($roomsText -mat
 Check "  both read back, off and on (sorted by name)" ("" + $r.Records.Count + " " + $r.Records[0].Interiors + " " + $r.Records[1].Interiors) "2 False True"
 Check "  an asset with only that is not empty, and has no glass of its own" ("" + $rooms.IsEmpty + " " + $rooms.HasGlass) "False False"
 
+# Its LODs' glass (the Glass tab's "LODs show the model's glass", per asset): the model's (true)
+# and the LOD's own (false) both kept; unset is automatic and not written.
+$lodModel = NewRecord "LOD model"
+$lodModel.LodGlass = $true
+$lodOwn = NewRecord "LOD own"
+$lodOwn.LodGlass = $false
+$lodList = [Activator]::CreateInstance($recList)
+$lodList.Add($lodModel); $lodList.Add($lodOwn); $lodList.Add((NewRecord "LOD auto"))
+$lodText = $assetFmt::Write($lodList, "")
+$r = ParseAssets $lodText
+Check "LOD glass per asset: written under the global switch's name" ($lodText -match "<LodGlassFromModel>true</LodGlassFromModel>" -and $lodText -match "<LodGlassFromModel>false</LodGlassFromModel>") "True"
+Check "  both read back, the automatic one not written (sorted by name)" ("" + $r.Records.Count + " " + $r.Records[0].Name + "=" + $r.Records[0].LodGlass + " " + $r.Records[1].Name + "=" + $r.Records[1].LodGlass) "2 LOD model=True LOD own=False"
+Check "  an asset with only that is not empty, needs no glass slot, and differs from one without" ("" + $lodOwn.IsEmpty + " " + $lodOwn.HasGlass + " " + $lodOwn.SameSettings((NewRecord "LOD own"))) "False False False"
+$r = ParseAssets "<RealGlassAssets><Asset name=`"Q`"><LodGlassFromModel>sometimes</LodGlassFromModel></Asset></RealGlassAssets>"
+Check "  nonsense refused and said" ("" + ($r.Records[0].LodGlass -eq $null) + " " + $r.Problems.Count) "True 1"
+
 $r = ParseAssets ("<RealGlassAssets version=`"1`"><Asset name=`"X`"><GlassStrength>150</GlassStrength><GlassReflectivity>70%</GlassReflectivity>" +
                   "<GlassClarity>abc</GlassClarity><GlassPreset>Silver reflective</GlassPreset><Foo>1</Foo></Asset>" +
                   "<Thing/><Asset><GlassStrength>5</GlassStrength></Asset></RealGlassAssets>")
@@ -580,7 +596,7 @@ $gp = $paramsType.GetMethod('Default').Invoke($null, @())
 $pairs = @(
     @('Enabled', 'GlassEnabled'), @('OwnColour', 'GlassOwnColour'), @('PaintedDetail', 'GlassPaintedDetail'), @('Reflectivity', 'GlassReflectivity'),
     @('Glancing', 'GlassGlancing'), @('Clarity', 'GlassClarity'), @('Strength', 'GlassStrength'),
-    @('Threshold', 'GlassThreshold'), @('NightWindows', 'GlassNightWindows'), @('ShowMask', 'GlassShowMask'),
+    @('Threshold', 'GlassThreshold'), @('NightWindows', 'GlassNightWindows'), @('LodGlass', 'LodGlassFromModel'), @('ShowMask', 'GlassShowMask'),
     @('Trace', 'SsrEnabled'), @('Quality', 'SsrQuality'), @('ReflectionBrightness', 'ReflectionBrightness'),
     @('SkySource', 'SkyReflection'), @('OffscreenFill', 'OffscreenFill'), @('SunGlint', 'SunGlint'),
     @('Smoothness', 'GlassSmoothness'), @('EdgeFade', 'SsrEdgeFade'), @('PaneWidth', 'PaneWidth'),
@@ -947,6 +963,202 @@ if (Test-Path $poDll) {
 else {
     Write-Host "skip  Procedural Objects is not installed here: what Real Glass reads of it is not checked"
 }
+
+# ---- the model's glass on its LOD (Glass\LodGlass.cs) ---------------------------------------
+# A tower 10 x 10 x 30 m, four sides, its model's texture laid out side by side (u) and its LOD's
+# turned about the diagonal (the sides stacked in v): the two layouts share nothing, so only the
+# building's geometry can carry the model's glass over. The model's glass: all of side 0, the
+# left half of the others. Then LODs with no glass, the same glass, glass in the other half,
+# shaped unlike the model; the verdicts; the shares; the mask and its mips; the read-back.
+Add-Type -TypeDefinition @"
+using System;
+public static class LodTest
+{
+    // Side k of a box (x -hx..hx, z -hz..hz, y 0..h), t along it: 0 +z, 1 +x, 2 -z, 3 -x.
+    static void Corner(int k, float t, float hx, float hz, out float x, out float z)
+    {
+        switch (k)
+        {
+            case 0: x = -hx + 2f * hx * t; z = hz; break;
+            case 1: x = hx; z = hz - 2f * hz * t; break;
+            case 2: x = hx - 2f * hx * t; z = -hz; break;
+            default: x = -hx; z = -hz + 2f * hz * t; break;
+        }
+    }
+    public static float[] Pos(float hx, float hz, float h)
+    {
+        var p = new float[16 * 3];
+        for (int k = 0; k < 4; k++)
+            for (int c = 0; c < 4; c++)
+            {
+                float t = c == 1 || c == 2 ? 1f : 0f, y = c >= 2 ? h : 0f, x, z;
+                Corner(k, t, hx, hz, out x, out z);
+                int i = 3 * (4 * k + c);
+                p[i] = x; p[i + 1] = y; p[i + 2] = z;
+            }
+        return p;
+    }
+    // The model's layout: u = (k + t) / 4, v = height; turned (the LOD's): u = height, v = (k + t) / 4.
+    public static float[] Uv(bool turned)
+    {
+        var uv = new float[16 * 2];
+        for (int k = 0; k < 4; k++)
+            for (int c = 0; c < 4; c++)
+            {
+                float t = c == 1 || c == 2 ? 1f : 0f, y = c >= 2 ? 1f : 0f, along = (k + t) / 4f;
+                int i = 2 * (4 * k + c);
+                uv[i] = turned ? y : along; uv[i + 1] = turned ? along : y;
+            }
+        return uv;
+    }
+    public static int[] Tri()
+    {
+        var t = new int[4 * 6];
+        for (int k = 0; k < 4; k++)
+        {
+            int b = 4 * k;
+            t[6 * k] = b; t[6 * k + 1] = b + 1; t[6 * k + 2] = b + 2;
+            t[6 * k + 3] = b; t[6 * k + 4] = b + 2; t[6 * k + 5] = b + 3;
+        }
+        return t;
+    }
+    // Glass along the sides: mode 0 none, 1 side 0 and the left half of the others, 2 the other
+    // halves (glass elsewhere), 3 everywhere. lodLayout: the sides run along v.
+    public static bool Glass(int mode, float along)
+    {
+        int k = Math.Min(3, (int)(along * 4f));
+        float t = along * 4f - k;
+        if (mode == 1) return k == 0 || t < 0.5f;
+        if (mode == 2) return k != 0 && t >= 0.5f;
+        return mode == 3;
+    }
+    public static byte[] Picture(int mode, bool lodLayout)
+    {
+        var p = new byte[256 * 256];
+        for (int y = 0; y < 256; y++)
+            for (int x = 0; x < 256; x++)
+                p[y * 256 + x] = Glass(mode, ((lodLayout ? y : x) + 0.5f) / 256f) ? (byte)255 : (byte)0;
+        return p;
+    }
+    // How many of an LOD grid's texels hold what the model's glass says at their point (> 200
+    // where glass, < 55 where not), the texels within 1.5 texels of a side's edge left out.
+    public static int Right(byte[] grid, int side, int mode, out int judged)
+    {
+        int right = 0; judged = 0;
+        for (int y = 0; y < side; y++)
+        {
+            float along = (y + 0.5f) / side, t = along * 4f - (int)(along * 4f);
+            float edge = Math.Min(Math.Abs(t), Math.Min(Math.Abs(t - 0.5f), Math.Abs(1f - t))) * side / 4f;
+            if (edge < 1.5f) continue;
+            for (int x = 0; x < side; x++)
+            {
+                judged++;
+                int v = grid[y * side + x];
+                if (Glass(mode, along) ? v > 200 : v < 55) right++;
+            }
+        }
+        return right;
+    }
+}
+"@
+$lg = $asm.GetType('RealGlass.Glass.LodGlass', $true)
+$lgEntry = $asm.GetType('RealGlass.Glass.LodGlassEntry', $true)
+$v4 = $unity.GetType('UnityEngine.Vector4', $true)
+function V4([double]$x, [double]$y, [double]$z, [double]$w) { return [Activator]::CreateInstance($v4, [object[]]@([single]$x, [single]$y, [single]$z, [single]$w)) }
+function Tower([int]$modelMode, [int]$lodMode, [double]$lodHx = 5, [double]$lodHz = 5) {
+    $e = [Activator]::CreateInstance($lgEntry)
+    $e.Asset = "tower"; $e.Name = "tower"
+    $e.Rect = V4 0.25 0.5 0.25 0.25
+    $e.ModelSt = V4 1 1 0 0
+    $e.ModelPos = [LodTest]::Pos(5, 5, 30); $e.ModelUv = [LodTest]::Uv($false); $e.ModelTri = [LodTest]::Tri()
+    $e.LodPos = [LodTest]::Pos($lodHx, $lodHz, 30); $e.LodUv = [LodTest]::Uv($true); $e.LodTri = [LodTest]::Tri()
+    $e.ModelShine = [LodTest]::Picture($modelMode, $false); $e.LodShine = [LodTest]::Picture($lodMode, $true)
+    $e.SideX = 64; $e.SideY = 64
+    $e.Threshold = [single]0.7
+    $lg::Transfer($e)
+    return $e
+}
+
+$none = Tower 1 0
+$judged = 0
+$right = [LodTest]::Right($none.Grid, 64, 1, [ref]$judged)
+Check "LOD glass: an LOD laid out otherwise, compared: every texel on its mesh, all met the model, on its surface" ("{0} {1} {2} {3:F2} '{4}'" -f $none.Transferred, $none.OnLod, $none.Met, $none.Gap, $none.Problem) "True 4096 4096 0.00 ''"
+Check "  the model's glass carried onto the LOD's own layout, texel by texel (away from the sides' edges)" ("{0} of {1}" -f $right, $judged) ("{0} of {0}" -f $judged)
+Check "  the geometry and the pictures let go" ("{0} {1} {2}" -f ($none.ModelPos -eq $null), ($none.LodTri -eq $null), ($none.ModelShine -eq $null)) "True True True"
+
+$same = Tower 1 1
+$wrong = Tower 1 2
+$bare = Tower 0 0
+$off = Tower 1 0 9 9
+$half = Tower 1 0 5 9
+$entries = [Activator]::CreateInstance([System.Collections.Generic.List``1].MakeGenericType($lgEntry))
+foreach ($t in @($none, $same, $wrong, $bare, $off, $half)) { $entries.Add($t) }
+$changed = $lg::DecideAll($entries, $true)
+Check "  verdicts: none of its own -> the model's, the same -> agrees, elsewhere -> the model's, no glass, 4 m off, half off" (($entries | ForEach-Object { $_.Verdict }) -join " ") "3 1 3 2 4 4"
+Check "  its numbers: model glass 62.5%, the LOD's 0, alike 0; the same one alike 1; the one elsewhere alike 0" ("{0:F3} {1:F2} {2:F2} {3:F2} {4:F2}" -f $none.ModelShare, $none.LodShare, $none.Agreement, $same.Agreement, $wrong.Agreement) "0.625 0.00 0.00 1.00 0.00"
+Check "  reach: all, none 4 m away, part where only two sides overlap the model" ("{0:F2} {1:F2} {2}" -f $none.Reach, $off.Reach, ($half.Reach -gt 0.1 -and $half.Reach -lt 0.6)) "1.00 0.00 True"
+Check "  a change of the borrowing set is said" $changed "True"
+Check "  the same again changes nothing; switched off: off, and that is a change" ("{0} {1} {2}" -f $lg::DecideAll($entries, $true), $lg::DecideAll($entries, $false), $none.Verdict) "False True 7"
+$none.Mode = $lg::ModeOwn; $same.Mode = $lg::ModeModel
+[void]$lg::DecideAll($entries, $true)
+Check "  the building window: its own kept, the model's asked for" ("{0} {1}" -f $none.Verdict, $same.Verdict) "6 5"
+Check "  only the model's and the asked-for draw the model's glass" ((0..8 | Where-Object { $lg::Borrows($_) }) -join " ") "3 5"
+$v = @($lg::Decide(0, $true, $false, 0, 0.0, 0.0, 0.0, 1.0), $lg::Decide(0, $true, $true, 10, [single]::NaN, 0.0, 0.5, 0.0))
+Check "  not compared: failed; a NaN reach: shaped unlike (never the model's)" ($v -join " ") "8 4"
+
+$joint = New-Object 'int[]' 1024
+$joint[0 * 32 + 31] = 30; $joint[31 * 32 + 31] = 50; $joint[0] = 20
+$sl = [single]0; $sm = [single]0; $sa = [single]0
+$lg::Shares($joint, [single]0.7, [ref]$sl, [ref]$sm, [ref]$sa)
+Check "  shares: the LOD's, the model's, both over either" ("{0:F2} {1:F2} {2:F3}" -f $sl, $sm, $sa) "0.50 0.80 0.625"
+$lg::Shares((New-Object 'int[]' 1024), [single]0.7, [ref]$sl, [ref]$sm, [ref]$sa)
+Check "  nothing met: no shares, nothing to disagree on" ("{0:F2} {1:F2} {2:F2}" -f $sl, $sm, $sa) "0.00 0.00 1.00"
+
+# The mask: 16 x 16 and its mips, one LOD's rectangle (a quarter of the atlas) all glass.
+$box = [Activator]::CreateInstance($lgEntry)
+$box.Rect = V4 0.25 0.5 0.25 0.25
+$box.SideX = 4; $box.SideY = 4
+$box.Grid = [byte[]](@(255) * 16)
+$one = [Activator]::CreateInstance([System.Collections.Generic.List``1].MakeGenericType($lgEntry))
+$one.Add($box)
+$mask = $lg::BuildMask($one, 16, 16)
+$inside = 0; $outside = 0
+for ($y = 0; $y -lt 16; $y++) { for ($x = 0; $x -lt 16; $x++) { if ($x -ge 4 -and $x -lt 8 -and $y -ge 8 -and $y -lt 12) { $inside += $mask[$y * 16 + $x] } else { $outside += $mask[$y * 16 + $x] } } }
+Check "  the mask: 16x16 + every mip, 255 over the rectangle's 16 texels, 0 elsewhere" ("{0} {1} {2} {3}" -f $mask.Length, $lg::MipCount(16, 16), $inside, $outside) "341 5 4080 0"
+$mip1 = 256; $m1 = @(); for ($y = 0; $y -lt 8; $y++) { for ($x = 0; $x -lt 8; $x++) { if ($mask[$mip1 + $y * 8 + $x] -gt 0) { $m1 += "$x,$y" } } }
+Check "  its first mip: the rectangle's 2 x 2, nothing round it" ($m1 -join " ") "2,4 3,4 2,5 3,5"
+Check "  encoding: 0 is the LOD's own, shine 0..255 is 1..255, half way 128" ("{0} {1} {2}" -f $lg::Encode(0), $lg::Encode(255), $lg::Encode(128)) "1 255 128"
+$mw = 0; $mh = 0
+$lg::MaskSize(8192, 8192, [ref]$mw, [ref]$mh); $a = "$mw x $mh"
+$lg::MaskSize(4096, 2048, [ref]$mw, [ref]$mh); $b = "$mw x $mh"
+Check "  the mask's size for an 8192 atlas, a 4096 x 2048 one" "$a, $b" "4096 x 4096, 4096 x 2048"
+$lg::SideFor($box, 4096, 4096)
+Check "  an LOD's grid: its rectangle's texels in the mask, at most 128" ("{0} {1}" -f $box.SideX, $box.SideY) "128 128"
+
+# The read-back: tile 0's lower half (0, 255, 0, 255), upper half (255, 0, 255, 0); either way up;
+# then one LOD's tile into its two pictures, both ways up.
+function Px([byte]$r, [byte]$g, [byte]$b, [byte]$a) { return [Activator]::CreateInstance($color32, [object[]]@($r, $g, $b, $a)) }
+$tw = 2048; $th = 512
+$low = Px 0 255 0 255; $high = Px 255 0 255 0
+$up = [Array]::CreateInstance($color32, $tw * $th); $down = [Array]::CreateInstance($color32, $tw * $th)
+for ($y = 0; $y -lt 256; $y++) { for ($x = 0; $x -lt 4; $x++) {
+    $c = if ($y -lt 128) { $low } else { $high }
+    $up[$y * $tw + $x] = $c; $down[($th - 1 - $y) * $tw + $x] = $c
+} }
+$flipped = $false
+$foundUp = $lg::FindMarker($up, $tw, $th, [ref]$flipped); $upFlipped = $flipped
+$foundDown = $lg::FindMarker($down, $tw, $th, [ref]$flipped); $downFlipped = $flipped
+$foundNone = $lg::FindMarker([Array]::CreateInstance($color32, $tw * $th), $tw, $th, [ref]$flipped)
+Check "  the read-back's marker: found as drawn, found upside down, not found in an empty one" ("$foundUp $upFlipped $foundDown $downFlipped $foundNone") "True False True True False"
+$tile = [Array]::CreateInstance($color32, $tw * $th)
+$tile[0 * $tw + 256 + 3] = Px 200 10 0 255; $tile[255 * $tw + 256 + 7] = Px 7 99 0 255
+$e = [Activator]::CreateInstance($lgEntry)
+$lg::TakeTile($e, $tile, $tw, $th, 256, 0, $false)
+$a = "{0} {1} {2} {3}" -f $e.ModelShine[3], $e.LodShine[3], $e.ModelShine[255 * 256 + 7], $e.LodShine[255 * 256 + 7]
+$lg::TakeTile($e, $tile, $tw, $th, 256, 256, $true)
+$b = "{0} {1}" -f $e.ModelShine[255 * 256 + 3], $e.LodShine[7]
+Check "  a tile: r the model's, g the LOD's; read upside down, its rows the other way" "$a; $b" "200 10 7 99; 200 99"
+Check "LOD glass: on by default" (Default 'LodGlassFromModel') "True"
 
 Write-Host ""
 if ($failed -eq 0) { Write-Host "all passed" } else { Write-Host "$failed FAILED"; exit 1 }

@@ -13,6 +13,15 @@ the mod's name in the game.
   rooms, and other glass mirrors it as a building around. The building picker (Alt+G) finds a
   converted building by its shape, so it is picked like any other. A converted building given a
   texture or text of its own keeps the game's glass. Nothing of Procedural Objects is changed.
+- **LODs show the model's glass** (the Glass tab, on by default): a building whose low-detail
+  model (what the game draws from the middle distance on) has no glass, or has it in other places,
+  no longer loses its glass and its rooms as you zoom out. Once a city, every LOD in it is
+  compared with its full model at the same points of the building, whatever the layout of its
+  textures; where the two disagree, the model's glass is carried onto the LOD by the building's
+  shape, so it shows the glass the building has up close. An LOD whose glass agrees with its
+  model's keeps its own, and one shaped too unlike its model to compare is left as it is. The
+  building window (Alt+G) has "Glass on its LOD" -- Automatic, the model's, or the LOD's own --
+  and its status line says what the asset's LOD shows. The log lists what was found.
 - **Dynamic waves** (on by default): the sea follows the game's weather. On a dry day it is the sea
   you know, the Wind speed's default of 7 m/s. When it rains the wind rises, up to 15 m/s in the
   heaviest rain and storms, and the waves grow longer and rougher. They take a few game hours to

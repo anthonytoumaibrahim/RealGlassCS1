@@ -61,6 +61,33 @@ Shader "RealGlass/Glass"
             float4 _RGNearBase;     // a Procedural Objects building (GlassDraw.DrawProcedural): x the ground under it, w 1; 0 = its origin
 #endif
 
+            // The shine the glass goes by: the asset's own (spec = 1 - _XYSMap.z) -- and on the middle
+            // and far tiers, where an LOD's glass is not its model's (none, or elsewhere), its model's,
+            // carried onto the LOD by the building's geometry and laid out as the atlas (LodGlass.cs):
+            // a texel's alpha x 255 is 1 + 254 x that shine, 0 where the LOD keeps its own. Between
+            // the two (an island's edge read filtered) the one fades into the other.
+#if defined(RG_NEAR)
+            float ShineAt(float2 uv) { return 1.0 - tex2D(_XYSMap, uv).z; }
+            float ShineGrad(float2 uv, float2 gx, float2 gy) { return 1.0 - tex2Dgrad(_XYSMap, uv, gx, gy).z; }
+            float ShineBias(float2 uv, float bias) { return 1.0 - tex2Dbias(_XYSMap, float4(uv, 0.0, bias)).z; }
+#else
+            sampler2D _RGLodGlass;
+            float LodShine(float own, float m)
+            {
+                float m255 = FiniteIn(m, 0.0, 1.0) * 255.0;
+                return lerp(own, saturate((m255 - 1.0) / 254.0), saturate(m255));
+            }
+            float ShineAt(float2 uv) { return LodShine(1.0 - tex2D(_XYSMap, uv).z, tex2D(_RGLodGlass, uv).a); }
+            float ShineGrad(float2 uv, float2 gx, float2 gy)
+            {
+                return LodShine(1.0 - tex2Dgrad(_XYSMap, uv, gx, gy).z, tex2Dgrad(_RGLodGlass, uv, gx, gy).a);
+            }
+            float ShineBias(float2 uv, float bias)
+            {
+                return LodShine(1.0 - tex2Dbias(_XYSMap, float4(uv, 0.0, bias)).z, tex2Dbias(_RGLodGlass, float4(uv, 0.0, bias)).a);
+            }
+#endif
+
             struct appdata
             {
                 float4 vertex : POSITION;
@@ -196,7 +223,7 @@ Shader "RealGlass/Glass"
             {
                 float bias = clamp(log2(_RGPane2.z / footprint), 0.0, 12.0);
                 float3 around = tex2Dbias(_MainTex, float4(uv, 0.0, bias)).rgb;
-                float specAround = 1.0 - tex2Dbias(_XYSMap, float4(uv, 0.0, bias)).z;
+                float specAround = ShineBias(uv, bias);
 
                 // Only where the storey round is as shiny as this pixel: where the asset's shine map
                 // already parts glass from wall (punched windows, spandrels painted dull) it has
@@ -299,11 +326,11 @@ Shader "RealGlass/Glass"
                 float w = max(0.04, fwidth(spec) * 0.75);
                 float2 gx = dx * 0.5, gy = dy * 0.5;
                 float2 ox = dx * 2.0, oy = dy * 2.0;
-                float4 shine = 1.0 - float4(
-                    tex2Dgrad(_XYSMap, clamp(uv + 0.125 * ox + 0.375 * oy, lo, hi), gx, gy).z,
-                    tex2Dgrad(_XYSMap, clamp(uv + 0.375 * ox - 0.125 * oy, lo, hi), gx, gy).z,
-                    tex2Dgrad(_XYSMap, clamp(uv - 0.125 * ox - 0.375 * oy, lo, hi), gx, gy).z,
-                    tex2Dgrad(_XYSMap, clamp(uv - 0.375 * ox + 0.125 * oy, lo, hi), gx, gy).z);
+                float4 shine = float4(
+                    ShineGrad(clamp(uv + 0.125 * ox + 0.375 * oy, lo, hi), gx, gy),
+                    ShineGrad(clamp(uv + 0.375 * ox - 0.125 * oy, lo, hi), gx, gy),
+                    ShineGrad(clamp(uv - 0.125 * ox - 0.375 * oy, lo, hi), gx, gy),
+                    ShineGrad(clamp(uv - 0.375 * ox + 0.125 * oy, lo, hi), gx, gy));
                 return dot(smoothstep(threshold - w, threshold + w, shine), float4(0.25, 0.25, 0.25, 0.25));
             }
 
@@ -323,7 +350,7 @@ Shader "RealGlass/Glass"
                 uvHi = i.rect.xy + i.rect.zw - fp;
                 uv = clamp(uv, uvLo, uvHi);
 #endif
-                float4 xys = tex2D(_XYSMap, uv);
+                float spec = ShineAt(uv);
                 float4 aci = tex2D(_ACIMap, uv);
 
                 // This building's own settings: its asset's, where the player gave it some
@@ -350,10 +377,10 @@ Shader "RealGlass/Glass"
                     nightWindows = numbers.a;
                 }
 
-                float shine = GlassShine(uv, uvDx, uvDy, uvLo, uvHi, glassThreshold, 1.0 - xys.z);
-                float mask = GlassMask(shine, 1.0 - xys.z, aci, glassThreshold, nightWindows) * i.worldNormal.w;
+                float shine = GlassShine(uv, uvDx, uvDy, uvLo, uvHi, glassThreshold, spec);
+                float mask = GlassMask(shine, spec, aci, glassThreshold, nightWindows) * i.worldNormal.w;
                 clip(mask - 0.004);
-                float roomWindow = RoomWindow(shine, 1.0 - xys.z, aci, glassThreshold, nightWindows) * i.worldNormal.w;
+                float roomWindow = RoomWindow(shine, spec, aci, glassThreshold, nightWindows) * i.worldNormal.w;
 
                 if (_RGMask.z > 0.5)
                     return float4(1.0, 0.0, 1.0, max(mask, 0.35));
@@ -395,7 +422,7 @@ Shader "RealGlass/Glass"
                 float3 albedo = tex2D(_MainTex, uv).rgb;
                 float3 own = NormaliseTint(albedo);
                 float3 tint = NormaliseTint(lerp(tintOwn.rgb, own, tintOwn.a));
-                float lines = PaintedWall(uv, footprint, albedo, 1.0 - xys.z);
+                float lines = PaintedWall(uv, footprint, albedo, spec);
                 float wall = lines * detailKept;
                 if (_RGDebug.x > 9.5 && _RGDebug.x < 10.5)
                     return float4(lerp(float3(0.05, 0.15, 0.6), float3(1.0, 0.85, 0.2), lines), 1.0);   // 10: the painted lines (yellow) on the glass (blue)

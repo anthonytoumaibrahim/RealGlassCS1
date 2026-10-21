@@ -50,6 +50,12 @@ namespace RealGlass.PerAsset
         /// <summary>Rooms behind this asset's windows (InteriorsEnabled): false keeps the game's own windows.</summary>
         public bool? Interiors;
 
+        /// <summary>
+        /// Its LODs' glass (LodGlassFromModel, Glass/LodGlass.cs): true the model's, whatever the LOD has;
+        /// false the LOD's own, always. Null: the switch, and the comparison.
+        /// </summary>
+        public bool? LodGlass;
+
         public AssetRecord(string name)
         {
             Name = name;
@@ -58,7 +64,7 @@ namespace RealGlass.PerAsset
         /// <summary>Nothing of its own: the asset follows every global setting.</summary>
         public bool IsEmpty
         {
-            get { return !Strength.HasValue && !PaintedDetail.HasValue && !HasGlass && !Interiors.HasValue; }
+            get { return !Strength.HasValue && !PaintedDetail.HasValue && !HasGlass && !Interiors.HasValue && !LodGlass.HasValue; }
         }
 
 
@@ -89,7 +95,7 @@ namespace RealGlass.PerAsset
             return Strength == other.Strength && PaintedDetail == other.PaintedDetail && Preset == other.Preset &&
                    SameColour(Colour, other.Colour) && Reflectivity == other.Reflectivity && Clarity == other.Clarity &&
                    OwnColour == other.OwnColour && Threshold == other.Threshold && NightWindows == other.NightWindows &&
-                   Interiors == other.Interiors;
+                   Interiors == other.Interiors && LodGlass == other.LodGlass;
         }
 
         private static bool SameColour(Color32? a, Color32? b)

@@ -1020,6 +1020,18 @@ namespace RealGlass.UI
                 AfterChange = State("lit-at-night windows count as glass", OnOff(Settings.GlassNightWindows)),
             });
 
+            // LODs whose glass is not their model's -- none, or elsewhere -- show the model's
+            // (Glass/LodGlass.cs). A building window can ask for it, or against it.
+            Add(new Row
+            {
+                Kind = RowKind.Toggle,
+                Panel = PanelPage.Glass,
+                Bool = Settings.LodGlassFromModel,
+                DefaultBool = Settings.Defaults.LodGlassFromModel,
+                Enabled = GlassOn,
+                AfterChange = State("LODs take their model's glass where theirs differs", OnOff(Settings.LodGlassFromModel)),
+            });
+
             // It changes the picture (magenta buildings), so its state is always in the log -- and
             // it is a normal row with a checkbox: a debug switch must never outlive its UI.
             Add(new Row
