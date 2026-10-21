@@ -188,6 +188,12 @@ that repo's `docs/RELEASE-CHECKLIST.md` has the long version.
       few game hours -- longer, rougher waves, the glitter wider -- and it calms more slowly after;
       paused, it holds. Turned off: the Wind speed row works exactly as in 1.0.0 (drag it: "ocean
       waves built" at that wind). With Volumetric Weather its storms raise the sea too.
+- [ ] Rooms when a building's lights come on (2026-10-21, for 1.1.0; build 1.0.0.23997): at night,
+      rooms on, watch a tower until the game switches its lights on (it lights the whole building
+      at once). The rooms stay as they were: no flat glow over them, no bright lines where frames
+      are painted on the glass -- the frames stay dark. By day nothing changes. Also place Quad's
+      Eclipse (Workshop 708992454; a player reported Quad's buildings without glass): with the
+      mask view on, its curtain wall's glass columns show magenta up close and on its LOD.
 - [ ] Lumina's Dynamic Resolution / SSAA (the camera fix of 2026-10-14): Lumina only applies it
       when a city LOADS (its button just saves the setting), so turn it on, then load a city.
       The glass reflects the city and the water's city reflection shows, at SSAA 1 and above.

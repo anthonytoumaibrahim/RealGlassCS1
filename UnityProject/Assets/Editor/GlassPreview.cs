@@ -51,6 +51,9 @@ public static class GlassPreview
     /// <summary>The variant's "Overcast=x": the clouds' stand-in from its broken layer (0) to a closed deck (1).</summary>
     private static float _overcast;
 
+    /// <summary>The variant's "Lit=x": the share of the stand-ins' windows the game lights at night (0.25; 0 = every building's lights off).</summary>
+    private static float _litShare = 0.25f;
+
     /// <summary>The game's object colour map (RenderManager.OBJECT_COLORMAP_WIDTH x HEIGHT in the game: 512 x 256).</summary>
     private const int ColorMapWidth = 512, ColorMapHeight = 256;
 
@@ -854,7 +857,6 @@ public static class GlassPreview
         RenderSettings.ambientEquatorColor = night ? new Color(0.01f, 0.011f, 0.02f) : new Color(0.38f, 0.42f, 0.45f);
         RenderSettings.ambientGroundColor = night ? new Color(0.005f, 0.005f, 0.006f) : new Color(0.2f, 0.2f, 0.17f);
         Shader.SetGlobalFloat("_PreviewNight", night ? 1f : 0f);
-        Shader.SetGlobalFloat("_PreviewLitShare", 0.25f);
 
         // The camera, city-builder style.
         Vector3 target;
@@ -887,6 +889,7 @@ public static class GlassPreview
         _debug = 0f;
         _debugLevel = 0f;
         _overcast = 0f;
+        _litShare = 0.25f;
         _tier = "near";
         _quality = GlassQuality.Ultra;
         _hizOff = false;
@@ -947,6 +950,7 @@ public static class GlassPreview
         Color cloudLight = night ? new Color(0.01f, 0.012f, 0.02f) : sunLin * 0.55f + sky;
         Shader.SetGlobalVector("_PreviewCloudLight", new Vector4(cloudLight.r, cloudLight.g, cloudLight.b, 0f));
         Shader.SetGlobalFloat("_PreviewOvercast", _overcast);
+        Shader.SetGlobalFloat("_PreviewLitShare", _litShare);
 
         // No game map here: its stand-in is the live sky WITHOUT clouds (the game's map is a
         // static picture); the live sky proper carries them.
@@ -1088,6 +1092,11 @@ public static class GlassPreview
             if (kv[0].Trim().Equals("Overcast", StringComparison.OrdinalIgnoreCase))
             {
                 _overcast = float.Parse(kv[1].Trim(), CultureInfo.InvariantCulture);
+                continue;
+            }
+            if (kv[0].Trim().Equals("Lit", StringComparison.OrdinalIgnoreCase))
+            {
+                _litShare = float.Parse(kv[1].Trim(), CultureInfo.InvariantCulture);
                 continue;
             }
             if (kv[0].Trim().Equals("Hour", StringComparison.OrdinalIgnoreCase))

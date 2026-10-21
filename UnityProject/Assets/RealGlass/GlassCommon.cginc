@@ -148,11 +148,26 @@ float IdOf(float2 colourIndex)
 // own, or the global _RGMask.x / .y (Glass.shader).
 // ---------------------------------------------------------------------------------------------
 
+// The share of a lit window that counts as glass below the threshold: from 0.35 under it to 0.1 under.
+float NightWindowShare(float spec, float4 aci, float threshold, float nightWindows)
+{
+    float night = smoothstep(0.46, 0.56, aci.b) * nightWindows;
+    return night * smoothstep(threshold - 0.35, threshold - 0.1, spec);
+}
+
 float GlassMask(float shine, float spec, float4 aci, float threshold, float nightWindows)
 {
-    float t = threshold;
-    float night = smoothstep(0.46, 0.56, aci.b) * nightWindows;
-    float m = max(shine, night * smoothstep(t - 0.35, t - 0.1, spec));
+    float m = max(shine, NightWindowShare(spec, aci, threshold, nightWindows));
+    return m * step(aci.r, 0.5);
+}
+
+// The window a room behind the glass fills at night: the glass, and a lit window that counts only
+// partly (NightWindowShare) taken whole from half way. The game lights a building's windows all at
+// once, whole: a room over only a share of one let the rest of the lit window shine through it, and
+// the rooms vanished when the building's lights came on (2026-10-21).
+float RoomWindow(float shine, float spec, float4 aci, float threshold, float nightWindows)
+{
+    float m = max(shine, saturate(2.0 * NightWindowShare(spec, aci, threshold, nightWindows)));
     return m * step(aci.r, 0.5);
 }
 

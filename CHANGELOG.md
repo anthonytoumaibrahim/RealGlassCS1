@@ -46,6 +46,13 @@ the mod's name in the game.
   covered a third of the screen from a city camera. Existing settings files get the new sizes
   too, and Moon glitter starts at 35% whatever Sun glitter is set to.
 
+### Fixed
+
+- The rooms behind the windows no longer fade into a flat glow when a building turns its lights
+  on at night. The game lights a building's windows all at once, and wherever a room covered only
+  part of a window (a frame painted on the glass, a window only partly glass), the lit window shone
+  through it. The room now fills the whole window, and the painted frames stay dark, as painted.
+
 ## 1.0.0 — 2026-10-20
 
 The first Workshop release: realistic glass on every building, at every distance, and realistic

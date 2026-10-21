@@ -353,6 +353,7 @@ Shader "RealGlass/Glass"
                 float shine = GlassShine(uv, uvDx, uvDy, uvLo, uvHi, glassThreshold, 1.0 - xys.z);
                 float mask = GlassMask(shine, 1.0 - xys.z, aci, glassThreshold, nightWindows) * i.worldNormal.w;
                 clip(mask - 0.004);
+                float roomWindow = RoomWindow(shine, 1.0 - xys.z, aci, glassThreshold, nightWindows) * i.worldNormal.w;
 
                 if (_RGMask.z > 0.5)
                     return float4(1.0, 0.0, 1.0, max(mask, 0.35));
@@ -567,10 +568,10 @@ Shader "RealGlass/Glass"
                 // building shows as its author painted it. (_RGGlass2.z, the preview's other way:
                 // the reflection kept over them, the painting under it instead of the dark inside.)
                 float coverage = mask * strength;
+                float aside = _RGGlass2.z > 0.5 ? 0.0 : wall;   // where the glass steps aside for them
                 if (_RGGlass2.z > 0.5)
                     inside = lerp(inside, gamePixel * (1.0 - Fs), wall);
-                else
-                    coverage *= 1.0 - wall;
+                coverage *= 1.0 - aside;
 
                 // The rooms behind the glass (Interiors.cginc), where they are on for this building:
                 // OURS at night, in place of the game's own window, and by day too when asked; else
@@ -582,12 +583,17 @@ Shader "RealGlass/Glass"
                 float rooms = RoomsBehind(P, n, t, V, baseY, footprint, painted, IdOf(i.building), asset.a,
                                           inside, through, nightFilter * (1.0 - Fs), roomNight, roomDay);
                 float3 behind = lerp(gamePixel, inside, daylight);
-                float roomCover = 0.0;
+                float roomCover = 0.0, roomCoverNight = 0.0;
                 if (rooms > 0.0)
                 {
                     float byDay = _RGRooms.y;
+                    // At night the room fills the whole window the game lights, painted lines and
+                    // all: the lines are drawn here as painted, by the sky's light alone -- a frame
+                    // does not glow when the building's lights come on.
+                    roomNight = lerp(roomNight, albedo * _RGAmbSky.rgb, aside);
                     behind = lerp(lerp(gamePixel, roomNight, rooms), lerp(inside, roomDay, rooms * byDay), daylight);
-                    roomCover = rooms * lerp(1.0, byDay, daylight);
+                    roomCover = rooms * byDay * daylight;
+                    roomCoverNight = rooms * (1.0 - daylight);
                 }
 
                 float3 front = F * refl * _RGRefl.x + SunGlint(np, V, Fs, rough) * (F / max(Fs, 1e-4));
@@ -595,9 +601,10 @@ Shader "RealGlass/Glass"
                 // What is behind the glass covers the whole window where it is a room (no share of
                 // the game's own lit window under an unlit room), the reflections only at the glass's
                 // strength: out = coverage x front + cover x behind, written for SrcAlpha blending as
-                // that / cover. With no rooms cover = coverage: front + behind, as always.
+                // that / cover. By night the room's window (RoomWindow, the lines in it), by day the
+                // glass. With no rooms cover = coverage: front + behind, as always.
                 float full = coverage / max(strength, 1e-4);
-                float cover = lerp(coverage, full, roomCover);
+                float cover = coverage + (full - coverage) * roomCover + (roomWindow - coverage) * roomCoverNight;
                 float3 L = (coverage * front + cover * behind) / max(cover, 1e-4);
 
                 // The last guard, on every API (Finite.cginc): whatever slipped through, the pixel
