@@ -7,6 +7,12 @@ the mod's name in the game.
 
 ### New
 
+- **Procedural Objects' buildings get the glass.** A building converted with Procedural Objects
+  keeps its asset's specular map, and now gets the glass wherever Procedural Objects draws it,
+  reshaped, stacked or turned. It takes its asset's own glass from the building window and its
+  rooms, and other glass mirrors it as a building around. The building picker (Alt+G) finds a
+  converted building by its shape, so it is picked like any other. A converted building given a
+  texture or text of its own keeps the game's glass. Nothing of Procedural Objects is changed.
 - **Moon glitter**: the moon's road of light on the water at night has its own strength. Until now
   the Sun glitter row set both.
 - **Sun glitter size** and **Moon glitter size**: how wide each glitter spreads. A smaller glitter

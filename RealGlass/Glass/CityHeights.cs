@@ -13,7 +13,8 @@ namespace RealGlass.Glass
     /// its root parent's: BuildingAI.GetObjectColorIndex -> Building.FindParentBuilding). A slice of
     /// the building buffer a frame; a new map when the view has moved a quarter of the map from its
     /// centre, or every few seconds while the glass is on (buildings go up, burn, level up). The
-    /// old map stays on the GPU until the new one is complete.
+    /// old map stays on the GPU until the new one is complete. Procedural Objects' buildings go in
+    /// last (ProceduralBuildings.AddToMap).
     /// </summary>
     internal sealed class CityHeights
     {
@@ -99,7 +100,9 @@ namespace RealGlass.Glass
             if (_next < buffer.Length)
                 return;
 
+            // And Procedural Objects' buildings, which are in no building buffer.
             _watch.Start();
+            ProceduralBuildings.AddToMap(_map, Margin);
             _map.Finish();
             _watch.Stop();
             _building = false;

@@ -65,7 +65,9 @@ the log is `RealGlass.log`, next to it.
 - **Every building, at every distance.** The game draws buildings three ways: near ones one by
   one, middle-distance ones as instanced low-detail copies, and far ones baked into city-block
   meshes. The glass is drawn over all three, right after the game's own draw, with the same mesh
-  and the same data, so it sits exactly on the building.
+  and the same data, so it sits exactly on the building. Buildings converted with Procedural
+  Objects, which that mod draws itself, are drawn over the same way: their meshes, their places
+  and whether it draws them are read from it each frame, and nothing of it is changed.
 - **What is glass** is read from each asset's own specular map -- the shininess its author
   painted, the same value the game's shader reads -- and, optionally, the windows it lights up at
   night.
@@ -157,6 +159,11 @@ the log is `RealGlass.log`, next to it.
   strength, painted detail, kind of glass and its own say on what counts as glass (the shininess
   needed, and whether its lit windows count), each row following the global setting until it is
   moved. Kept in RealGlassAssets.xml next to the settings, never in a save.
+- **Procedural Objects' buildings**: a building converted with Procedural Objects keeps its asset's
+  specular map, so it gets the glass too, wherever and whenever Procedural Objects draws it --
+  reshaped, stacked on another or turned -- with its asset's own glass and rooms; other glass
+  mirrors it as a building around, and the building picker finds it by its shape. One given a
+  texture or a text of its own keeps the game's glass: its painting is no longer the asset's.
 - **Panes** bend reflections the way real facades do: insulating units bow with the weather,
   toughened glass carries the furnace rollers' ripple, and no two panes are set quite alike. Up
   close, each pane is one of the windows the building painted, found between its painted mullions
@@ -338,6 +345,10 @@ Every technique here has shipped in a game or is published:
     Climate and Applied Meteorology 25(1), 1986, with Fritz Kasten and Andrew Young's air mass
     (**Revised optical air mass tables and approximation formula**, Applied Optics 28(22), 1989).
     The sun's glint behind a cloud: its direct beam through the cloud's opacity (Beer-Lambert).
+19. Picking a building of Procedural Objects with the mouse: the ray against its box, the slab
+    test of Timothy Kay and James Kajiya, **Ray Tracing Complex Scenes**, SIGGRAPH 1986; then
+    against the triangles of the nearest boxes, Tomas Möller and Ben Trumbore, **Fast, Minimum
+    Storage Ray/Triangle Intersection**, Journal of Graphics Tools 2(1), 1997.
 
 ## Building
 

@@ -1,7 +1,9 @@
 using System;
 using ColossalFramework;
+using ColossalFramework.Math;
 using ColossalFramework.UI;
 using HarmonyLib;
+using RealGlass.Glass;
 using UnityEngine;
 
 namespace RealGlass.PerAsset
@@ -22,6 +24,13 @@ namespace RealGlass.PerAsset
     /// nothing). Added to the ToolController's own GameObject (ToolBase.Awake finds the controller
     /// there); a tool added at run time is in neither ToolController.m_tools nor ToolsModifierControl's
     /// list, so it is switched on by setting CurrentTool, and off by SetTool&lt;DefaultTool&gt;().
+    ///
+    /// Procedural Objects' buildings are no buildings of the city's: they are found on the main thread
+    /// (their meshes are Unity's) by their SHAPE -- the ray against each one's box, then the triangles
+    /// of the nearest (Glass.ProceduralBuildings.Raycast) -- not by the small dot Procedural Objects
+    /// itself selects them by. Whichever is nearer under the cursor, one of them or the city's
+    /// building, is the one pointed at: a copy stacked on a building to make it taller, or the
+    /// building under it, whichever the cursor is on.
     /// </remarks>
     public sealed class AssetPicker : DefaultTool
     {
@@ -29,11 +38,17 @@ namespace RealGlass.PerAsset
 
         private static readonly Color HoverColour = new Color(0.40f, 0.85f, 1.00f, 0.75f);
 
-        /// <summary>The main building under the cursor, from the simulation thread.</summary>
+        /// <summary>The main building under the cursor, from the simulation thread, and how far along the ray.</summary>
         private volatile int _hover;
+        private volatile float _hoverDistance;
         private Vector3 _hoverPosition;
         private int _shownHover = -1;
         private string _shownText = "";
+
+        /// <summary>A building of Procedural Objects nearer under the cursor than the city's (main thread), and where.</summary>
+        private ProceduralBuildings.Entry _procedural;
+        private ProceduralBuildings.Entry _shownProcedural;
+        private Vector3 _proceduralPoint;
 
         /// <summary>The picker is the game's current tool.</summary>
         public static bool IsActive
@@ -130,6 +145,8 @@ namespace RealGlass.PerAsset
             base.OnDisable();
             _hover = 0;
             _shownHover = -1;
+            _procedural = _shownProcedural = null;
+            ProceduralBuildings.ForgetShapes();
             ShowToolInfo(false, null, Vector3.zero);
         }
 
@@ -149,7 +166,8 @@ namespace RealGlass.PerAsset
                 return;
             }
 
-            RaycastInput input = new RaycastInput(m_mouseRay, m_mouseRayLength);
+            Ray ray = m_mouseRay;
+            RaycastInput input = new RaycastInput(ray, m_mouseRayLength);
             input.m_ignoreTerrain = true;
             input.m_ignoreBuildingFlags = Building.Flags.None;
             input.m_buildingService = new RaycastService(ItemClass.Service.None, ItemClass.SubService.None, ItemClass.Layer.None);
@@ -171,6 +189,7 @@ namespace RealGlass.PerAsset
                 {
                     hit = building;
                     _hoverPosition = output.m_hitPos;
+                    _hoverDistance = Vector3.Distance(ray.origin, output.m_hitPos);
                 }
             }
 
@@ -180,6 +199,21 @@ namespace RealGlass.PerAsset
         /// <summary>The asset's name by the cursor; no info panel, no cursor of the base's.</summary>
         protected override void OnToolUpdate()
         {
+            FindProcedural();
+            if (_procedural != null)
+            {
+                if (_procedural != _shownProcedural)
+                {
+                    _shownProcedural = _procedural;
+                    _shownHover = -1;
+                    _shownText = Localization.Get("Picker.Building", AssetSelection.TitleOf(_procedural.Info));
+                }
+
+                ShowToolInfo(true, _shownText, _proceduralPoint);
+                return;
+            }
+
+            _shownProcedural = null;
             int hover = _hover;
             if (hover == 0)
             {
@@ -201,6 +235,24 @@ namespace RealGlass.PerAsset
             ShowToolInfo(true, _shownText, _hoverPosition);
         }
 
+        /// <summary>The building of Procedural Objects under the cursor, if it is nearer than the city's building there.</summary>
+        private void FindProcedural()
+        {
+            _procedural = null;
+            if (!m_mouseRayValid)
+                return;
+
+            ProceduralBuildings.Refresh();
+            Ray ray = m_mouseRay;
+            float distance;
+            ProceduralBuildings.Entry found = ProceduralBuildings.Raycast(ray, m_mouseRayLength, out distance);
+            if (found == null || found.Info == null || (_hover != 0 && distance >= _hoverDistance))
+                return;
+
+            _procedural = found;
+            _proceduralPoint = ray.origin + ray.direction * distance;
+        }
+
         protected override void OnToolGUI(Event e)
         {
             if (e.type != EventType.MouseDown || m_toolController.IsInsideUI)
@@ -216,21 +268,37 @@ namespace RealGlass.PerAsset
             if (e.button != 0)
                 return;
 
+            ProceduralBuildings.Entry procedural = _procedural;
             ushort building = (ushort)_hover;
-            if (building == 0)
+            if (procedural == null && building == 0)
                 return;
 
             // The click is ours: the default tool, current again from here on, opens a building's info
             // panel on a mouse-down (DefaultTool.OnToolGUI, IL 2026-10-04) and must not see this one.
             UIInput.MouseUsed();
             e.Use();
-            AssetSelection.Select(building);
+            if (procedural != null)
+                AssetSelection.SelectAsset(procedural.Info, "a building of Procedural Objects (its object " + ProceduralBuildings.IdOf(procedural) + ")");
+            else
+                AssetSelection.Select(building);
             TurnOff("a building was picked");
             ModController.ShowAssetWindow();
         }
 
         public override void RenderOverlay(RenderManager.CameraInfo cameraInfo)
         {
+            ProceduralBuildings.Entry procedural = _procedural;
+            if (procedural != null)
+            {
+                // Its footprint, outlined as the game outlines a building (BuildingTool.RenderOverlay:
+                // OverlayEffect.DrawQuad over its height and 100 m either way).
+                Quad3 quad;
+                float minY, maxY;
+                if (ProceduralBuildings.Footprint(procedural, out quad, out minY, out maxY))
+                    Singleton<RenderManager>.instance.OverlayEffect.DrawQuad(cameraInfo, HoverColour, quad, minY - 100f, maxY + 100f, false, false);
+                return;
+            }
+
             int hover = _hover;
             if (hover == 0)
                 return;

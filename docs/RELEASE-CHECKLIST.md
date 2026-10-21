@@ -169,6 +169,17 @@ that repo's `docs/RELEASE-CHECKLIST.md` has the long version.
       empty line at the top while the glass draws; turning the glass off shows "The glass is off."
       above the switch. Water's first row reads "Realistic water". The building window: tooltips,
       no folding.
+- [ ] Procedural Objects' buildings (2026-10-21, for 1.1.0; build 1.0.0.22624): the log has
+      "procedural objects: 1.7.8 is here" and "procedural objects: N buildings among its M
+      objects, G with the glass" (with Detailed logging the 5 s line counts "Procedural Objects"
+      draws); a converted building shows the same glass as a real copy beside it, also when it is
+      reshaped, stacked on another or turned, and from far away; one with its own texture keeps the
+      game's glass; a hidden PO layer or a night-only object hides its glass with it; other glass
+      mirrors converted buildings off screen (the city walk). Alt+G: hovering a converted
+      building outlines its footprint and names its asset, whichever of it or a real building is
+      in front; a click opens its asset's window ("assets: picked a building of Procedural Objects
+      (its object N)"), the count includes the converted copies, and a change shows on them at
+      once. Without Procedural Objects: "procedural objects: not installed", nothing else.
 - [ ] Lumina's Dynamic Resolution / SSAA (the camera fix of 2026-10-14): Lumina only applies it
       when a city LOADS (its button just saves the setting), so turn it on, then load a city.
       The glass reflects the city and the water's city reflection shows, at SSAA 1 and above.

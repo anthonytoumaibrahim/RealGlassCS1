@@ -183,7 +183,8 @@ lighting model (2009), EnergyPlus's office lighting schedule and Dobler et al.'s
 a city's windows (2015), the lamps' colours from Charity's blackbody table, the pictures' own
 windows filled by normalized convolution (Knutsson and Westin, 1993) -- and the reflected sky's
 light at dusk after Bird and Riordan's clear-sky spectral model (SPCTRAL2, 1986) with Kasten and
-Young's air mass (1989) --
+Young's air mass (1989) -- and for picking Procedural Objects' buildings, Kay and Kajiya's slab
+test (1986) and Möller and Trumbore's ray/triangle test (1997) --
 listed with links in
 `README.md`. Apart from the ray tracer above, the implementations were written for this mod.
 
@@ -195,7 +196,10 @@ Real Glass & Water draws that mod's own cloud volume and distant clouds (found b
 into its reflected sky; nothing of it is copied. algernon's BOB was read for how its building picker works (a tool
 of the game's kind, Escape handled before the game's own) and for keeping its per-building data in
 a file of its own rather than in the save; Network Anarchy's keys, so the picker's default key
-does not clash with its grid key. No code from any other mod is included.
+does not clash with its grid key. Procedural Objects was read for how it keeps and draws a building
+converted with it; when it runs, Real Glass & Water reads its objects each frame (their meshes,
+places and whether it draws them) and draws the glass over its buildings, changing nothing of it.
+No code from any other mod is included.
 
 ## Trademarks
 

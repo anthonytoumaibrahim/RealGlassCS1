@@ -21,6 +21,9 @@ namespace RealGlass.Glass
     /// While there are rooms behind the glass (Interiors.cs) EVERY building's texel says what kind of
     /// building it is (its a channel: <see cref="Interiors.Texel"/>; 255 while there are none), so the
     /// watch never stops then.
+    ///
+    /// Procedural Objects' buildings have texels past the buildings' (ProceduralBuildings), set from
+    /// their assets every frame.
     /// </remarks>
     internal sealed class AssetMap
     {
@@ -96,6 +99,7 @@ namespace RealGlass.Glass
             int budget = _passLeft > 0 ? PassPerFrame : (_texelOf.Count > 0 || _rooms ? WatchPerFrame : 0);
             if (budget > 0)
                 Scan(budget);
+            SetProcedural(null);
 
             if (_textures.Pending && (_passLeft <= 0 || ++_sinceUpload >= UploadEvery))
             {
@@ -134,8 +138,25 @@ namespace RealGlass.Glass
                 }
             }
 
+            SetProcedural(info);
             _textures.Upload();
             _sinceUpload = 0;
+        }
+
+        /// <summary>
+        /// The buildings of Procedural Objects (ProceduralBuildings): each its own texel past the
+        /// buildings', its asset's like any copy's. A few hundred at most, every frame (only what
+        /// changed is marked for the upload). only: just this asset's, or null for all.
+        /// </summary>
+        private void SetProcedural(BuildingInfo only)
+        {
+            List<ProceduralBuildings.Entry> entries = ProceduralBuildings.Entries;
+            for (int i = 0; i < entries.Count; i++)
+            {
+                ProceduralBuildings.Entry e = entries[i];
+                if (e.Index >= 0 && (only == null || e.Info == only))
+                    _textures.Set(e.Index, TexelOf(e.Info));
+            }
         }
 
         private void Scan(int budget)

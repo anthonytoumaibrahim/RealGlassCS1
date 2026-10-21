@@ -58,6 +58,7 @@ Shader "RealGlass/Glass"
 #elif defined(RG_NEAR)
             float4 _BuildingState;
             float4 _ObjectIndex;
+            float4 _RGNearBase;     // a Procedural Objects building (GlassDraw.DrawProcedural): x the ground under it, w 1; 0 = its origin
 #endif
 
             struct appdata
@@ -255,6 +256,11 @@ Shader "RealGlass/Glass"
 #else
                 float3 wn = UnityObjectToWorldNormal(n);
                 float baseY = mul(unity_ObjectToWorld, float4(place._m03, place._m13, place._m23, 1.0)).y;
+#endif
+#if defined(RG_NEAR)
+                // A building of Procedural Objects stands where its player put it, often on top of
+                // another to make that one taller: its ground is the terrain under it, not its origin.
+                baseY = _RGNearBase.w > 0.5 ? _RGNearBase.x : baseY;
 #endif
                 // Burned (state.x: fire damage over half, 0..1) glass is not glass any more; a
                 // negative state.y is the game's collapse/flood clip.

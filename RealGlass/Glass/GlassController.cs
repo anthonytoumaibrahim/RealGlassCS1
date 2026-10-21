@@ -119,6 +119,7 @@ namespace RealGlass.Glass
                 }
 
                 _near = MakeMaterial(glass, "RG_NEAR");
+                _near.SetVector("_RGNearBase", Vector4.zero);   // a building's ground is its origin, unless a draw says otherwise
                 _lod = MakeMaterial(glass, "RG_LOD");
                 _group = MakeMaterial(glass, "RG_GROUP");
                 if (util != null && util.isSupported)
@@ -268,6 +269,7 @@ namespace RealGlass.Glass
 
             _wasOn = true;
             GlassDraw.Tiers = Settings.IsInitialised ? Settings.GlassDistance.value : 2;
+            ProceduralBuildings.Refresh();
             BindAtlases();
             WatchCamera(camera);
 
@@ -333,6 +335,7 @@ namespace RealGlass.Glass
             }
 
             GlassDraw.Active = true;
+            ProceduralBuildings.Draw();
             _status = "";
             _lastNear = GlassDraw.NearDraws;
             _lastLod = GlassDraw.LodDraws;
@@ -343,7 +346,8 @@ namespace RealGlass.Glass
                 _nextDetail = Time.realtimeSinceStartup + 5f;
                 float ms = _frames > 0 ? 1000f * _frameTime / _frames : 0f;
                 Log.Detail("glass: 5 s: " + GlassDraw.NearDraws / 5 + " near, " + GlassDraw.LodDraws / 5 + " middle, " +
-                           GlassDraw.GroupDraws / 5 + " far draws a second (" + GlassDraw.NearSkipped / 5 + " near skipped: not glass-capable); " +
+                           GlassDraw.GroupDraws / 5 + " far" + (ProceduralBuildings.Entries.Count > 0 ? ", " + GlassDraw.ProceduralDraws / 5 +
+                               " Procedural Objects" : "") + " draws a second (" + GlassDraw.NearSkipped / 5 + " near skipped: not glass-capable); " +
                            "frame " + ms.ToString("F1") + " ms; copy " + (copied ? _screen.Width + "x" + _screen.Height : "OFF " + _screen.Problem) +
                            (copied ? (_screen.Finished ? " + the finished picture" : " (no finished picture)") : "") +
                            "; sky " + (p.SkySource == 0 ? _sky.FacesDone + "/6 faces " + _sky.Mips + " mips" + (_sky.DrawsClouds ? " with clouds" : "") +
@@ -381,7 +385,7 @@ namespace RealGlass.Glass
 
         private void ResetCounters()
         {
-            GlassDraw.NearDraws = GlassDraw.LodDraws = GlassDraw.GroupDraws = GlassDraw.NearSkipped = 0;
+            GlassDraw.NearDraws = GlassDraw.LodDraws = GlassDraw.GroupDraws = GlassDraw.NearSkipped = GlassDraw.ProceduralDraws = 0;
             _lastNear = _lastLod = _lastFar = 0;
             _frames = 0;
             _frameTime = 0f;
@@ -606,6 +610,7 @@ namespace RealGlass.Glass
             _heights.Destroy();
             _assets.Destroy();
             _rooms.Destroy();
+            ProceduralBuildings.Reset();
             RestoreCamera();
             foreach (Material m in new[] { _near, _lod, _group, _util })
             {

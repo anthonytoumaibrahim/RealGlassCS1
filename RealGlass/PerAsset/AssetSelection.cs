@@ -8,7 +8,8 @@ namespace RealGlass.PerAsset
     /// <summary>
     /// The building asset the building window (UI.AssetPanel) is about: picked by clicking one of its copies
     /// (<see cref="AssetPicker"/>). A building of a complex picks its main building's asset -- what
-    /// the glass of the whole complex follows (AssetMap).
+    /// the glass of the whole complex follows (AssetMap). A building of Procedural Objects picks its
+    /// own asset (ProceduralBuildings).
     /// </summary>
     public static class AssetSelection
     {
@@ -16,7 +17,7 @@ namespace RealGlass.PerAsset
 
         private static float _nextCount;
 
-        /// <summary>The main building that was clicked; 0 for none.</summary>
+        /// <summary>The main building that was clicked; 0 for none, or a building of Procedural Objects.</summary>
         public static ushort Building { get; private set; }
 
         public static BuildingInfo Info { get; private set; }
@@ -67,16 +68,36 @@ namespace RealGlass.PerAsset
             if (info == null)
                 return;
 
+            Choose(info, main, "building " + main + (main != building ? " (the main building of " + building + ")" : ""));
+        }
+
+        /// <summary>
+        /// Picks the asset of a building of Procedural Objects (ProceduralBuildings): no building of
+        /// the city's, but a copy of the asset all the same, its glass the asset's. what: for the log.
+        /// </summary>
+        public static void SelectAsset(BuildingInfo info, string what)
+        {
+            if (info != null)
+                Choose(info, 0, what);
+        }
+
+        private static void Choose(BuildingInfo info, ushort main, string what)
+        {
             Building = main;
             Info = info;
             Title = TitleOf(info);
-            Copies = AssetMap.CountCopies(info);
+            Copies = CountCopies(info);
             _nextCount = Time.realtimeSinceStartup + CountEvery;
 
             AssetRecord record = Record;
-            Log.Msg("assets: picked building " + main + (main != building ? " (the main building of " + building + ")" : "") +
-                    ": asset '" + info.name + "' (" + Title + "), " + Copies + " in this city, " +
+            Log.Msg("assets: picked " + what + ": asset '" + info.name + "' (" + Title + "), " + Copies + " in this city, " +
                     (record != null ? "with glass of its own: " + Describe(record) : "on the global glass"));
+        }
+
+        /// <summary>The asset's copies with glass: the city's buildings and Procedural Objects' own.</summary>
+        private static int CountCopies(BuildingInfo info)
+        {
+            return AssetMap.CountCopies(info) + ProceduralBuildings.CountCopies(info);
         }
 
         /// <summary>The city is going: nothing picked.</summary>
@@ -128,7 +149,7 @@ namespace RealGlass.PerAsset
             if (Time.realtimeSinceStartup >= _nextCount)
             {
                 _nextCount = Time.realtimeSinceStartup + CountEvery;
-                Copies = AssetMap.CountCopies(Info);
+                Copies = CountCopies(Info);
             }
 
             return Localization.Get(Record != null ? "Asset.Own" : "Asset.Global", Copies);

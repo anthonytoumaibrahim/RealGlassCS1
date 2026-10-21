@@ -25,7 +25,7 @@ namespace RealGlass.Glass
         public static Material Near, Lod, Group;
 
         // Per second, for the detail log line.
-        public static int NearDraws, LodDraws, GroupDraws, NearSkipped;
+        public static int NearDraws, LodDraws, GroupDraws, NearSkipped, ProceduralDraws;
 
         private static readonly MaterialPropertyBlock Block = new MaterialPropertyBlock();
         private static readonly Dictionary<Material, Maps> ByMaterial = new Dictionary<Material, Maps>();
@@ -33,7 +33,7 @@ namespace RealGlass.Glass
         private static readonly Dictionary<int, bool> GroupLayerOk = new Dictionary<int, bool>();
         private static readonly Dictionary<string, int> ShaderCounts = new Dictionary<string, int>();
 
-        private static int _idMain, _idXys, _idAci, _idState, _idMainSt, _idObjectIndex;
+        private static int _idMain, _idXys, _idAci, _idState, _idMainSt, _idObjectIndex, _idNearBase;
         private static bool _ids;
         private static bool _loggedLodSkipped;
 
@@ -55,6 +55,7 @@ namespace RealGlass.Glass
             _idState = Shader.PropertyToID("_BuildingState");
             _idMainSt = Shader.PropertyToID("_MainTex_ST");
             _idObjectIndex = Shader.PropertyToID("_ObjectIndex");
+            _idNearBase = Shader.PropertyToID("_RGNearBase");
             _ids = true;
         }
 
@@ -116,6 +117,35 @@ namespace RealGlass.Glass
                 return;
             }
 
+            FillBlock(maps, state, objectIndex);
+            Graphics.DrawMesh(mesh, matrix, Near, layer, null, 0, Block, false, false);
+            NearDraws++;
+        }
+
+        /// <summary>
+        /// A building of Procedural Objects (ProceduralBuildings): the copy of the asset's mesh it
+        /// keeps, where it draws it (layer 0, its position and rotation), the asset's maps -- its
+        /// material is a copy of the asset's -- and an object index of its own past the buildings'.
+        /// ground: the terrain under it, its glass's ground in place of its origin (_RGNearBase).
+        /// </summary>
+        public static bool DrawProcedural(Mesh mesh, Matrix4x4 matrix, Material assetMaterial, Vector4 state, Vector4 objectIndex, float ground)
+        {
+            if (!Active || mesh == null || assetMaterial == null || Near == null)
+                return false;
+
+            Maps maps = MapsFor(assetMaterial);
+            if (!maps.Ok)
+                return false;
+
+            FillBlock(maps, state, objectIndex);
+            Block.SetVector(_idNearBase, new Vector4(ground, 0f, 0f, 1f));
+            Graphics.DrawMesh(mesh, matrix, Near, 0, null, 0, Block, false, false);
+            ProceduralDraws++;
+            return true;
+        }
+
+        private static void FillBlock(Maps maps, Vector4 state, Vector4 objectIndex)
+        {
             Block.Clear();
             Block.SetTexture(_idMain, maps.Main);
             Block.SetTexture(_idXys, maps.Xys);
@@ -123,8 +153,6 @@ namespace RealGlass.Glass
             Block.SetVector(_idMainSt, maps.MainSt);
             Block.SetVector(_idState, state);
             Block.SetVector(_idObjectIndex, objectIndex);
-            Graphics.DrawMesh(mesh, matrix, Near, layer, null, 0, Block, false, false);
-            NearDraws++;
         }
 
         /// <summary>
@@ -232,7 +260,7 @@ namespace RealGlass.Glass
             LodOk.Clear();
             GroupLayerOk.Clear();
             ShaderCounts.Clear();
-            NearDraws = LodDraws = GroupDraws = NearSkipped = 0;
+            NearDraws = LodDraws = GroupDraws = NearSkipped = ProceduralDraws = 0;
             Active = false;
             Failed = false;
             _loggedLodSkipped = false;

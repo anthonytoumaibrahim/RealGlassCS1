@@ -858,5 +858,64 @@ Check "  the waves run with the game's wind: 0 deg -> 270, 90 -> 180, 225 -> 45"
 Check "the ocean waves' defaults: on, 7 m/s, choppiness 100%; the sun's glitter 35%" ("{0} {1} {2} {3}" -f (Default 'WaterOceanWaves'), (Default 'WaterWind'), (Default 'WaterChop'), (Default 'WaterGlitter')) "True 7 1 0.35"
 Check "the glitter's sizes and the moon's own glitter: sun 50%, moon 35% at 50%" ("{0} {1} {2}" -f (Default 'WaterGlitterSize'), (Default 'WaterMoonGlitter'), (Default 'WaterMoonGlitterSize')) "0.5 0.35 0.5"
 
+# ---- Procedural Objects' buildings (Glass\ProceduralPick.cs, Glass\ProceduralAccess.cs) -------
+$v3 = $unity.GetType('UnityEngine.Vector3', $true)
+function V([float]$x, [float]$y, [float]$z) { return [Activator]::CreateInstance($v3, [object[]]@([single]$x, [single]$y, [single]$z)) }
+$pick = $asm.GetType('RealGlass.Glass.ProceduralPick', $true)
+$boxMin = V -1 0 -1
+$boxMax = V 1 10 1
+Check "picking: a ray meets a box where it enters it" ("{0:F2}" -f $pick::RayBox((V 0 5 -10), (V 0 0 1), $boxMin, $boxMax)) "9.00"
+Check "  from inside it, at once" ("{0:F2}" -f $pick::RayBox((V 0 5 0), (V 0 0 1), $boxMin, $boxMax)) "0.00"
+Check "  passing beside it, or along a face outside it, never" ("{0} {1}" -f $pick::RayBox((V 3 5 -10), (V 0 0 1), $boxMin, $boxMax), $pick::RayBox((V 0 11 -10), (V 0 0 1), $boxMin, $boxMax)) "-1 -1"
+Check "  pointing away, never" ($pick::RayBox((V 0 5 -10), (V 0 0 -1), $boxMin, $boxMax)) "-1"
+# A wall of two triangles at z = 0, x and y in -1..1.
+$wall = [Array]::CreateInstance($v3, 4)
+$wall[0] = V -1 -1 0; $wall[1] = V 1 -1 0; $wall[2] = V 1 1 0; $wall[3] = V -1 1 0
+$wallTri = [int[]]@(0, 1, 2, 0, 2, 3)
+Check "  a ray meets the nearest triangle, from the front and from behind" ("{0:F2} {1:F2}" -f $pick::RayTriangles((V 0.3 0.2 -5), (V 0 0 1), $wall, $wallTri, 1000.0), $pick::RayTriangles((V -0.5 0.4 5), (V 0 0 -1), $wall, $wallTri, 1000.0)) "5.00 5.00"
+Check "  on the edge two triangles share, too" ("{0:F2}" -f $pick::RayTriangles((V 0 0 -5), (V 0 0 1), $wall, $wallTri, 1000.0)) "5.00"
+Check "  not beside the wall, not past the nearest already met, not behind its start" ("{0} {1} {2}" -f $pick::RayTriangles((V 1.5 0 -5), (V 0 0 1), $wall, $wallTri, 1000.0), $pick::RayTriangles((V 0 0 -5), (V 0 0 1), $wall, $wallTri, 4.0), $pick::RayTriangles((V 0 0 5), (V 0 0 1), $wall, $wallTri, 1000.0)) "-1 -1 -1"
+# A slanted ray, against the plane's own answer.
+$slant = $pick::RayTriangles((V 0.2 -0.3 -4), (V 0.1 0.05 0.9938), $wall, $wallTri, 1000.0)
+Check "  a slanted ray where it crosses the wall's plane" ("{0:F3}" -f $slant) ("{0:F3}" -f (4.0 / 0.9938))
+
+$poDll = "C:\Program Files (x86)\Steam\steamapps\workshop\content\255710\1094334744\ProceduralObjects.dll"
+if (Test-Path $poDll) {
+    # Procedural Objects as installed here, from its DLL: what Real Glass reads of it, on objects
+    # made without its constructors (no game running), their fields set as it sets them.
+    $poAsm = [System.Reflection.Assembly]::Load([System.IO.File]::ReadAllBytes($poDll))
+    $accessType = $asm.GetType('RealGlass.Glass.ProceduralAccess', $true)
+    $problem = $null
+    $access = $accessType::Create($poAsm.GetType('ProceduralObjects.ProceduralObjectsLogic', $true), [ref]$problem)
+    Check "Procedural Objects (its DLL here): everything Real Glass reads of it is there" ("{0}" -f $problem) ""
+    if ($access -ne $null) {
+        Check "  its version" $access.Version "1.7.8"
+        $poType = $poAsm.GetType('ProceduralObjects.Classes.ProceduralObject', $true)
+        $layerType = $poAsm.GetType('ProceduralObjects.Classes.Layer', $true)
+        $optionsType = $poAsm.GetType('ProceduralObjects.Classes.RenderOptions', $true)
+        $o = [System.Runtime.Serialization.FormatterServices]::GetUninitializedObject($poType)
+        $poType.GetField('baseInfoType').SetValue($o, 'BUILDING')
+        $poType.GetField('m_position').SetValue($o, (V 10 20 30))
+        $poType.GetField('id').SetValue($o, 1234)
+        Check "  an object's kind, place and number" ("{0} {1} {2}" -f $access.Kind.Invoke($o), $access.Position.Invoke($o), $access.Id.Invoke($o)) "BUILDING (10.0, 20.0, 30.0) 1234"
+        $options = [System.Runtime.Serialization.FormatterServices]::GetUninitializedObject($optionsType)
+        $visibility = $poType.GetField('m_visibility')
+        $layer = [System.Runtime.Serialization.FormatterServices]::GetUninitializedObject($layerType)
+        function Drawn($inside, $hidden, [int]$vis, $night) {
+            $poType.GetField('_insideRenderView').SetValue($o, [bool]$inside)
+            if ($hidden -eq $null) { $poType.GetField('layer').SetValue($o, $null) }
+            else { $layerType.GetField('m_isHidden').SetValue($layer, [bool]$hidden); $poType.GetField('layer').SetValue($o, $layer) }
+            $visibility.SetValue($o, [Enum]::ToObject($visibility.FieldType, $vis))
+            return $access.Drawn.Invoke($o, $options, [bool]$night)
+        }
+        Check "  drawn as it draws: in range, no layer, always" (Drawn $true $null 0 $false) "True"
+        Check "  not out of range, not on a hidden layer; on a shown one" ("{0} {1} {2}" -f (Drawn $false $null 0 $false), (Drawn $true $true 0 $false), (Drawn $true $false 0 $false)) "False False True"
+        Check "  night only: by night, not by day; day only: by day, not by night" ("{0} {1} {2} {3}" -f (Drawn $true $null 1 $true), (Drawn $true $null 1 $false), (Drawn $true $null 2 $false), (Drawn $true $null 2 $true)) "True False True False"
+    }
+}
+else {
+    Write-Host "skip  Procedural Objects is not installed here: what Real Glass reads of it is not checked"
+}
+
 Write-Host ""
 if ($failed -eq 0) { Write-Host "all passed" } else { Write-Host "$failed FAILED"; exit 1 }
