@@ -127,7 +127,24 @@ namespace RealGlass.UI
 
                 Control control = BuildRow(current, row, currentPanel);
                 if (control != null)
+                {
+                    ShowTooltip(control, row.Tooltip);
                     _controls.Add(control);
+                }
+            }
+        }
+
+        /// <summary>A row's tooltip (<see cref="Row.Tooltip"/>) over its control and its caption.</summary>
+        private static void ShowTooltip(Control control, string tooltip)
+        {
+            if (tooltip == null)
+                return;
+
+            UIComponent[] parts = { control.Slider, control.Check, control.Drop, control.Button, control.Readout };
+            foreach (UIComponent part in parts)
+            {
+                if (part != null)
+                    part.tooltip = tooltip;
             }
         }
 

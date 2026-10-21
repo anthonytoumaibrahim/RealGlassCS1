@@ -167,4 +167,38 @@ namespace RealGlass
             return new Color32(colour.r, colour.g, colour.b, 255);
         }
     }
+
+    /// <summary>
+    /// A line of text, stored trimmed and never null (Volumetric Weather's): which of the F8 panel's
+    /// headings are open. Neither UI draws one; what it means is its user's business.
+    /// </summary>
+    public sealed class StringSetting : Setting
+    {
+        private string _value;
+
+        public StringSetting(string name, string value, bool saved = true)
+            : base(name, saved)
+        {
+            _value = Tidy(value);
+        }
+
+        public string value
+        {
+            get { return _value; }
+            set
+            {
+                value = Tidy(value);
+                if (_value == value)
+                    return;
+
+                _value = value;
+                Changed();
+            }
+        }
+
+        private static string Tidy(string text)
+        {
+            return text == null ? string.Empty : text.Trim();
+        }
+    }
 }

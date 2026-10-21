@@ -31,6 +31,9 @@ namespace RealGlass.UI
 
         /// <summary>A colour: swatch and picker, a text field, Copy, Paste, reset. The F8 panel only.</summary>
         Colour,
+
+        /// <summary>A line of text (<see cref="Row.Text"/>) neither UI draws: the panel's open headings.</summary>
+        Text,
     }
 
     /// <summary>
@@ -48,7 +51,9 @@ namespace RealGlass.UI
     /// <remarks>
     /// A row holds no words. Its texts are in Localization/en.xml (and its translations) under its
     /// <see cref="Name"/>: "FloorHeight.Label", and so on, read in the player's language every time
-    /// a UI asks. No tooltips (the author, 2026-10-04: "the labels are already pretty descriptive").
+    /// a UI asks. A tooltip ("FloorHeight.Tooltip") only where the name leaves a question: what 100%
+    /// is, what off gives back (the author, 2026-10-21, "add tooltips where needed"; on 2026-10-04
+    /// every row had one and he took them all out: "the labels are already pretty descriptive").
     /// <see cref="SettingsCatalog.LogLayout"/> checks at startup that English has every key a row
     /// needs. (Volumetric Weather's catalog row.)
     /// </remarks>
@@ -64,7 +69,11 @@ namespace RealGlass.UI
         /// </summary>
         public string Id;
 
-        /// <summary>Non-null starts a new group here. Its title is "Group.&lt;Group&gt;" in the language files.</summary>
+        /// <summary>
+        /// Non-null starts a new group here. Its title is "Group.&lt;Group&gt;" in the language files.
+        /// In the F8 panel a click on it folds the group away and back (Settings.PanelOpenGroups keeps
+        /// the open ones by this name: a group's name is part of the settings file once released).
+        /// </summary>
         public string Group;
 
         /// <summary>A line of text under the row ("&lt;Name&gt;.Note"), for a warning the label cannot carry.</summary>
@@ -78,6 +87,7 @@ namespace RealGlass.UI
         public IntSetting Int;
         public SavedInputKey Key;
         public ColorSetting Colour;
+        public StringSetting Text;
 
         // The SAME constants Settings.Init() constructs from. A setting does not remember its own
         // default, so this is the only thing that can put one back.
@@ -86,6 +96,7 @@ namespace RealGlass.UI
         public int DefaultInt;
         public int DefaultKey;
         public Color32 DefaultColour;
+        public string DefaultText;
 
         public float Min, Max, Step;
 
@@ -121,6 +132,12 @@ namespace RealGlass.UI
         public Func<bool> Enabled;
 
         /// <summary>
+        /// False hides the row in the F8 panel and closes the page up under it (Volumetric Weather's):
+        /// the Glass tab's status line while it has nothing to say. Null: always shown.
+        /// </summary>
+        public Func<bool> Shown;
+
+        /// <summary>
         /// A row of one asset's own glass (the building window): whether the asset has a value of its
         /// own here. Null for every other row. The row then has a "Global" button (<see cref="ClearOverride"/>).
         /// </summary>
@@ -151,6 +168,7 @@ namespace RealGlass.UI
                 if (Int != null) return Int.name;
                 if (Key != null) return Key.name;
                 if (Colour != null) return Colour.name;
+                if (Text != null) return Text.name;
                 return Id;
             }
         }
@@ -166,6 +184,19 @@ namespace RealGlass.UI
         public string Note
         {
             get { return HasNote ? Localization.Get(Name + ".Note") : null; }
+        }
+
+        /// <summary>
+        /// What the row's name leaves unsaid, on hover; null where it says it all. English decides
+        /// which rows have one (a translation can't add one English lacks).
+        /// </summary>
+        public string Tooltip
+        {
+            get
+            {
+                string key = Name + ".Tooltip";
+                return Localization.HasEnglish(key) ? Localization.Get(key) : null;
+            }
         }
 
         /// <summary>The question asked before switching ON; null when there is none.</summary>
@@ -242,6 +273,12 @@ namespace RealGlass.UI
             get { return Enabled == null || Enabled(); }
         }
 
+        /// <summary>See <see cref="Shown"/>.</summary>
+        public bool IsShown
+        {
+            get { return Shown == null || Shown(); }
+        }
+
         /// <summary>The slider position: percent rows are stored as a fraction and shown x100.</summary>
         public float Display
         {
@@ -298,6 +335,7 @@ namespace RealGlass.UI
             if (Int != null) Int.value = DefaultInt;
             if (Key != null) Key.value = DefaultKey;
             if (Colour != null) Colour.value = DefaultColour;
+            if (Text != null) Text.value = DefaultText;
         }
 
         /// <summary>A colour row at its default.</summary>
@@ -325,6 +363,7 @@ namespace RealGlass.UI
                 if (Int != null && Int.value != DefaultInt) return false;
                 if (Key != null && Key.value != DefaultKey) return false;
                 if (Colour != null && !IsDefaultColour) return false;
+                if (Text != null && Text.value != (DefaultText ?? string.Empty)) return false;
                 return true;
             }
         }
@@ -814,6 +853,7 @@ namespace RealGlass.UI
                 Panel = PanelPage.Glass,
                 Id = "GlassStatus",
                 StatusText = () => GlassController.Status,
+                Shown = () => !string.IsNullOrEmpty(GlassController.Status),
                 Profiled = false,
             });
 
@@ -849,28 +889,6 @@ namespace RealGlass.UI
                         ApplyGlassPreset(Settings.GlassPreset.value);
                     Changed();
                 },
-            });
-
-            Add(new Row
-            {
-                Kind = RowKind.Percent,
-                Panel = PanelPage.Glass,
-                Float = Settings.GlassOwnColour,
-                DefaultFloat = Settings.Defaults.GlassOwnColour,
-                Min = 0f, Max = 100f, Step = 1f,
-                Enabled = GlassOn,
-                AfterChange = Changed,
-            });
-
-            Add(new Row
-            {
-                Kind = RowKind.Percent,
-                Panel = PanelPage.Glass,
-                Float = Settings.GlassPaintedDetail,
-                DefaultFloat = Settings.Defaults.GlassPaintedDetail,
-                Min = 0f, Max = 100f, Step = 1f,
-                Enabled = GlassOn,
-                AfterChange = Changed,
             });
 
             Add(new Row
@@ -950,6 +968,30 @@ namespace RealGlass.UI
                 AfterChange = Changed,
             });
 
+            // What the building painted on its glass that the new glass keeps.
+            Add(new Row
+            {
+                Kind = RowKind.Percent,
+                Panel = PanelPage.Glass,
+                Group = "BuildingsOwnLook",
+                Float = Settings.GlassOwnColour,
+                DefaultFloat = Settings.Defaults.GlassOwnColour,
+                Min = 0f, Max = 100f, Step = 1f,
+                Enabled = GlassOn,
+                AfterChange = Changed,
+            });
+
+            Add(new Row
+            {
+                Kind = RowKind.Percent,
+                Panel = PanelPage.Glass,
+                Float = Settings.GlassPaintedDetail,
+                DefaultFloat = Settings.Defaults.GlassPaintedDetail,
+                Min = 0f, Max = 100f, Step = 1f,
+                Enabled = GlassOn,
+                AfterChange = Changed,
+            });
+
             Add(new Row
             {
                 Kind = RowKind.Percent,
@@ -985,13 +1027,61 @@ namespace RealGlass.UI
             });
         }
 
-        /// <summary>F8 -> Reflections: what the glass mirrors. No group headings: the rows are few.</summary>
+        /// <summary>
+        /// F8 -> Reflections: what the glass mirrors. How bright and sharp first, then the city in it
+        /// (the screen, the buildings around, below the horizon), then the sky.
+        /// </summary>
         private static void BuildReflections()
         {
             Add(new Row
             {
+                Kind = RowKind.Percent,
+                Panel = PanelPage.Reflections,
+                Group = "TheReflections",
+                Float = Settings.ReflectionBrightness,
+                DefaultFloat = Settings.Defaults.ReflectionBrightness,
+                Min = 0f, Max = 300f, Step = 5f,
+                Enabled = GlassOn,
+                AfterChange = Changed,
+            });
+
+            Add(new Row
+            {
+                Kind = RowKind.Percent,
+                Panel = PanelPage.Reflections,
+                Float = Settings.GlassSmoothness,
+                DefaultFloat = Settings.Defaults.GlassSmoothness,
+                Min = 0f, Max = 100f, Step = 1f,
+                Enabled = GlassOn,
+                AfterChange = Changed,
+            });
+
+            Add(new Row
+            {
+                Kind = RowKind.Percent,
+                Panel = PanelPage.Reflections,
+                Float = Settings.SunGlint,
+                DefaultFloat = Settings.Defaults.SunGlint,
+                Min = 0f, Max = 300f, Step = 5f,
+                Enabled = GlassOn,
+                AfterChange = Changed,
+            });
+
+            Add(new Row
+            {
                 Kind = RowKind.Toggle,
                 Panel = PanelPage.Reflections,
+                Bool = Settings.SteadyGlints,
+                DefaultBool = Settings.Defaults.SteadyGlints,
+                Enabled = GlassOn,
+                AfterChange = State("steady glints (specular anti-aliasing)", OnOff(Settings.SteadyGlints)),
+            });
+
+            Add(new Row
+            {
+                Kind = RowKind.Toggle,
+                Panel = PanelPage.Reflections,
+                Group = "CityInGlass",
                 Bool = Settings.SsrEnabled,
                 DefaultBool = Settings.Defaults.SsrEnabled,
                 Enabled = GlassOn,
@@ -1037,17 +1127,32 @@ namespace RealGlass.UI
             {
                 Kind = RowKind.Percent,
                 Panel = PanelPage.Reflections,
-                Float = Settings.ReflectionBrightness,
-                DefaultFloat = Settings.Defaults.ReflectionBrightness,
-                Min = 0f, Max = 300f, Step = 5f,
-                Enabled = GlassOn,
+                Float = Settings.SsrEdgeFade,
+                DefaultFloat = Settings.Defaults.SsrEdgeFade,
+                Min = 0f, Max = 50f, Step = 1f,
+                Enabled = ScreenReflectionsOn,
                 AfterChange = Changed,
+            });
+
+            // Whether or not screen reflections are on: with them off, nothing on screen is ever
+            // hit, and this is what every reflection below the horizon shows.
+            Add(new Row
+            {
+                Kind = RowKind.Choice,
+                Panel = PanelPage.Reflections,
+                Int = Settings.OffscreenFill,
+                DefaultInt = Settings.Defaults.OffscreenFill,
+                ChoiceKeys = new[] { "OffscreenFill.Mirror", "OffscreenFill.City", "OffscreenFill.Sky" },
+                ChoiceValues = new[] { 0, 1, 2 },
+                Enabled = GlassOn,
+                AfterChange = State("below the horizon, off screen", Chosen(Settings.OffscreenFill, SystemReport.FillName)),
             });
 
             Add(new Row
             {
                 Kind = RowKind.Choice,
                 Panel = PanelPage.Reflections,
+                Group = "SkyInGlass",
                 Int = Settings.SkyReflection,
                 DefaultInt = Settings.Defaults.SkyReflection,
                 ChoiceKeys = new[] { "SkyReflection.Live", "SkyReflection.Game" },
@@ -1077,63 +1182,6 @@ namespace RealGlass.UI
                 Enabled = LiveSkyOn,
                 AfterChange = Changed,
             });
-
-            // Whether or not screen reflections are on: with them off, nothing on screen is ever
-            // hit, and this is what every reflection below the horizon shows.
-            Add(new Row
-            {
-                Kind = RowKind.Choice,
-                Panel = PanelPage.Reflections,
-                Int = Settings.OffscreenFill,
-                DefaultInt = Settings.Defaults.OffscreenFill,
-                ChoiceKeys = new[] { "OffscreenFill.Mirror", "OffscreenFill.City", "OffscreenFill.Sky" },
-                ChoiceValues = new[] { 0, 1, 2 },
-                Enabled = GlassOn,
-                AfterChange = State("below the horizon, off screen", Chosen(Settings.OffscreenFill, SystemReport.FillName)),
-            });
-
-            Add(new Row
-            {
-                Kind = RowKind.Percent,
-                Panel = PanelPage.Reflections,
-                Float = Settings.SunGlint,
-                DefaultFloat = Settings.Defaults.SunGlint,
-                Min = 0f, Max = 300f, Step = 5f,
-                Enabled = GlassOn,
-                AfterChange = Changed,
-            });
-
-            Add(new Row
-            {
-                Kind = RowKind.Toggle,
-                Panel = PanelPage.Reflections,
-                Bool = Settings.SteadyGlints,
-                DefaultBool = Settings.Defaults.SteadyGlints,
-                Enabled = GlassOn,
-                AfterChange = State("steady glints (specular anti-aliasing)", OnOff(Settings.SteadyGlints)),
-            });
-
-            Add(new Row
-            {
-                Kind = RowKind.Percent,
-                Panel = PanelPage.Reflections,
-                Float = Settings.GlassSmoothness,
-                DefaultFloat = Settings.Defaults.GlassSmoothness,
-                Min = 0f, Max = 100f, Step = 1f,
-                Enabled = GlassOn,
-                AfterChange = Changed,
-            });
-
-            Add(new Row
-            {
-                Kind = RowKind.Percent,
-                Panel = PanelPage.Reflections,
-                Float = Settings.SsrEdgeFade,
-                DefaultFloat = Settings.Defaults.SsrEdgeFade,
-                Min = 0f, Max = 50f, Step = 1f,
-                Enabled = ScreenReflectionsOn,
-                AfterChange = Changed,
-            });
         }
 
         /// <summary>F8 -> Panes: the panes, and how they bend what they mirror.</summary>
@@ -1143,6 +1191,7 @@ namespace RealGlass.UI
             {
                 Kind = RowKind.Value,
                 Panel = PanelPage.Panes,
+                Group = "ThePanes",
                 Float = Settings.PaneWidth,
                 DefaultFloat = Settings.Defaults.PaneWidth,
                 Min = 0.8f, Max = 4f, Step = 0.1f,
@@ -1163,6 +1212,16 @@ namespace RealGlass.UI
                 Format = Metres,
                 Enabled = GlassOn,
                 AfterChange = Changed,
+            });
+
+            Add(new Row
+            {
+                Kind = RowKind.Toggle,
+                Panel = PanelPage.Panes,
+                Bool = Settings.PanesFollowWindows,
+                DefaultBool = Settings.Defaults.PanesFollowWindows,
+                Enabled = GlassOn,
+                AfterChange = State("panes follow the painted windows", OnOff(Settings.PanesFollowWindows)),
             });
 
             Add(new Row
@@ -1208,16 +1267,6 @@ namespace RealGlass.UI
                 Enabled = GlassOn,
                 AfterChange = State("panes follow the weather", OnOff(Settings.PaneWeather)),
             });
-
-            Add(new Row
-            {
-                Kind = RowKind.Toggle,
-                Panel = PanelPage.Panes,
-                Bool = Settings.PanesFollowWindows,
-                DefaultBool = Settings.Defaults.PanesFollowWindows,
-                Enabled = GlassOn,
-                AfterChange = State("panes follow the painted windows", OnOff(Settings.PanesFollowWindows)),
-            });
         }
 
         /// <summary>
@@ -1241,6 +1290,7 @@ namespace RealGlass.UI
             {
                 Kind = RowKind.Toggle,
                 Panel = PanelPage.Interiors,
+                Group = "TheRooms",
                 Bool = Settings.InteriorsByDay,
                 DefaultBool = Settings.Defaults.InteriorsByDay,
                 Enabled = InteriorsOn,
@@ -1269,6 +1319,17 @@ namespace RealGlass.UI
                 DefaultBool = Settings.Defaults.InteriorsMatchLods,
                 Enabled = InteriorsOn,
                 AfterChange = State("rooms the same up close and on LODs", OnOff(Settings.InteriorsMatchLods)),
+            });
+
+            Add(new Row
+            {
+                Kind = RowKind.Percent,
+                Panel = PanelPage.Interiors,
+                Float = Settings.InteriorsCurtains,
+                DefaultFloat = Settings.Defaults.InteriorsCurtains,
+                Min = 0f, Max = 100f, Step = 1f,
+                Enabled = InteriorsOn,
+                AfterChange = Changed,
             });
 
             Add(new Row
@@ -1325,18 +1386,6 @@ namespace RealGlass.UI
                 Enabled = InteriorsOn,
                 AfterChange = Changed,
             });
-
-            Add(new Row
-            {
-                Kind = RowKind.Percent,
-                Panel = PanelPage.Interiors,
-                Group = "RoomCurtains",
-                Float = Settings.InteriorsCurtains,
-                DefaultFloat = Settings.Defaults.InteriorsCurtains,
-                Min = 0f, Max = 100f, Step = 1f,
-                Enabled = InteriorsOn,
-                AfterChange = Changed,
-            });
         }
 
         /// <summary>
@@ -1388,7 +1437,10 @@ namespace RealGlass.UI
             });
         }
 
-        /// <summary>F8 -> Water: the map's water (Water/WaterController.cs), on by default, apart from the glass.</summary>
+        /// <summary>
+        /// F8 -> Water: the map's water (Water/WaterController.cs), on by default, apart from the glass.
+        /// Its switch, then six headings: color, ripples, foam, sky, glitter, city.
+        /// </summary>
         private static void BuildWater()
         {
             Add(new Row
@@ -1397,7 +1449,7 @@ namespace RealGlass.UI
                 Panel = PanelPage.Water,
                 Bool = Settings.WaterEnabled,
                 DefaultBool = Settings.Defaults.WaterEnabled,
-                AfterChange = WaterState("water controls", OnOff(Settings.WaterEnabled)),
+                AfterChange = WaterState("realistic water", OnOff(Settings.WaterEnabled)),
             });
 
             // The water's colour: ours (the author, 2026-10-08: "rather than rely on Theme Mixer to edit
@@ -1407,6 +1459,7 @@ namespace RealGlass.UI
             {
                 Kind = RowKind.Toggle,
                 Panel = PanelPage.Water,
+                Group = "WaterColour",
                 Bool = Settings.WaterThemeColor,
                 DefaultBool = Settings.Defaults.WaterThemeColor,
                 Enabled = WaterOn,
@@ -1589,10 +1642,12 @@ namespace RealGlass.UI
 
             // The sun's glitter (Water/WaterSkyLayer.cs): 100% is real water's -- a sunset's path
             // blinds as it does in a photograph; the game's own highlight is off while it draws.
+            // A heading of its own: the players asked for these rows (1.1.0).
             Add(new Row
             {
                 Kind = RowKind.Percent,
                 Panel = PanelPage.Water,
+                Group = "WaterGlitter",
                 Float = Settings.WaterGlitter,
                 DefaultFloat = Settings.Defaults.WaterGlitter,
                 Min = 0f, Max = 200f, Step = 5f,
@@ -1842,6 +1897,16 @@ namespace RealGlass.UI
                 Format = Steps,
                 Profiled = false,
                 AfterChange = WaterState("foam view", () => Settings.WaterFoamView.value.ToString("F0")),
+            });
+
+            // The F8 panel's open headings (Volumetric Weather's). Its headings are its UI; the panel
+            // reads the value on every refresh, so a hand edit or a reset shows at once.
+            Add(new Row
+            {
+                Kind = RowKind.Text,
+                Text = Settings.PanelOpenGroups,
+                DefaultText = Settings.Defaults.PanelOpenGroups,
+                Profiled = false,
             });
         }
 

@@ -45,12 +45,26 @@ namespace RealGlass.UI
     /// (<see cref="GlassPanel"/>) and the building window (<see cref="AssetPanel"/>) both build their
     /// rows here. Every row with a setting ends in a reset icon: back to the default in the panel
     /// (<see cref="SettingsCatalog.ResetRow"/>), back to the F8 panel's setting in the building
-    /// window (<see cref="Row.ClearOverride"/>, which had a "Global" button before).
+    /// window (<see cref="Row.ClearOverride"/>, which had a "Global" button before). A row with a
+    /// tooltip (<see cref="Row.Tooltip"/>) shows it over its name and its control.
     /// </summary>
+    /// <remarks>
+    /// FOLDING (the F8 panel, 2026-10-21, Volumetric Weather 1.5's accordions -- the author: "Like VW, we
+    /// can do things in accordions"): a click on a heading folds its rows away and back, and the page
+    /// closes up under them. The open ones are kept in Settings.PanelOpenGroups (each tab's first, at
+    /// first). Rows above a tab's first heading (its switch) never fold. A row whose
+    /// <see cref="Row.Shown"/> says no is hidden the same way (the status line with nothing to say).
+    /// Every row is built where it would be with all shown; <see cref="Relayout"/> moves them.
+    /// (Volumetric Weather's CloudsPanel.Relayout.)
+    /// </remarks>
     internal sealed class RowList
     {
         private const float HeadingHeight = 24f;
         private const float NoteHeight = 32f;
+
+        /// <summary>A folding heading's room above and below its strip, between groups (Volumetric Weather's).</summary>
+        private const float FoldMarginTop = 8f;
+        private const float FoldMarginBottom = 4f;
 
         /// <summary>The reset icon's column at the right end of each row, gap included (Volumetric Weather's).</summary>
         public const float ResetColumn = 28f;
@@ -73,6 +87,17 @@ namespace RealGlass.UI
         private readonly RowLayout _layout;
         private readonly List<Control> _controls = new List<Control>();
 
+        /// <summary>Every page built, in order: its stretches top to bottom, and its name for the log.</summary>
+        private readonly List<List<Item>> _pages = new List<List<Item>>();
+        private readonly List<string> _pageIds = new List<string>();
+
+        /// <summary>Headings fold (the F8 panel); the building window's stay plain.</summary>
+        private readonly bool _folding;
+
+        /// <summary>The groups left open (Settings.PanelOpenGroups), as last read; every other one is folded away.</summary>
+        private readonly List<string> _open = new List<string>();
+        private string _openRead;
+
         /// <summary>
         /// Guards the refresh against its own callbacks: a row set from its setting must never write
         /// the setting straight back -- quantised to the slider's step, and with every AfterChange
@@ -80,15 +105,44 @@ namespace RealGlass.UI
         /// </summary>
         private bool _refreshing;
 
-        public RowList(Builder ui, RowLayout layout)
+        /// <summary>
+        /// A page's rows were shown, hidden or folded after it was built: the page (in build order), its
+        /// new height, and the stretch (top, bottom) a group just opened takes, to scroll into view --
+        /// or -1, -1.
+        /// </summary>
+        public System.Action<int, float, float, float> PageResized;
+
+        public RowList(Builder ui, RowLayout layout, bool folding)
         {
             _ui = ui;
             _layout = layout;
+            _folding = folding;
+            if (folding)
+                ReadOpen();
         }
 
         public int Count
         {
             get { return _controls.Count; }
+        }
+
+        /// <summary>
+        /// One stretch of a page: a group heading, or a row with its note -- every component put on
+        /// the page for it, so it can be hidden and everything under it moved up as a whole.
+        /// </summary>
+        private class Item
+        {
+            public Control Control;   // null for a heading
+            public readonly List<UIComponent> Components = new List<UIComponent>();
+            public readonly List<UIComponent> HiddenByUs = new List<UIComponent>();
+            public float Y;
+            public float Height;
+            public bool Shown = true;
+
+            /// <summary>The group this heading starts, or this row sits under. Null above the first heading, and under a heading that cannot fold.</summary>
+            public string Group;
+
+            public HeadingRow Heading;
         }
 
         /// <summary>One built row: whatever components it made, so they can be refreshed and greyed.</summary>
@@ -112,23 +166,61 @@ namespace RealGlass.UI
         }
 
         /// <summary>
-        /// Draws these rows down the page, in order, with the page's own names' and readouts' columns.
-        /// Returns the height they took. <paramref name="id"/> names the page in the log.
+        /// Draws these rows down the page, in order, with the page's own names' and readouts' columns,
+        /// then closes the page up under the folded groups and hidden rows. Returns the height the
+        /// shown ones take. <paramref name="id"/> names the page in the log.
         /// </summary>
         public float Build(UIPanel page, IEnumerable<Row> rows, string id)
         {
             FitColumns(page, rows, id);
             _ui.ResetColumn = ResetColumn;
 
+            int pageIndex = _pages.Count;
+            List<Item> items = new List<Item>();
+            HashSet<UIComponent> claimed = new HashSet<UIComponent>();
+            string group = null;
+
             float y = 0f;
             foreach (Row row in rows)
             {
+                if (row.Kind == RowKind.Text)
+                    continue;
+
                 if (row.Group != null)
                 {
-                    _ui.AddHeading(page, row.GroupTitle, y + 4f);
-                    y += HeadingHeight;
+                    float height = HeadingHeight;
+                    HeadingRow heading;
+                    if (_folding)
+                    {
+                        // Its strip (Builder.FoldHeight), with room above and below it between groups.
+                        string captured = row.Group;
+                        heading = _ui.AddFoldingHeading(page, row.GroupTitle, y + FoldMarginTop + Builder.FoldAbove,
+                            !IsFolded(captured), open => SetFolded(pageIndex, captured, !open));
+                        height = FoldMarginTop + Builder.FoldHeight + FoldMarginBottom;
+                    }
+                    else
+                    {
+                        heading = _ui.AddHeading(page, row.GroupTitle, y + 4f);
+                    }
+
+                    // A heading drawn plain (Vanilla has no arrows, or the library's sheet is missing)
+                    // can't open again: nothing under it folds, and it stands where a plain one always did.
+                    group = heading != null && heading.Fold != null ? row.Group : null;
+                    if (_folding && group == null && heading != null)
+                    {
+                        foreach (UIComponent part in heading.Parts)
+                            part.relativePosition += new Vector3(0f, 4f - FoldMarginTop - Builder.FoldAbove);
+                        height = HeadingHeight;
+                    }
+
+                    Item item = Claim(page, claimed, null, y, height);
+                    item.Group = group;
+                    item.Heading = heading;
+                    items.Add(item);
+                    y += height;
                 }
 
+                float top = y;
                 Control control = Build(page, row, y);
                 _controls.Add(control);
                 y += _ui.RowHeight;
@@ -139,9 +231,239 @@ namespace RealGlass.UI
                     control.Parts.Add(note);
                     y += NoteHeight;
                 }
+
+                Item stretch = Claim(page, claimed, control, top, y - top);
+                stretch.Group = group;
+                items.Add(stretch);
+            }
+
+            _pages.Add(items);
+            _pageIds.Add(id);
+            return Relayout(pageIndex, false, -1f, -1f);
+        }
+
+        /// <summary>Every component on the page no stretch has yet: the ones just built.</summary>
+        private static Item Claim(UIPanel page, HashSet<UIComponent> claimed, Control control, float y, float height)
+        {
+            Item item = new Item { Control = control, Y = y, Height = height };
+
+            for (int i = 0; i < page.components.Count; i++)
+            {
+                UIComponent component = page.components[i];
+                if (claimed.Add(component))
+                    item.Components.Add(component);
+            }
+
+            return item;
+        }
+
+        // ---- folding ---------------------------------------------------------------------------
+
+        private bool IsFolded(string group)
+        {
+            return _folding && group != null && !_open.Contains(group);
+        }
+
+        private void ReadOpen()
+        {
+            _open.Clear();
+            _openRead = Settings.PanelOpenGroups != null ? Settings.PanelOpenGroups.value : string.Empty;
+            if (string.IsNullOrEmpty(_openRead))
+                return;
+
+            foreach (string name in _openRead.Split(','))
+            {
+                string group = name.Trim();
+                if (group.Length > 0 && !_open.Contains(group))
+                    _open.Add(group);
+            }
+        }
+
+        /// <summary>A heading clicked: its group folded or opened, kept in the settings file, the page closed up.</summary>
+        private void SetFolded(int page, string group, bool folded)
+        {
+            if (folded != _open.Contains(group))
+                return;
+
+            if (folded)
+                _open.Remove(group);
+            else
+                _open.Add(group);
+
+            _openRead = string.Join(",", _open.ToArray());
+            if (Settings.PanelOpenGroups != null)
+                Settings.PanelOpenGroups.value = _openRead;
+            SettingsXml.SaveNow();
+
+            Log.Msg("panel: " + group + " " + (folded ? "folded" : "opened") + " (open now: " +
+                    (_openRead.Length > 0 ? _openRead : "none") + ")");
+
+            // The line above says what changed; the panel is told once, with the group just opened
+            // to bring into view.
+            float height = Relayout(page, false, -1f, -1f);
+            float top = -1f, bottom = -1f;
+            if (!folded)
+                GroupSpan(page, group, out top, out bottom);
+
+            if (PageResized != null)
+                PageResized(page, height, top, bottom);
+        }
+
+        /// <summary>Where a group stands on its page now: its heading's top to its last shown row's bottom.</summary>
+        private void GroupSpan(int page, string group, out float top, out float bottom)
+        {
+            top = -1f;
+            bottom = -1f;
+            foreach (Item item in _pages[page])
+            {
+                if (!item.Shown || item.Group != group)
+                    continue;
+
+                if (top < 0f)
+                    top = item.Y;
+                bottom = item.Y + item.Height;
+            }
+        }
+
+        /// <summary>A row: shown by its own rule (<see cref="Row.Shown"/>), and its group not folded away.</summary>
+        private bool RowShown(Item item)
+        {
+            return item.Control.Source.IsShown && !IsFolded(item.Group);
+        }
+
+        /// <summary>
+        /// A heading shows while any row under it, up to the next heading, would by its own rule: a
+        /// folded heading stays, to be opened again.
+        /// </summary>
+        private static bool HeadingShown(List<Item> items, int heading)
+        {
+            for (int i = heading + 1; i < items.Count && items[i].Control != null; i++)
+            {
+                if (items[i].Control.Source.IsShown)
+                    return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Hides the rows the folds and their own rules say to and shows the rest, each page laid out
+        /// again only when one of its rows has actually changed. With every refresh: a reset or a hand
+        /// edit of the file can open or fold groups, the status line comes and goes.
+        /// </summary>
+        private void RefreshShown()
+        {
+            bool reread = false;
+            if (_folding && Settings.PanelOpenGroups != null && Settings.PanelOpenGroups.value != _openRead)
+            {
+                ReadOpen();
+                reread = true;
+                foreach (List<Item> items in _pages)
+                {
+                    foreach (Item item in items)
+                    {
+                        if (item.Heading != null && item.Group != null)
+                            item.Heading.SetOpen(!IsFolded(item.Group));
+                    }
+                }
+            }
+
+            for (int p = 0; p < _pages.Count; p++)
+            {
+                List<Item> items = _pages[p];
+                for (int i = 0; i < items.Count; i++)
+                {
+                    bool shown = items[i].Control != null ? RowShown(items[i]) : HeadingShown(items, i);
+                    if (shown != items[i].Shown || reread)
+                    {
+                        Relayout(p, true, -1f, -1f);
+                        break;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Walks a page top to bottom: each stretch shown is moved to where the ones above it end, each
+        /// hidden one is hidden and takes no room. Returns the page's new height, and tells
+        /// <see cref="PageResized"/> when <paramref name="notify"/> (not while the page is being built).
+        /// </summary>
+        private float Relayout(int index, bool notify, float revealTop, float revealBottom)
+        {
+            List<Item> items = _pages[index];
+            float y = 0f;
+            string changed = string.Empty;
+
+            for (int i = 0; i < items.Count; i++)
+            {
+                Item item = items[i];
+                bool shown = item.Control != null ? RowShown(item) : HeadingShown(items, i);
+
+                if (shown != item.Shown)
+                {
+                    SetShown(item, shown);
+                    changed += (changed.Length == 0 ? "" : ", ") + (shown ? "+" : "-") +
+                               (item.Control != null ? item.Control.Source.Name : "heading " + item.Group);
+                }
+
+                if (!shown)
+                    continue;
+
+                float dy = y - item.Y;
+                if (dy != 0f)
+                {
+                    foreach (UIComponent component in item.Components)
+                        component.relativePosition += new Vector3(0f, dy);
+
+                    item.Y = y;
+                }
+
+                // A folding heading's arrow stands by its name: placed again where the name went.
+                if (item.Heading != null && item.Group != null)
+                    item.Heading.SetOpen(!IsFolded(item.Group));
+
+                y += item.Height;
+            }
+
+            if (notify)
+            {
+                if (changed.Length > 0)
+                    Log.Msg("panel: " + _pageIds[index] + " laid out again (" + changed + "), " + y.ToString("F0") + " high");
+
+                if (PageResized != null)
+                    PageResized(index, y, revealTop, revealBottom);
             }
 
             return y;
+        }
+
+        /// <summary>
+        /// Hides a stretch's components, remembering which were showing, and shows exactly those again:
+        /// a component its own row keeps hidden stays hidden.
+        /// </summary>
+        private static void SetShown(Item item, bool shown)
+        {
+            item.Shown = shown;
+
+            if (!shown)
+            {
+                item.HiddenByUs.Clear();
+                foreach (UIComponent component in item.Components)
+                {
+                    if (!component.isVisibleSelf)
+                        continue;
+
+                    component.isVisible = false;
+                    item.HiddenByUs.Add(component);
+                }
+
+                return;
+            }
+
+            foreach (UIComponent component in item.HiddenByUs)
+                component.isVisible = true;
+
+            item.HiddenByUs.Clear();
         }
 
         /// <summary>
@@ -284,6 +606,7 @@ namespace RealGlass.UI
             }
 
             RefreshEnabled();
+            RefreshShown();
             return touched;
         }
 
@@ -335,6 +658,17 @@ namespace RealGlass.UI
         private Control Build(UIPanel page, Row row, float y)
         {
             Control control = BuildControl(page, row, y);
+
+            // Over its name and its control alike; a part with a hover text of its own keeps it.
+            string tooltip = row.Tooltip;
+            if (tooltip != null)
+            {
+                foreach (UIComponent part in control.Parts)
+                {
+                    if (string.IsNullOrEmpty(part.tooltip))
+                        part.tooltip = tooltip;
+                }
+            }
 
             // The row's reset icon. A colour row has its own (it logs the pick its own way).
             if (row.CanReset && row.Kind != RowKind.Colour && row.Kind != RowKind.Status && row.Kind != RowKind.Button)

@@ -1,6 +1,6 @@
 Adds a fully customizable glass shader onto every building, mirroring the city around it and a live sky with SSR (works with the clouds in [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3805863507]Volumetric Weather[/url]).
 [h3]Water shader[/h3]
-This mod also adds reflections (SSR) and foam into the water. To turn it off: press F8 -> Water -> "Water controls".
+This mod also adds reflections (SSR) and foam into the water. To turn it off: press F8 -> Water -> "Realistic water".
 [h3]Parallax interiors[/h3]
 Adds rooms behind the windows at night (optionally by day too), with lights that turn on and off with the time of day. To turn them off: press F8 -> Interiors -> "Parallax interiors".
 

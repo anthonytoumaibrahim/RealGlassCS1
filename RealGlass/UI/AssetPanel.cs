@@ -59,7 +59,7 @@ namespace RealGlass.UI
             _instance = this;
 
             _ui = PanelLook.NewBuilder();
-            _rows = new RowList(_ui, RowLayout.Compact);
+            _rows = new RowList(_ui, RowLayout.Compact, false);
 
             size = new Vector2(PanelWidth, 200f);
             canFocus = true;

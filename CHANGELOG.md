@@ -11,8 +11,24 @@ the mod's name in the game.
   the Sun glitter row set both.
 - **Sun glitter size** and **Moon glitter size**: how wide each glitter spreads. A smaller glitter
   is narrower, not dimmer.
+- **Folding headings** in the in-game panel: every tab's settings are grouped under headings, and a
+  click on a heading folds its settings away or opens them again. Each tab starts with its first
+  heading open (the glass, the reflections, the panes, the rooms, the water's color); the panel
+  remembers which are open, in a new line of `RealGlass.xml`, `PanelOpenGroups`. The *Vanilla*
+  look keeps plain headings, as the game's own panels have.
+- **Tooltips** on the settings whose names leave a question: what 100% is, what turning one off
+  gives back, what a switch really changes. Hover over a setting's name or its control. The rest
+  have none: their names say it.
 
 ### Changed
+
+- The panel's settings are in a new order under their headings. The Reflections tab has three
+  (the reflections, the city in the glass, the sky in the glass), the Panes tab two, the Interiors
+  tab two (curtains are with the rooms now), and the Water tab two new ones: the water's color, and
+  the sun and moon glitter. No setting changes, and `RealGlass.xml` keeps every name.
+- *Water controls* is now *Realistic water*, like *Realistic glass*.
+- The Glass tab's status line shows only when it has something to say (the glass off, paused or
+  stopped); it no longer leaves an empty line at the top.
 
 - The glitter is half as wide by default (both sizes 50%): at 1.0.0's width the sun's reflection
   covered a third of the screen from a city camera. Existing settings files get the new sizes

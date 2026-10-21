@@ -10,9 +10,10 @@
 #     Confirm, Group, choice names, choice units -- read from the source, as the in-game check
 #     reads them from the built rows), the tab names, the building window's rows, and every
 #     key-shaped string literal in *.cs (Glass\ included);
-#   - English has no key nothing asks for (dead text a translator would translate for nothing),
-#     and no tooltip (the author, 2026-10-04: none, the labels say it -- only an icon with no
-#     label says what it does on hover: the reset icons, "Reset.Default" / "Asset.Global.Hint");
+#   - English has no key nothing asks for (dead text a translator would translate for nothing);
+#   - a tooltip (Name.Tooltip) belongs to a row that exists and fits one line, 70 characters. Only
+#     rows whose name leaves a question have one (the author, 2026-10-21: "add tooltips where
+#     needed"; 2026-10-04 he had taken out every row's: "the labels are already pretty descriptive");
 #   - a translation has no key English lacks, and says which English keys it has not done yet;
 #   - wrapped texts come out as one line, \n as a real break.
 # The same key check runs in the game at startup (SettingsCatalog.LogLayout), from the real rows.
@@ -49,21 +50,23 @@ $needed = New-Object 'System.Collections.Generic.HashSet[string]'
 # Setting property -> its name, from Settings.cs.
 $settingsSrc = Get-Content (Join-Path $root "Settings.cs") -Raw
 $nameOf = @{}
-foreach ($m in [regex]::Matches($settingsSrc, '(\w+) = new (?:Float|Bool|Int|Color)Setting\("(\w+)"')) { $nameOf[$m.Groups[1].Value] = $m.Groups[2].Value }
+foreach ($m in [regex]::Matches($settingsSrc, '(\w+) = new (?:Float|Bool|Int|Color|String)Setting\("(\w+)"')) { $nameOf[$m.Groups[1].Value] = $m.Groups[2].Value }
 foreach ($m in [regex]::Matches($settingsSrc, '(\w+) = new SavedInputKey\("(\w+)"')) { $nameOf[$m.Groups[1].Value] = $m.Groups[2].Value }
 
 # The rows, one block per "Add(new Row".
 $catalog = Get-Content (Join-Path $root "UI\SettingsCatalog.cs") -Raw
 $blocks = [regex]::Split($catalog, 'Add\(new Row') | Select-Object -Skip 1
 $rows = 0
+$rowNames = New-Object 'System.Collections.Generic.HashSet[string]'
 foreach ($b in $blocks) {
     $b = $b.Substring(0, $b.IndexOf('});'))
     $rows++
     $kind = if ($b -match 'Kind = RowKind\.(\w+)') { $Matches[1] } else { '?' }
     $name = $null
-    if ($b -match '(?:Float|Bool|Int|Key|Colour) = Settings\.(\w+)') { $name = $nameOf[$Matches[1]] }
+    if ($b -match '(?:Float|Bool|Int|Key|Colour|Text) = Settings\.(\w+)') { $name = $nameOf[$Matches[1]] }
     if ($b -match 'Id = "(\w+)"') { $name = $Matches[1] }
     if (-not $name) { Write-Host "FAIL  a row with neither a setting nor an Id:`n$b"; $failed++; continue }
+    [void]$rowNames.Add($name)
 
     if ($kind -ne 'Status') { [void]$needed.Add("$name.Label") }
     if ($b -match 'HasNote = true') { [void]$needed.Add("$name.Note") }
@@ -87,6 +90,7 @@ $assetSrc = Get-Content (Join-Path $root "PerAsset\AssetCatalog.cs") -Raw
 $assetRows = 0
 foreach ($m in [regex]::Matches($assetSrc, 'new (?:Float|Bool|Int|Color)Setting\("(\w+)"')) {
     [void]$needed.Add($m.Groups[1].Value + ".Label"); $assetRows++
+    [void]$rowNames.Add($m.Groups[1].Value)
 }
 foreach ($m in [regex]::Matches($assetSrc, 'Group = "(\w+)"|Percent\(_\w+, "(\w+)"')) {
     $g = if ($m.Groups[1].Success) { $m.Groups[1].Value } else { $m.Groups[2].Value }
@@ -102,6 +106,14 @@ foreach ($file in Get-ChildItem $root -Recurse -Filter *.cs | Where-Object { $_.
         [void]$needed.Add($m.Groups[1].Value)
     }
 }
+
+# A tooltip is optional (Row.Tooltip: English decides which rows have one), so it is asked for
+# only where English has it -- and only a row's: one with no row is dead text, caught below.
+$tipCount = 0
+foreach ($key in @($en.Table.Keys)) {
+    if ($key -match '^(\w+)\.Tooltip$' -and $rowNames.Contains($Matches[1])) { [void]$needed.Add($key); $tipCount++ }
+}
+Write-Host "      ($tipCount rows with a tooltip)"
 
 $missing = @($needed | Where-Object { -not $en.Table.ContainsKey($_) } | Sort-Object)
 Check "English has every key the code needs ($($needed.Count))" ($missing -join ", ") ""
@@ -121,9 +133,10 @@ foreach ($key in $en.Table.Keys) {
 }
 Check "every English text is non-empty with well-formed {n}" ($bad -join "; ") ""
 
-# No tooltips: the labels say what a row does (the author, 2026-10-04).
-$tips = @($en.Table.Keys | Where-Object { $_ -match '\.Tooltip$' } | Sort-Object)
-Check "no tooltips" ($tips -join ", ") ""
+# Tooltips: one short line in the game's tooltip box (Volumetric Weather's rule of thumb).
+$long = @($en.Table.Keys | Where-Object { $_ -match '\.Tooltip$' -and $en.Table[$_].Length -gt 70 } | Sort-Object |
+    ForEach-Object { "$_ ($($en.Table[$_].Length))" })
+Check "every tooltip fits one line (70 characters)" ($long -join ", ") ""
 
 Check "a wrapped text is one line" ($en.Table["Mod.Unsupported"] -match "switched itself off: nothing in this city") "True"
 Check "\n is a real break, no stray spaces" ($en.Table["ResetAll.Confirm"] -match "how the mod comes\?`n`nThis throws away") "True"

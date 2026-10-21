@@ -605,6 +605,12 @@ namespace RealGlass
                 return null;
             }
 
+            if (row.Text != null)
+            {
+                row.Text.value = text;
+                return null;
+            }
+
             return null;
         }
 
@@ -673,6 +679,7 @@ namespace RealGlass
             if (row.Int != null) return row.Int;
             if (row.Key != null) return row.Key;
             if (row.Colour != null) return row.Colour;
+            if (row.Text != null) return row.Text;
             return null;
         }
 
@@ -694,6 +701,8 @@ namespace RealGlass
                 return SettingsXmlFormat.FormatKey(row.Key.value);
             if (row.Colour != null)
                 return ColorText.Format(row.Colour.value);
+            if (row.Text != null)
+                return row.Text.value;
 
             return string.Empty;
         }
@@ -741,6 +750,10 @@ namespace RealGlass
             else if (row.Colour != null)
             {
                 text = Localization.Get("File.Colour", label, ColorText.Format(row.DefaultColour));
+            }
+            else if (row.Text != null)
+            {
+                text = Localization.Get("File.Text", label);
             }
             else
             {

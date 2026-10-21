@@ -74,8 +74,8 @@ namespace RealGlass.Water
         public static string Describe()
         {
             if (!On(Settings.WaterEnabled))
-                return "water controls off";
-            return "water controls ON: color " + (On(Settings.WaterThemeColor) ? "the map theme's" : Settings.WaterColor != null ? ColorText.Format(Settings.WaterColor.value) : "?") +
+                return "realistic water off";
+            return "realistic water ON: color " + (On(Settings.WaterThemeColor) ? "the map theme's" : Settings.WaterColor != null ? ColorText.Format(Settings.WaterColor.value) : "?") +
                    ", brightness " + Pct(Settings.WaterBrightness) +
                    ", moving ripples " + (On(Settings.WaterRipples) ? Pct(Settings.WaterRippleStrength) +
                    (On(Settings.WaterOceanWaves) ? " as ocean waves (wind " + Value(Settings.WaterWind, Settings.Defaults.WaterWind).ToString("F1") +

@@ -43,6 +43,11 @@ five tabs:
   it is drawn; ocean waves raised by the wind you set, with their choppiness, and the sun's glitter
   on them; foam along the shores, on fast water and on wave fronts.
 
+On each tab the settings sit under headings that fold away (in every panel look but Vanilla): a
+click on a heading opens or closes it, each tab starts with its first one open, and the panel
+remembers which are open. Hover over a
+setting whose name leaves a question (what 100% is, what turning it off gives back) to read it.
+
 **Alt+G** turns the building picker on: click a building, and a small window of its own gives its
 asset its own glass.
 

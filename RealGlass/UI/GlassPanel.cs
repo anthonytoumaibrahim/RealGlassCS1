@@ -29,6 +29,10 @@ namespace RealGlass.UI
     /// (<see cref="PanelLook"/>); Vanilla is the panel as it was before. In the new looks the tabs are
     /// icons, the panel has one height for every tab and the pages scroll inside it (ModsLibCS1's
     /// ScrollView); Vanilla grows with each tab.
+    ///
+    /// Each tab's headings fold (Volumetric Weather's accordions, 2026-10-21; <see cref="RowList"/>):
+    /// a tab opens with its first group open, a click on a heading opens or folds its group, and the
+    /// page closes up or scrolls the group into view.
     /// </remarks>
     public class GlassPanel : UIPanel
     {
@@ -98,6 +102,7 @@ namespace RealGlass.UI
         private readonly List<float> _contentHeights = new List<float>();
         private float _width = VanillaWidth;
         private float _tabHeight = TabHeight;
+        private int _selected;
 
         private const float RefreshInterval = 0.25f;
         private float _nextRefreshTime;
@@ -126,7 +131,8 @@ namespace RealGlass.UI
             bool vanilla = _ui.Skin == Skin.Vanilla;
             _tabHeight = vanilla ? TabHeight : IconTabHeight;
             _width = vanilla ? VanillaWidth : NewLooksWidth;
-            _rows = new RowList(_ui, RowLayout.Panel);
+            _rows = new RowList(_ui, RowLayout.Panel, true);
+            _rows.PageResized = PageResized;
 
             size = new Vector2(_width, PanelHeight);
             canFocus = true;
@@ -292,6 +298,7 @@ namespace RealGlass.UI
 
         private void SelectPage(int index)
         {
+            _selected = index;
             for (int i = 0; i < _pages.Count; i++)
                 _pages[i].isVisible = i == index;
 
@@ -306,13 +313,46 @@ namespace RealGlass.UI
             }
             else
             {
-                // Vanilla: as tall as the selected page needs, and never shorter than it started.
-                float content = Mathf.Max(MinContentHeight, _contentHeights[index]);
-                _pages[index].height = content;
-                height = TitleBarHeight + _tabHeight + 2f * Margin + content;
+                FitVanilla(index);
             }
 
             KeepOnScreen();
+        }
+
+        /// <summary>Vanilla: as tall as the selected page needs, and never shorter than it started.</summary>
+        private void FitVanilla(int index)
+        {
+            float content = Mathf.Max(MinContentHeight, _contentHeights[index]);
+            _pages[index].height = content;
+            height = TitleBarHeight + _tabHeight + 2f * Margin + content;
+        }
+
+        /// <summary>
+        /// A page's rows were folded, opened, shown or hidden (<see cref="RowList.PageResized"/>). The
+        /// open page: its scrolling follows, and a group just opened is scrolled into view; Vanilla grows
+        /// or shrinks with it.
+        /// </summary>
+        private void PageResized(int index, float content, float revealTop, float revealBottom)
+        {
+            if (index < 0 || index >= _contentHeights.Count)
+                return;
+
+            _contentHeights[index] = content;
+            if (index != _selected)
+                return;
+
+            if (_scroll != null)
+            {
+                _pages[index].height = Mathf.Max(content, _scroll.Viewport.height);
+                _scroll.SetHeight(content);
+                if (revealTop >= 0f)
+                    _scroll.Reveal(revealTop, revealBottom);
+            }
+            else
+            {
+                FitVanilla(index);
+                KeepOnScreen();
+            }
         }
 
         private void CenterOnScreen()

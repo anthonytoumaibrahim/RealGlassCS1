@@ -80,6 +80,12 @@ namespace RealGlass
         public static FloatSetting WaterFoamView { get; private set; }
         public static FloatSetting HudButtonY { get; private set; }
 
+        /// <summary>
+        /// Hidden: the F8 panel's open headings (Row.Group names, comma separated); every other one is
+        /// folded away (Volumetric Weather's). Its headings are its UI.
+        /// </summary>
+        public static StringSetting PanelOpenGroups { get; private set; }
+
         // ---- F8 -> Glass ---------------------------------------------------------------------
 
         /// <summary>The master switch: off, nothing of the glass is drawn.</summary>
@@ -372,6 +378,9 @@ namespace RealGlass
 
             public const float WaterFoamView = 0f;
 
+            /// <summary>Each tab's first heading open, the rest folded (Volumetric Weather's rule).</summary>
+            public const string PanelOpenGroups = "TheGlass,TheReflections,ThePanes,TheRooms,WaterColour";
+
             // ---- Glass ----
             public const bool GlassEnabled = true;
 
@@ -642,6 +651,7 @@ namespace RealGlass
                 HudButtonX = new FloatSetting("HudButtonX", Defaults.HudButtonX);
                 HudButtonY = new FloatSetting("HudButtonY", Defaults.HudButtonY);
                 WaterFoamView = new FloatSetting("WaterFoamView", Defaults.WaterFoamView);
+                PanelOpenGroups = new StringSetting("PanelOpenGroups", Defaults.PanelOpenGroups);
 
                 // Before the file is read: reading it walks the catalog, and building the catalog
                 // calls Init.

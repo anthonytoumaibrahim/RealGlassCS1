@@ -158,6 +158,17 @@ that repo's `docs/RELEASE-CHECKLIST.md` has the long version.
       (N%, size 50%)" by day and "the moon's glitter on (...)" after 18:00; the sun's path is about
       half as wide as 1.0.0's and as bright; Moon glitter at 0% takes the moon's away and leaves the
       sun's.
+- [ ] Folding headings and tooltips (2026-10-21, for 1.1.0): every tab opens with its first heading
+      open and the others folded (Glass: The glass; Reflections: The reflections; Panes: The panes;
+      Interiors: The rooms; Water: The water's color); a click on a heading folds or opens it, the
+      page closes up, a group opened at the bottom scrolls into view, and the log says "panel:
+      <group> opened (open now: ...)". Reopen the panel and load another city: the same ones open
+      (RealGlass.xml's PanelOpenGroups). Vanilla: plain headings, nothing folds (the library
+      has no arrows there), spacing as before. Hover over "Strength", "Clarity",
+      "Below the horizon", "Wind speed": a one-line tooltip; "Water color" none. The Glass tab has no
+      empty line at the top while the glass draws; turning the glass off shows "The glass is off."
+      above the switch. Water's first row reads "Realistic water". The building window: tooltips,
+      no folding.
 - [ ] Lumina's Dynamic Resolution / SSAA (the camera fix of 2026-10-14): Lumina only applies it
       when a city LOADS (its button just saves the setting), so turn it on, then load a city.
       The glass reflects the city and the water's city reflection shows, at SSAA 1 and above.
