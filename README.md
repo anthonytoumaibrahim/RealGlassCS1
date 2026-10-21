@@ -9,7 +9,7 @@ glitter and foam.
 **[Subscribe on the Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3823419476)**
 · [Changelog](CHANGELOG.md) · [Building from source](BUILDING.md)
 
-> Features marked **1.1** are in this repository and come to the Workshop with the next update.
+> Features marked **1.1** are new in 1.1.0.
 
 ## Features
 
