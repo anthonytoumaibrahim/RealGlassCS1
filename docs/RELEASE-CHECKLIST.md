@@ -1,4 +1,4 @@
-# Release checklist — Steam Workshop (Real Glass & Water 1.0.0)
+# Release checklist — Steam Workshop (Real Glass & Water: 1.0.0 published 2026-10-20, 1.1.0 made ready 2026-10-21)
 
 The mod's name is **Real Glass & Water** since 2026-10-20 (the author, before the first upload;
 it was Real Glass). The player-visible name is `Mod.DisplayName`; everything internal keeps
@@ -24,6 +24,57 @@ that repo's `docs/RELEASE-CHECKLIST.md` has the long version.
 | Screenshots | The item's Steam page, *Add/Edit images* | 5–8, 1920 × 1080 or larger, 16:9, each under 1 MB |
 | Required items, visibility, tags | The item's Steam page | Harmony `2040656402` |
 
+## 0. The 1.1.0 update (2026-10-21)
+
+What it brings (CHANGELOG.md's 1.1.0 section): Procedural Objects' buildings, LODs show the
+model's glass, dynamic waves, the moon's own glitter and both glitters' sizes, folding headings
+and tooltips, the rooms kept when a building's lights come on. His test plan: one in-game session
+for everything at the end, then the log read against every 1.1 item of section 2.
+
+- [x] **The final session**, 2026-10-21 15:10: build 1.0.0.27193 = HEAD 1aa86ed's sources (the
+      DLL built 15:06:26, after the last source edit, en.xml at 15:06:18), 4K, Volumetric Weather
+      on, Procedural Objects NOT loaded, on a FRESH DEFAULT SETTINGS FILE ("settings: no settings
+      file yet; created RealGlass.xml with every default" -- the true-first-run check; his own
+      RealGlass.xml and RealGlassAssets.xml appear to be the two in `Downloads\`, moved aside for
+      it). 155 lines, no WARN or ERROR, 8 Harmony classes, "other mods patching the same methods:
+      none"; output_log.txt has no exception of ours (the DLL loaded as 1.0.0.27193). What it
+      says for each 1.1 item is under that item in section 2.
+      Two log floods found in it and trimmed at the release check (log lines only, nothing drawn
+      changes; NOT seen in a game since): (1) every later LOD round (an asset new in the city, as
+      often as every 10 s) re-logged the whole "taking their model's glass" list, 2.5 KB a time,
+      four times in four minutes -- now one line naming only the LODs that round compared, with
+      each one's verdict; (2) "the sun's / the moon's glitter on" was logged at every handover of
+      the game's main light -- 60 lines in a minute while the time of day was dragged to and fro
+      across dawn -- now a state's line is logged once, and again only when its numbers change
+      (every handover still shows with Detailed logging).
+- [x] `Mod.Version` 1.1.0; CHANGELOG.md `## 1.1.0 — 2026-10-21`;
+      `Workshop/ChangeNotes/1.1.0.bbcode.txt` (his shape); the description's banner (Version 1.1,
+      the change-notes link), its known issue on LOD glass reworded for the LOD feature, Procedural
+      Objects named under Compatibility: about 4,650 of 8,000 characters Steam's way.
+- [x] `tools\release.ps1 -DryRun` on this tree, 2026-10-21 15:24 (about 6 min): every check passed
+      but the one expected stop, the uncommitted tree (these changes + the README rewrite). Game
+      closed; ModsLibCS1 pinned a52d4f8, clean, on its remote; Mod.Version 1.1.0 after v1.0.0;
+      changelog dated; no personal name; the three bundles of 14:40 after GlassUtil.shader 14:35;
+      the build 0 warnings -> **1.1.0.27700** deployed (this tree's sources: the log trims
+      included), embedding the three bundles, both room atlases, the icon and en.xml at their
+      on-disk sizes; 9 shaders with real code for every API in each bundle; exactly the four
+      shipped files, libraries and notices the repo's; test-settings, test-localization,
+      test-reflection-shader, test-water-surface pass; **test-amd: 195 programs compile on gfx1100,
+      gfx1201, gfx1030, gfx1010, gfx900, no spills** (1.0.0's 185 + the LOD variant's 10). The
+      subscribed folder still holds 1.0.0.26356; the real run copies 1.1.0 in and parks the local
+      copy. Addons\Mods now holds 1.1.0.27700, built but NOT yet run in a game.
+- [ ] README.md and THIRD-PARTY-NOTICES.md were rewritten in the working tree the same afternoon
+      (15:22-15:23, not by the release check: a 271-line README, the references moved into the
+      notices). README's "Features marked 1.1 are in this repository and come to the Workshop with
+      the next update" must say 1.1.0 (or lose the markers) before the tag; its "Known limitations"
+      bullet on LODs without specular maps is half-superseded by the LOD feature.
+- [ ] By hand (his): commit; `tools\release.ps1` for real (the four files into the subscribed
+      folder, the local copy parked); Skyve: the Workshop item ENABLED; a city loaded on it (the
+      first log line "1.1.0", the settings line nothing ignored); Content Manager -> the item's
+      button reads UPDATE (if it reads Share, stop: that is a local copy); title, description, change
+      note pasted; Update. Then "release": tag v1.1.0 pushed, the GitHub release (step 8), and
+      `## 1.2.0 — unreleased` opened.
+
 ## 1. Code and content
 
 - [x] Panel key **F8** (2026-09-29). F7 is the game's debug-output key; the patch that kept the
@@ -35,7 +86,7 @@ that repo's `docs/RELEASE-CHECKLIST.md` has the long version.
       blue (#2E6A80, 20% / 24%; Silver reflective 2026-09-29..10-04), reflection
       brightness 55%, cushioned panes, pane tilt and ripple 150%. Detailed logging stays off.
       The "Kind of glass" row lists Reflective blue first (the default first, Custom last).
-- [x] `Mod.Version` 1.0.0.
+- [x] `Mod.Version` 1.0.0; 1.1.0 since 2026-10-21 (section 0).
 - [x] Tests: `tools\test-settings.ps1` and `tools\test-localization.ps1` pass; the three shader
       bundles carry real code for every API (`tools\bundle-apis.ps1`: D3D11 + OpenGL Core, OpenGL
       Core, Metal + OpenGL Core). No shader changed since they were built.
@@ -104,7 +155,8 @@ that repo's `docs/RELEASE-CHECKLIST.md` has the long version.
       author's call: GitHub first, the Workshop "a bit later", as Volumetric Weather's 1.5.0).
       The date stays if the Workshop upload is the same build. If the build changes before the
       upload, the number is his call (Volumetric Weather's 1.5.0 was withdrawn and released again
-      under the same number on 2026-10-20).
+      under the same number on 2026-10-20). The 1.1.0 section is dated 2026-10-21, the day it was
+      made ready; if the upload slips to another day, the date moves with it.
 
 ## 2. Verified in the game
 
@@ -123,9 +175,13 @@ that repo's `docs/RELEASE-CHECKLIST.md` has the long version.
       and are out of the table. For all five: city loaded, camera parked on a downtown, panel
       closed, `tools\benchmark.ps1` (about 2.5 minutes, hands off; saves
       `docs\benchmark-<date>.txt`).
-- [ ] A true first run: move `RealGlass.xml` aside, load a city, change nothing: the defaults
+- [x] A true first run: move `RealGlass.xml` aside, load a city, change nothing: the defaults
       look right, then put the file back. (Every session so far ran the author's own file: Silver
       reflective, rooms on, water on -- none of them the defaults.)
+      Done 2026-10-21 15:10 (section 0): the file created with every default, the features line =
+      the defaults (Reflective blue #2E6A80 at 20% / 24%, strength 85%, rooms on at night, realistic
+      water on with dynamic waves at 7 m/s, both glitters 35% at size 50%), a clean log; how it
+      looked is his by eye. The file is still the default one until he puts his own back.
 - [x] Two cities in one session (the `_dirty` fix of 2026-10-11): load a city, exit to the main
       menu, load another: the log says "glass: on" again and the glass shows at once.
       Seen 2026-10-20 on his Mac (the Workshop copy, 1.0.0.26356): the same city loaded twice in
@@ -158,6 +214,10 @@ that repo's `docs/RELEASE-CHECKLIST.md` has the long version.
       (N%, size 50%)" by day and "the moon's glitter on (...)" after 18:00; the sun's path is about
       half as wide as 1.0.0's and as bright; Moon glitter at 0% takes the moon's away and leaves the
       sun's.
+      The log half seen 2026-10-21 15:10: "the moon's glitter on (35%, size 50%)" at a night load,
+      "the sun's glitter on (35%, size 50%)" at dawn 13 s later, then the time of day dragged to and
+      fro across dawn (a handover line every few frames: the log trim in section 0). The width and
+      Moon glitter at 0% are his to see.
 - [ ] Folding headings and tooltips (2026-10-21, for 1.1.0): every tab opens with its first heading
       open and the others folded (Glass: The glass; Reflections: The reflections; Panes: The panes;
       Interiors: The rooms; Water: The water's color); a click on a heading folds or opens it, the
@@ -168,7 +228,12 @@ that repo's `docs/RELEASE-CHECKLIST.md` has the long version.
       "Below the horizon", "Wind speed": a one-line tooltip; "Water color" none. The Glass tab has no
       empty line at the top while the glass draws; turning the glass off shows "The glass is off."
       above the switch. Water's first row reads "Realistic water". The building window: tooltips,
-      no folding.
+      no folding. (The headings read Glass / Reflections / Panes / Rooms / Water color since 1aa86ed.)
+      The log half seen 2026-10-21 15:10: "panel: BuildingsOwnLook opened (open now: TheGlass,
+      TheReflections,ThePanes,TheRooms,WaterColour,BuildingsOwnLook)" then "folded", WhatIsGlass
+      likewise; every tab 398 high (524 in 1.0.0: the folded groups), panel 502; the new file's
+      PanelOpenGroups = the five defaults; "Kind of glass" and "Glass on its LOD" as dropdowns. The
+      tooltips, Vanilla, the status line and the scrolling are his by eye.
 - [x] Procedural Objects' buildings (2026-10-21, for 1.1.0; build 1.0.0.22624). IN HIS GAME
       2026-10-21 13:53 (build 1.0.0.23997, 4K, with VW): "PO integration works fine". Log clean (no
       WARN/ERROR; no exception of ours in output_log): PO 1.7.8 found, 40 buildings among 568
@@ -184,8 +249,15 @@ that repo's `docs/RELEASE-CHECKLIST.md` has the long version.
       building outlines its footprint and names its asset, whichever of it or a real building is
       in front; a click opens its asset's window ("assets: picked a building of Procedural Objects
       (its object N)"), the count includes the converted copies, and a change shows on them at
-      once. Without Procedural Objects: "procedural objects: not installed", nothing else.
-- [ ] LODs show the model's glass. IN HIS GAME 2026-10-21 14:59 (build 1.0.0.26727, 4K, with VW):
+      once. Without Procedural Objects: "procedural objects: not installed", nothing else (seen
+      2026-10-21 15:10, a session without it: that line and nothing else).
+- [ ] LODs show the model's glass.
+      Seen again 2026-10-21 15:10 (another city, 1aa86ed's sources): 372 LODs of 371 assets
+      compared in 3.5 s (404 ms on the main thread); 138 agree, 77 neither has glass, 157 take the
+      model's (3 had none, 154 had it elsewhere, alike 0.08-0.59), 0 shaped unlike, 0 failed; the
+      4096 x 4096 mask in 110 ms on a worker, uploaded in 9 ms; four later rounds of 1-2 LODs as
+      assets were placed (15-42 ms of main thread each; their full-list re-logging is the trim in
+      section 0). Still not exercised: the switch, the building window's row. IN HIS GAME 2026-10-21 14:59 (build 1.0.0.26727, 4K, with VW):
       log clean; 1129 LODs of 974 assets compared in 18.0 s (2071 ms on the main thread: frames
       36-40 ms while comparing against 36 ms after); 48 agree, 719 neither has glass, 327 take the
       model's glass (63 had none, 264 had it elsewhere: mostly alike 0.4-0.59, vanilla LODs among
@@ -225,6 +297,8 @@ that repo's `docs/RELEASE-CHECKLIST.md` has the long version.
       waves built" at that wind). With Volumetric Weather its storms raise the sea too.
       2026-10-21 15:01 (build 1.0.0.26727): dynamic waves 7.0 m/s at a dry load; switched off, the
       sea rebuilt at his Wind speed (12.5 m/s); back on, 7.0 m/s again. No rain that session.
+      2026-10-21 15:10: "dynamic waves: the sea's wind 7.0 m/s under 0% rain" at a dry load again;
+      no rain. A rain spell's rise and fall is still unseen.
 - [ ] Rooms when a building's lights come on (2026-10-21, for 1.1.0; build 1.0.0.23997): at night,
       rooms on, watch a tower until the game switches its lights on (it lights the whole building
       at once). The rooms stay as they were: no flat glow over them, no bright lines where frames
@@ -264,7 +338,8 @@ that repo's `docs/RELEASE-CHECKLIST.md` has the long version.
       F8 and the panel look as in a city (their sprites were read from a city's UIView atlas).
 - [x] `output_log.txt` has no exception from RealGlass (2026-10-19, the 19:09 session's file:
       the DLL loaded as 1.0.0.33757, the mod's own lines mirrored, nothing else). Re-check on the
-      final build.
+      final build. Re-checked 2026-10-21 (the 15:10 session's file): loaded as 1.0.0.27193, no
+      exception of ours (the file's eight are Toggle It!'s, RICO Revisited's and ModTools' mono).
 
 ## 3. The folder that gets uploaded
 
@@ -311,7 +386,7 @@ stands.
       interiors" -- both are the rows' labels in en.xml), How to use, Compatibility with known
       issues (TAA flicker, SSR, LOD glass, the Mac blink), Source code, Reporting a bug; about
       4,060 of 8,000 characters Steam's way; the links Volumetric Weather, Harmony, GitHub.
-- [x] `Workshop/ChangeNotes/1.0.0.bbcode.txt`.
+- [x] `Workshop/ChangeNotes/1.0.0.bbcode.txt`; `1.1.0.bbcode.txt` 2026-10-21 (section 0).
 
 ## 6. Publish
 
@@ -337,9 +412,16 @@ stands.
       it, a submodule at the repo root): a public repo with a private submodule can't be built by
       anyone else, and GitHub shows the submodule's link as a 404. `git submodule status` shows no
       `+`, `-` or `U`, and nothing is dirty inside `ModsLibCS1`.
-- [ ] *Add/Remove Required Items* → Harmony, `2040656402`.
-- [ ] Screenshots; tags beyond the automatic `Mod`; the description renders (the table, the links).
-- [ ] Visibility **Public**.
+- [x] *Add/Remove Required Items* → Harmony, `2040656402`. (Anonymous page reads 2026-10-20 and
+      2026-10-21: "Required items: Harmony".)
+- [ ] Screenshots; tags beyond the automatic `Mod` (2026-10-21: the page shows only `Mod`); the
+      description renders (the table, the links).
+- [x] Visibility **Public** (2026-10-20; read again anonymously 2026-10-21: the description shows,
+      1 change note, 4.952 MB, posted 20 Oct. The sentence "This item has been removed from the
+      community because it violates Steam Community & Content Guidelines. It is only visible to
+      you" in the page's HTML is a hidden template on EVERY Workshop page, Volumetric Weather's
+      too (`<div class="bannedNotification" style="display: none">`): nothing to act on if a fetch
+      tool quotes it).
 
 ## 8. After publishing
 

@@ -3,7 +3,7 @@
 All notable changes to Real Glass & Water. The version is `Mod.Version` in `RealGlass/Mod.cs`, shown after
 the mod's name in the game.
 
-## 1.1.0 — unreleased
+## 1.1.0 — 2026-10-21
 
 ### New
 
@@ -50,7 +50,6 @@ the mod's name in the game.
 - *Water controls* is now *Realistic water*, like *Realistic glass*.
 - The Glass tab's status line shows only when it has something to say (the glass off, paused or
   stopped); it no longer leaves an empty line at the top.
-
 - The glitter is half as wide by default (both sizes 50%): at 1.0.0's width the sun's reflection
   covered a third of the screen from a city camera. Existing settings files get the new sizes
   too, and Moon glitter starts at 35% whatever Sun glitter is set to.
