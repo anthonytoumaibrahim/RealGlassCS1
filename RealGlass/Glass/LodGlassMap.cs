@@ -72,6 +72,12 @@ namespace RealGlass.Glass
         private Stopwatch _roundWatch;
         private long _mainTicks;
 
+        /// <summary>The LODs compared in this round, for its report.</summary>
+        private readonly List<LodGlassEntry> _roundEntries = new List<LodGlassEntry>();
+
+        /// <summary>The first round (the city as loaded) is reported in full; every later one in one line.</summary>
+        private bool _reported;
+
         // Deciding.
         private int _seenVersion = -1;
         private bool _seenOn;
@@ -422,6 +428,7 @@ namespace RealGlass.Glass
                 if (_compared.Count == 0)
                     return;
                 _roundDone += _compared.Count;
+                _roundEntries.AddRange(_compared);
                 _compared.Clear();
             }
             _newlyCompared = true;
@@ -600,6 +607,16 @@ namespace RealGlass.Glass
         /// </summary>
         private void Report()
         {
+            // The first round (the city as loaded) in full; every later one -- a few LODs of assets new in
+            // the city, as often as every ten seconds -- in one line naming only what it compared: the
+            // full lists again each time would fill a growing city's log.
+            if (_reported)
+            {
+                ReportRound();
+                return;
+            }
+            _reported = true;
+
             var counts = new int[9];
             var borrowed = new List<LodGlassEntry>();
             var shape = new List<LodGlassEntry>();
@@ -636,6 +653,7 @@ namespace RealGlass.Glass
                     " left as they are (switched off), " + failed.Count + " could not be compared");
             _roundFound = _roundDone = 0;
             _roundWatch = null;
+            _roundEntries.Clear();
 
             if (borrowed.Count > 0)
             {
@@ -655,6 +673,64 @@ namespace RealGlass.Glass
                 if (failed.Count > ReportNames)
                     line.Append("; and ").Append(failed.Count - ReportNames).Append(" more");
                 Log.Msg("lod glass: could not compare: " + line);
+            }
+        }
+
+        /// <summary>A later round, in one line: each LOD it compared with its verdict, then how many take the model's glass now.</summary>
+        private void ReportRound()
+        {
+            double mainMs = _mainTicks * 1000.0 / Stopwatch.Frequency;
+            var line = new StringBuilder();
+            line.Append("lod glass: ").Append(_roundEntries.Count).Append(" more LOD").Append(_roundEntries.Count == 1 ? "" : "s")
+                .Append(" compared (").Append(mainMs.ToString("F0")).Append(" ms on the main thread): ");
+            for (int i = 0; i < _roundEntries.Count; i++)
+            {
+                if (i == ReportNames)
+                {
+                    line.Append("; and ").Append(_roundEntries.Count - i).Append(" more");
+                    break;
+                }
+                LodGlassEntry e = _roundEntries[i];
+                line.Append(i > 0 ? "; " : "").Append('\'').Append(e.Name).Append("' ").Append(Outcome(e));
+            }
+            int borrowing = 0;
+            for (int i = 0; i < _entries.Count; i++)
+            {
+                if (LodGlass.Borrows(_entries[i].Verdict))
+                    borrowing++;
+            }
+            line.Append(" -- of ").Append(_entries.Count).Append(" LODs, ").Append(borrowing).Append(" take the model's glass");
+            Log.Msg(line.ToString());
+
+            _roundFound = _roundDone = 0;
+            _roundWatch = null;
+            _roundEntries.Clear();
+        }
+
+        /// <summary>One LOD's verdict in words, with the numbers that decided it.</summary>
+        private static string Outcome(LodGlassEntry e)
+        {
+            switch (e.Verdict)
+            {
+                case LodGlass.VerdictAgrees:
+                    return "agrees with its model (alike " + e.Agreement.ToString("F2") + ")";
+                case LodGlass.VerdictNoGlass:
+                    return "neither has glass";
+                case LodGlass.VerdictBorrowed:
+                    return "takes the model's glass (met " + Pct(e.Reach) + ", model " + Pct(e.ModelShare) + " glass, LOD " +
+                           Pct(e.LodShare) + ", alike " + e.Agreement.ToString("F2") + ")";
+                case LodGlass.VerdictShapeDiffers:
+                    return "shaped unlike its model (met " + Pct(e.Reach) + "), left as it is";
+                case LodGlass.VerdictForced:
+                    return "takes the model's glass (its building window's ask)";
+                case LodGlass.VerdictKeptOwn:
+                    return "kept as it is by its building window";
+                case LodGlass.VerdictOff:
+                    return "left as it is (switched off)";
+                case LodGlass.VerdictFailed:
+                    return "could not be compared: " + e.Problem;
+                default:
+                    return "not measured";
             }
         }
 
@@ -693,6 +769,8 @@ namespace RealGlass.Glass
             _verdictOf.Clear();
             _nextScan = 0f;
             _roundFound = _roundDone = 0;
+            _roundEntries.Clear();
+            _reported = false;
             _maskBorrowing = 0;
             _glass.Upload(null, 0, 0);
         }

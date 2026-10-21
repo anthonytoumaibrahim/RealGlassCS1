@@ -80,6 +80,11 @@ namespace RealGlass.Water
         // Whose glitter was drawn last frame: 0 none, 1 the sun's, 2 the moon's (for the log).
         private int _glitterFrom;
 
+        // Each state's last line in the log (by _glitterFrom). A state entered again with the same
+        // numbers -- the game's own dawn and dusk, or a time-of-day slider dragged to and fro across
+        // them, which hands the main light over many times a second -- logs only with Detailed logging.
+        private readonly string[] _glitterLogged = new string[3];
+
         /// <summary>The Water tab's glitter rows: each light's strength (1 = real water, 0 = none) and size (1 = the waves' own spread).</summary>
         public struct Glints
         {
@@ -256,8 +261,17 @@ namespace RealGlass.Water
             if (from != _glitterFrom)
             {
                 string whose = moon ? "the moon's" : "the sun's";
-                Log.Msg("water: " + (on ? whose + " glitter on (" + (strength * 100f).ToString("F0") + "%, size " + (size * 100f).ToString("F0") + "%)"
-                                        : "the glitter off" + (light == null ? " (no main light)" : " (" + whose + " at 0%)")));
+                string text = "water: " + (on ? whose + " glitter on (" + (strength * 100f).ToString("F0") + "%, size " + (size * 100f).ToString("F0") + "%)"
+                                               : "the glitter off" + (light == null ? " (no main light)" : " (" + whose + " at 0%)"));
+                if (text != _glitterLogged[from])
+                {
+                    _glitterLogged[from] = text;
+                    Log.Msg(text);
+                }
+                else if (Log.Detailed)
+                {
+                    Log.Detail(text);
+                }
             }
             _glitterFrom = from;
         }
@@ -295,6 +309,8 @@ namespace RealGlass.Water
         {
             ReleaseSpec();
             _glitterFrom = 0;
+            for (int i = 0; i < _glitterLogged.Length; i++)
+                _glitterLogged[i] = null;
             s_active = false;
             if (_shown || (why != _why && why.Length > 0 && why != "off"))
                 Log.Msg("water: the sky layer off (" + why + ")");
