@@ -856,6 +856,7 @@ Check ("  the texture's slopes + the tail down to 1.7 cm within 15% of Cox & Mun
 # turned to a + 180: a = 0 blows toward -z (heading 270), a = 90 toward -x (180).
 Check "  the waves run with the game's wind: 0 deg -> 270, 90 -> 180, 225 -> 45" ("{0:F0} {1:F0} {2:F0}" -f $spectrumType::HeadingFromGameWind(0.0), $spectrumType::HeadingFromGameWind(90.0), $spectrumType::HeadingFromGameWind(225.0)) "270 180 45"
 Check "the ocean waves' defaults: on, 7 m/s, choppiness 100%; the sun's glitter 35%" ("{0} {1} {2} {3}" -f (Default 'WaterOceanWaves'), (Default 'WaterWind'), (Default 'WaterChop'), (Default 'WaterGlitter')) "True 7 1 0.35"
+Check "the glitter's sizes and the moon's own glitter: sun 50%, moon 35% at 50%" ("{0} {1} {2}" -f (Default 'WaterGlitterSize'), (Default 'WaterMoonGlitter'), (Default 'WaterMoonGlitterSize')) "0.5 0.35 0.5"
 
 Write-Host ""
 if ($failed -eq 0) { Write-Host "all passed" } else { Write-Host "$failed FAILED"; exit 1 }

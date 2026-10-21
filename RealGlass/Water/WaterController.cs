@@ -82,7 +82,8 @@ namespace RealGlass.Water
                     " m/s, choppiness " + Pct(Settings.WaterChop) + ")" : " as 32 waves (size " + Pct(Settings.WaterRippleSize) + ", wave size " + Pct(Settings.WaterWaveSize) + ")") : "off") +
                    ", foam " + (On(Settings.WaterFoam) ? Pct(Settings.WaterFoamAmount) + " (shores " + Pct(Settings.WaterFoamShore) + ", fast water " +
                    Pct(Settings.WaterFoamRapids) + ", wave fronts " + Pct(Settings.WaterFoamFronts) + ")" : "off") +
-                   ", real sky " + (On(Settings.WaterRealSky) ? Pct(Settings.WaterSky) + ", sun glitter " + Pct(Settings.WaterGlitter) : "off") +
+                   ", real sky " + (On(Settings.WaterRealSky) ? Pct(Settings.WaterSky) + ", sun glitter " + Pct(Settings.WaterGlitter) + " (size " + Pct(Settings.WaterGlitterSize) +
+                    "), moon glitter " + Pct(Settings.WaterMoonGlitter) + " (size " + Pct(Settings.WaterMoonGlitterSize) + ")" : "off") +
                    ", city " + (On(Settings.WaterCity) ? Pct(Settings.WaterCityDay) + " day / " + Pct(Settings.WaterCityNight) + " night, waves " +
                    Pct(Settings.WaterCityWaves) + ", streaks " + Pct(Settings.WaterCityStreaks) + ", length " + Pct(Settings.WaterCityLength) : "off");
         }
@@ -201,7 +202,11 @@ namespace RealGlass.Water
             return _sky.Show(Value(Settings.WaterSky, Settings.Defaults.WaterSky), ShadedRipples(), slope * slope,
                              ours ? Value(Settings.WaterRippleSize, Settings.Defaults.WaterRippleSize) : 1.0,
                              ours ? Value(Settings.WaterWaveSize, Settings.Defaults.WaterWaveSize) : 1.0, camera.transform.position,
-                             ours ? _ripples.Ocean : null, slope, Value(Settings.WaterGlitter, Settings.Defaults.WaterGlitter));
+                             ours ? _ripples.Ocean : null, slope,
+                             new WaterSkyLayer.Glints(Value(Settings.WaterGlitter, Settings.Defaults.WaterGlitter),
+                                                      Value(Settings.WaterGlitterSize, Settings.Defaults.WaterGlitterSize),
+                                                      Value(Settings.WaterMoonGlitter, Settings.Defaults.WaterMoonGlitter),
+                                                      Value(Settings.WaterMoonGlitterSize, Settings.Defaults.WaterMoonGlitterSize)));
         }
 
         /// <summary>The foam on the game's water this frame, or none (off, an info view, the snapshot tool, no sea level).</summary>

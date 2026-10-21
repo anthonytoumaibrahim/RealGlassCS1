@@ -731,6 +731,16 @@ namespace RealGlass.UI
             return WaterOn() && (Settings.WaterRealSky == null || Settings.WaterRealSky.value);
         }
 
+        private static bool WaterGlitterOn()
+        {
+            return WaterSkyOn() && (Settings.WaterGlitter == null || Settings.WaterGlitter.value > 0f);
+        }
+
+        private static bool WaterMoonGlitterOn()
+        {
+            return WaterSkyOn() && (Settings.WaterMoonGlitter == null || Settings.WaterMoonGlitter.value > 0f);
+        }
+
         private static bool WaterRipplesOn()
         {
             return WaterOn() && (Settings.WaterRipples == null || Settings.WaterRipples.value);
@@ -1587,6 +1597,38 @@ namespace RealGlass.UI
                 DefaultFloat = Settings.Defaults.WaterGlitter,
                 Min = 0f, Max = 200f, Step = 5f,
                 Enabled = WaterSkyOn,
+            });
+
+            // Its size: 100% the waves' own spread (a third of a city camera's screen); smaller, as bright.
+            Add(new Row
+            {
+                Kind = RowKind.Percent,
+                Panel = PanelPage.Water,
+                Float = Settings.WaterGlitterSize,
+                DefaultFloat = Settings.Defaults.WaterGlitterSize,
+                Min = 10f, Max = 200f, Step = 5f,
+                Enabled = WaterGlitterOn,
+            });
+
+            // The moon's, at night (the game lights the water by the moon before 6:00 and after 18:00).
+            Add(new Row
+            {
+                Kind = RowKind.Percent,
+                Panel = PanelPage.Water,
+                Float = Settings.WaterMoonGlitter,
+                DefaultFloat = Settings.Defaults.WaterMoonGlitter,
+                Min = 0f, Max = 200f, Step = 5f,
+                Enabled = WaterSkyOn,
+            });
+
+            Add(new Row
+            {
+                Kind = RowKind.Percent,
+                Panel = PanelPage.Water,
+                Float = Settings.WaterMoonGlitterSize,
+                DefaultFloat = Settings.Defaults.WaterMoonGlitterSize,
+                Min = 10f, Max = 200f, Step = 5f,
+                Enabled = WaterMoonGlitterOn,
             });
 
             Add(new Row

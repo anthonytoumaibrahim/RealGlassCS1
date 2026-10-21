@@ -49,6 +49,8 @@ public static class FoamPreview
         public int Waves;
         // The sun's glitter on the sky layer (1 = real water; 0 none, the game's own highlight kept).
         public float Glitter;
+        // Its size: every facet's slope x this (1 = the waves' own).
+        public float GlitterSize = 1f;
     }
 
     /// <summary>A run of frames for the flicker under temporal anti-aliasing (as WaterPreview's).</summary>
@@ -138,7 +140,7 @@ public static class FoamPreview
             Vector3 toSun = -Sun.transform.forward;
             Shader.SetGlobalVector("_RGWaterSun", new Vector4(toSun.x, toSun.y, toSun.z, layer ? shot.Glitter : 0f));
             Color light = Sun.color.linear * Sun.intensity;
-            Shader.SetGlobalVector("_RGWaterSunColour", new Vector4(light.r, light.g, light.b, 0f));
+            Shader.SetGlobalVector("_RGWaterSunColour", new Vector4(light.r, light.g, light.b, shot.GlitterSize));
             Water.SetFloat("_SpecGain", layer && shot.Glitter > 0f ? 0f : 0.6f);
         }
 
@@ -246,6 +248,7 @@ public static class FoamPreview
                         Body = p.Length > 8 ? Hex(p[8]) : null,
                         Waves = p.Length > 9 ? int.Parse(p[9], CultureInfo.InvariantCulture) : 0,
                         Glitter = p.Length > 10 ? WaterPreview.F(p[10]) : 0f,
+                        GlitterSize = p.Length > 11 ? WaterPreview.F(p[11]) : 1f,
                     });
                 else if (p[0] == "taa")
                 {
@@ -977,14 +980,17 @@ public static class FoamPreview
     private static bool SetView(string view, GameObject cameraObject, Light sun, Material skybox, Camera capture, RenderTexture skyCube, Material water, List<Tower> towers)
     {
         bool night = view.StartsWith("night", StringComparison.Ordinal);
-        // "glitter" views: the sunset's sun, the camera far out at sea looking into it (web-ocean's).
+        // "glitter" views: the sunset's sun, the camera far out at sea looking into it (web-ocean's);
+        // "glitterday": a sun 30 deg up the same way, under a city camera's usual pitch.
         bool glitter = view.StartsWith("glitter", StringComparison.Ordinal);
-        bool sunset = view.StartsWith("sunset", StringComparison.Ordinal) || glitter;
+        bool glitterDay = view == "glitterday";
+        bool sunset = view.StartsWith("sunset", StringComparison.Ordinal) || (glitter && !glitterDay);
         foreach (Tower t in towers)
             t.Renderer.sharedMaterial = night ? t.Night : t.Day;
 
         // Day: the sun high behind the camera's left; sunset: low over the land ahead; night: a dim moon.
-        Vector3 toSun = sunset ? new Vector3(0.979f, 0.105f, -0.173f).normalized : night ? new Vector3(-0.3f, 0.6f, 0.5f).normalized : new Vector3(-0.55f, 0.45f, 0.7f).normalized;
+        Vector3 toSun = sunset ? new Vector3(0.979f, 0.105f, -0.173f).normalized : night ? new Vector3(-0.3f, 0.6f, 0.5f).normalized
+            : glitterDay ? new Vector3(0.853f, 0.5f, -0.150f).normalized : new Vector3(-0.55f, 0.45f, 0.7f).normalized;
         sun.transform.rotation = Quaternion.LookRotation(-toSun);
         sun.intensity = night ? 0.12f : sunset ? 1.6f : 1.3f;
         sun.color = night ? new Color(0.6f, 0.7f, 1f) : sunset ? new Color(1f, 0.62f, 0.38f) : new Color(1f, 0.95f, 0.88f);
@@ -1008,8 +1014,8 @@ public static class FoamPreview
             // 30 m (or 300 m) over the sea at its far edge, facing the sun's way (10 deg south of
             // east), the horizon a little above the middle (or the sea filling most of the frame).
             bool high = view.EndsWith("300", StringComparison.Ordinal);
-            float pitch = (high ? 11f : 2.5f) * Mathf.Deg2Rad, yaw = -10f * Mathf.Deg2Rad;
-            eye = new Vector3(-1950f, SeaLevel + (high ? 300f : 30f), 150f);
+            float pitch = (glitterDay ? 35f : high ? 11f : 2.5f) * Mathf.Deg2Rad, yaw = -10f * Mathf.Deg2Rad;
+            eye = new Vector3(-1950f, SeaLevel + (glitterDay ? 400f : high ? 300f : 30f), 150f);
             at = eye + new Vector3(Mathf.Cos(pitch) * Mathf.Cos(yaw), -Mathf.Sin(pitch), Mathf.Cos(pitch) * Mathf.Sin(yaw)) * 1000f;
         }
         else if (view == "tsunamiclose")

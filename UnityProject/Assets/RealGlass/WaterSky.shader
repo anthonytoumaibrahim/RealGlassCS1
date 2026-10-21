@@ -32,7 +32,9 @@
 //             slopes (Bruneton, Neyret & Holzschuch 2010, after Walter et al. 2007): far away the
 //             averaged-away slopes widen it into the glitter path toward a low sun; close up the
 //             texture's own facets catch it. Added over the water; the game's own highlight (exponent
-//             512 on its normal, x the material's _SpecColor) is turned off meanwhile.
+//             512 on its normal, x the material's _SpecColor) is turned off meanwhile. SIZE (2026-10-21,
+//             after the release: "the glitter area is way too big"): the slopes the glitter sees x a
+//             size, its peak kept -- the sun's and the moon's each their own strength and size.
 Shader "RealGlass/WaterSky"
 {
     // _MainTex is the game's (the block sets it per patch); declared so that its _MainTex_ST is the
@@ -88,10 +90,12 @@ Shader "RealGlass/WaterSky"
             // the table above is in use, 0 = the 32 waves' averaging (_RGWaterSkyRipples) as before.
             float4 _RGWaterSkyTail;
 
-            // The sun's glitter. xyz: toward the sun (unit); w: its strength (1 = real water, 0 = none).
+            // The glitter of the light the water is lit by (the sun, the moon at night). xyz: toward it
+            // (unit); w: its strength (1 = real water, 0 = none).
             float4 _RGWaterSun;
 
-            // The sun's light, linear (the game's light: colour x intensity).
+            // rgb: its light, linear (the game's light: colour x intensity). w: the glitter's size, every
+            // facet's slope x this (1 = the waves' own), its brightest kept (Water/WaterSkyLayer.cs).
             float4 _RGWaterSunColour;
 
             // The mip (fractional, -1 = magnified) the GPU reads a ripple texture of _RGWaterSkyRipples.z
@@ -129,14 +133,18 @@ Shader "RealGlass/WaterSky"
             }
 
             // The sun's light off the facets about the normal n (the texture's, filtered) whose slopes
-            // spread by s, toward the eye v.
+            // spread by s, toward the eye v. The size k scales every slope -- n's and the spread's -- so
+            // the pattern is k times as wide; the distribution's peak (1 / k^2 as high) is put back:
+            // smaller, as bright.
             float3 SunGlitter(float3 v, float3 n, float3 s)
             {
                 float3 l = _RGWaterSun.xyz;
+                float k = clamp(_RGWaterSunColour.w, 0.05, 2.0);
+                float k2 = k * k;
                 float3 h = SafeNormalize(v + l, float3(0.0, 1.0, 0.0));
                 float zv = max(v.y, 1e-3), zh = max(h.y, 1e-3), zn = max(n.y, 1e-3);
-                float2 d = float2(-h.x, -h.z) / zh - float2(-n.x, -n.z) / zn;
-                float sxx = s.x + 1e-5, szz = s.y + 1e-5, sxz = s.z;
+                float2 d = float2(-h.x, -h.z) / zh - float2(-n.x, -n.z) * (k / zn);
+                float sxx = s.x * k2 + 1e-5, szz = s.y * k2 + 1e-5, sxz = s.z * k2;
                 float det = max(sxx * szz - sxz * sxz, 1e-12);
                 float q = (szz * d.x * d.x - 2.0 * sxz * d.x * d.y + sxx * d.y * d.y) / det;
                 float p = exp(-0.5 * q) / (6.2831853 * sqrt(det));
@@ -147,7 +155,7 @@ Shader "RealGlass/WaterSky"
                 float masking = 1.0 + SmithLambda(v, sd) + SmithLambda(l, sd);
                 float lit = l.y > 0.0 ? 1.0 : 0.0;
                 // x pi: the game's light is Unity's (a white Lambert surface shows it at its colour).
-                return _RGWaterSunColour.rgb * (lit * 3.14159265 * fresnel * p / (4.0 * zv * zh * zh * zh * zh * masking));
+                return _RGWaterSunColour.rgb * (lit * 3.14159265 * fresnel * p * k2 / (4.0 * zv * zh * zh * zh * zh * masking));
             }
 
             struct v2f

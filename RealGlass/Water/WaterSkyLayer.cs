@@ -31,6 +31,11 @@ namespace RealGlass.Water
     ///   facets, as rough as the ripples' averaged-away slopes -- the ocean's spectrum's table
     ///   (<see cref="WaterSpectrum.Table"/>) when the ripples are the ocean waves. While it draws, the
     ///   game's own highlight (its water material's _SpecColor) is black; given back when it stops.
+    /// - SUN AND MOON APART (2026-10-21, after the release): the Sun glitter row was the moon's too. Each
+    ///   now has its strength and its size (<see cref="Glints"/>); which one is the main light's: the game
+    ///   makes the moon's light the main one before 6:00 and after 18:00 (DayNightProperties.
+    ///   UpdateLighting, normalized time of day below 0.25 / above 0.75, IL 2026-10-21). The size scales
+    ///   every slope the glitter sees, its brightest kept: 100% covered a third of a city camera's screen.
     /// </remarks>
     public sealed class WaterSkyLayer
     {
@@ -71,7 +76,23 @@ namespace RealGlass.Water
         private double _tableSlope = -1.0;
         private Material _specHeld;
         private Color? _specOwn;
-        private bool _glitterShown;
+
+        // Whose glitter was drawn last frame: 0 none, 1 the sun's, 2 the moon's (for the log).
+        private int _glitterFrom;
+
+        /// <summary>The Water tab's glitter rows: each light's strength (1 = real water, 0 = none) and size (1 = the waves' own spread).</summary>
+        public struct Glints
+        {
+            public readonly float Sun, SunSize, Moon, MoonSize;
+
+            public Glints(float sun, float sunSize, float moon, float moonSize)
+            {
+                Sun = sun;
+                SunSize = sunSize;
+                Moon = moon;
+                MoonSize = moonSize;
+            }
+        }
 
         private WaterSkyLayer(Shader shader)
         {
@@ -127,9 +148,9 @@ namespace RealGlass.Water
         /// <param name="eye">Where the sky's cube is rendered from (the camera).</param>
         /// <param name="ocean">The ocean waves' spectrum the ripples hold (null: the 32 waves or the game's).</param>
         /// <param name="slope">The ripples' root-mean-square slope (the texture's units: the ocean table's scale).</param>
-        /// <param name="glitter">The Sun glitter row (1 = real water; 0 = none, the game's own highlight kept).</param>
+        /// <param name="glints">The glitter rows, the sun's and the moon's (a strength of 0 = none, the game's own highlight kept).</param>
         public bool Show(float skySlider, Texture ripples, double slopeVariance, double rippleSize, double waveSize, Vector3 eye,
-                         WaterSpectrum ocean, double slope, float glitter)
+                         WaterSpectrum ocean, double slope, Glints glints)
         {
             string why = null;
             Material water = Singleton<TerrainManager>.exists ? Singleton<TerrainManager>.instance.m_waterMaterial : null;
@@ -168,7 +189,7 @@ namespace RealGlass.Water
             _material.SetVector(IdSky, new Vector4(Mathf.Max(0f, skySlider), CubeSize, Mathf.Max(0, _sky.Mips - 1), 0f));
             _material.SetVector(IdRipples, new Vector4((float)start, (float)span, Mathf.Max(1, ripples.width), (float)Math.Max(0.0, slopeVariance)));
             Ocean(ocean, slope);
-            Glitter(water, glitter);
+            Glitter(water, glints);
 
             s_material = _material;
             s_gameWater = water;
@@ -210,25 +231,35 @@ namespace RealGlass.Water
         }
 
         /// <summary>
-        /// The sun's glitter this frame: the light the water is lit by (RenderManager.MainLight, the moon
-        /// at night; none when it is off), and the game's own highlight off on its material meanwhile.
+        /// The glitter this frame: the light the water is lit by (RenderManager.MainLight, the moon at
+        /// night; none when it is off) at its own row's strength and size, and the game's own highlight
+        /// off on its material meanwhile.
         /// </summary>
-        private void Glitter(Material water, float strength)
+        private void Glitter(Material water, Glints glints)
         {
             Light light = Singleton<RenderManager>.exists ? Singleton<RenderManager>.instance.MainLight : null;
+            DayNightProperties dn = DayNightProperties.instance;
+            bool moon = light != null && dn != null && light == dn.moonLightSource;
+            float strength = moon ? glints.Moon : glints.Sun;
+            float size = Mathf.Max(0.05f, moon ? glints.MoonSize : glints.SunSize);
             bool on = strength > 0f && light != null;
             Vector3 toLight = light != null ? -light.transform.forward : Vector3.down;
             Color colour = light != null && light.enabled ? light.color.linear * light.intensity : Color.black;
             _material.SetVector(IdSun, new Vector4(toLight.x, toLight.y, toLight.z, on ? strength : 0f));
-            _material.SetVector(IdSunColour, new Vector4(colour.r, colour.g, colour.b, 0f));
+            _material.SetVector(IdSunColour, new Vector4(colour.r, colour.g, colour.b, size));
 
             if (on)
                 HoldSpec(water);
             else
                 ReleaseSpec();
-            if (on != _glitterShown)
-                Log.Msg("water: the sun's glitter " + (on ? "on (" + (strength * 100f).ToString("F0") + "%)" : "off" + (strength > 0f ? " (no main light)" : "")));
-            _glitterShown = on;
+            int from = on ? (moon ? 2 : 1) : 0;
+            if (from != _glitterFrom)
+            {
+                string whose = moon ? "the moon's" : "the sun's";
+                Log.Msg("water: " + (on ? whose + " glitter on (" + (strength * 100f).ToString("F0") + "%, size " + (size * 100f).ToString("F0") + "%)"
+                                        : "the glitter off" + (light == null ? " (no main light)" : " (" + whose + " at 0%)")));
+            }
+            _glitterFrom = from;
         }
 
         /// <summary>The game's own highlight off on its opaque water material (its _SpecColor black), its own colour kept.</summary>
@@ -263,7 +294,7 @@ namespace RealGlass.Water
         public void Hide(string why)
         {
             ReleaseSpec();
-            _glitterShown = false;
+            _glitterFrom = 0;
             s_active = false;
             if (_shown || (why != _why && why.Length > 0 && why != "off"))
                 Log.Msg("water: the sky layer off (" + why + ")");

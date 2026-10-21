@@ -152,6 +152,12 @@ that repo's `docs/RELEASE-CHECKLIST.md` has the long version.
       ocean waves", "the sun's glitter on (35%)" with the game's _SpecColor #7F7F7F, Ocean waves
       off then on again logged with the waves rebuilt; frames 20-37 ms at 4K, as before. The
       road of light and the moon's, and Wind speed moved, are his to see.
+- [ ] The glitter's size and the moon's own glitter (2026-10-21, after 1.0.0; for 1.1.0):
+      the Water tab has Sun glitter, Sun glitter size (50%), Moon glitter (35%), Moon glitter size
+      (50%); a size row greys out while its glitter is at 0%. The log says "the sun's glitter on
+      (N%, size 50%)" by day and "the moon's glitter on (...)" after 18:00; the sun's path is about
+      half as wide as 1.0.0's and as bright; Moon glitter at 0% takes the moon's away and leaves the
+      sun's.
 - [ ] Lumina's Dynamic Resolution / SSAA (the camera fix of 2026-10-14): Lumina only applies it
       when a city LOADS (its button just saves the setting), so turn it on, then load a city.
       The glass reflects the city and the water's city reflection shows, at SSAA 1 and above.

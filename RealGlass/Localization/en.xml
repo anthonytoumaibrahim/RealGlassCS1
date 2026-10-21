@@ -238,6 +238,12 @@
 
   <String key="WaterGlitter.Label">Sun glitter</String>
 
+  <String key="WaterGlitterSize.Label">Sun glitter size</String>
+
+  <String key="WaterMoonGlitter.Label">Moon glitter</String>
+
+  <String key="WaterMoonGlitterSize.Label">Moon glitter size</String>
+
   <String key="Group.WaterCity">The city in the water</String>
 
   <String key="WaterCity.Label">Water reflects the city</String>

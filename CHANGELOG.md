@@ -3,6 +3,21 @@
 All notable changes to Real Glass & Water. The version is `Mod.Version` in `RealGlass/Mod.cs`, shown after
 the mod's name in the game.
 
+## 1.1.0 — unreleased
+
+### New
+
+- **Moon glitter**: the moon's road of light on the water at night has its own strength. Until now
+  the Sun glitter row set both.
+- **Sun glitter size** and **Moon glitter size**: how wide each glitter spreads. A smaller glitter
+  is narrower, not dimmer.
+
+### Changed
+
+- The glitter is half as wide by default (both sizes 50%): at 1.0.0's width the sun's reflection
+  covered a third of the screen from a city camera. Existing settings files get the new sizes
+  too, and Moon glitter starts at 35% whatever Sun glitter is set to.
+
 ## 1.0.0 — 2026-10-20
 
 The first Workshop release: realistic glass on every building, at every distance, and realistic

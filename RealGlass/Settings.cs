@@ -317,8 +317,17 @@ namespace RealGlass
         /// <summary>0..2: the ocean waves' choppy crests (1 = Tessendorf's lambda 1 on the ripple texture's slopes).</summary>
         public static FloatSetting WaterChop { get; private set; }
 
-        /// <summary>0..2: the sun's glitter on the water (1 = real water's; Water/WaterSkyLayer.cs).</summary>
+        /// <summary>0..2: the sun's glitter on the water (1 = real water's; Water/WaterSkyLayer.cs). The sun's only since 2026-10-21 (the moon's before).</summary>
         public static FloatSetting WaterGlitter { get; private set; }
+
+        /// <summary>0.1..2: the sun's glitter's size, every facet's slope x this (1 = the waves' own), as bright.</summary>
+        public static FloatSetting WaterGlitterSize { get; private set; }
+
+        /// <summary>0..2: the moon's glitter on the water at night (1 = real water's).</summary>
+        public static FloatSetting WaterMoonGlitter { get; private set; }
+
+        /// <summary>0.1..2: the moon's glitter's size, as the sun's.</summary>
+        public static FloatSetting WaterMoonGlitterSize { get; private set; }
 
         /// <summary>Foam on the water: shores, rapids, wave fronts (Water/WaterFoam.cs).</summary>
         public static BoolSetting WaterFoam { get; private set; }
@@ -494,6 +503,17 @@ namespace RealGlass
             /// <summary>35% of real water's (the author, 2026-10-17: "35% looks slightly better, 100% is a bit overbright").</summary>
             public const float WaterGlitter = 0.35f;
 
+            /// <summary>
+            /// Half the waves' own spread (the author, 2026-10-21, after the release: "the glitter area is
+            /// way too big"; from a city camera 100% covered a third of the screen).
+            /// </summary>
+            public const float WaterGlitterSize = 0.5f;
+
+            /// <summary>The sun's (the moon's glitter was the Sun glitter row's until 2026-10-21).</summary>
+            public const float WaterMoonGlitter = 0.35f;
+
+            public const float WaterMoonGlitterSize = 0.5f;
+
             /// <summary>Foam on (the author, 2026-10-06: "One thing I'd actually like is the foam").</summary>
             public const bool WaterFoam = true;
 
@@ -597,6 +617,9 @@ namespace RealGlass
                 WaterRealSky = new BoolSetting("WaterRealSky", Defaults.WaterRealSky);
                 WaterSky = new FloatSetting("WaterSky", Defaults.WaterSky);
                 WaterGlitter = new FloatSetting("WaterGlitter", Defaults.WaterGlitter);
+                WaterGlitterSize = new FloatSetting("WaterGlitterSize", Defaults.WaterGlitterSize);
+                WaterMoonGlitter = new FloatSetting("WaterMoonGlitter", Defaults.WaterMoonGlitter);
+                WaterMoonGlitterSize = new FloatSetting("WaterMoonGlitterSize", Defaults.WaterMoonGlitterSize);
                 WaterCity = new BoolSetting("WaterCity", Defaults.WaterCity);
                 WaterCityDay = new FloatSetting("WaterCityDay", Defaults.WaterCityDay);
                 WaterCityNight = new FloatSetting("WaterCityNight", Defaults.WaterCityNight);

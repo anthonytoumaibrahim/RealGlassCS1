@@ -103,10 +103,11 @@ the log is `RealGlass.log`, next to it.
   when the game is paused. By default those ripples are **ocean waves**: thousands of waves from
   a measured wind sea's spectrum, as film and games build oceans, summed on the GPU every frame --
   long swells and short chop together, sharper at the crests -- running the way the game's own
-  wind blows when the city loads. The **sun's glitter** is the sun (the moon at night) mirrored by
-  every one of those waves: up close single glints, further out the road of light toward a low sun,
-  as wide as the waves too small to see make it. Only the map's water and the game's own lighting
-  of it are touched; buildings keep the theme's sky.
+  wind blows when the city loads. The **sun's glitter** is the sun mirrored by every one of those
+  waves: up close single glints, further out the road of light toward a low sun, as wide as the
+  waves too small to see make it. The **moon's glitter** is the same at night, with its own
+  strength; each has a size, which narrows the path without dimming it. Only the map's water and
+  the game's own lighting of it are touched; buildings keep the theme's sky.
 - **Water reflections follow the surface**, including elevated lakes and rivers: a separate depth
   pass draws the game's simulated water meshes with their own patch data. The seabed cannot stand
   in for the surface, and dry depressions, banks and foreground buildings are excluded. Reflection
