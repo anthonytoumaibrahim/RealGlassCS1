@@ -36,6 +36,9 @@ using Debug = UnityEngine.Debug;
 ///                 tier without the depth pyramid), Q.Field=n (one GlassQuality field)
 ///   RG_SUN        the sun's intensity by day (1.3)
 ///   RG_EXPOSURE   the picture's exposure (0.6 by day; night x6)
+///   RG_STOREY     the storey the stand-ins are painted with (3.8 m)
+///   RG_SHAPES     1: four more towers east of the city (views "shapes", "nightshapes"): round and
+///                 shaded smooth, a box with smoothed corners, a glass pyramid, 12-sided and flat
 /// Every frame logs "RG FRAME row=.. col=.. view=.. variant=.. file=.. | ..." with its mean colour.
 /// </summary>
 public static class GlassPreview
@@ -53,6 +56,9 @@ public static class GlassPreview
 
     /// <summary>The variant's "Lit=x": the share of the stand-ins' windows the game lights at night (0.25; 0 = every building's lights off).</summary>
     private static float _litShare = 0.25f;
+
+    /// <summary>The variant's "Guards=0": the rooms drawn as before RoomShape kept them off sloped, curved and smooth-shaded glass.</summary>
+    private static bool _guardsOff;
 
     /// <summary>The game's object colour map (RenderManager.OBJECT_COLORMAP_WIDTH x HEIGHT in the game: 512 x 256).</summary>
     private const int ColorMapWidth = 512, ColorMapHeight = 256;
@@ -744,8 +750,133 @@ public static class GlassPreview
             }
         }
 
+        if (Env("RG_SHAPES", "0") == "1")
+            AddShapes(s, rnd);
+
         s.Ground = GroundMesh(4000f);
         MakeGround(out s.GroundMain, out s.GroundXys, out s.GroundAci);
+    }
+
+    /// <summary>
+    /// "-Shapes": four towers in a row east of the city, on glass a room must not stand behind as the
+    /// mod draws rooms (RoomShape): round and shaded smooth (its normal turns all the way round), a box
+    /// whose corners are smoothed (its normal turns across every face), a glass pyramid (sloped), and a
+    /// 12-sided tower shaded flat -- the control, whose faces are flat and upright.
+    /// </summary>
+    private static void AddShapes(Scene s, System.Random rnd)
+    {
+        var colour = new Color(0.25f, 0.36f, 0.45f);
+        AddShape(s, rnd, "curtain", Prism(40, 18f, 120f, true), 2f * Mathf.PI * 18f, 120f, new Vector3(600f, 0f, -150f), colour);
+        AddShape(s, rnd, "curtain", Prism(4, 25f, 100f, true), 4f * 35.4f, 100f, new Vector3(600f, 0f, -50f), colour);
+        AddShape(s, rnd, "glassbox", Pyramid(50f, 35f), 50f, 35f, new Vector3(600f, 0f, 50f), colour);
+        AddShape(s, rnd, "curtain", Prism(12, 20f, 90f, false), 12f * 10.35f, 90f, new Vector3(600f, 0f, 150f), colour);
+    }
+
+    private static void AddShape(Scene s, System.Random rnd, string kind, Mesh mesh, float w, float h, Vector3 at, Color colour)
+    {
+        var b = new Building();
+        b.Kind = kind;
+        b.ObjectIndex = ColorIndex(s.Buildings.Count + 1);
+        b.Mesh = mesh;
+        b.Matrix = Matrix4x4.TRS(at, Quaternion.identity, Vector3.one);
+        MakeFacade(kind, w, h, colour, rnd.Next(), out b.Main, out b.Xys, out b.Aci);
+        s.Buildings.Add(b);
+    }
+
+    /// <summary>
+    /// An upright prism of n sides round its axis (a square box at n = 4, turned 45 degrees), its sides
+    /// mapped u 0..1 round, v 0..0.9 up, a flat roof. smooth: each corner's normal the average of the
+    /// two sides meeting there, as a mesh shaded smooth has it; else each side its own.
+    /// </summary>
+    private static Mesh Prism(int n, float radius, float h, bool smooth)
+    {
+        var verts = new List<Vector3>();
+        var norms = new List<Vector3>();
+        var tans = new List<Vector4>();
+        var uvs = new List<Vector2>();
+        var tris = new List<int>();
+        for (int k = 0; k < n; k++)
+        {
+            float a0 = 2f * Mathf.PI * k / n, a1 = 2f * Mathf.PI * (k + 1) / n, am = 0.5f * (a0 + a1);
+            Vector3 p0 = new Vector3(Mathf.Cos(a0), 0f, Mathf.Sin(a0)) * radius, p1 = new Vector3(Mathf.Cos(a1), 0f, Mathf.Sin(a1)) * radius;
+            Vector3 face = new Vector3(Mathf.Cos(am), 0f, Mathf.Sin(am));
+            Vector3 n0 = smooth ? new Vector3(Mathf.Cos(a0), 0f, Mathf.Sin(a0)) : face, n1 = smooth ? new Vector3(Mathf.Cos(a1), 0f, Mathf.Sin(a1)) : face;
+            Vector3 t = (p1 - p0).normalized;
+            int i0 = verts.Count;
+            verts.Add(p0); verts.Add(p1); verts.Add(p1 + Vector3.up * h); verts.Add(p0 + Vector3.up * h);
+            norms.Add(n0); norms.Add(n1); norms.Add(n1); norms.Add(n0);
+            for (int i = 0; i < 4; i++)
+                tans.Add(new Vector4(t.x, t.y, t.z, 1f));
+            float u0 = (float)k / n, u1 = (float)(k + 1) / n;
+            uvs.Add(new Vector2(u0, 0f)); uvs.Add(new Vector2(u1, 0f)); uvs.Add(new Vector2(u1, 0.9f)); uvs.Add(new Vector2(u0, 0.9f));
+            tris.AddRange(new[] { i0, i0 + 2, i0 + 1, i0, i0 + 3, i0 + 2 });
+        }
+
+        // The roof: a fan round its middle.
+        int c = verts.Count;
+        verts.Add(Vector3.up * h);
+        norms.Add(Vector3.up);
+        tans.Add(new Vector4(1f, 0f, 0f, 1f));
+        uvs.Add(new Vector2(0.5f, 0.95f));
+        for (int k = 0; k < n; k++)
+        {
+            float a = 2f * Mathf.PI * k / n;
+            verts.Add(new Vector3(Mathf.Cos(a) * radius, h, Mathf.Sin(a) * radius));
+            norms.Add(Vector3.up);
+            tans.Add(new Vector4(1f, 0f, 0f, 1f));
+            uvs.Add(new Vector2(0.5f + 0.4f * Mathf.Cos(a) * 0.5f, 0.95f));
+        }
+        for (int k = 0; k < n; k++)
+            tris.AddRange(new[] { c, c + 1 + (k + 1) % n, c + 1 + k });
+        return Finish(verts, norms, tans, uvs, tris);
+    }
+
+    /// <summary>A glass pyramid on a square base, its four faces mapped u 0..1 along the base, v 0..0.9 up to the apex.</summary>
+    private static Mesh Pyramid(float side, float h)
+    {
+        var verts = new List<Vector3>();
+        var norms = new List<Vector3>();
+        var tans = new List<Vector4>();
+        var uvs = new List<Vector2>();
+        var tris = new List<int>();
+        float e = side * 0.5f;
+        Vector3 apex = Vector3.up * h;
+        Vector3[] corners = { new Vector3(-e, 0f, -e), new Vector3(e, 0f, -e), new Vector3(e, 0f, e), new Vector3(-e, 0f, e) };
+        for (int k = 0; k < 4; k++)
+        {
+            Vector3 a = corners[k], b = corners[(k + 1) % 4];
+            Vector3 n = Vector3.Cross(b - a, apex - a).normalized;
+            Vector3 mid = (a + b) * 0.5f;
+            if (Vector3.Dot(n, new Vector3(mid.x, 0f, mid.z)) < 0f)
+                n = -n;
+            Vector3 t = (b - a).normalized;
+            int i0 = verts.Count;
+            verts.Add(a); verts.Add(b); verts.Add(apex);
+            for (int i = 0; i < 3; i++)
+            {
+                norms.Add(n);
+                tans.Add(new Vector4(t.x, t.y, t.z, 1f));
+            }
+            uvs.Add(new Vector2(0f, 0f)); uvs.Add(new Vector2(1f, 0f)); uvs.Add(new Vector2(0.5f, 0.9f));
+            tris.AddRange(new[] { i0, i0 + 2, i0 + 1 });
+        }
+        return Finish(verts, norms, tans, uvs, tris);
+    }
+
+    private static Mesh Finish(List<Vector3> verts, List<Vector3> norms, List<Vector4> tans, List<Vector2> uvs, List<int> tris)
+    {
+        Mesh m = new Mesh();
+        m.SetVertices(verts);
+        m.SetNormals(norms);
+        m.SetTangents(tans);
+        m.SetUVs(0, uvs);
+        var colours = new Color[verts.Count];
+        for (int i = 0; i < colours.Length; i++)
+            colours[i] = Color.white;
+        m.colors = colours;
+        m.SetTriangles(tris, 0);
+        m.RecalculateBounds();
+        return m;
     }
 
     // A box on its base (y = 0 .. h), the four facades mapped u 0..1 across, v 0..0.9 up; the
@@ -827,7 +958,7 @@ public static class GlassPreview
         var cMain = new Color[tw * th];
         var cXys = new Color[tw * th];
         var cAci = new Color[tw * th];
-        float floorH = 3.8f;
+        float floorH = ParseFloat(Env("RG_STOREY", "3.8"));
         float colW = kind == "punched" ? 3.0f : 1.5f;
         Color concrete = new Color(0.60f, 0.57f, 0.52f);
         Color mullion = new Color(0.34f, 0.35f, 0.37f);
@@ -1081,6 +1212,11 @@ public static class GlassPreview
             // The middle block's other full-glass tower, from the street on its far side.
             case "near2":
             case "nightnear2": target = new Vector3(0f, 50f, 0f); yaw = 215f; pitch = 12f; dist = 110f; break;
+            // "-Shapes": the four towers east of the city, from further east, the city behind them.
+            case "shapes":
+            case "nightshapes": target = new Vector3(600f, 45f, 0f); yaw = 270f; pitch = 8f; dist = 300f; break;
+            case "shapesnear":
+            case "nightshapesnear": target = new Vector3(600f, 40f, -100f); yaw = 255f; pitch = 6f; dist = 130f; break;
             default: target = new Vector3(0f, 70f, 0f); yaw = 30f; pitch = 32f; dist = 650f; break;
         }
         Quaternion rot = Quaternion.Euler(pitch, yaw, 0f);
@@ -1098,6 +1234,7 @@ public static class GlassPreview
         _debugLevel = 0f;
         _overcast = 0f;
         _litShare = 0.25f;
+        _guardsOff = false;
         _tier = "near";
         _lod = "own";
         _lodMode = LodGlass.ModeAuto;
@@ -1139,7 +1276,7 @@ public static class GlassPreview
         s.Assets.Upload();
         s.Assets.Bind();
         string lodInfo = PrepareLod(s, p);
-        Shader.SetGlobalVector("_RGDebug", new Vector4(_debug, _debugLevel, 0f, 0f));
+        Shader.SetGlobalVector("_RGDebug", new Vector4(_debug, _debugLevel, _guardsOff ? 1f : 0f, 0f));
         GlassFrame f = new GlassFrame();
         f.SunX = toSun.x; f.SunY = toSun.y; f.SunZ = toSun.z;
         Color sunLin = s.Sun.color.linear * s.Sun.intensity;
@@ -1289,6 +1426,12 @@ public static class GlassPreview
             if (kv[0].Trim().Equals("HiZ", StringComparison.OrdinalIgnoreCase))
             {
                 _hizOff = kv[1].Trim() == "0";
+                continue;
+            }
+            if (kv[0].Trim().Equals("Guards", StringComparison.OrdinalIgnoreCase))
+            {
+                // Not a setting: "Guards=0" draws the rooms as before RoomShape (the shader's _RGDebug.z).
+                _guardsOff = kv[1].Trim() == "0";
                 continue;
             }
             if (kv[0].Trim().StartsWith("Q.", StringComparison.OrdinalIgnoreCase))

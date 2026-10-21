@@ -108,6 +108,7 @@ Shader "RealGlass/Glass"
                 float4 rect : TEXCOORD3;         // the asset's rectangle in the LOD atlas (LOD, GROUP)
                 float4 screenPos : TEXCOORD4;
                 float2 building : TEXCOORD5;     // the building's colour index: its texel in the object colour map
+                float3 rel : TEXCOORD6;          // the position from the camera: the face's own orientation (RoomShape)
             };
 
             // Texture coordinates per metre ALONG the facade (xy) and UP it (zw), from the pixel's
@@ -305,6 +306,7 @@ Shader "RealGlass/Glass"
                 o.rect = abs(float4(v.texcoord2.xy, v.texcoord3.xy));
 #endif
                 o.screenPos = ComputeScreenPos(o.pos);
+                o.rel = world.xyz - _WorldSpaceCameraPos;
                 return o;
             }
 
@@ -336,6 +338,13 @@ Shader "RealGlass/Glass"
 
             float4 frag(v2f i) : SV_Target
             {
+                // Where a room can stand (Interiors.cginc), before anything is clipped: on OpenGL and
+                // Metal a pixel that clipped no longer runs, and its neighbours' derivatives are lost
+                // with it -- the guard read the edge of every window band as flat (2026-10-21).
+                float3 shapeN = SafeNormalize(i.worldNormal.xyz, float3(0.0, 1.0, 0.0));
+                float roomShape = RoomShape(i.rel, shapeN, FacadeTangent(shapeN), i.worldPos.xyz, max(length(fwidth(i.worldPos.xyz)), 1e-4));
+                roomShape = _RGDebug.z > 0.5 ? 1.0 : roomShape;   // the preview's "Guards=0": as before them
+
                 float2 uv = i.uv;
                 // The pixel's footprint in the maps (GlassShine reads across it), and where reads must
                 // stay: anywhere in an asset's own maps (near), inside its atlas rectangle (LOD, far).
@@ -379,7 +388,9 @@ Shader "RealGlass/Glass"
 
                 float shine = GlassShine(uv, uvDx, uvDy, uvLo, uvHi, glassThreshold, spec);
                 float mask = GlassMask(shine, spec, aci, glassThreshold, nightWindows) * i.worldNormal.w;
-                clip(mask - 0.004);
+                // (roomShape >= 0, so the min is the mask's: it only ties the guard's derivatives to
+                // before the first clip, where a compiler would otherwise sink them.)
+                clip(min(mask - 0.004, roomShape + 1.0));
                 float roomWindow = RoomWindow(shine, spec, aci, glassThreshold, nightWindows) * i.worldNormal.w;
 
                 if (_RGMask.z > 0.5)
@@ -428,6 +439,8 @@ Shader "RealGlass/Glass"
                     return float4(lerp(float3(0.05, 0.15, 0.6), float3(1.0, 0.85, 0.2), lines), 1.0);   // 10: the painted lines (yellow) on the glass (blue)
                 if (_RGDebug.x > 11.5 && _RGDebug.x < 12.5)
                     return float4(SunThrough().xxx, 1.0);   // 12: the sun's disc through the clouds (white all of it, black none)
+                if (_RGDebug.x > 12.5 && _RGDebug.x < 13.5)
+                    return float4(1.0 - roomShape, roomShape, 0.05, 1.0);   // 13: where a room can stand (green), not (red)
                 // Through the glass the light takes its colour once. The reflection, twice: a
                 // reflective coating sits behind the tinted lite (Solarcool on the second surface,
                 // every tinted preset), so what it mirrors crosses the tint going in and coming
@@ -613,6 +626,7 @@ Shader "RealGlass/Glass"
                 float roomCover = 0.0, roomCoverNight = 0.0;
                 if (rooms > 0.0)
                 {
+                    rooms *= roomShape;   // none on sloped, curved or smooth-shaded glass: the game's window there
                     float byDay = _RGRooms.y;
                     // At night the room fills the whole window the game lights, painted lines and
                     // all: the lines are drawn here as painted, by the sky's light alone -- a frame

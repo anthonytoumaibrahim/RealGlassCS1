@@ -11,6 +11,11 @@
 #   ... -Width 640 -Height 360 -Sun 1.3 -Exposure 0.6 -Name sheet
 #   ... -Api glcore                                     the OpenGL Core shaders (Linux's, and the Mac's
 #                                                       fallback) on this GPU instead of Direct3D 11
+#   ... -Storey 3.0                                     the stand-ins painted with storeys this tall (3.8 m)
+#   ... -Shapes                                         four more towers east of the city for the rooms'
+#                                                       guards (views "shapes", "nightshapes"): a round one
+#                                                       shaded smooth, a box with smoothed corners, a glass
+#                                                       pyramid, a 12-sided one shaded flat
 
 param(
     [int]$Width = 480,
@@ -22,6 +27,8 @@ param(
     [string]$Name = "gpu",
     [ValidateSet("d3d11", "glcore")]
     [string]$Api = "d3d11",
+    [double]$Storey = 3.8,
+    [switch]$Shapes,
     [string]$Unity = "C:\Program Files\Unity\Editor\Unity.exe"
 )
 
@@ -48,6 +55,8 @@ $env:RG_VIEWS = $Views
 $env:RG_VARIANTS = $Variants
 $env:RG_SUN = $Sun.ToString($inv)
 $env:RG_EXPOSURE = $Exposure.ToString($inv)
+$env:RG_STOREY = $Storey.ToString($inv)
+$env:RG_SHAPES = $(if ($Shapes) { "1" } else { "0" })
 
 if (Test-Path $log) { Remove-Item $log -Force }
 $sw = [Diagnostics.Stopwatch]::StartNew()

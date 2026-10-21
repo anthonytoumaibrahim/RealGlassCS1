@@ -61,7 +61,8 @@ float4 _RGDebug;      // x: 0 off; the GPU preview's checks (12 the sun through 
                       // picture reprojected, magenta off it; 6 the city walk: green a building met, blue none,
                       // red no map; 8 the painted pane found: green, its border yellow, red none; 9 the
                       // hierarchical depth at level y, red where it is wrong; 10 the painted lines kept:
-                      // yellow, the glass blue). The mod never sets it.
+                      // yellow, the glass blue; 13 where a room can stand: green, red not). z 1: the rooms
+                      // as before RoomShape (the preview's "Guards=0"). The mod never sets it.
 
 // The city from above (CityMap.cs): per cell the highest roof over it and whose it is.
 sampler2D _RGCityMap;         // rg the roof's world height in 1/32 m, ba the building's id (0 none): 4 m cells

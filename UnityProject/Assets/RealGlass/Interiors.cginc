@@ -242,6 +242,33 @@ float3 RoomLight(float2 cellId, float pool, float4 group, float buildingSeed, ou
     return lit * lerp(lamp * bright, tvLight, tv);
 }
 
+// Whether a room can stand behind this pixel of glass: 1 yes .. 0 no (2026-10-21). A room's frame --
+// its front, its floors, its place along the facade, dot(P, t) -- follows the mesh's normal n, so the
+// glass must be what that normal says. Upright: a sloped roof, a canopy or a solar panel holds no room
+// (within 6 degrees of vertical, none past 12). The face's own normal: smoothed shading tilts n off
+// the face, and the room's box is seen at a slant (within 3 degrees, none past 6; a normal turned
+// inside out is the far side). Flat: where n turns, dot(P, t) runs on at the turn times the distance
+// from the map's middle -- a tenth of a degree at 2 km moves a room by metres, shredding the rooms
+// into stripes (none once it runs 60% faster than the facade); and, the same turn seen without that
+// lever (which is nil along the one line where the facade points past the map's middle), none where
+// n turns by more than 3 degrees over 3 metres, a room's width (6 and over). The face's own orientation is the
+// cross product of the position's screen derivatives, taken from the camera so its numbers are small
+// and exact to the pixel. rel: the position from the camera; n, t: the mesh's normal and the facade's
+// level tangent (FacadeTangent(n)); P: the world position; footprint: the metres a pixel spans.
+float RoomShape(float3 rel, float3 n, float3 t, float3 P, float footprint)
+{
+    float3 face = cross(ddy(rel), ddx(rel));
+    float len = length(face);
+    face = len > 1e-12 ? face / len : n;
+    face *= dot(face, rel) > 0.0 ? -1.0 : 1.0;   // the side the camera sees
+    float upright = 1.0 - smoothstep(0.105, 0.208, abs(face.y));
+    float own = saturate((dot(n, face) - 0.99452) / (0.99863 - 0.99452));
+    float stretch = (abs(dot(P, ddx(t))) + abs(dot(P, ddy(t)))) / max(footprint, 1e-4);
+    float bend = length(fwidth(n)) / max(footprint, 1e-4) * 3.0;   // radians n turns over 3 m
+    float flat = (1.0 - smoothstep(0.3, 0.6, stretch)) * (1.0 - smoothstep(0.052, 0.105, bend));
+    return upright * own * flat;
+}
+
 // The share of a storey that is floor slab and ceiling, dark at night, where the asset painted no
 // window of its own (a curtain wall's spandrel): bottom, top.
 #define RG_ROOM_SLAB float2(0.14, 0.06)
