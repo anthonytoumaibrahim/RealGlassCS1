@@ -62,8 +62,9 @@ workshop release a bit later"). On the Workshop, 1.1.1 is the update from 1.0.0
       rooms round became 1.1.2 (section 0a), and the Workshop update is 1.1.2 (below). The 1.1.1
       files in `Cities_Skylines\RealGlass-1.1.1.37038-for-workshop` are no longer needed.
 - [ ] **The Workshop update: 1.1.2, BY HAND** (v1.1.2 is a tag, so release.ps1 refuses): game
-      closed; copy the four files of `Cities_Skylines\RealGlass-1.1.2.<build>-for-workshop` (= the
-      GitHub zip's; do NOT rebuild) into `steamapps\workshop\content\255710\3823419476`, read them
+      closed; copy the four files of `Cities_Skylines\RealGlass-1.1.2.42942-for-workshop` (= the
+      GitHub zip's: DLL 1.1.2.42942, built from 78f4dc6, tag v1.1.2, every release check passed on it
+      incl. AMD 195 programs no spills; do NOT rebuild) into `steamapps\workshop\content\255710\3823419476`, read them
       back (hashes); move Addons\Mods\RealGlass to `Cities_Skylines\RealGlass-dev-parked`; Skyve: the
       item enabled; a city on it (the first log line 1.1.2); Content Manager -> UPDATE; change note
       `Workshop/ChangeNotes/1.1.2.bbcode.txt`; Update. Then CHANGELOG `## 1.1.3 — unreleased`.
