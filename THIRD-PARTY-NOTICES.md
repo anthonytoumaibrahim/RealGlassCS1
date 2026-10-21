@@ -191,8 +191,8 @@ their model's, the model's carried onto the LOD after Cignoni, Montani, Rocchini
 attribute-preserving resampling of simplified meshes (1998), through Fujimoto, Tanaka and Iwata's
 uniform grid (1986), Möller and Trumbore's test and Williams's mip-maps (1983), the two glasses
 compared by Jaccard's index (1912) --
-listed with links in
-`README.md`. Apart from the ray tracer above, the implementations were written for this mod.
+listed with links under *References* below. Apart from the ray tracer above, the implementations
+were written for this mod.
 
 Other mods were read to understand the game's behaviour and to stay compatible with them:
 xdedss's CS_SSR (its note that the game's camera keeps no glossiness in any screen buffer), and
@@ -206,6 +206,202 @@ does not clash with its grid key. Procedural Objects was read for how it keeps a
 converted with it; when it runs, Real Glass & Water reads its objects each frame (their meshes,
 places and whether it draws them) and draws the glass over its buildings, changing nothing of it.
 No code from any other mod is included.
+
+### References
+
+Every technique here has shipped in a game or is published:
+
+1. **Mirror's Edge Catalyst**, "Lighting the City of Glass" (Fabien Christin, DICE, GDC 2016): a
+   city of glass towers; reflections layered as screen-space reflections, then local cubemaps
+   updated one face per frame, then a sky-visibility mask.
+   [slides](https://www.slideshare.net/slideshow/lighting-the-city-of-glass/60383382),
+   [GDC Vault](https://gdcvault.com/play/1023284/Lighting-the-City-of-Glass)
+2. Tomasz Stachowiak, **Stochastic Screen-Space Reflections** (Frostbite, SIGGRAPH 2015 Advances
+   in Real-Time Rendering). [Frostbite](https://www.ea.com/frostbite/news/stochastic-screen-space-reflections),
+   [course](https://advances.realtimerendering.com/s2015/)
+3. Morgan McGuire and Michael Mara, **Efficient GPU Screen-Space Ray Tracing**, JCGT 3(4), 2014:
+   the tracer here is adapted from its code (BSD 2-Clause; see *Code adapted into the shaders*
+   above).
+   [JCGT](https://jcgt.org/published/0003/04/04/),
+   [code](http://casual-effects.blogspot.com/2014/08/screen-space-ray-tracing.html)
+4. Adrian Courrèges, **GTA V -- Graphics Study** (2015): an environment cubemap rendered every
+   frame, 128 x 128 per face, of low-poly scenery.
+   [article](https://www.adriancourreges.com/blog/2015/11/02/gta-v-graphics-study/)
+5. **Marvel's Spider-Man** (Insomniac, 2018): building reflections blended from cube maps by
+   height (Digital Foundry's analysis).
+   [analysis](https://www.resetera.com/threads/marvels-spider-man-the-complete-digital-foundry-analysis.66364/)
+6. Christophe Schlick, *An Inexpensive BRDF Model for Physically-based Rendering* (1994) --
+   Fresnel; the glass presets use architectural glass makers' published visible transmittance
+   and reflectance: Vitro Architectural Glass (formerly PPG), *Vistacool Subtly Reflective and
+   Solarcool Reflective Glasses*, product data sheet, 2017
+   ([PDF](https://www.vitroglazings.com/media/ljwdoown/vitro_vc-sc_datasheet_20981vitro7161_feb2017_1.pdf)),
+   and [its blue-green tinted glasses](https://www.vitroglazings.com/media/eshbl2wn/vitro-blue-green-datasheet.pdf).
+   The colour of a coated, tinted lite's reflection -- the coating's share through the tint
+   twice, the outer surface's 4% untinted -- is the reflectance of a lite with a coating on its
+   inner face as the glazing standards work it out: **EN 410**, *Glass in building --
+   Determination of luminous and solar characteristics of glazing*, and **ISO 9050**, *Glass in
+   building -- Determination of light transmittance, solar direct transmittance, total solar
+   energy transmittance, ultraviolet transmittance and related glazing factors*.
+7. Why real facades warp reflections: insulating glass units "pillow" with pressure and
+   temperature ([research](https://www.researchgate.net/publication/335891891)); heat-treated
+   glass carries roller wave distortion ([Lerch Bates](https://www.lerchbates.com/news/minimizing-roller-wave-distortion-in-heat-treated-glass/),
+   [Vitro](https://glassed.vitroglazings.com/understanding-glass-distortion-and-anisotropy));
+   a pillowed pane's shape is a plate's first mode under uniform pressure (Navier's solution).
+8. xdedss, [**CS_SSR**](https://github.com/xdedss/CS_SSR): a screen-space reflection experiment
+   for this game, whose note that no screen buffer says what is shiny is why the glass here is
+   drawn per building, from each asset's own maps.
+9. Reflections of the previous frame's finished picture, reprojected: Michal Valient, **Taking
+    Killzone Shadow Fall Image Quality into the Next Generation** (Guerrilla, GDC 2014).
+    [Guerrilla](https://www.guerrilla-games.com/read/taking-killzone-shadow-fall-image-quality-into-the-next-generation-1)
+    Clouds in the reflected sky: captured into the reflection cube as Unreal's
+    [Sky Light](https://dev.epicgames.com/documentation/en-us/unreal-engine/sky-lights-in-unreal-engine)
+    captures its [volumetric clouds](https://dev.epicgames.com/documentation/en-us/unreal-engine/volumetric-cloud-component-in-unreal-engine).
+10. The buildings around, from a map of the city seen from above: CRYENGINE's height-map ambient
+    occlusion (3.8.4) draws "a top-down depth map of the world around the camera" and gathers
+    occlusion from it at "hundreds-of-metres scale"
+    ([documentation](https://docs.cryengine.com/pages/viewpage.action?pageId=26215324)); Unreal's
+    distance-field ambient occlusion "also provides approximate specular occlusion on Sky Lights",
+    heightfields included
+    ([documentation](https://dev.epicgames.com/documentation/unreal-engine/distance-field-ambient-occlusion-in-unreal-engine));
+    the walk from cell to cell is John Amanatides and Andrew Woo, **A Fast Voxel Traversal
+    Algorithm for Ray Tracing**, Eurographics 1987 ([paper](http://www.cse.yorku.ca/~amana/research/grid.pdf)).
+11. Steady glints, specular anti-aliasing: Anton Kaplanyan, Stephen Hill, Anjul Patney and Aaron
+    Lefohn, **Filtering Distributions of Normals for Shading Antialiasing** (HPG 2016); Yusuke
+    Tokuyoshi and Anton Kaplanyan, **Improved Geometric Specular Antialiasing** (I3D 2019,
+    [paper](https://yusuketokuyoshi.com/papers/2019/ImprovedGeometricSpecularAA.pdf)); the
+    constants (variance 0.15, threshold 0.2) are Filament's
+    ([materials guide](https://google.github.io/filament/Materials.md.html)).
+12. The screen traced over a depth pyramid: Yasin Uludag, **Hi-Z Screen-Space Cone-Traced
+    Reflections**, GPU Pro 5 (CRC Press, 2014) -- each level the nearest depth of the four below
+    it, whole cells crossed where the ray stays in front; beside it the farthest, so cells a ray
+    passes behind are crossed too, as Art Tevs, Ivo Ihrke and Hans-Peter Seidel's **Maximum
+    Mipmaps for Fast, Accurate, and Scalable Dynamic Height Field Rendering** (I3D 2008) bound a
+    height field from both sides.
+13. The painted lines kept: unsharp masking -- each pixel against a blurred copy of the picture
+    -- after William F. Schreiber, **Wirephoto Quality Improvement by Unsharp Masking**, Pattern
+    Recognition 2(2), 1970; the blurred copy, a storey wide, is a coarser level of the asset's own
+    mipmap: Lance Williams, **Pyramidal Parametrics**, SIGGRAPH 1983.
+14. A steady edge where the glass meets the painted frames: the asset's shine against the glass
+    threshold is anti-aliased as an alpha test is -- a filtered step a pixel wide, RenderMan's
+    `filterstep` (A. A. Apodaca and Larry Gritz, **Advanced RenderMan: Creating CGI for
+    Motion Pictures**, Morgan Kaufmann 1999, "Shader Antialiasing") and Ben Golus,
+    **Anti-aliased Alpha Test: The Esoteric Alpha To Coverage** (2017,
+    [article](https://bgolus.medium.com/anti-aliased-alpha-test-the-esoteric-alpha-to-coverage-8b177335ae4f))
+    -- over four reads of the pixel placed as Direct3D 11's standard 4x multisample pattern
+    ([documentation](https://learn.microsoft.com/en-us/windows/win32/api/d3d11/ne-d3d11-d3d11_standard_multisample_quality_levels)).
+15. The water's reflectance: the sea surface's slopes, Charles Cox and Walter Munk,
+    **Measurement of the Roughness of the Sea Surface from Photographs of the Sun's Glitter**,
+    Journal of the Optical Society of America 44(11), 1954 (mean square slope 0.003 + 0.00512 U
+    for a wind of U m/s); the sky's light reflected by such a sea, Curtis D. Mobley,
+    **Estimation of the Remote-Sensing Reflectance from Above-Surface Measurements**, Applied
+    Optics 38(36), 1999; Schlick's Fresnel (6) with water's index, 1.333, on each ripple, and that
+    rough sea's reflectance where the ripples' texture filtering has averaged them away -- Eric
+    Bruneton, Fabrice Neyret and Nicolas Holzschuch, **Real-time Realistic Ocean Lighting using
+    Seamless Transitions from Geometry to BRDF**, Computer Graphics Forum 29(2), 2010. The ripples are a sum of
+    directional sine waves -- Mark Finch, **Effective Water Simulation from Physical Models**, GPU
+    Gems (2004), chapter 1
+    ([online](https://developer.nvidia.com/gpugems/gpugems/part-i-natural-effects/chapter-1-effective-water-simulation-physical-models))
+    -- with whole wave numbers across the texture so that it tiles, at deep water's speeds,
+    omega^2 = g k (Jerry Tessendorf, **Simulating Ocean Water**, SIGGRAPH course notes, 2001),
+    every octave of wavelength with the same slope as in the equilibrium range (O. M. Phillips,
+    **The equilibrium range in the spectrum of wind-generated waves**, Journal of Fluid Mechanics
+    4(4), 1958). As **ocean waves** (the default) the ripples are instead an inverse FFT of a wind
+    sea's spectrum, as Tessendorf (above) builds an ocean -- two cascades tiling the texture, the
+    crests made choppy by the sideways displacement's Jacobian, the transform in radix-2 self-sorting
+    steps (Thomas G. Stockham Jr., **High-speed convolution and correlation**, AFIPS Spring Joint
+    Computer Conference, 1966) -- the spectrum fetch-limited JONSWAP (K. Hasselmann et al.,
+    **Measurements of wind-wave growth and swell decay during the Joint North Sea Wave Project
+    (JONSWAP)**, Deutsche Hydrographische Zeitschrift, Supplement A8(12), 1973) spread over directions as
+    M. A. Donelan, J. Hamilton and W. H. Hui measured (**Directional spectra of wind-generated
+    waves**, Philosophical Transactions of the Royal Society A 315, 1985), both as Christopher J.
+    Horvath gathers them for graphics (**Empirical directional wave spectra for computer graphics**,
+    DigiPro 2015); the amplitudes drawn with SplitMix64 (Guy L. Steele Jr., Doug Lea and Christine
+    H. Flood, **Fast Splittable Pseudorandom Number Generators**, OOPSLA 2014); the waves too short
+    for the texture carried on down to the gravity-capillary limit (T. Elfouhaily, B. Chapron, K.
+    Katsaros and D. Vandemark, **A unified directional spectrum for long and short wind-driven
+    waves**, Journal of Geophysical Research 102(C7), 1997). With **dynamic waves** (the default)
+    the wind rises with the game's rain and the waves' roughness with it as Cox and Munk (above)
+    measured, and the sea takes the time to follow that a wind needs to raise its fetch-limited sea
+    (U.S. Army Corps of Engineers, **Shore Protection Manual**, 4th edition, 1984, chapter 3). The sun's glitter is the sun mirrored
+    by a sea of facets whose slopes are Gaussian about the ripple texture's own, as wide as its
+    mipmaps averaged away (Marc Olano and Dan Baker, **LEAN Mapping**, I3D 2010) and the waves too
+    short for it make them -- the microfacet model of Bruce Walter, Stephen R. Marschner, Hongsong
+    Li and Kenneth E. Torrance (**Microfacet Models for Refraction through Rough Surfaces**, EGSR
+    2007) with the masking of Gaussian slopes by Bruce G. Smith (**Geometrical shadowing of a random
+    rough surface**, IEEE Transactions on Antennas and Propagation 15(5), 1967), as Bruneton et al.
+    (above) light the sun on the sea; erfc as Milton Abramowitz and Irene A. Stegun give it
+    (**Handbook of Mathematical Functions**, 1964, 7.1.26). The idea came from web-ocean
+    ([github.com/Noniv/web-ocean](https://github.com/Noniv/web-ocean), MIT), whose README names
+    these techniques; none of its code is used. The city in the water is traced through the depth buffer as in (3), from those
+    ripples as the game's own water shader reads them; its streaks are a Gaussian up
+    and down weighted so only water is averaged -- normalized convolution, Hans Knutsson and
+    Carl-Fredrik Westin, **Normalized and Differential Convolution**, CVPR 1993. Against the
+    flicker of a reflection traced off moving ripples, each frame's trace is blended with the last
+    frame's, reprojected to where the water's point was and clamped to its neighbours' range --
+    Brian Karis, **High-Quality Temporal Supersampling** (SIGGRAPH 2014 Advances in Real-Time
+    Rendering, [slides](https://advances.realtimerendering.com/s2014/)) and Lasse Jon Fuglsang
+    Pedersen, **Temporal Reprojection Anti-Aliasing in INSIDE** (GDC 2016). Two alternatives
+    are compiled into the same shader but switched off: the flat mirror's picture distorted by the
+    ripples' normals (Tiago Sousa, **Generic Refraction Simulation**, GPU Gems 2, chapter 19,
+    2005) and the reflected picture read as wide as a ray cone spreads (Tomas Akenine-Möller et
+    al., **Texture Level of Detail Strategies for Real-Time Ray Tracing**, Ray Tracing Gems,
+    chapter 20, 2019).
+16. The foam: where it goes, from the game's own water simulation -- shoreline foam where the water
+    is shallow, as in Crest (Huw Bowles, Daniel Zimmermann et al., **Crest: Novel Ocean
+    Rendering Techniques in an Open Source Framework**, SIGGRAPH 2017 Advances in Real-Time
+    Rendering), its lines of broken waves phased by the depth as War Thunder phases its shore waves
+    by the distance to the shore (Tim Tcheblokov, **Ocean simulation and rendering in War
+    Thunder**, NVIDIA, CGDC 2015), and fronts where the water rises fast, the breaking test of Nuttapong
+    Chentanez and Matthias Mueller, **Real-time Simulation of Large Bodies of Water with Small Scale
+    Details**, Symposium on Computer Animation 2010. It moves along the flow in two phases half a
+    cycle apart -- Alex Vlachos, **Water Flow in Portal 2**, SIGGRAPH 2010, the game's own way with
+    its ripples. Its pattern: Steven Worley, **A Cellular Texture Basis Function**, SIGGRAPH 1996,
+    for the lace of bubble walls, and a fractal sum of noise (Ken Perlin, **An Image Synthesizer**,
+    SIGGRAPH 1985) for the patches, each equalized so that a share a of foam leaves exactly a of
+    the pattern white. Its brightness: dense sea foam's reflectance, Peter Koepke, **Effective
+    reflectance of oceanic whitecaps**, Applied Optics 23(11), 1984.
+17. The rooms behind the windows: layered as **Forza Horizon 4**'s windows are -- the room, a
+    curtain or blind of its own that lets the room's light through at night, a picture per room
+    from a group of its building's kind, one flat picture far away (Gareth Harwood, Playground
+    Games, **A window into Playground Games' latest shader development**, Game Developer, 2019,
+    [article](https://www.gamedeveloper.com/design/game-tech-deep-dive-a-window-into-playground-games-latest-shader-development));
+    each room a box behind its window whose walls, floor and ceiling the view's ray meets -- Joost
+    van Dongen's **Interior Mapping**, CGI 2008 ([article](https://www.gamedeveloper.com/programming/interior-mapping-rendering-real-rooms-without-geometry))
+    -- kept as one picture of the box seen from in front of the window, as SimCity (Maxis, 2013;
+    Andrew Willmott) kept its rooms and Ben Golus wrote it up
+    ([Unity forums](https://discussions.unity.com/t/interior-mapping/424676)); each box painted
+    from its panorama's middle, as an interior cubemap is.
+    Lit windows scattered at random, some office buildings a whole floor at a time: Shamus Young's
+    procedural city (2009, [article](https://www.shamusyoung.com/twentysidedtale/?p=2954)). How many
+    are lit at each hour: homes after the shape of Ian Richardson, Murray Thomson, David Infield and
+    Alice Delahunty, **Domestic lighting: A high-resolution energy demand model**, Energy and
+    Buildings 41(7), 2009; offices after EnergyPlus's office lighting schedule, with a share left on
+    all night as Gregory Dobler et al. observed of commercial windows (**Dynamics of the urban
+    lightscape**, Information Systems 54, 2015). The lamps' colours: Mitchell Charity's blackbody
+    colour table ([vendian.org](http://www.vendian.org/mncharity/dir3/blackbody/)). The pictures are
+    cut from [Poly Haven](https://polyhaven.com/hdris/indoor)'s indoor panoramas (CC0), the rooms'
+    own daylit windows filled from round them by normalized convolution (Knutsson and Westin, 15).
+18. The sky at dusk: how a clear sky's light falls in the sun's last ten degrees, from Richard Bird
+    and Carol Riordan, **Simple Solar Spectral Model for Direct and Diffuse Irradiance on Horizontal
+    and Tilted Planes at the Earth's Surface for Cloudless Atmospheres** (SPCTRAL2), Journal of
+    Climate and Applied Meteorology 25(1), 1986, with Fritz Kasten and Andrew Young's air mass
+    (**Revised optical air mass tables and approximation formula**, Applied Optics 28(22), 1989).
+    The sun's glint behind a cloud: its direct beam through the cloud's opacity (Beer-Lambert).
+19. Picking a building of Procedural Objects with the mouse: the ray against its box, the slab
+    test of Timothy Kay and James Kajiya, **Ray Tracing Complex Scenes**, SIGGRAPH 1986; then
+    against the triangles of the nearest boxes, Tomas Möller and Ben Trumbore, **Fast, Minimum
+    Storage Ray/Triangle Intersection**, Journal of Graphics Tools 2(1), 1997.
+20. The model's glass on its LOD: each texel of the simplified mesh's texture met with the full
+    mesh along its normal and given the full mesh's value there -- Paolo Cignoni, Claudio Montani,
+    Claudio Rocchini and Roberto Scopigno, **A General Method for Preserving Attribute Values on
+    Simplified Meshes**, IEEE Visualization 1998 (the game's own asset importer bakes an LOD's
+    textures from its model this way when the author gives none); the full mesh's triangles found
+    through a uniform grid, Akira Fujimoto, Takayuki Tanaka and Kansei Iwata, **ARTS: Accelerated
+    Ray-Tracing System**, IEEE Computer Graphics and Applications 6(4), 1986, and met by Möller and
+    Trumbore's test (19); its shine read from a mip as wide as the texel (Lance Williams,
+    **Pyramidal Parametrics**, SIGGRAPH 1983); whether the LOD's own glass agrees with its model's,
+    by the share of the two glasses that is both (Paul Jaccard, **The Distribution of the Flora in
+    the Alpine Zone**, New Phytologist 11(2), 1912).
 
 ## Trademarks
 
