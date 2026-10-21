@@ -73,7 +73,7 @@
 
   <String key="GlassEnabled.Label">Realistic glass</String>
 
-  <String key="Group.TheGlass">The glass</String>
+  <String key="Group.TheGlass">Glass</String>
 
   <String key="GlassPreset.Label">Kind of glass</String>
   <String key="GlassPreset.Tooltip">Real glass products: each sets the color, reflectivity and clarity.</String>
@@ -106,7 +106,7 @@
   <String key="GlassStrength.Label">Strength</String>
   <String key="GlassStrength.Tooltip">0%: the game's own windows. 100%: all new glass.</String>
 
-  <String key="Group.BuildingsOwnLook">The building's own look</String>
+  <String key="Group.BuildingsOwnLook">Building's own look</String>
 
   <String key="GlassOwnColour.Label">Keep the building's color</String>
   <String key="GlassOwnColour.Tooltip">How much of the color the building painted on its glass stays.</String>
@@ -131,7 +131,7 @@
 
   <!-- ==================== F8 panel: Reflections ==================== -->
 
-  <String key="Group.TheReflections">The reflections</String>
+  <String key="Group.TheReflections">Reflections</String>
 
   <String key="ReflectionBrightness.Label">Reflection brightness</String>
 
@@ -143,7 +143,7 @@
   <String key="SteadyGlints.Label">Steady glints</String>
   <String key="SteadyGlints.Tooltip">Keeps glints and far reflections from flickering.</String>
 
-  <String key="Group.CityInGlass">The city in the glass</String>
+  <String key="Group.CityInGlass">City in the glass</String>
 
   <String key="SsrEnabled.Label">Reflect what is on screen</String>
   <String key="SsrEnabled.Tooltip">Streets, cars and buildings in view show in the glass.</String>
@@ -170,7 +170,7 @@
   <String key="OffscreenFill.City">City color</String>
   <String key="OffscreenFill.Sky">Sky only</String>
 
-  <String key="Group.SkyInGlass">The sky in the glass</String>
+  <String key="Group.SkyInGlass">Sky in the glass</String>
 
   <String key="SkyReflection.Label">Sky in the glass</String>
   <String key="SkyReflection.Tooltip">Live sky: follows the time of day and the weather.</String>
@@ -185,7 +185,7 @@
 
   <!-- ==================== F8 panel: Panes ==================== -->
 
-  <String key="Group.ThePanes">The panes</String>
+  <String key="Group.ThePanes">Panes</String>
 
   <String key="PaneWidth.Label">Pane width</String>
   <String key="PaneWidth.Tooltip">Each pane bends what it mirrors on its own.</String>
@@ -217,7 +217,7 @@
   <String key="InteriorsEnabled.Label">Parallax interiors</String>
   <String key="InteriorsEnabled.Tooltip">A room behind every window, with its own lamp and curtain.</String>
 
-  <String key="Group.TheRooms">The rooms</String>
+  <String key="Group.TheRooms">Rooms</String>
 
   <String key="InteriorsByDay.Label">Show the rooms by day too</String>
 
@@ -251,14 +251,14 @@
   <String key="WaterEnabled.Label">Realistic water</String>
   <String key="WaterEnabled.Tooltip">Off: the game's own water, untouched.</String>
 
-  <String key="Group.WaterColour">The water's color</String>
+  <String key="Group.WaterColour">Water color</String>
 
   <String key="WaterThemeColor.Label">Use the map theme's water color</String>
   <String key="WaterThemeColor.Tooltip">The map theme's color, or Theme Mixer's when it runs.</String>
   <String key="WaterColor.Label">Water color</String>
   <String key="WaterBrightness.Label">Water brightness</String>
 
-  <String key="Group.WaterRipples">The ripples</String>
+  <String key="Group.WaterRipples">Ripples</String>
 
   <String key="WaterRipples.Label">Moving ripples</String>
   <String key="WaterRipples.Tooltip">Moving ripples in place of the game's still ones.</String>
@@ -284,7 +284,7 @@
   <String key="WaterWaveSize.Label">Wave size</String>
   <String key="WaterWaveSize.Tooltip">With Ocean waves off. Lower: calmer water, short ripples only.</String>
 
-  <String key="Group.WaterFoam">The foam</String>
+  <String key="Group.WaterFoam">Foam</String>
 
   <String key="WaterFoam.Label">Foam</String>
 
@@ -296,7 +296,7 @@
 
   <String key="WaterFoamFronts.Label">Foam on wave fronts</String>
 
-  <String key="Group.WaterSky">The sky in the water</String>
+  <String key="Group.WaterSky">Sky in the water</String>
 
   <String key="WaterRealSky.Label">Reflect the sky like real water</String>
   <String key="WaterRealSky.Tooltip">Little sky looking straight down, more toward the horizon.</String>
@@ -317,7 +317,7 @@
   <String key="WaterMoonGlitterSize.Label">Moon glitter size</String>
   <String key="WaterMoonGlitterSize.Tooltip">Smaller is narrower, not dimmer.</String>
 
-  <String key="Group.WaterCity">The city in the water</String>
+  <String key="Group.WaterCity">City in the water</String>
 
   <String key="WaterCity.Label">Water reflects the city</String>
   <String key="WaterCity.Tooltip">Buildings and lights in the water, as far as they're on screen.</String>
@@ -413,7 +413,7 @@
   <String key="Language.Label">Show this mod in</String>
   <String key="Language.Game">Same as the game</String>
 
-  <String key="Group.Panel">The in-game panel</String>
+  <String key="Group.Panel">In-game panel</String>
 
   <String key="PanelKey.Label">Open this panel</String>
 
@@ -436,7 +436,7 @@
   <String key="GlassDistance.Middle">Near and middle</String>
   <String key="GlassDistance.City">The whole city</String>
 
-  <String key="Group.LiveSky">The live sky in the glass</String>
+  <String key="Group.LiveSky">Live sky in the glass</String>
 
   <String key="SkyCubeSize.Label">Sky detail</String>
   <String key="SkyCubeSize.Tooltip">The size of the live sky's picture: sharper, but slower.</String>
