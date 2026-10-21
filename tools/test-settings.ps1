@@ -858,6 +858,37 @@ Check "  the waves run with the game's wind: 0 deg -> 270, 90 -> 180, 225 -> 45"
 Check "the ocean waves' defaults: on, 7 m/s, choppiness 100%; the sun's glitter 35%" ("{0} {1} {2} {3}" -f (Default 'WaterOceanWaves'), (Default 'WaterWind'), (Default 'WaterChop'), (Default 'WaterGlitter')) "True 7 1 0.35"
 Check "the glitter's sizes and the moon's own glitter: sun 50%, moon 35% at 50%" ("{0} {1} {2}" -f (Default 'WaterGlitterSize'), (Default 'WaterMoonGlitter'), (Default 'WaterMoonGlitterSize')) "0.5 0.35 0.5"
 
+# ---- dynamic waves (Water\WaterWeather.cs: the waves' wind from the game's rain) -----------------
+$weather = $asm.GetType('RealGlass.Water.WaterWeather', $true)
+$seaType = $asm.GetType('RealGlass.Water.WaterSea', $true)
+Check "dynamic waves: on by default; a dry day's wind is the Wind row's default" ("{0} {1}" -f (Default 'WaterDynamicWaves'), ($weather::CalmWind -eq (Default 'WaterWind'))) "True True"
+Check "  the weather's wind: dry 7, the lightest rain 9, the heaviest 15 m/s; out of range held" ("{0} {1} {2} {3} {4}" -f $weather::Target(0.0), $weather::Target(0.25), $weather::Target(1.0), $weather::Target(-1.0), $weather::Target(5.0)) "7 9 15 7 15"
+Check "  the ripples' roughness (Cox & Munk): x1 dry, rising with the wind, x1.43 at 15 m/s" ("{0:F3} {1} {2:F2}" -f $weather::RoughnessGain(7.0), ($weather::RoughnessGain(11.0) -gt 1.0 -and $weather::RoughnessGain(11.0) -lt $weather::RoughnessGain(15.0)), $weather::RoughnessGain(15.0)) "1.000 True 1.43"
+Check "  the Shore Protection Manual's durations over 50 km: 7 m/s 6.0-6.6 h, 15 m/s 4.6-5.2 h" ("{0} {1}" -f (($weather::DevelopmentHours(7.0, 50000.0) -gt 6.0) -and ($weather::DevelopmentHours(7.0, 50000.0) -lt 6.6)), (($weather::DevelopmentHours(15.0, 50000.0) -gt 4.6) -and ($weather::DevelopmentHours(15.0, 50000.0) -lt 5.2))) "True True"
+Check "  95% of the way in the target's duration; no time, no change" ("{0:F3} {1}" -f (($weather::Follow(7.0, 15.0, $weather::DevelopmentHours(15.0, 50000.0)) - 7.0) / 8.0), $weather::Follow(9.0, 15.0, 0.0)) "0.950 9"
+$up = ($weather::Follow(7.0, 15.0, 1.0) - 7.0) / 8.0
+$down = (15.0 - $weather::Follow(15.0, 7.0, 1.0)) / 8.0
+Check "  it falls back slower than it rises (an hour: rising share > falling share)" ($up -gt $down) "True"
+Check "  the spectrum's steps: a quarter m/s" ("{0} {1} {2}" -f $weather::Quantize(7.1), $weather::Quantize(7.13), $weather::Quantize(14.9)) "7 7.25 15"
+$sea = [Activator]::CreateInstance($seaType)
+$fph = $weather::FramesPerDay / 24.0
+$sea.Advance(1.0, 1000.0)
+$s1 = $sea.Wind
+$sea.Advance(1.0, 1000.0)
+$s2 = $sea.Wind
+$sea.Advance(0.0, 1000.0 + $fph)
+$s3 = $sea.Wind
+$sea.Advance(0.0, 1000.0 + $fph)
+$s4 = $sea.Wind
+Check "  a city starts on its weather; paused, the sea holds; an hour after the rain, it is falling" ("{0} {1} {2} {3}" -f $s1, ($s2 -eq $s1), (($s3 -lt 15.0) -and ($s3 -gt 7.0)), ($s4 -eq $s3)) "15 True True True"
+$sea.Advance(0.0, 500.0)
+$s5 = $sea.Wind
+$sea.Advance(1.0, 500.0 + 30.0 * $weather::FramesPerDay)
+$s6 = $sea.Wind
+$sea.Reset()
+$sea.Advance([double]::NaN, 10.0)
+Check "  time running back, or a jump of days: put on the weather at once; no rain known, dry" ("{0} {1} {2} {3}" -f $s5, $s6, $sea.Wind, $sea.Started) "7 15 7 True"
+
 # ---- Procedural Objects' buildings (Glass\ProceduralPick.cs, Glass\ProceduralAccess.cs) -------
 $v3 = $unity.GetType('UnityEngine.Vector3', $true)
 function V([float]$x, [float]$y, [float]$z) { return [Activator]::CreateInstance($v3, [object[]]@([single]$x, [single]$y, [single]$z)) }

@@ -162,7 +162,9 @@ where filtering takes them (Bruneton, Neyret and Holzschuch 2010), moving ripple
 or as ocean waves an inverse FFT in Stockham's self-sorting steps (1966) of a fetch-limited
 JONSWAP spectrum (Hasselmann et al. 1973) spread by Donelan, Hamilton and Hui (1985), as Horvath
 gathers them (2015), choppy as Tessendorf's, carried below the texture to Elfouhaily et al.'s
-capillary limit (1997), its amplitudes from SplitMix64 (Steele, Lea and Flood 2014), and the sun's
+capillary limit (1997), its amplitudes from SplitMix64 (Steele, Lea and Flood 2014), with dynamic
+waves its wind from the game's rain, its roughness by Cox and Munk and its pace by the Shore
+Protection Manual's duration-limited growth (U.S. Army Corps of Engineers, 1984), and the sun's
 glitter on LEAN-mapped slopes (Olano and Baker 2010) through Walter et al.'s microfacet model
 (2007) with Smith's masking (1967), erfc after Abramowitz and Stegun (1964) -- the idea from
 web-ocean (Noniv, MIT; only its README was read, none of its code is used),

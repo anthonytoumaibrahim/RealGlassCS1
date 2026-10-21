@@ -73,6 +73,8 @@ namespace RealGlass.Water
         private int _drawnMode = -1;
         private float _drawnChop = float.NaN;
         private bool _oceanShown;
+        private bool _weather;
+        private bool _builtLogged;
 
         private WaterRipples(Shader shader, Shader waves)
         {
@@ -168,9 +170,11 @@ namespace RealGlass.Water
         /// with <paramref name="ocean"/>, the ocean's waves for a <paramref name="wind"/> m/s wind toward
         /// <paramref name="heading"/> (degrees from +x toward +z) at choppiness <paramref name="chop"/>,
         /// once their spectrum is built; else (and meanwhile) the 32 waves at the size sliders.
+        /// <paramref name="weather"/>: the wind is Dynamic waves' (its rebuilds are logged in detail only, after the first).
         /// </summary>
-        public void Draw(float strength, float size, float waveSize, bool ocean, float wind, double heading, float chop)
+        public void Draw(float strength, float size, float waveSize, bool ocean, float wind, double heading, float chop, bool weather)
         {
+            _weather = weather;
             Measure();
             double slope = WaterOptics.RippleSlope(_decodedRms, strength);
             Vector4 clock = Shader.GetGlobalVector(IdClock);
@@ -311,10 +315,18 @@ namespace RealGlass.Water
             _waves.Upload(ready);
             _spectrum = ready;
             _uploaded = true;
-            Log.Msg("water: ocean waves built: " + ready.WaveCount + " waves from a " + ready.WindSpeed.ToString("F1") + " m/s wind over " +
-                    (ready.Fetch / 1000.0).ToString("F0") + " km toward " + ready.Heading.ToString("F0") + " deg, the longest " +
-                    ready.PeakWavelength.ToString("F0") + " m at the peak; the waves too short for the texture add " +
-                    ((ready.TailXX + ready.TailZZ) * 100.0).ToString("F0") + "% to its slopes (" + ms + " ms on a worker thread)");
+            // Dynamic waves rebuild it every quarter m/s the weather moves the sea: those in detail only.
+            if (_weather && _builtLogged && !Log.Detailed)
+                return;
+            string line = "water: ocean waves built: " + ready.WaveCount + " waves from a " + ready.WindSpeed.ToString("F1") + " m/s wind over " +
+                          (ready.Fetch / 1000.0).ToString("F0") + " km toward " + ready.Heading.ToString("F0") + " deg, the longest " +
+                          ready.PeakWavelength.ToString("F0") + " m at the peak; the waves too short for the texture add " +
+                          ((ready.TailXX + ready.TailZZ) * 100.0).ToString("F0") + "% to its slopes (" + ms + " ms on a worker thread)";
+            if (_weather && _builtLogged)
+                Log.Detail(line);
+            else
+                Log.Msg(line);
+            _builtLogged = true;
         }
 
         /// <summary>

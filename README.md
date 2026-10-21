@@ -280,7 +280,10 @@ Every technique here has shipped in a game or is published:
     H. Flood, **Fast Splittable Pseudorandom Number Generators**, OOPSLA 2014); the waves too short
     for the texture carried on down to the gravity-capillary limit (T. Elfouhaily, B. Chapron, K.
     Katsaros and D. Vandemark, **A unified directional spectrum for long and short wind-driven
-    waves**, Journal of Geophysical Research 102(C7), 1997). The sun's glitter is the sun mirrored
+    waves**, Journal of Geophysical Research 102(C7), 1997). With **dynamic waves** (the default)
+    the wind rises with the game's rain and the waves' roughness with it as Cox and Munk (above)
+    measured, and the sea takes the time to follow that a wind needs to raise its fetch-limited sea
+    (U.S. Army Corps of Engineers, **Shore Protection Manual**, 4th edition, 1984, chapter 3). The sun's glitter is the sun mirrored
     by a sea of facets whose slopes are Gaussian about the ripple texture's own, as wide as its
     mipmaps averaged away (Marc Olano and Dan Baker, **LEAN Mapping**, I3D 2010) and the waves too
     short for it make them -- the microfacet model of Bruce Walter, Stephen R. Marschner, Hongsong

@@ -264,8 +264,11 @@
   <String key="WaterOceanWaves.Label">Ocean waves</String>
   <String key="WaterOceanWaves.Tooltip">Waves raised by the wind, as on a real sea.</String>
 
+  <String key="WaterDynamicWaves.Label">Dynamic waves</String>
+  <String key="WaterDynamicWaves.Tooltip">Waves rise with the game's rain and storms, and calm down after.</String>
+
   <String key="WaterWind.Label">Wind speed</String>
-  <String key="WaterWind.Tooltip">Stronger wind: longer waves, not rougher ones.</String>
+  <String key="WaterWind.Tooltip">With Dynamic waves off: stronger wind, longer waves (not rougher).</String>
 
   <String key="WaterChop.Label">Choppiness</String>
   <String key="WaterChop.Tooltip">Sharper crests between flatter troughs.</String>

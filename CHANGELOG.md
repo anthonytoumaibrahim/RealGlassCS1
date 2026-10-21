@@ -13,6 +13,12 @@ the mod's name in the game.
   rooms, and other glass mirrors it as a building around. The building picker (Alt+G) finds a
   converted building by its shape, so it is picked like any other. A converted building given a
   texture or text of its own keeps the game's glass. Nothing of Procedural Objects is changed.
+- **Dynamic waves** (on by default): the sea follows the game's weather. On a dry day it is the sea
+  you know, the Wind speed's default of 7 m/s. When it rains the wind rises, up to 15 m/s in the
+  heaviest rain and storms, and the waves grow longer and rougher. They take a few game hours to
+  build up and longer to calm down after, as a real sea does, and they hold still while the game is
+  paused. Volumetric Weather's storms are the game's own rain, so they raise the sea too; it is not
+  needed. Turn it off to set the wind yourself, as before. Wind speed is greyed out while it is on.
 - **Moon glitter**: the moon's road of light on the water at night has its own strength. Until now
   the Sun glitter row set both.
 - **Sun glitter size** and **Moon glitter size**: how wide each glitter spreads. A smaller glitter

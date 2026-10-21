@@ -32,6 +32,12 @@ namespace RealGlass.Water
         // followed after that: a new heading is a new sea, and the waves would jump to it.
         private double _heading = WaterSpectrum.DefaultHeading;
 
+        // Dynamic waves (WaterWeather): the sea's wind under the game's rain, and the Ripple strength's
+        // multiplier this frame (1 unless the weather raises the sea); the target last logged.
+        private readonly WaterSea _sea = new WaterSea();
+        private double _waveGain = 1.0;
+        private double _loggedTarget = double.NaN;
+
         private void Start()
         {
             try
@@ -78,8 +84,10 @@ namespace RealGlass.Water
             return "realistic water ON: color " + (On(Settings.WaterThemeColor) ? "the map theme's" : Settings.WaterColor != null ? ColorText.Format(Settings.WaterColor.value) : "?") +
                    ", brightness " + Pct(Settings.WaterBrightness) +
                    ", moving ripples " + (On(Settings.WaterRipples) ? Pct(Settings.WaterRippleStrength) +
-                   (On(Settings.WaterOceanWaves) ? " as ocean waves (wind " + Value(Settings.WaterWind, Settings.Defaults.WaterWind).ToString("F1") +
-                    " m/s, choppiness " + Pct(Settings.WaterChop) + ")" : " as 32 waves (size " + Pct(Settings.WaterRippleSize) + ", wave size " + Pct(Settings.WaterWaveSize) + ")") : "off") +
+                   (On(Settings.WaterOceanWaves) ? " as ocean waves (" + (On(Settings.WaterDynamicWaves) ? "dynamic: the weather's wind, " +
+                    WaterWeather.CalmWind.ToString("F0") + " m/s dry to " + WaterWeather.StormWind.ToString("F0") + " m/s in the heaviest rain" :
+                    "wind " + Value(Settings.WaterWind, Settings.Defaults.WaterWind).ToString("F1") + " m/s") +
+                    ", choppiness " + Pct(Settings.WaterChop) + ")" : " as 32 waves (size " + Pct(Settings.WaterRippleSize) + ", wave size " + Pct(Settings.WaterWaveSize) + ")") : "off") +
                    ", foam " + (On(Settings.WaterFoam) ? Pct(Settings.WaterFoamAmount) + " (shores " + Pct(Settings.WaterFoamShore) + ", fast water " +
                    Pct(Settings.WaterFoamRapids) + ", wave fronts " + Pct(Settings.WaterFoamFronts) + ")" : "off") +
                    ", real sky " + (On(Settings.WaterRealSky) ? Pct(Settings.WaterSky) + ", sun glitter " + Pct(Settings.WaterGlitter) + " (size " + Pct(Settings.WaterGlitterSize) +
@@ -198,7 +206,7 @@ namespace RealGlass.Water
 
             bool ours = _ripples != null && _ripples.Held;
             double rms = _ripples != null ? _ripples.DecodedRms : WaterOptics.DefaultRippleRms;
-            double slope = WaterOptics.RippleSlope(rms, ours ? Value(Settings.WaterRippleStrength, Settings.Defaults.WaterRippleStrength) : 1.0);
+            double slope = WaterOptics.RippleSlope(rms, ours ? Value(Settings.WaterRippleStrength, Settings.Defaults.WaterRippleStrength) * _waveGain : 1.0);
             return _sky.Show(Value(Settings.WaterSky, Settings.Defaults.WaterSky), ShadedRipples(), slope * slope,
                              ours ? Value(Settings.WaterRippleSize, Settings.Defaults.WaterRippleSize) : 1.0,
                              ours ? Value(Settings.WaterWaveSize, Settings.Defaults.WaterWaveSize) : 1.0, camera.transform.position,
@@ -243,18 +251,70 @@ namespace RealGlass.Water
 
             if (On(Settings.WaterRipples))
             {
-                _ripples.Draw(Value(Settings.WaterRippleStrength, Settings.Defaults.WaterRippleStrength),
+                bool weather = WeatherFrame();
+                float wind = weather ? (float)WaterWeather.Quantize(_sea.Wind) : Value(Settings.WaterWind, Settings.Defaults.WaterWind);
+                _ripples.Draw(Value(Settings.WaterRippleStrength, Settings.Defaults.WaterRippleStrength) * (float)_waveGain,
                               Value(Settings.WaterRippleSize, Settings.Defaults.WaterRippleSize),
                               Value(Settings.WaterWaveSize, Settings.Defaults.WaterWaveSize),
-                              On(Settings.WaterOceanWaves), Value(Settings.WaterWind, Settings.Defaults.WaterWind), _heading,
-                              Value(Settings.WaterChop, Settings.Defaults.WaterChop));
+                              On(Settings.WaterOceanWaves), wind, _heading,
+                              Value(Settings.WaterChop, Settings.Defaults.WaterChop), weather);
                 _ripples.Hold();
             }
             else
             {
+                StopWeather();
                 _ripples.Release();
                 _ripples.Measure();
             }
+        }
+
+        /// <summary>
+        /// Dynamic waves this frame: the sea's wind followed under the game's rain (true; <see cref="_waveGain"/>
+        /// its roughness), or not (false: Dynamic waves or the ocean waves off -- the Wind speed row's wind,
+        /// exactly as before; turned on again, the sea starts on its weather at once).
+        /// </summary>
+        private bool WeatherFrame()
+        {
+            if (!On(Settings.WaterOceanWaves) || !On(Settings.WaterDynamicWaves) || !Singleton<SimulationManager>.exists)
+            {
+                StopWeather();
+                return false;
+            }
+
+            SimulationManager sm = Singleton<SimulationManager>.instance;
+            double rain = Singleton<WeatherManager>.exists ? Singleton<WeatherManager>.instance.m_currentRain : 0.0;
+            bool first = !_sea.Started;
+            _sea.Advance(rain, (double)sm.m_referenceFrameIndex + sm.m_referenceTimer);
+            _waveGain = WaterWeather.RoughnessGain(_sea.Wind);
+
+            if (first)
+            {
+                _loggedTarget = _sea.Target;
+                Log.Msg("water: dynamic waves: the sea's wind " + _sea.Wind.ToString("F1") + " m/s under " + Rain(rain) + " rain (" +
+                        WaterWeather.CalmWind.ToString("F0") + " m/s dry to " + WaterWeather.StormWind.ToString("F0") +
+                        " m/s in the heaviest rain), ripples x" + _waveGain.ToString("F2"));
+            }
+            else if (Math.Abs(_sea.Target - _loggedTarget) >= 1.0)
+            {
+                _loggedTarget = _sea.Target;
+                if (Log.Detailed)
+                    Log.Detail("water: dynamic waves: the weather's wind " + _sea.Target.ToString("F1") + " m/s (" + Rain(rain) + " rain); the sea's " +
+                               _sea.Wind.ToString("F1") + " m/s, ripples x" + _waveGain.ToString("F2"));
+            }
+
+            return true;
+        }
+
+        private void StopWeather()
+        {
+            _sea.Reset();
+            _waveGain = 1.0;
+            _loggedTarget = double.NaN;
+        }
+
+        private static string Rain(double rain)
+        {
+            return double.IsNaN(rain) ? "?" : (Math.Max(0.0, Math.Min(1.0, rain)) * 100.0).ToString("F0") + "%";
         }
 
         /// <summary>The ripple texture the water is shaded with now: ours while held, else the game's own.</summary>

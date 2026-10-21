@@ -27,6 +27,8 @@
 #   ... -Body "#0E222B"       the stand-in water's colour for every shot (default the preview's own)
 #   ... -RippleRms 0.527      the game's ripple texture's decoded rms (default WaterOptics' fallback, 0.3;
 #                             the author's game measured 0.527)
+#   ... -Strength 1.43        the Ripple strength (1 = 100%), as the mod passes it: Dynamic waves multiply it
+#                             by WaterWeather.RoughnessGain (the city reflection's gain stays the game's texture's)
 # Run after build-bundle.ps1 (the shaders compile) and a DLL build.
 
 param(
@@ -55,6 +57,7 @@ param(
     [string]$Body = "",
     [string]$Spectrum = "7,50000,30,1,1",
     [double]$RippleRms = -1.0,
+    [double]$Strength = 1.0,
     [string]$Name = "foam",
     [ValidateSet("d3d11", "glcore")]
     [string]$Api = "d3d11",
@@ -95,11 +98,12 @@ for ($i = 0; $i -lt $n; $i++) {
     $lines.Add("ripple " + ($n + $i) + " " + (N $w[$at + 4]) + " " + (N $w[$at + 5]) + " " + (N $w[$at + 6]) + " " + (N $w[$at + 7]))
 }
 $rms = if ($RippleRms -gt 0.0) { $RippleRms } else { $optics::DefaultRippleRms }
-$lines.Add("ripplerms " + (N $rms))
+# The preview draws its ripples at 0.5 x this: RippleSlope(rms, strength).
+$lines.Add("ripplerms " + (N ($rms * $Strength)))
 # The sky layer's ripple averaging (WaterOptics.SkyRippleMips at 100%) and the ripples' mean square slope.
 $start = 0.0; $span = 0.0
 $optics::SkyRippleMips(1.0, 1.0, [ref]$start, [ref]$span)
-$slope = $optics::RippleSlope($rms, 1.0)
+$slope = $optics::RippleSlope($rms, $Strength)
 $lines.Add("skyripples " + (N $start) + " " + (N $span) + " " + $optics::RippleTexels + " " + (N ($slope * $slope)))
 if ($Body -ne "") { $lines.Add("body " + $Body) }
 if ($Spectrum -ne "") { $lines.Add("spectrum " + ($Spectrum.Split(',') -join " ")) }

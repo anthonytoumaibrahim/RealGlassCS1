@@ -180,6 +180,14 @@ that repo's `docs/RELEASE-CHECKLIST.md` has the long version.
       in front; a click opens its asset's window ("assets: picked a building of Procedural Objects
       (its object N)"), the count includes the converted copies, and a change shows on them at
       once. Without Procedural Objects: "procedural objects: not installed", nothing else.
+- [ ] Dynamic waves (2026-10-21, for 1.1.0; build 1.0.0.23710): Water tab, "Dynamic waves" after
+      "Ocean waves", on; "Wind speed" greyed out while it is on. The log has "water: dynamic waves:
+      the sea's wind 7.0 m/s under 0% rain" on a dry load (higher if it loads raining); with
+      Detailed logging, "the weather's wind ..." lines as rain comes and goes and "ocean waves
+      built" lines every quarter m/s. A rain spell (or Play It's rain slider) raises the sea over a
+      few game hours -- longer, rougher waves, the glitter wider -- and it calms more slowly after;
+      paused, it holds. Turned off: the Wind speed row works exactly as in 1.0.0 (drag it: "ocean
+      waves built" at that wind). With Volumetric Weather its storms raise the sea too.
 - [ ] Lumina's Dynamic Resolution / SSAA (the camera fix of 2026-10-14): Lumina only applies it
       when a city LOADS (its button just saves the setting), so turn it on, then load a city.
       The glass reflects the city and the water's city reflection shows, at SSAA 1 and above.

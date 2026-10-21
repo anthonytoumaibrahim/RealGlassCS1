@@ -790,6 +790,12 @@ namespace RealGlass.UI
             return WaterRipplesOn() && (Settings.WaterOceanWaves == null || Settings.WaterOceanWaves.value);
         }
 
+        /// <summary>The Wind speed row is the waves' wind: ocean waves, and Dynamic waves off (on: the weather's).</summary>
+        private static bool WaterWindOn()
+        {
+            return WaterOceanOn() && Settings.WaterDynamicWaves != null && !Settings.WaterDynamicWaves.value;
+        }
+
         private static bool WaterSinesOn()
         {
             return WaterRipplesOn() && Settings.WaterOceanWaves != null && !Settings.WaterOceanWaves.value;
@@ -1520,7 +1526,20 @@ namespace RealGlass.UI
                 AfterChange = WaterState("ocean waves", OnOff(Settings.WaterOceanWaves)),
             });
 
+            // Dynamic waves (Water/WaterWeather.cs; the author, 2026-10-21): the waves' wind and roughness
+            // follow the game's rain, from the Wind row's default on a dry day; off, the Wind row's as before.
+            Add(new Row
+            {
+                Kind = RowKind.Toggle,
+                Panel = PanelPage.Water,
+                Bool = Settings.WaterDynamicWaves,
+                DefaultBool = Settings.Defaults.WaterDynamicWaves,
+                Enabled = WaterOceanOn,
+                AfterChange = WaterState("dynamic waves", OnOff(Settings.WaterDynamicWaves)),
+            });
+
             // The wind the ocean waves are raised by: their lengths (JONSWAP's peak), not their roughness.
+            // The weather's while Dynamic waves is on.
             Add(new Row
             {
                 Kind = RowKind.Value,
@@ -1529,7 +1548,7 @@ namespace RealGlass.UI
                 DefaultFloat = Settings.Defaults.WaterWind,
                 Min = 2f, Max = 20f, Step = 0.5f,
                 Format = MetresPerSecond,
-                Enabled = WaterOceanOn,
+                Enabled = WaterWindOn,
             });
 
             // 100%: the crests as sharp as Tessendorf's lambda 1 makes them (the pictures').

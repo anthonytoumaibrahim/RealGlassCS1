@@ -31,6 +31,7 @@ namespace RealGlass.Water
         private readonly RenderTexture[] _b = new RenderTexture[WaterSpectrum.CascadeCount];
         private readonly RenderTexture _scratch;
         private WaterSpectrum _spectrum;
+        private Color[] _px;
 
         public WaterWaves(Shader shader)
         {
@@ -78,7 +79,10 @@ namespace RealGlass.Water
                 }
 
                 float[] h0 = spectrum.H0[c];
-                var px = new Color[n * n];
+                // Kept: Dynamic waves upload a new spectrum every quarter m/s the weather moves the sea.
+                if (_px == null || _px.Length != n * n)
+                    _px = new Color[n * n];
+                Color[] px = _px;
                 for (int t = 0; t < px.Length; t++)
                     px[t] = new Color(h0[4 * t], h0[4 * t + 1], h0[4 * t + 2], h0[4 * t + 3]);
                 _h0[c].SetPixels(px);

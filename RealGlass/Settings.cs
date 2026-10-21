@@ -317,6 +317,9 @@ namespace RealGlass
         /// <summary>Our ripples drawn as an ocean's waves (Water/WaterSpectrum.cs: an FFT of a wind-sea spectrum), not 32 waves.</summary>
         public static BoolSetting WaterOceanWaves { get; private set; }
 
+        /// <summary>The ocean waves' wind (and with it their roughness) follows the game's weather, not <see cref="WaterWind"/> (Water/WaterWeather.cs).</summary>
+        public static BoolSetting WaterDynamicWaves { get; private set; }
+
         /// <summary>2..20 m/s: the wind the ocean waves are raised by -- their lengths (their roughness stays the Ripple strength's).</summary>
         public static FloatSetting WaterWind { get; private set; }
 
@@ -503,6 +506,9 @@ namespace RealGlass
             /// <summary>Ocean waves (the author, 2026-10-17, after the pictures of web-ocean's: "Yes to both").</summary>
             public const bool WaterOceanWaves = true;
 
+            /// <summary>Dynamic waves (the author, 2026-10-21): a dry day's sea is the Wind row's default's, as before.</summary>
+            public const bool WaterDynamicWaves = true;
+
             /// <summary>A moderate breeze (Beaufort 4): the waves peak about 30 m long over the sea's fetch (the pictures').</summary>
             public const float WaterWind = 7f;
 
@@ -616,6 +622,7 @@ namespace RealGlass
                 WaterRippleSize = new FloatSetting("WaterRippleSize", Defaults.WaterRippleSize);
                 WaterWaveSize = new FloatSetting("WaterWaveSize", Defaults.WaterWaveSize);
                 WaterOceanWaves = new BoolSetting("WaterOceanWaves", Defaults.WaterOceanWaves);
+                WaterDynamicWaves = new BoolSetting("WaterDynamicWaves", Defaults.WaterDynamicWaves);
                 WaterWind = new FloatSetting("WaterWind", Defaults.WaterWind);
                 WaterChop = new FloatSetting("WaterChop", Defaults.WaterChop);
                 WaterFoam = new BoolSetting("WaterFoam", Defaults.WaterFoam);
