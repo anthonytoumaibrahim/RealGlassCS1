@@ -28,7 +28,8 @@ namespace RealGlass.UI
     /// Every control comes from ModsLibCS1, in the look the "Panel look" row picks
     /// (<see cref="PanelLook"/>); Vanilla is the panel as it was before. In the new looks the tabs are
     /// icons, the panel has one height for every tab and the pages scroll inside it (ModsLibCS1's
-    /// ScrollView); Vanilla grows with each tab.
+    /// ScrollView); Vanilla grows with each tab up to the screen's height, and a taller tab scrolls
+    /// in the same ScrollView (1.1.1: 1.1's Water tab ran off a 1080 canvas, its last rows out of reach).
     ///
     /// Each tab's headings fold (Volumetric Weather's accordions, 2026-10-21; <see cref="RowList"/>):
     /// a tab opens with its first group open, a click on a heading opens or folds its group, and the
@@ -56,8 +57,7 @@ namespace RealGlass.UI
         /// The new looks' settings window: one height for every tab, the rest scrolling (Volumetric
         /// Weather's, the author: "a max/fixed height ... to prevent jumping between tabs"). As tall as
         /// the first tab opens (<see cref="FitWindow"/>), never shorter than the panel always was,
-        /// never taller than this or the screen. The Water tab is the long one (906 of the canvas's
-        /// 1080 in Vanilla).
+        /// never taller than this or the screen. The Water tab is the long one (1130 high in 1.1).
         /// </summary>
         private const float ScrollHeight = 600f;
 
@@ -94,8 +94,13 @@ namespace RealGlass.UI
         private TabStrip _tabs;
         private RowList _rows;
 
-        /// <summary>The new looks' window the pages scroll in; null in Vanilla, which grows with each tab.</summary>
+        /// <summary>The window the pages scroll in: the new looks' one height, or Vanilla's as tall as each tab.</summary>
         private ScrollView _scroll;
+
+        /// <summary>The tallest the window may be: the screen's room, and in the new looks <see cref="ScrollHeight"/>.</summary>
+        private float _mostWindow;
+
+        private bool _vanilla;
 
         private readonly List<string> _tabNames = new List<string>();
         private readonly List<UIPanel> _pages = new List<UIPanel>();
@@ -128,9 +133,9 @@ namespace RealGlass.UI
             _instance = this;
 
             _ui = PanelLook.NewBuilder();
-            bool vanilla = _ui.Skin == Skin.Vanilla;
-            _tabHeight = vanilla ? TabHeight : IconTabHeight;
-            _width = vanilla ? VanillaWidth : NewLooksWidth;
+            _vanilla = _ui.Skin == Skin.Vanilla;
+            _tabHeight = _vanilla ? TabHeight : IconTabHeight;
+            _width = _vanilla ? VanillaWidth : NewLooksWidth;
             _rows = new RowList(_ui, RowLayout.Panel, true);
             _rows.PageResized = PageResized;
 
@@ -154,8 +159,7 @@ namespace RealGlass.UI
                 _tabHeight, _tabNames, SelectPage, icons);
             FitTabs();
 
-            if (!vanilla)
-                BuildScrollView();
+            BuildScrollView();
 
             foreach (PanelPage page in Tabs)
                 _contentHeights.Add(_rows.Build(AddPage(), RowsOn(page), page + " tab"));
@@ -241,18 +245,20 @@ namespace RealGlass.UI
         }
 
         /// <summary>
-        /// The window the new looks' pages scroll in: as wide as the pages, its bar in the right
-        /// margin, at first as high as <see cref="ScrollHeight"/> or the screen allows -- the most it
-        /// gets; <see cref="FitWindow"/> sets its height once the pages are built.
+        /// The window the pages scroll in: as wide as the pages, its bar in the right margin, at first
+        /// as high as the screen allows (and in the new looks <see cref="ScrollHeight"/>) -- the most it
+        /// gets; <see cref="FitWindow"/> (the new looks) or <see cref="FitVanilla"/> (each tab) sets its
+        /// height once the pages are built.
         /// </summary>
         private void BuildScrollView()
         {
             float top = TitleBarHeight + _tabHeight + Margin;
-            float window = ScrollHeight;
             UIView view = GetUIView();
-            if (view != null)
-                window = Mathf.Min(window, Mathf.Floor(view.fixedHeight - 2f * ScreenRoom - top - Margin));
+            float window = Mathf.Floor((view != null ? view.fixedHeight : 1080f) - 2f * ScreenRoom - top - Margin);
+            if (!_vanilla)
+                window = Mathf.Min(window, ScrollHeight);
             window = Mathf.Max(window, MinContentHeight);
+            _mostWindow = window;
 
             height = top + window + Margin;
             _scroll = _ui.AddScrollView(this, new Vector3(Margin, top), new Vector2(_width - 2f * Margin, window),
@@ -266,8 +272,23 @@ namespace RealGlass.UI
         /// </summary>
         private void FitWindow()
         {
-            if (_scroll == null || _contentHeights.Count == 0)
+            if (_contentHeights.Count == 0)
                 return;
+
+            if (_vanilla)
+            {
+                // Vanilla: each tab as tall as its rows (FitVanilla), up to the screen; a taller one scrolls.
+                var tall = new List<string>();
+                for (int i = 0; i < _contentHeights.Count; i++)
+                {
+                    if (_contentHeights[i] > _mostWindow + 0.5f)
+                        tall.Add(Tabs[i] + " " + _contentHeights[i].ToString("F0"));
+                }
+                Log.Msg("panel: each tab as tall as its rows, at most " + _mostWindow.ToString("F0") + " (the screen); " +
+                        (tall.Count == 0 ? "none scrolls" : "scrolling: " + string.Join(", ", tall.ToArray())) +
+                        (_scroll.Bar == null ? " (no bar: the library's sheet is missing)" : ""));
+                return;
+            }
 
             float most = _scroll.Viewport.height;
             float window = Mathf.Clamp(Mathf.Ceil(_contentHeights[0]), Mathf.Min(MinContentHeight, most), most);
@@ -280,18 +301,7 @@ namespace RealGlass.UI
 
         private UIPanel AddPage()
         {
-            UIPanel page;
-            if (_scroll != null)
-            {
-                page = _scroll.AddPage();
-            }
-            else
-            {
-                page = AddUIComponent<UIPanel>();
-                page.size = new Vector2(_width - 2f * Margin, MinContentHeight);
-                page.relativePosition = new Vector3(Margin, TitleBarHeight + _tabHeight + Margin);
-            }
-
+            UIPanel page = _scroll.AddPage();
             _pages.Add(page);
             return page;
         }
@@ -305,32 +315,30 @@ namespace RealGlass.UI
             _tabs.Select(index);
             _ui.SetSubtitle(_frame, _tabNames[index]);
 
-            if (_scroll != null)
-            {
-                // The panel keeps its one height and the page scrolls inside it.
-                _pages[index].height = Mathf.Max(_contentHeights[index], _scroll.Viewport.height);
-                _scroll.Show(_pages[index], _contentHeights[index]);
-            }
-            else
-            {
+            // The new looks keep their one height; Vanilla takes the tab's. What the window can't hold scrolls.
+            if (_vanilla)
                 FitVanilla(index);
-            }
+            _pages[index].height = Mathf.Max(_contentHeights[index], _scroll.Viewport.height);
+            _scroll.Show(_pages[index], _contentHeights[index]);
 
             KeepOnScreen();
         }
 
-        /// <summary>Vanilla: as tall as the selected page needs, and never shorter than it started.</summary>
+        /// <summary>
+        /// Vanilla: the window as tall as the selected page needs, never shorter than it started, never
+        /// taller than the screen allows (<see cref="_mostWindow"/>): the rest of a taller tab scrolls.
+        /// </summary>
         private void FitVanilla(int index)
         {
-            float content = Mathf.Max(MinContentHeight, _contentHeights[index]);
-            _pages[index].height = content;
-            height = TitleBarHeight + _tabHeight + 2f * Margin + content;
+            float window = Mathf.Min(Mathf.Max(MinContentHeight, Mathf.Ceil(_contentHeights[index])), _mostWindow);
+            _scroll.Resize(window);
+            height = TitleBarHeight + _tabHeight + 2f * Margin + window;
         }
 
         /// <summary>
         /// A page's rows were folded, opened, shown or hidden (<see cref="RowList.PageResized"/>). The
         /// open page: its scrolling follows, and a group just opened is scrolled into view; Vanilla grows
-        /// or shrinks with it.
+        /// or shrinks with it, up to the screen.
         /// </summary>
         private void PageResized(int index, float content, float revealTop, float revealBottom)
         {
@@ -341,18 +349,15 @@ namespace RealGlass.UI
             if (index != _selected)
                 return;
 
-            if (_scroll != null)
-            {
-                _pages[index].height = Mathf.Max(content, _scroll.Viewport.height);
-                _scroll.SetHeight(content);
-                if (revealTop >= 0f)
-                    _scroll.Reveal(revealTop, revealBottom);
-            }
-            else
+            if (_vanilla)
             {
                 FitVanilla(index);
                 KeepOnScreen();
             }
+            _pages[index].height = Mathf.Max(content, _scroll.Viewport.height);
+            _scroll.SetHeight(content);
+            if (revealTop >= 0f)
+                _scroll.Reveal(revealTop, revealBottom);
         }
 
         private void CenterOnScreen()
