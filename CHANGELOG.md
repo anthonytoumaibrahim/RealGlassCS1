@@ -3,6 +3,28 @@
 All notable changes to Real Glass & Water. The version is `Mod.Version` in `RealGlass/Mod.cs`, shown after
 the mod's name in the game.
 
+## 1.1.2 — 2026-10-21
+
+1.1.0 and 1.1.1 were released on GitHub only: on the Workshop, 1.1.2 brings everything of them
+below, and this.
+
+### Changed
+
+- **The rooms behind the windows follow each building's own windows.** They stood on one grid for
+  every building -- 3.8 m storeys from the ground, rooms 3.6 to 8 m wide -- and almost no asset has
+  3.8 m storeys (most have 2.7 to 3.5 m), so the rooms' floors, ceilings and walls cut through the
+  windows at a different height on every floor: stripes. Now each building asset's own windows are
+  measured from its model, in the background once the city is on screen: the height of its storeys
+  and where its floors are, how tall its ground floor is, and on each side how far apart its windows
+  are -- and the rooms are laid out on that, the same up close and from afar. The building window
+  (Alt+G) says what was found for the asset. What was measured is remembered in
+  `RealGlassRoomFits.txt` (beside RealGlass.xml; safe to delete), so later loads measure only the
+  assets new to them, or changed.
+- **No rooms where none could stand**: on sloped glass (glass roofs, pyramids, solar panels), on
+  curved or smooth-shaded glass (round towers: the rooms came out in slanted stripes), on the narrow
+  facets of something round, and behind windows that are only thin strips. There the game's own
+  window shows, as without rooms. A building window's *Parallax interiors* switch still puts them on.
+
 ## 1.1.1 — 2026-10-21
 
 1.1.0 was released on GitHub only: on the Workshop, 1.1.1 brings everything of 1.1.0 below.

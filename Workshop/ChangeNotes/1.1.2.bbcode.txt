@@ -1,0 +1,24 @@
+[h1]Version 1.1.2[/h1]
+[b]New[/b]
+[list]
+[*][b]LODs show the model's glass[/b]: a building whose distant model has no glass, or has it in the wrong places, no longer loses its glass and its rooms as you zoom out: it takes the full model's glass by the building's shape. On by default (Glass tab); per building with Alt+G, [i]Glass on its LOD[/i].
+[*][b]Dynamic waves[/b]: the sea follows the game's weather. Rain and storms raise the wind up to 15 m/s, the waves grow longer and rougher over a few game hours and calm down slowly after. On by default (Water tab); turn it off to set [i]Wind speed[/i] yourself, as before.
+[*][b]Procedural Objects' buildings[/b]: buildings converted with Procedural Objects get the glass and the rooms too, reshaped, stacked or turned, and Alt+G picks them.
+[*][b]Moon glitter[/b] and [b]glitter sizes[/b]: the moon's path of light on the water has its own strength, and each glitter a size (smaller is narrower, not dimmer).
+[*][b]Folding headings[/b] and [b]tooltips[/b] in the panel: click a heading to fold its settings away or open them; the panel remembers which are open. Hover over a setting whose name leaves a question.
+[/list]
+[b]Fixed[/b]
+[list]
+[*]Parallax interiors follow each building's own windows: its storeys, floors and the walls between its windows are measured from its model, so the rooms no longer show as stripes or cut through windows. Measured once in the background and remembered, so later loads are quick.
+[*]No rooms on sloped, curved or smooth-shaded glass (glass roofs, pyramids, solar panels, round towers), where they came out slanted or striped.
+[*]The rooms behind the windows no longer fade into a flat glow when a building turns its lights on at night; the painted frames stay dark.
+[/list]
+[b]Changed[/b]
+[list]
+[*]The panel's settings sit under new headings in a new order; no setting changed, and your settings file keeps every name.
+[*]In the [i]Vanilla[/i] panel look, a tab taller than the screen (Water) scrolls.
+[*][i]Water controls[/i] is now [i]Realistic water[/i].
+[*]The sun's glitter is half as wide by default (both sizes 50%); [i]Moon glitter[/i] starts at 35%.
+[*]The building window (Alt+G) says how a building's rooms were fitted to its windows.
+[*]Your settings, building settings and saved cities keep their values; the new rows start at their defaults.
+[/list]

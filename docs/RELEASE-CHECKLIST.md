@@ -1,4 +1,4 @@
-# Release checklist — Steam Workshop (Real Glass & Water: 1.0.0 published 2026-10-20, 1.1.0 on GitHub only, 1.1.1 made ready 2026-10-21)
+# Release checklist — Steam Workshop (Real Glass & Water: 1.0.0 published 2026-10-20, 1.1.0 and 1.1.1 on GitHub only, 1.1.2 on GitHub 2026-10-21, the Workshop update next)
 
 The mod's name is **Real Glass & Water** since 2026-10-20 (the author, before the first upload;
 it was Real Glass). The player-visible name is `Mod.DisplayName`; everything internal keeps
@@ -58,12 +58,42 @@ workshop release a bit later"). On the Workshop, 1.1.1 is the update from 1.0.0
       the wheel and the bar scroll to City reflection length; the other tabs as tall as their rows,
       no bar; Frosted unchanged. The log: "panel: each tab as tall as its rows, at most 944 (the
       screen); scrolling: Water 1130".
-- [ ] **The Workshop, BY HAND** (v1.1.1 is a tag once GitHub has it, so release.ps1 refuses): game
-      closed; copy the four files of Addons\Mods\RealGlass (= the GitHub zip's; do NOT rebuild) into
-      `steamapps\workshop\content\255710\3823419476`, read them back (hashes); move Addons\Mods\
-      RealGlass to `Cities_Skylines\RealGlass-dev-parked`; Skyve: the item enabled; a city on it (the
-      first log line 1.1.1); Content Manager -> UPDATE; change note 1.1.1; Update. Then CHANGELOG
-      `## 1.1.2 — unreleased`.
+- [x] ~~The Workshop, BY HAND with 1.1.1~~ -- SUPERSEDED: 1.1.1 never went to the Workshop; the
+      rooms round became 1.1.2 (section 0a), and the Workshop update is 1.1.2 (below). The 1.1.1
+      files in `Cities_Skylines\RealGlass-1.1.1.37038-for-workshop` are no longer needed.
+- [ ] **The Workshop update: 1.1.2, BY HAND** (v1.1.2 is a tag, so release.ps1 refuses): game
+      closed; copy the four files of `Cities_Skylines\RealGlass-1.1.2.<build>-for-workshop` (= the
+      GitHub zip's; do NOT rebuild) into `steamapps\workshop\content\255710\3823419476`, read them
+      back (hashes); move Addons\Mods\RealGlass to `Cities_Skylines\RealGlass-dev-parked`; Skyve: the
+      item enabled; a city on it (the first log line 1.1.2); Content Manager -> UPDATE; change note
+      `Workshop/ChangeNotes/1.1.2.bbcode.txt`; Update. Then CHANGELOG `## 1.1.3 — unreleased`.
+
+## 0a. Next version: the rooms fitted to each asset's windows (2026-10-21 night, dev build 1.1.1.40910)
+
+Players: parallax interiors "as stripes, or angled, all sorts of wrong". A survey of the 1,487
+installed building assets: of 544 with a row of windows a storey, 28 had the rooms' 3.8 m storey
+(most 2.7-3.5 m) -- the rooms' floors and walls cut through the windows; plus sloped, curved and
+smooth-shaded glass. Two parts, each its own undo patch (docs/, local). Not yet seen in the game.
+
+- [ ] **The guards**: a glass pyramid / sloped glass roof / solar panels, a round tower shaded
+      smooth (the Lyon towers, Spreedreieck): no rooms there at night (the game's window), none in
+      slanted stripes; flat upright glass keeps its rooms exactly as before.
+- [x] **First session** (2026-10-21 22:50, build 1.1.1.40910, his city, 4K): clean log; 891 assets
+      fitted in 42.7 s (7.4 s main thread), 504 with their own storeys; he: "the interiors seem
+      better". The narrow-side count (bevels counted) fixed after it -- not yet deployed.
+- [ ] **The fit**: the log after loading: "rooms: fitting the rooms of N building assets ..." then
+      "rooms: fitted N building assets to their windows in X s (Y ms of it on the main thread): ...
+      storeys ... sides ..." -- no WARN/ERROR; the main-thread ms (the read-back) not a visible hitch.
+      At night, towers with punched or ribbon windows: a room fills each window, no dark bar or room
+      edge through it, the same up close and zoomed out (no rooms rearranging at the LOD switch).
+- [ ] **The building window** (Alt+G on a tower): a third line "Its rooms follow its windows:
+      storeys of 3.x m." (or the storey grid / no rooms); the window's lines fit.
+- [ ] Interiors off, then on: rooms come back fitted at once (nothing measured again).
+- [ ] **Remembered between loads** (build 1.1.1.42223): the first load writes
+      `RealGlassRoomFits.txt` beside RealGlass.xml ("no RealGlassRoomFits.txt yet" then "fitted ...
+      N measured"); the SECOND load says "N assets' windows remembered" and "... N remembered from
+      earlier loads, 0 measured" with a main-thread cost near 0. Deleting the file: measured again,
+      nothing else changes. The first load's main-thread ms below 7352 (7 a read-back now).
 
 ## 0b. The 1.1.0 update (2026-10-21; GitHub only, superseded by 1.1.1 on the Workshop)
 
