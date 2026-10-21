@@ -18,6 +18,9 @@
 //  - The lamps' colours: Mitchell Charity's blackbody colour table (CIE 1931 2 deg, linear sRGB).
 //  - The pictures: Poly Haven's indoor panoramas (CC0), painted on the box from the room's middle and
 //    graded by tools/interiors.
+//  - The rooms laid out on each asset's own windows -- its storeys, its floors, the walls between its
+//    windows -- measured from its model (RoomFit.cs: autocorrelation as Rabiner found pitch, 1977;
+//    epoch folding, Leahy et al. 1983): RoomFrameAt.
 
 #ifndef REALGLASS_INTERIORS_INCLUDED
 #define REALGLASS_INTERIORS_INCLUDED
@@ -30,6 +33,15 @@ float4 _RGRoomAtlasInfo;  // x tiles a row, y a night tile's pixels, z a day til
 float4 _RGRoomPools[8];   // per kind of room (Interiors.Pool*): x its first tile, y how many, z its box's aspect, w its depth (half-heights)
 sampler2D _RGRoomAtlas;   // the rooms by night, each lit by its own lamps in a neutral white (sRGB DXT1)
 sampler2D _RGRoomAtlasDay;// the same rooms by day, in the same places
+float4 _RGRoomFitInfo;    // x 1 while both below are bound, y their rows, z a row's texels
+// Read texel by texel (Load): they take no sampler -- the middle and far variants already use all
+// sixteen (Direct3D 11's ps_4_0 and Metal's limit). Every API the bundles carry has Load (Direct3D
+// 11; OpenGL Core and Metal through HLSLcc); anywhere else the rooms stay as before the fit.
+#if defined(SHADER_API_D3D11) || defined(UNITY_COMPILER_HLSLCC)
+#define RG_ROOM_FIT 1
+Texture2D _RGRoomPlaces;  // per building, two texels side by side (RoomFitTextures.cs): its model's origin (world) and its fit's row (0 none); its model's x and z axes (world xz)
+Texture2D _RGRoomFits;    // a row per measured asset (RoomFit.cs): the storey (0 none), the ground storey's top, 1 no rooms, where its floors are; then per side its room width, its walls' place, 1 too narrow, 1 found
+#endif
 
 #define RG_ROOM_TILE_MEAN 0.18   // every picture's mean luminance, linear (tools/interiors/render-rooms.py)
 #define RG_ROOM_OVERSCAN 1.25    // a room's front this much larger than the window the asset painted
@@ -273,6 +285,100 @@ float RoomShape(float3 rel, float3 n, float3 t, float3 P, float footprint)
 // window of its own (a curtain wall's spandrel): bottom, top.
 #define RG_ROOM_SLAB float2(0.14, 0.06)
 
+// Where the rooms stand on a building: fitted to its asset's own windows (RoomFit.cs, measured from
+// its model and its shine map when the city loads) -- its storeys and floors, on each side the
+// walls between its windows -- in the building's own frame, the same on every tier. Where nothing is
+// known yet, the storey grid (_RGPane2.z) and the kind's room width, as before the fit.
+struct RoomFrame
+{
+    float2 q;        // the point: metres along the facade (from the model's middle line) and up from the building's base
+    float2 shift;    // the world's (dot(P, t), P.y) minus q
+    float storey;    // a storey's height
+    float ground;    // the ground storey's top (0: every storey alike)
+    float floor0;    // where the storeys above it start (their floors at floor0 + k x storey)
+    float width;     // a room's width
+    float phase;     // along the facade, where a room's side wall stands
+    float allowed;   // 0: the asset's glass holds no rooms here
+};
+
+RoomFrame RoomFrameAt(float3 P, float3 n, float3 t, float2 colourIndex, float baseY, float cellW)
+{
+    RoomFrame f;
+    f.q = float2(dot(P, t), P.y - baseY);
+    f.shift = float2(0.0, baseY);
+    f.storey = max(_RGPane2.z, 2.0);
+    f.ground = 0.0;
+    f.floor0 = 0.0;
+    f.width = cellW;
+    f.phase = 0.0;
+    f.allowed = 1.0;
+#if defined(RG_ROOM_FIT)
+    if (_RGRoomFitInfo.x < 0.5)
+        return f;
+
+    int2 cell = int2(floor(colourIndex * _RGColorMap.xy));
+    float4 place = _RGRoomPlaces.Load(int3(2 * cell.x, cell.y, 0));
+    float4 axes = _RGRoomPlaces.Load(int3(2 * cell.x + 1, cell.y, 0));
+    if (dot(axes.xy, axes.xy) < 0.5)
+        return f;   // not placed yet
+
+    // Its own frame: along from its model's middle line, up from its base -- the far tier, which has
+    // no matrix, as the near and middle ones.
+    float3 d = P - place.xyz;
+    f.q = float2(dot(d, t), d.y);
+    f.shift = float2(dot(place.xyz, t), place.y);
+    f.phase = 0.5 * cellW;   // a room centred on the middle line
+    if (place.w < 0.5)
+        return f;   // not measured
+
+    int row = int(min(place.w + 0.5, _RGRoomFitInfo.y - 1.0));
+    float4 own = _RGRoomFits.Load(int3(0, row, 0));
+    if (own.x > 0.5)
+    {
+        f.storey = own.x;
+        f.ground = own.y;
+        f.floor0 = own.y > 0.0 ? own.y : own.w;
+    }
+    f.allowed = 1.0 - own.z;
+
+    // This face's side: its heading in the model's space, in 16 steps centred on 0 (RoomFit.SideOf).
+    float2 nm = float2(dot(n.xz, axes.xy), dot(n.xz, axes.zw));
+    nm = dot(nm, nm) > 1e-10 ? nm : float2(1.0, 0.0);
+    float k = floor(atan2(nm.y, nm.x) / 6.2831853 * 16.0 + 0.5);
+    k -= 16.0 * floor(k / 16.0);
+    float4 side = _RGRoomFits.Load(int3(1 + int(k), row, 0));
+    if (side.w > 0.5)
+    {
+        f.width = side.x;
+        f.phase = side.y;
+    }
+    f.allowed *= 1.0 - side.z;
+#endif
+    return f;
+}
+
+// The storey a height above the base is in: its number (0 the ground's), its bottom and its height.
+float StoreyOf(float y, RoomFrame f, out float bottom, out float height)
+{
+    if (f.ground > 0.0 && y < f.ground)
+    {
+        bottom = 0.0;
+        height = f.ground;
+        return 0.0;
+    }
+    float k = floor((y - f.floor0) / f.storey);
+    bottom = f.floor0 + k * f.storey;
+    height = f.storey;
+    return k + (f.ground > 0.0 ? 1.0 : 0.0);
+}
+
+// The room a point (RoomFrame.q) is in: its column along the facade and its storey.
+float2 RoomCellOf(float2 q, RoomFrame f)
+{
+    float bottom, height;
+    return float2(floor((q.x - f.phase) / f.width), StoreyOf(q.y, f, bottom, height));
+}
+
 // The room's front, the face of its box that holds the window: the box's aspect (A, width over
 // height), covering the window (a painted window RG_ROOM_OVERSCAN larger: the room is wider than its
 // window; a storey's cell exactly, so its floor and ceiling are the storey's). Its height, metres.
@@ -290,8 +396,9 @@ float RoomFrontHeight(float aspect, float2 windowSize, bool grid)
 // through that camera, is the right place in it: the room moves as a room does when the view does
 // (interior mapping, van Dongen 2008; one picture per room, SimCity 2013 as Ben Golus wrote it up).
 // _RGRooms3.x blends from the flat picture on the glass (0) to the box (1). Mirrored for half the
-// rooms; the window's place in the room's front a room's own (crop).
-float2 RoomPictureUV(float aspect, float depth, float3 P, float3 V, float3 n, float3 t, float along,
+// rooms; the window's place in the room's front a room's own (crop). q, windowMin: in the building's
+// frame (RoomFrame).
+float2 RoomPictureUV(float aspect, float depth, float2 q, float3 V, float3 n, float3 t,
                      float2 windowMin, float2 windowSize, bool grid, float seed)
 {
     // The front, in metres, round the window: the window at a place of the room's own within it.
@@ -299,7 +406,7 @@ float2 RoomPictureUV(float aspect, float depth, float3 P, float3 V, float3 n, fl
     float2 front = float2(frontH * aspect, frontH);
     float2 slack = max(front - windowSize, 0.0);
     float2 crop = float2(RoomRand(seed, 1.0), lerp(0.3, 0.7, RoomRand(seed, 2.0)));
-    float2 onFront = saturate((float2(along, P.y) - windowMin + slack * crop) / front);   // 0..1 across the front
+    float2 onFront = saturate((q - windowMin + slack * crop) / front);   // 0..1 across the front
 
     // Into the box: the front point and the view's direction in the room's frame (half-heights).
     float mirror = RoomRand(seed, 4.0) < 0.5 ? -1.0 : 1.0;
@@ -323,9 +430,10 @@ float2 RoomPictureUV(float aspect, float depth, float3 P, float3 V, float3 n, fl
 // What the room behind this pixel of glass sends through it, by night and by day, once through the
 // glass (nightGlass, dayGlass: what the glass lets through of each). Returns how much of the
 // window is the room's: 0 where there are no rooms (switched off, not loaded, an asset of its own
-// says no, glass that is not a facade), else 1 (less on a slanted pane).
+// says no, glass that is not a facade or holds none), else 1 (less on a slanted pane). colourIndex:
+// the building's (its texel in the object colour map: where its frame is, RoomFrameAt).
 float RoomsBehind(float3 P, float3 n, float3 t, float3 V, float baseY, float footprint, float4 painted, float buildingId,
-                  float assetA, float3 inside, float3 dayGlass, float3 nightGlass, out float3 night, out float3 day)
+                  float2 colourIndex, float assetA, float3 inside, float3 dayGlass, float3 nightGlass, out float3 night, out float3 day)
 {
     night = float3(0.0, 0.0, 0.0);
     day = inside;
@@ -336,29 +444,36 @@ float RoomsBehind(float3 P, float3 n, float3 t, float3 V, float baseY, float foo
     if (!on || facade <= 0.0)
         return 0.0;
 
+    // The building's frame: its asset's storeys and rooms where they were fitted. Glass its asset
+    // holds no rooms behind (strips, a round tower's facets) has none -- unless its building window
+    // asks for them.
+    float cellW = kind > 0.5 && kind < 1.5 || kind > 6.5 ? 6.0 : (kind > 5.5 && kind < 6.5 ? 8.0 : 3.6);
+    RoomFrame f = RoomFrameAt(P, n, t, colourIndex, baseY, cellW);
+    if (f.allowed < 0.5 && assetSwitch < 1.5)
+        return 0.0;
+    float2 q = f.q;
+
     // The room: the window the asset painted here (close up), else a cell one storey tall and a
     // room wide along the facade. Its place in the grid (column, storey) names it, the same on every
     // tier as far as can be: a painted window by its middle. With _RGRooms3.y, the grid up close too:
     // the LOD models have no painted windows to find, so a building changing model keeps its rooms.
     if (_RGRooms3.y > 0.5)
         painted = float4(0.0, 0.0, 0.0, 0.0);
-    float storeyH = max(_RGPane2.z, 2.0);
-    float along = dot(P, t);
-    float cellW = kind > 0.5 && kind < 1.5 || kind > 6.5 ? 6.0 : (kind > 5.5 && kind < 6.5 ? 8.0 : 3.6);
     float2 cellMin, cellSize, cellId;
     if (painted.y > painted.x)
     {
+        painted -= f.shift.xxyy;
         cellMin = float2(painted.x, painted.z);
         cellSize = float2(painted.y - painted.x, painted.w - painted.z);
-        float2 middle = cellMin + cellSize * 0.5;
-        cellId = float2(floor(middle.x / cellW), floor((middle.y - baseY) / storeyH));
+        cellId = RoomCellOf(cellMin + cellSize * 0.5, f);
     }
     else
     {
-        float storey = floor((P.y - baseY) / storeyH);
-        float column = floor(along / cellW);
-        cellMin = float2(column * cellW, baseY + storey * storeyH);
-        cellSize = float2(cellW, storeyH);
+        float bottom, height;
+        float storey = StoreyOf(q.y, f, bottom, height);
+        float column = floor((q.x - f.phase) / f.width);
+        cellMin = float2(f.phase + column * f.width, bottom);
+        cellSize = float2(f.width, height);
         cellId = float2(column, storey);
     }
 
@@ -398,8 +513,7 @@ float RoomsBehind(float3 P, float3 n, float3 t, float3 V, float baseY, float foo
         for (int k = 0; k < 4; k++)
         {
             float2 offset = float2(k == 1 || k == 3 ? 0.35 : -0.35, k >= 2 ? 0.35 : -0.35) * footprint;
-            float2 q = float2(along, P.y) + offset;
-            float2 tapId = float2(floor(q.x / cellW), floor((q.y - baseY) / storeyH));
+            float2 tapId = RoomCellOf(q + offset, f);
             float4 tapGroup;
             float tapPool = RoomPool(kind, tapId.y, tapGroup);
             float tapSeed, tapLit, tapTv;
@@ -413,14 +527,14 @@ float RoomsBehind(float3 P, float3 n, float3 t, float3 V, float baseY, float foo
     float3 roomDay = dayDark;
     float3 albedo = float3(0.0, 0.0, 0.0);
     float cover = 0.0;
-    float2 xy = saturate((float2(along, P.y) - bandMin) / bandSize);
+    float2 xy = saturate((q - bandMin) / bandSize);
     if (detail > 0.0)
     {
         float4 range = _RGRoomPools[(int)pool];
         float tile = range.x + min(floor(RoomRand(seed, 3.0) * range.y), max(range.y - 1.0, 0.0));
         float perRow = max(_RGRoomAtlasInfo.x, 1.0);
         float2 tileXY = float2(fmod(tile, perRow), floor(tile / perRow));
-        float2 tileUV = RoomPictureUV(range.z, range.w, P, V, n, t, along, bandMin, bandSize, grid, seed);
+        float2 tileUV = RoomPictureUV(range.z, range.w, q, V, n, t, bandMin, bandSize, grid, seed);
 
         // The level of detail the pixel covers (a little sharper than its longest footprint), the
         // reads kept inside the tile at that level. The picture spans the room's front: a little
@@ -447,7 +561,7 @@ float RoomsBehind(float3 P, float3 n, float3 t, float3 V, float baseY, float foo
         nearDay = lerp(nearDay, _RGAmbSky.rgb * albedo * 0.55, cover);
 
         // The slab and the ceiling, dark.
-        float inBand = grid ? step(bandMin.y, P.y) * step(P.y, bandMin.y + bandSize.y) : 1.0;
+        float inBand = grid ? step(bandMin.y, q.y) * step(q.y, bandMin.y + bandSize.y) : 1.0;
         nearNight = lerp(dark * 0.5, nearNight, inBand);
         nearDay = lerp(dayDark * 0.5, nearDay, inBand);
 

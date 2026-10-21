@@ -133,7 +133,13 @@ public static class GlassPreview
 
         /// <summary>The rooms behind the glass (the mod's RoomAtlas, same file, the mod's own pictures).</summary>
         public RoomAtlas Rooms = new RoomAtlas();
+
+        /// <summary>The rooms fitted to each stand-in's windows (the mod's RoomFit and RoomFitTextures, same files).</summary>
+        public RoomFitTextures RoomFits = new RoomFitTextures();
     }
+
+    /// <summary>The variant's "Fit=0": the rooms on the storey grid, as before they were fitted to the windows.</summary>
+    private static bool _fitOff;
 
     /// <summary>The variant's "Hour=h": the time of day the rooms' lights follow (21:00 by night, 13:00 by day).</summary>
     private static float? _hour;
@@ -249,6 +255,7 @@ public static class GlassPreview
         s.SkyCube.Destroy();
         s.City.Destroy();
         s.Assets.Destroy();
+        s.RoomFits.Destroy();
         s.LodGlass.Destroy();
         s.Camera.targetTexture = null;
         UnityEngine.Object.DestroyImmediate(s.Camera.gameObject);
@@ -325,6 +332,7 @@ public static class GlassPreview
         BuildLodTiers(s);
         BuildCityMap(s);
         s.Assets.Create(ColorMapWidth, ColorMapHeight);
+        BuildRoomFits(s);
         Debug.Log("RG PREVIEW: city heights " + s.City.LiveCount + " buildings, highest roof " + s.City.LiveTop.ToString("F0") + " m");
 
         // Volumetric Weather's cloud volume, as the mod finds it: a mesh renderer by that name, a
@@ -354,6 +362,115 @@ public static class GlassPreview
             s.City.AddBuilding(position, rotation, bounds.min, bounds.max, null, i + 1);
         }
         s.City.Finish();
+    }
+
+    /// <summary>
+    /// The rooms fitted to every stand-in's windows, as the mod's RoomFitMap fits a city's assets: its
+    /// model and its shine map at 512 x 512 (each texel the average of what it covers, as the GPU's
+    /// read-back of a mip gives) through RoomFit.Measure, a row each; every building's place.
+    /// </summary>
+    private static void BuildRoomFits(Scene s)
+    {
+        if (!s.RoomFits.Create(ColorMapWidth, ColorMapHeight))
+            throw new Exception("RoomFitTextures.Create: " + s.RoomFits.Problem);
+
+        const int side = 512;
+        int found = 0, sides = 0, off = 0;
+        var storeys = new List<string>();
+
+        // Every fit goes through the mod's cache file's text and back (RoomFitCache: as a later load
+        // finds them), and its fingerprint is taken as the mod takes it (Mesh.GetIndexCount, probed here).
+        var cache = new RoomFitCache();
+        var fingerprints = new string[s.Buildings.Count];
+        var results = new RoomFitResult[s.Buildings.Count];
+        for (int i = 0; i < s.Buildings.Count; i++)
+        {
+            Building b = s.Buildings[i];
+            int id = i + 1;
+            Color[] xys = b.Xys.GetPixels(0);
+            int w = b.Xys.width, h = b.Xys.height;
+            var shine = new byte[side * side];
+            for (int y = 0; y < side; y++)
+            {
+                for (int x = 0; x < side; x++)
+                {
+                    int x0 = x * w / side, x1 = Mathf.Max(x0 + 1, (x + 1) * w / side), y0 = y * h / side, y1 = Mathf.Max(y0 + 1, (y + 1) * h / side);
+                    float sum = 0f;
+                    for (int yy = y0; yy < y1; yy++)
+                    {
+                        for (int xx = x0; xx < x1; xx++)
+                            sum += 1f - xys[yy * w + xx].b;
+                    }
+                    shine[y * side + x] = (byte)Mathf.RoundToInt(Mathf.Clamp01(sum / ((x1 - x0) * (y1 - y0))) * 255f);
+                }
+            }
+
+            Vector3[] v = b.Mesh.vertices;
+            Vector2[] uv = b.Mesh.uv;
+            var pos = new float[v.Length * 3];
+            var uvs = new float[uv.Length * 2];
+            for (int j = 0; j < v.Length; j++)
+            {
+                pos[3 * j] = v[j].x;
+                pos[3 * j + 1] = v[j].y;
+                pos[3 * j + 2] = v[j].z;
+            }
+            for (int j = 0; j < uv.Length; j++)
+            {
+                uvs[2 * j] = uv[j].x;
+                uvs[2 * j + 1] = uv[j].y;
+            }
+            float cellWidth = RoomFit.CellWidth(RoomKindOf(b, id));
+            RoomFitResult measured = RoomFit.Measure(pos, uvs, b.Mesh.triangles, shine, side, 1f, 1f, 0f, 0f, b.Xys.wrapMode == TextureWrapMode.Clamp, cellWidth);
+            fingerprints[i] = RoomFitCache.Fingerprint(b.Mesh, b.Xys, new Vector4(1f, 1f, 0f, 0f), cellWidth);
+            cache.Put("stand-in " + id, fingerprints[i], measured);
+            results[i] = measured;
+        }
+
+        int skipped, back = 0;
+        string reason;
+        RoomFitCache read = RoomFitCache.Parse(cache.Format(), out skipped, out reason);
+        if (reason.Length > 0)
+            throw new Exception("RoomFitCache.Parse: " + reason);
+        for (int i = 0; i < s.Buildings.Count; i++)
+        {
+            RoomFitResult again;
+            if (read.TryGet("stand-in " + (i + 1), fingerprints[i], out again))
+            {
+                results[i] = again;
+                back++;
+            }
+        }
+        Debug.Log("RG PREVIEW: room fits through the cache's text: " + back + " of " + s.Buildings.Count + " read back, " + skipped +
+                  " lines skipped; a fingerprint: " + fingerprints[0]);
+
+        for (int i = 0; i < s.Buildings.Count; i++)
+        {
+            Building b = s.Buildings[i];
+            int id = i + 1;
+            RoomFitResult r = results[i];
+            int row = r.Measured ? id : 0;
+            if (r.Measured)
+            {
+                s.RoomFits.SetFit(row, r);
+                if (r.Storey > 0f)
+                {
+                    found++;
+                    if (storeys.Count < 6)
+                        storeys.Add(b.Kind + " " + r.Storey.ToString("F3", CultureInfo.InvariantCulture) + " m from " +
+                                    r.GroundTop.ToString("F2", CultureInfo.InvariantCulture) + " m");
+                }
+                sides += r.SidesFound;
+                if (!r.Rooms)
+                    off++;
+            }
+            Vector3 origin = b.Matrix.GetColumn(3);
+            s.RoomFits.SetPlace(id, origin, ((Vector3)b.Matrix.GetColumn(0)).normalized, ((Vector3)b.Matrix.GetColumn(2)).normalized, row);
+        }
+        if (!s.RoomFits.Upload())
+            throw new Exception("RoomFitTextures.Upload: " + s.RoomFits.Problem);
+        Debug.Log("RG PREVIEW: rooms fitted: storeys found on " + found + " of " + s.Buildings.Count + " (" + string.Join("; ", storeys.ToArray()) +
+                  "), " + sides + " sides, " + off + " with no rooms");
     }
 
     /// <summary>RenderManager.GetColorLocation: the texel centre of object id in the colour map.</summary>
@@ -1235,6 +1352,7 @@ public static class GlassPreview
         _overcast = 0f;
         _litShare = 0.25f;
         _guardsOff = false;
+        _fitOff = false;
         _tier = "near";
         _lod = "own";
         _lodMode = LodGlass.ModeAuto;
@@ -1275,6 +1393,10 @@ public static class GlassPreview
         }
         s.Assets.Upload();
         s.Assets.Bind();
+        if (_fitOff)
+            s.RoomFits.Unbind();
+        else
+            s.RoomFits.Bind();
         string lodInfo = PrepareLod(s, p);
         Shader.SetGlobalVector("_RGDebug", new Vector4(_debug, _debugLevel, _guardsOff ? 1f : 0f, 0f));
         GlassFrame f = new GlassFrame();
@@ -1426,6 +1548,12 @@ public static class GlassPreview
             if (kv[0].Trim().Equals("HiZ", StringComparison.OrdinalIgnoreCase))
             {
                 _hizOff = kv[1].Trim() == "0";
+                continue;
+            }
+            if (kv[0].Trim().Equals("Fit", StringComparison.OrdinalIgnoreCase))
+            {
+                // Not a setting: "Fit=0" lays the rooms out on the storey grid, as before RoomFit.
+                _fitOff = kv[1].Trim() == "0";
                 continue;
             }
             if (kv[0].Trim().Equals("Guards", StringComparison.OrdinalIgnoreCase))

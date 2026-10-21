@@ -68,6 +68,9 @@ glitter and foam.
   by what the building is (homes, offices, shops, hotels, restaurants, hospitals and schools,
   workshops), with depth that moves as the camera does, and a curtain, drapes or a blind of its
   own. By day too, if you like.
+- **Rooms fitted to each building's windows** (**1.1**): each building's storeys, floors and the
+  walls between its windows are measured from its model, so a room fills its window instead of a
+  grid cutting through it. No rooms on sloped, curved or smooth-shaded glass, where none could stand.
 - **Lights by the hour**: homes busiest in the evening, offices a floor at a time with a few left
   on, shops by their opening hours. Rooms switch on and off slowly through the night, each at its
   own moment, never all at once. Mostly warm and neutral whites, and a few colored LEDs.
@@ -130,6 +133,8 @@ Editors, not in the Map or Theme Editor.
 Nothing is kept in your cities: the settings are in `RealGlass.xml` and each asset's own glass in
 `RealGlassAssets.xml`, both in the game's data folder (on Windows
 `%LOCALAPPDATA%\Colossal Order\Cities_Skylines`), so a save loads the same with the mod removed.
+Beside them, `RealGlassRoomFits.txt` remembers each building asset's measured windows, so only new
+or changed assets are measured when a city loads; it is safe to delete (it is made again).
 The mod is provided as-is; keep backups of the cities you care about.
 
 ## Quick start

@@ -394,6 +394,13 @@
   <String key="Asset.Lod.Off">Its LOD's glass differs; the Glass tab leaves it as it is.</String>
   <String key="Asset.Lod.Failed">Its LOD could not be compared with the model (see the log).</String>
 
+  <!-- The status line's third line: the rooms fitted to the asset's own windows ({0} its storey in metres). -->
+  <String key="Asset.Rooms.Fitted">Its rooms follow its windows: storeys of {0} m.</String>
+  <String key="Asset.Rooms.FittedNarrow">Its rooms follow its windows: storeys of {0} m, none on narrow sides.</String>
+  <String key="Asset.Rooms.Grid">No row of windows found: its rooms are on the storey grid.</String>
+  <String key="Asset.Rooms.None">No rooms: its windows are thin strips.</String>
+  <String key="Asset.Rooms.Failed">Its windows could not be measured for rooms (see the log).</String>
+
   <String key="Group.AssetInteriors">Interiors</String>
 
   <String key="AssetInteriorsEnabled.Label">Parallax interiors</String>

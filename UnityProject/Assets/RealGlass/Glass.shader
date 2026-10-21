@@ -441,6 +441,16 @@ Shader "RealGlass/Glass"
                     return float4(SunThrough().xxx, 1.0);   // 12: the sun's disc through the clouds (white all of it, black none)
                 if (_RGDebug.x > 12.5 && _RGDebug.x < 13.5)
                     return float4(1.0 - roomShape, roomShape, 0.05, 1.0);   // 13: where a room can stand (green), not (red)
+                if (_RGDebug.x > 13.5 && _RGDebug.x < 14.5)
+                {
+                    // 14: the rooms' frame (RoomFrameAt), rooms or none: a checker of its rooms -- bright where
+                    // the storey is the asset's own (fitted), dim on the storey grid; red where its glass holds none.
+                    RoomFrame rf = RoomFrameAt(P, n, t, i.building, baseY, 6.0);
+                    float2 rc = RoomCellOf(rf.q, rf);
+                    float3 rcol = lerp(float3(0.15, 0.3, 0.9), float3(0.95, 0.8, 0.2), frac((rc.x + rc.y) * 0.5) * 2.0);
+                    rcol *= abs(rf.storey - max(_RGPane2.z, 2.0)) > 1e-3 ? 1.0 : 0.35;
+                    return float4(rf.allowed < 0.5 ? float3(1.0, 0.05, 0.05) : rcol, 1.0);
+                }
                 // Through the glass the light takes its colour once. The reflection, twice: a
                 // reflective coating sits behind the tinted lite (Solarcool on the second surface,
                 // every tinted preset), so what it mirrors crosses the tint going in and coming
@@ -620,7 +630,7 @@ Shader "RealGlass/Glass"
                 float3 nightFilter = lerp(float3(1.0, 1.0, 1.0), filter, 0.3);
                 nightFilter /= max(Luma(nightFilter), 0.05);
                 float3 roomNight, roomDay;
-                float rooms = RoomsBehind(P, n, t, V, baseY, footprint, painted, IdOf(i.building), asset.a,
+                float rooms = RoomsBehind(P, n, t, V, baseY, footprint, painted, IdOf(i.building), i.building, asset.a,
                                           inside, through, nightFilter * (1.0 - Fs), roomNight, roomDay);
                 float3 behind = lerp(gamePixel, inside, daylight);
                 float roomCover = 0.0, roomCoverNight = 0.0;

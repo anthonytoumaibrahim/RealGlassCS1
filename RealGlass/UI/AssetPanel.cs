@@ -22,8 +22,8 @@ namespace RealGlass.UI
     {
         private const float PanelWidth = 520f;
         private const float TitleBarHeight = 40f;
-        /// <summary>Two lines: the copies in this city, then what the asset's LODs show (LodGlass).</summary>
-        private const float StatusHeight = 42f;
+        /// <summary>Three lines: the copies in this city, what the asset's LODs show (LodGlass), its rooms (RoomFit).</summary>
+        private const float StatusHeight = 60f;
         private const float ButtonsHeight = 34f;
         private const float Margin = 14f;
 

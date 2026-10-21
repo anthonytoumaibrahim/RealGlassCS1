@@ -286,6 +286,25 @@ namespace RealGlass.Glass
             }
         }
 
+        /// <summary>Where Procedural Objects draws this building now: its mesh's origin and turn (RoomFitMap). False when that cannot be read.</summary>
+        public static bool Place(Entry e, out Vector3 at, out Quaternion rotation)
+        {
+            at = Vector3.zero;
+            rotation = Quaternion.identity;
+            if (_failed || _access == null || e == null || e.Object == null)
+                return false;
+            try
+            {
+                at = _access.Position(e.Object);
+                rotation = _access.Rotation(e.Object);
+                return true;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
         /// <summary>
         /// Every building Procedural Objects draws now, into the city map being built (CityHeights,
         /// before it finishes a map): with its asset's height grid while its mesh keeps the asset's

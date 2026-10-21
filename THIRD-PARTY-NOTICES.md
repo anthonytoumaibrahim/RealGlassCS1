@@ -190,7 +190,9 @@ test (1986) and Möller and Trumbore's ray/triangle test (1997) -- and, for LODs
 their model's, the model's carried onto the LOD after Cignoni, Montani, Rocchini and Scopigno's
 attribute-preserving resampling of simplified meshes (1998), through Fujimoto, Tanaka and Iwata's
 uniform grid (1986), Möller and Trumbore's test and Williams's mip-maps (1983), the two glasses
-compared by Jaccard's index (1912) --
+compared by Jaccard's index (1912) -- and, to fit the rooms to each asset's own windows, the
+period of its rows and columns of windows by autocorrelation as Rabiner found the pitch of speech
+(1977), refined by epoch folding (Leahy et al. 1983) --
 listed with links under *References* below. Apart from the ray tracer above, the implementations
 were written for this mod.
 
@@ -402,6 +404,13 @@ Every technique here has shipped in a game or is published:
     **Pyramidal Parametrics**, SIGGRAPH 1983); whether the LOD's own glass agrees with its model's,
     by the share of the two glasses that is both (Paul Jaccard, **The Distribution of the Flora in
     the Alpine Zone**, New Phytologist 11(2), 1912).
+21. The rooms fitted to each asset's own windows: the shine of its model's upright faces summed by
+    height, and along each side, and the rhythm of each found as the lag of its strongest
+    autocorrelation -- as Lawrence Rabiner found the pitch of speech (**On the Use of
+    Autocorrelation Analysis for Pitch Detection**, IEEE Transactions on Acoustics, Speech, and
+    Signal Processing 25(1), 1977) -- then refined to the millimetre by epoch folding, the period
+    whose folded profile varies most (D. A. Leahy et al., **On searches for pulsed emission with
+    application to four globular cluster X-ray sources**, The Astrophysical Journal 266, 1983).
 
 ## Trademarks
 

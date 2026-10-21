@@ -25,6 +25,7 @@ namespace RealGlass.Glass
         private readonly AssetMap _assets = new AssetMap();
         private readonly LodGlassMap _lodGlass = new LodGlassMap();
         private readonly RoomAtlas _rooms = new RoomAtlas();
+        private readonly RoomFitMap _roomFit = new RoomFitMap();
         private bool _roomsTried;
         private string _loggedRooms = "";
         private int _loggedHiZ = -1;
@@ -89,6 +90,13 @@ namespace RealGlass.Glass
         {
             GlassController c = Instance;
             return c != null && info != null ? c._lodGlass.VerdictOf(info.name) : LodGlass.VerdictNotMeasured;
+        }
+
+        /// <summary>What was found of this asset's windows (RoomFit), for its building window; null outside a city or before it is measured.</summary>
+        public static RoomFitResult RoomFitOf(BuildingInfo info)
+        {
+            GlassController c = Instance;
+            return c != null && info != null ? c._roomFit.ResultOf(info.name) : null;
         }
 
         /// <summary>A layer any building asset draws on (its m_prefabDataLayer): where group meshes get glass.</summary>
@@ -317,6 +325,7 @@ namespace RealGlass.Glass
             bool roomsWanted = p.Interiors || PerAsset.AssetFile.AnyInteriorsOn;
             bool rooms = RoomsReady(roomsWanted) && roomsWanted;
             _assets.Update(p, rooms);
+            _roomFit.Update(rooms, _util);
 
             GlassUniforms.Apply(p, f, _quality);
             Interiors.Apply(p, f, _rooms, rooms);
@@ -369,7 +378,7 @@ namespace RealGlass.Glass
                                _heights.Map.LiveTop.ToString("F0") + " m, " + _heights.LastMs.ToString("F1") + " ms over " + _heights.LastFrames + " frames"
                                : "city heights being drawn") : "no city heights") +
                            "; hi-z " + (copied ? _screen.HiZLevels + " levels" : "-") +
-                           "; rooms " + (rooms ? DescribeRooms(p, f) : "off") +
+                           "; rooms " + (rooms ? DescribeRooms(p, f) + "; " + _roomFit.Describe() : "off") +
                            "; " + _lodGlass.Describe() +
                            "; shaders seen: " + GlassDraw.DescribeShaders());
                 ResetCounters();
@@ -623,6 +632,7 @@ namespace RealGlass.Glass
             _assets.Destroy();
             _lodGlass.Destroy();
             _rooms.Destroy();
+            _roomFit.Destroy();
             ProceduralBuildings.Reset();
             RestoreCamera();
             foreach (Material m in new[] { _near, _lod, _group, _util })

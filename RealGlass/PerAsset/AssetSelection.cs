@@ -154,7 +154,24 @@ namespace RealGlass.PerAsset
 
             string status = Localization.Get(Record != null ? "Asset.Own" : "Asset.Global", Copies);
             string lod = LodText(GlassController.LodVerdictOf(Info));
-            return lod.Length > 0 ? status + "\n" + lod : status;
+            if (lod.Length > 0)
+                status += "\n" + lod;
+            string rooms = RoomsText(GlassController.RoomFitOf(Info));
+            return rooms.Length > 0 ? status + "\n" + rooms : status;
+        }
+
+        /// <summary>What was found of the asset's windows for its rooms (RoomFit), the status line's third line; "" while nothing is known.</summary>
+        private static string RoomsText(RoomFitResult r)
+        {
+            if (r == null)
+                return "";
+            if (!r.Measured)
+                return Localization.Get("Asset.Rooms.Failed");
+            if (!r.Rooms)
+                return Localization.Get("Asset.Rooms.None");
+            if (r.Storey > 0f)
+                return Localization.Get(r.SidesNarrow > 0 ? "Asset.Rooms.FittedNarrow" : "Asset.Rooms.Fitted", r.Storey.ToString("0.0#"));
+            return Localization.Get("Asset.Rooms.Grid");
         }
 
         /// <summary>What the asset's LODs show (LodGlass's verdict), the status line's second line; "" while nothing is known.</summary>

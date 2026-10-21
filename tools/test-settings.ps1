@@ -1160,5 +1160,151 @@ $b = "{0} {1}" -f $e.ModelShine[255 * 256 + 3], $e.LodShine[7]
 Check "  a tile: r the model's, g the LOD's; read upside down, its rows the other way" "$a; $b" "200 10 7 99; 200 99"
 Check "LOD glass: on by default" (Default 'LodGlassFromModel') "True"
 
+# ---- the rooms fitted to the windows (Glass\RoomFit.cs) --------------------------------------
+# A tower 20 x 20 x 60 m, its four sides side by side in its texture (u), its height up v; its
+# shine map 512 x 512 painted with windows: a shop front 0.3..4.2 m, then storeys of 3.2 m from
+# 4.5 m with windows 1.0..2.6 m above each floor, 1.7 m wide every 2.5 m along. Then strips, plain
+# glass, and a round tower of 40 narrow facets.
+Add-Type -TypeDefinition @"
+using System;
+public static class FitTest
+{
+    // An upright prism of n sides of radius r (n = 4: a box turned 45 degrees -- here a 20 m box
+    // when sides4 is set), height h; uv: side k at u = (k + t) / n, v = y / h.
+    public static float[] Pos(int n, float r, float h, bool box)
+    {
+        var p = new float[n * 4 * 3];
+        for (int k = 0; k < n; k++)
+            for (int c = 0; c < 4; c++)
+            {
+                int e = c == 1 || c == 2 ? k + 1 : k;
+                double a = 2.0 * Math.PI * e / n + (box ? Math.PI / 4.0 : 0.0);
+                float x = (float)(Math.Cos(a) * r), z = (float)(Math.Sin(a) * r), y = c >= 2 ? h : 0f;
+                int i = 3 * (4 * k + c);
+                p[i] = x; p[i + 1] = y; p[i + 2] = z;
+            }
+        return p;
+    }
+    public static float[] Uv(int n)
+    {
+        var uv = new float[n * 4 * 2];
+        for (int k = 0; k < n; k++)
+            for (int c = 0; c < 4; c++)
+            {
+                int i = 2 * (4 * k + c);
+                uv[i] = (k + (c == 1 || c == 2 ? 1f : 0f)) / n; uv[i + 1] = c >= 2 ? 1f : 0f;
+            }
+        return uv;
+    }
+    public static int[] Tri(int n)
+    {
+        var t = new int[n * 6];
+        for (int k = 0; k < n; k++)
+        {
+            int b = 4 * k;
+            t[6 * k] = b; t[6 * k + 1] = b + 2; t[6 * k + 2] = b + 1;
+            t[6 * k + 3] = b; t[6 * k + 4] = b + 3; t[6 * k + 5] = b + 2;
+        }
+        return t;
+    }
+    // mode 0: the tower above; 1 strips (windows 1.0..1.4 m a 3.2 m storey from the ground); 2 all glass.
+    public static byte[] Picture(int mode, float h, float sideWidth, int sides)
+    {
+        var p = new byte[512 * 512];
+        for (int row = 0; row < 512; row++)
+            for (int col = 0; col < 512; col++)
+            {
+                double y = (row + 0.5) / 512.0 * h, u = (col + 0.5) / 512.0 * sides;
+                double s = (u - Math.Floor(u)) * sideWidth;
+                bool glass;
+                if (mode == 2) glass = true;
+                else if (mode == 1) glass = Mod(y, 3.2) >= 1.0 && Mod(y, 3.2) < 1.4;
+                else if (y < 4.5) glass = y >= 0.3 && y < 4.2 && Mod(s, 2.5) >= 0.2;
+                else glass = Mod(y - 4.5, 3.2) >= 1.0 && Mod(y - 4.5, 3.2) < 2.6 && Mod(s, 2.5) >= 0.4 && Mod(s, 2.5) < 2.1;
+                p[row * 512 + col] = glass ? (byte)230 : (byte)20;
+            }
+        return p;
+    }
+    static double Mod(double a, double b) { return a - b * Math.Floor(a / b); }
+
+    // A method called with the thread in another culture (PowerShell puts the culture back after every statement).
+    public static object InvokeIn(string culture, System.Reflection.MethodInfo method, object target, object[] args)
+    {
+        var saved = System.Threading.Thread.CurrentThread.CurrentCulture;
+        System.Threading.Thread.CurrentThread.CurrentCulture = new System.Globalization.CultureInfo(culture);
+        try { return method.Invoke(target, args); }
+        finally { System.Threading.Thread.CurrentThread.CurrentCulture = saved; }
+    }
+}
+"@
+$rf = $asm.GetType('RealGlass.Glass.RoomFit', $true)
+$box = [single](10 * [math]::Sqrt(2))
+function Fit([int]$mode, [int]$n = 4, [single]$radius = $box, [single]$sideWidth = 20) {
+    $pos = [FitTest]::Pos($n, $radius, 60, $n -eq 4)
+    return $rf::Measure($pos, [FitTest]::Uv($n), [FitTest]::Tri($n), [FitTest]::Picture($mode, 60, $sideWidth, $n), 512, 1, 1, 0, 0, $false, 6)
+}
+$tower = Fit 0
+Check "Rooms fitted: a tower measured, its upright faces 4 x 20 x 60 m" ("{0} '{1}' {2:F0}" -f $tower.Measured, $tower.Problem, $tower.UprightArea) "True '' 4800"
+Check "  its storey: 3.2 m (to a centimetre), a strong rhythm" ("{0:F2} {1}" -f $tower.Storey, ($tower.StoreyRhythm -gt 0.8)) "3.20 True"
+Check "  its windows 1.6 m a storey (to 15 cm: a texel is 12 cm); the floor 0.9 m under them: phase 1.4 (to 15 cm)" ("{0} {1}" -f ([math]::Abs($tower.WindowBand - 1.6) -le 0.15), ([math]::Abs($tower.FloorPhase - 1.4) -le 0.15)) "True True"
+Check "  the ground storey up to the first floor above the shop front (4.5 m, to 15 cm)" ([math]::Abs($tower.GroundTop - 4.5) -le 0.15) "True"
+Check "  rooms: yes" $tower.Rooms "True"
+$found = @(); foreach ($k in 0..15) { if ($tower.Sides[$k].Found) { $found += $k } }
+Check "  four sides found, headed 0, 90, 180, 270 degrees" ($found -join " ") "0 4 8 12"
+$s = $tower.Sides[0]
+$wall = $s.Phase - 2.5 * [math]::Floor($s.Phase / 2.5)
+Check "  a side: windows every 2.5 m (to 2 cm), a room two of them (an office's 6 m), its walls between windows" ("{0} {1:F1} {2}" -f ([math]::Abs($s.Module - 2.5) -le 0.02), $s.Width, ([math]::Min($wall, 2.5 - $wall) -le 0.1)) "True 5.0 True"
+Check "  no side too narrow" $tower.SidesNarrow "0"
+$strips = Fit 1
+Check "  windows 0.4 m a storey: strips, no rooms" ("{0:F1} {1} {2}" -f $strips.Storey, ($strips.WindowBand -lt 0.6), $strips.Rooms) "3.2 True False"
+$plain = Fit 2
+Check "  all glass: no storey, no side (the storey grid)" ("{0} {1} {2}" -f $plain.Storey, $plain.SidesFound, $plain.Rooms) "0 0 True"
+$round = Fit 0 40 18 ([single](2 * 18 * [math]::Sin([math]::PI / 40)))
+Check "  a round tower of 40 facets 2.8 m wide: every side too narrow for a room" ($round.SidesNarrow -eq 16) "True"
+$frac = 0.0
+$sides = @(@(1, 0), @(0, 1), @(-1, 0), @(0, -1), @([math]::Cos(0.19), [math]::Sin(0.19))) | ForEach-Object { $rf::SideOf($_[0], $_[1], [ref]$frac) }
+Check "  sides by heading: 0, 90, 180, 270 degrees, and 11 degrees (still side 0)" ($sides -join " ") "0 4 8 12 0"
+Check "  room widths by kind: homes, offices, industry, shops with offices above" ("{0} {1} {2} {3}" -f $rf::CellWidth(0), $rf::CellWidth(1), $rf::CellWidth(6), $rf::CellWidth(7)) "3.6 6 8 6"
+$none = $rf::Measure($null, $null, $null, $null, 0, 1, 1, 0, 0, $false, 6)
+Check "  nothing to measure: a problem, nothing thrown" ("{0} '{1}'" -f $none.Measured, $none.Problem) "False 'no mesh'"
+
+# ---- the fits remembered between loads (Glass\RoomFitCache.cs) -------------------------------
+$rc = $asm.GetType('RealGlass.Glass.RoomFitCache', $true)
+$cache = [Activator]::CreateInstance($rc)
+$cache.Put("tower", "v1 16 s1 i24", $tower)
+$cache.Put("round", "v1 160 s1 i240", $round)
+$cache.Put("broken", "v1 0", $none)
+$text = $cache.Format()
+$skipped = 0; $reason = ""
+$back = $rc::Parse($text, [ref]$skipped, [ref]$reason)
+$t2 = $null
+$hit = $back.TryGet("tower", "v1 16 s1 i24", [ref]$t2)
+Check "Fits remembered: written and read back, three assets, nothing skipped" ("{0} {1} '{2}' {3}" -f $back.Count, $skipped, $reason, $hit) "3 0 '' True"
+$same = ($t2.Storey -eq $tower.Storey) -and ($t2.FloorPhase -eq $tower.FloorPhase) -and ($t2.GroundTop -eq $tower.GroundTop) -and ($t2.WindowBand -eq $tower.WindowBand) -and
+        ($t2.Sides[0].Width -eq $tower.Sides[0].Width) -and ($t2.Sides[0].Phase -eq $tower.Sides[0].Phase) -and ($t2.Sides[8].Module -eq $tower.Sides[8].Module)
+Check "  every number exactly as measured; the counts made again" ("{0} {1} {2}" -f $same, $t2.SidesFound, $t2.SidesNarrow) ("True {0} {1}" -f $tower.SidesFound, $tower.SidesNarrow)
+$r2 = $null; [void]$back.TryGet("round", "v1 160 s1 i240", [ref]$r2); $n2 = $null; [void]$back.TryGet("broken", "v1 0", [ref]$n2)
+Check "  the round tower's narrow sides; the unmeasured one still a problem" ("{0} {1} '{2}'" -f $r2.SidesNarrow, $n2.Measured, $n2.Problem) "16 False 'no mesh'"
+$miss = $back.TryGet("tower", "v1 16 s1 i30", [ref]$t2)
+Check "  another model (its fingerprint): not remembered -- measured again" $miss "False"
+$cacheDe = [Activator]::CreateInstance($rc)
+$cacheDe.Put("tower", "v1 16 s1 i24", $tower); $cacheDe.Put("round", "v1 160 s1 i240", $round); $cacheDe.Put("broken", "v1 0", $none)
+$textDe = [FitTest]::InvokeIn("de-DE", $rc.GetMethod("Format"), $cacheDe, $null)
+$parseArgs = [object[]]@($textDe, 0, "")
+$backDe = [FitTest]::InvokeIn("de-DE", $rc.GetMethod("Parse"), $null, $parseArgs)
+Check "  in a German Windows (decimal comma): the same text, read back whole" ("{0} {1} {2}" -f ($textDe -ceq $text), $backDe.Count, $parseArgs[1]) "True 3 0"
+$old = $text -replace "RealGlassRoomFits 1", "RealGlassRoomFits 2"
+$o = $rc::Parse($old, [ref]$skipped, [ref]$reason)
+Check "  a file of another format: not used (all measured again)" ("{0} '{1}'" -f $o.Count, $reason) "0 'format 2, not 1'"
+$f = $rc::Parse("<RealGlass version=`"1`"/>", [ref]$skipped, [ref]$reason)
+Check "  not a file of fits: not used" ("{0} '{1}'" -f $f.Count, $reason) "0 'not a file of fits'"
+$lines = $text.Split("`n")
+$bad = @(); foreach ($l in $lines) { if ($l.StartsWith("tower")) { $bad += ($l -replace "^tower\t", "tower2`t" -replace "\t[0-9.E-]+ ", "`tNaN ") } elseif ($l.StartsWith("round")) { $bad += "round`tonly two parts" } else { $bad += $l } }
+$b = $rc::Parse(($bad -join "`n"), [ref]$skipped, [ref]$reason)
+Check "  a line with NaN and a cut line: skipped, the rest read" ("{0} {1} '{2}'" -f $b.Count, $skipped, $reason) "1 2 ''"
+$threw = $false
+try { foreach ($junk in @("", "RealGlassRoomFits", "RealGlassRoomFits 1`n`t`t`t`t", "RealGlassRoomFits 1`nx`ty`t`t1 2 3`t", [string]::new([char]0, 50))) { [void]$rc::Parse($junk, [ref]$skipped, [ref]$reason) } } catch { $threw = $true }
+Check "  junk of every kind: nothing thrown" $threw "False"
+
 Write-Host ""
 if ($failed -eq 0) { Write-Host "all passed" } else { Write-Host "$failed FAILED"; exit 1 }
