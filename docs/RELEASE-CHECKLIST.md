@@ -1,4 +1,4 @@
-# Release checklist — Steam Workshop (Real Glass & Water: 1.0.0 published 2026-10-20, 1.1.0 made ready 2026-10-21)
+# Release checklist — Steam Workshop (Real Glass & Water: 1.0.0 published 2026-10-20, 1.1.0 on GitHub only, 1.1.1 made ready 2026-10-21)
 
 The mod's name is **Real Glass & Water** since 2026-10-20 (the author, before the first upload;
 it was Real Glass). The player-visible name is `Mod.DisplayName`; everything internal keeps
@@ -24,7 +24,48 @@ that repo's `docs/RELEASE-CHECKLIST.md` has the long version.
 | Screenshots | The item's Steam page, *Add/Edit images* | 5–8, 1920 × 1080 or larger, 16:9, each under 1 MB |
 | Required items, visibility, tags | The item's Steam page | Harmony `2040656402` |
 
-## 0. The 1.1.0 update (2026-10-21)
+## 0. The 1.1.1 update (2026-10-21, evening): 1.1.0 + the Vanilla look's Water tab
+
+1.1.0 went to GitHub (v1.1.0 on 1535ff9, DLL 1.1.0.30047) and never to the Workshop: the sweep
+before the Workshop push found the Vanilla look's Water tab off the screen, and his pick was to fix
+it as 1.1.1 ("go ahead with A, then commit and push and release on Github first. We'll do the
+workshop release a bit later"). On the Workshop, 1.1.1 is the update from 1.0.0
+(Workshop/ChangeNotes/1.1.1.bbcode.txt = 1.1.0's note + the Vanilla scrolling line).
+
+- [x] **Two sessions on the release build 1.1.0.30047**, 2026-10-21 19:12 and 20:10 (4K, his own
+      RealGlass.xml, Volumetric Weather on, Procedural Objects 1.7.8 loaded): RealGlass.log with no
+      WARN or ERROR, output_log.txt with no exception of ours. Both: Procedural Objects 40 of 40
+      buildings with the glass; LOD glass 1129 LODs of 974 assets, 327 taking the model's glass (56.5
+      s / 2931 ms main thread, then 39.2 s / 6326 ms); dynamic waves 7.0 -> 9.3 m/s under 77% rain, a
+      rebuild every 1-2 s (~85 ms on a worker); sun/moon glitter handovers; the glass switched off and
+      on three times. His Mac: "I already ran v1.1 on my mac, everything looked good" (by eye; the
+      Mac's log not read).
+- [x] **The sweep** (four read-only reviews: LOD glass, Procedural Objects, water + rooms, settings +
+      panel): nothing that can crash, throw every frame, leak or touch a save. A 1.0.0 RealGlass.xml /
+      RealGlassAssets.xml reads in full (no name removed or renamed, no unit, range or default
+      changed). Found: (1) the Vanilla look's Water tab, 29 rows + 6 headings = a 1226 px panel on the
+      1080 canvas with no scrolling (Vanilla doesn't fold): its last four rows out of reach -- FIXED
+      in 1.1.1 (GlassPanel: Vanilla's tab as tall as its rows up to the screen, 944 at 1080, the rest
+      in the same ScrollView as the new looks; its bar shows only when a tab scrolls); (2) the GitHub
+      v1.1.0 zip had BACKSLASH entry names (`RealGlass\RealGlass.dll`): unzipped on a Mac/Linux as one
+      file -- re-made with forward slashes. For a later version (not blockers): the LOD comparison
+      reads back synchronously per batch (~40-80 ms, ~76 batches in his city) and still runs with its
+      switch off; wave rebuilds back to back under speed mods (one at a time; the unused `weight`
+      array in WaterSpectrum); HoldSpec/ReleaseSpec log lines at every handover when one glitter is
+      0%; PO buildings ignore GlassDistance's tiers and a PO building on its side gets a column in the
+      city map; the Glass tab's switch moves a row when the status line appears.
+- [ ] **The fix in the game**: Panel look Vanilla, F8, the Water tab: the panel within the screen,
+      the wheel and the bar scroll to City reflection length; the other tabs as tall as their rows,
+      no bar; Frosted unchanged. The log: "panel: each tab as tall as its rows, at most 944 (the
+      screen); scrolling: Water 1130".
+- [ ] **The Workshop, BY HAND** (v1.1.1 is a tag once GitHub has it, so release.ps1 refuses): game
+      closed; copy the four files of Addons\Mods\RealGlass (= the GitHub zip's; do NOT rebuild) into
+      `steamapps\workshop\content\255710\3823419476`, read them back (hashes); move Addons\Mods\
+      RealGlass to `Cities_Skylines\RealGlass-dev-parked`; Skyve: the item enabled; a city on it (the
+      first log line 1.1.1); Content Manager -> UPDATE; change note 1.1.1; Update. Then CHANGELOG
+      `## 1.1.2 — unreleased`.
+
+## 0b. The 1.1.0 update (2026-10-21; GitHub only, superseded by 1.1.1 on the Workshop)
 
 What it brings (CHANGELOG.md's 1.1.0 section): Procedural Objects' buildings, LODs show the
 model's glass, dynamic waves, the moon's own glitter and both glitters' sizes, folding headings

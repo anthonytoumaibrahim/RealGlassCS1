@@ -3,6 +3,17 @@
 All notable changes to Real Glass & Water. The version is `Mod.Version` in `RealGlass/Mod.cs`, shown after
 the mod's name in the game.
 
+## 1.1.1 — 2026-10-21
+
+1.1.0 was released on GitHub only: on the Workshop, 1.1.1 brings everything of 1.1.0 below.
+
+### Fixed
+
+- The *Vanilla* panel look: the Water tab no longer runs off the bottom of the screen. 1.1.0's new
+  rows made it taller than the screen, and its last rows (the city reflection's) were out of reach.
+  A tab taller than the screen now scrolls, with the mouse wheel or the bar at its side; every other
+  tab, and the other looks, are as they were.
+
 ## 1.1.0 — 2026-10-21
 
 ### New

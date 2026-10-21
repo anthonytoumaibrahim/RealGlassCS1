@@ -185,8 +185,9 @@ less graphics power to spare, so expect a lower frame rate there than on a Windo
   reflection can change as the camera turns.
 - Anti-aliasing that jitters the picture (TAA, as in Render It!) can make fine detail in the glass
   and the water flicker; another anti-aliasing method avoids it.
-- Glass goes where an asset's specular map puts it. Some assets, LODs most of all, have none or
-  have it in the wrong places: press Alt+G, click the building and turn down its strength.
+- Glass goes where an asset's specular map puts it. Some assets have none or have it in the wrong
+  places: press Alt+G, click the building and turn down its strength. An LOD without proper glass
+  takes its model's (**1.1**); one shaped too unlike its model keeps its own.
 - On some buildings the rooms don't line up with the windows, because the textures don't say where
   the windows are: press Alt+G, click the building and turn its rooms off.
 - The ocean waves are in the water's shading only: the game's water surface keeps its own shape.
