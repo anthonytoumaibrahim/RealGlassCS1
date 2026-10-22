@@ -42,8 +42,12 @@ Metal the rooms stand on the storey grid. bundle-apis.ps1 fails a Metal sampler 
       tag v1.1.3 (annotated) on ee058b2, release "Real Glass & Water 1.1.3" Latest, zip = the four
       tested files, forward slashes. His cleanup the same hour: the GitHub RELEASES v1.1.0, v1.1.1,
       v1.1.2 deleted (only the Workshop's versions stay: 1.0.0 and 1.1.3); their TAGS kept.
-- [ ] **His Mac on 1.1.3** before the Workshop update (his call): rooms at night, the log clean.
-- [ ] **The Workshop update: 1.1.3, BY HAND** (v1.1.3 is a tag, so release.ps1 refuses) from
+- [x] **His Mac on 1.1.3**: "ran on mac just fine" (by eye; the Mac's log not read).
+- [x] **ON THE WORKSHOP 2026-10-22 12:17** (his Update click): the four files staged from the
+      for-workshop folder and read back (the same DLL as GitHub's zip); Addons\Mods empty. Steam's
+      GetPublishedFileDetails: file_size 5135921 B = the four files exactly, public, not banned,
+      banner "Version 1.1.3"; change notes 3, the newest 1.1.3's; Harmony 2040656402 still required.
+- [x] ~~The Workshop update: 1.1.3, BY HAND~~ (done as above) (v1.1.3 is a tag, so release.ps1 refuses) from
       `Cities_Skylines\RealGlass-1.1.3.21447-for-workshop` (= GitHub's zip; do NOT rebuild): game
       closed; copy the four files into the subscribed folder, read them back; Addons\Mods empty
       (nothing to park); Content Manager -> UPDATE; change note `Workshop/ChangeNotes/1.1.3.bbcode.txt`.
