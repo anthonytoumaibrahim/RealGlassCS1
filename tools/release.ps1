@@ -15,8 +15,8 @@
 #      embeds the three shader bundles at their sizes on disk, both room atlases, the icon and
 #      en.xml; each bundle holds every shader with real code for every API of its platform; the
 #      folder holds exactly the four shipped files, the libraries and notices as in the repo.
-#   3. Runs every offline test, the AMD compile check of the shipped shaders included; one failure
-#      stops the release.
+#   3. Runs every offline test, the Metal (Mac) and AMD compile checks of the shipped shaders
+#      included; one failure stops the release.
 #   4. THE FIRST UPLOAD ($workshopId empty): stops there -- the game's Share button uploads
 #      Addons\Mods\RealGlass as it stands, and prints the steps by hand.
 #      EVERY LATER ONE: copies exactly the four shipped files into the SUBSCRIBED Workshop folder,
@@ -50,9 +50,11 @@ $sources = @{
     "CitiesHarmony.API.dll"  = Join-Path $root "libs\CitiesHarmony.API.dll"
     "THIRD-PARTY-NOTICES.md" = Join-Path $root "THIRD-PARTY-NOTICES.md"
 }
-# "amd" builds every shipped shader with AMD's compiler (needs Radeon GPU Analyzer: see test-amd.ps1).
-# reflection-shader and water-surface draw in the Unity 5.6 editor (closed, or the project is locked).
-$tests = @("settings", "localization", "reflection-shader", "water-surface", "amd")
+# "metal" compiles every shipped Metal program with Apple's compiler (needs the Metal Developer Tools
+# for Windows: see test-metal.ps1); "amd" every shipped shader with AMD's (Radeon GPU Analyzer: see
+# test-amd.ps1). reflection-shader and water-surface draw in the Unity 5.6 editor (closed, or the
+# project is locked).
+$tests = @("settings", "localization", "reflection-shader", "water-surface", "metal", "amd")
 # The bundles and the platform ids every shader in each must carry (build-bundle.ps1's table).
 $bundles = @(
     @{ Name = "win";   Platforms = "4,15" },
@@ -244,7 +246,7 @@ foreach ($t in $tests) {
     if ($takesDll) { $out = @(& powershell -NoProfile -ExecutionPolicy Bypass -File $script -Dll $deployedDll 2>&1) }
     else { $out = @(& powershell -NoProfile -ExecutionPolicy Bypass -File $script 2>&1) }
     $last = ($out | Select-Object -Last 1) -join ""
-    # "all passed" (settings, localization, reflection-shader), "WATER SURFACE TEST OK", "pass: ..." (amd).
+    # "all passed" (settings, localization, reflection-shader), "WATER SURFACE TEST OK", "pass: ..." (metal, amd).
     $failed = ($LASTEXITCODE -ne 0) -or (@($out | Where-Object { "$_" -match "^FAIL" }).Count -gt 0) -or ($last -notmatch "pass|TEST OK")
     if ($failed) {
         $out | Where-Object { "$_" -match "^FAIL" } | ForEach-Object { Write-Host "   $_" }

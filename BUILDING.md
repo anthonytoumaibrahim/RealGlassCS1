@@ -78,6 +78,19 @@ For the sky on the water, the cube the game reads against the sky drawn per pixe
 `tools\preview\foam-render.ps1 -SkyColumns "old:0.8,old:0.3,new:1" -Name sky`.
 These are synthetic scenes; check the final look and frame time in a loaded city before release.
 
+Apple's Metal compiler (the Metal Developer Tools for Windows, free behind an Apple account sign-in
+at developer.apple.com/download/all; looked for in `Program Files\Metal Developer Tools` or
+`$env:RG_METAL`; its installer's PATH step is not needed):
+
+```
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\test-metal.ps1
+```
+
+cuts every Metal program out of the shipped mac bundle (Unity 5.6 ships Metal as source, compiled
+by the Mac when the shader loads) and compiles each at the oldest and newest Metal language
+versions; it fails on a program Apple's compiler refuses, which on a Mac makes the whole shader
+unsupported. The table shows each program's textures, samplers and buffers (Metal: 16 samplers).
+
 AMD's compiler (Radeon GPU Analyzer, free: github.com/GPUOpen-Tools/radeon_gpu_analyzer; runs on
 any GPU, looked for in `Documents\Projects\RGA` or `$env:RG_RGA`):
 

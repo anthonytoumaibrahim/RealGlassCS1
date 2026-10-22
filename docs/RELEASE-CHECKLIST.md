@@ -270,8 +270,8 @@ for everything at the end, then the log read against every 1.1 item of section 2
       / `.cginc`; builds; checks the deployed DLL's version, that it embeds the three bundles, both
       room atlases, the icon and en.xml at their sizes on disk, each bundle through
       `bundle-apis.ps1`, the four shipped files (the libraries and notices the repo's); runs
-      test-settings, test-localization, test-reflection-shader, test-water-surface and
-      **test-amd**. Until `$workshopId` is set (the first upload) it stops there: Share uploads
+      test-settings, test-localization, test-reflection-shader, test-water-surface,
+      **test-metal** (since 2026-10-22) and **test-amd**. Until `$workshopId` is set (the first upload) it stops there: Share uploads
       `Addons\Mods\RealGlass`. After that it copies the four files into the subscribed folder and
       parks the local copy.
       First dry run 2026-10-20 (359 s): every check passed but the two expected stops -- the
@@ -287,6 +287,14 @@ for everything at the end, then the log read against every 1.1 item of section 2
       First run 2026-10-20 on the bundles of 2026-10-19: all 185 programs compile on the five
       chips, no spills; the glass's pixel program 106-122 VGPRs, the heaviest. Run again on the
       release build.
+- [ ] **The Metal compile check, every release** (`tools\test-metal.ps1`, 2026-10-22, after 1.1.2
+      stood down on every Mac): every Metal program of the shipped mac bundle (Unity 5.6 ships the
+      SOURCE; the Mac compiles it at load) through Apple's own compiler, the Metal Developer Tools
+      for Windows 6.2 (metal 32023.850, `Program Files\Metal Developer Tools`), at macos-metal1.1
+      and metal4.0. In release.ps1 since 2026-10-22. First runs: the 1.1.3 bundle (ee058b2) 39 of
+      39 programs compile at both, ~10 s, Glass's fragment programs at 16/16/15 samplers (NO
+      headroom); the 1.1.2 bundle (68060c6) FAILS on Glass's three fragment programs, "'sampler'
+      attribute parameter is out of bounds: must be between 0 and 15" -- what the M1 did.
 - [x] Button icon (2026-09-29): Openclipart's *Window* by ali2013 (public domain, CC0 1.0),
       80 × 80, recorded in THIRD-PARTY-NOTICES.md and README.md; `tools/make-icon.ps1`, which
       drew the old one over this file, deleted. Still to see: how it reads at 40 px on the
