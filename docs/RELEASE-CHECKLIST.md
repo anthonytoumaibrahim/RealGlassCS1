@@ -34,10 +34,17 @@ Metal the rooms stand on the storey grid. bundle-apis.ps1 fails a Metal sampler 
 
 - [x] **The checks**: win and linux bundles UNCHANGED, whole files (= 1.1.2's); mac: only Metal Glass
       changed (16/16/15 samplers, no fit textures); every other Metal and the mac OpenGL blobs
-      byte-identical to 1.1.2's. The release dry run (below).
+      byte-identical to 1.1.2's. Release dry run 2026-10-22 11:57-12:10 on ee058b2: every check
+      passed, AMD 195 programs no spills (12 min: the older chips' one-at-a-time route); DLL
+      1.1.3.21447. His Windows session 11:55 on it (D3D11, only the local copy loaded): clean log.
+      The Mac test build 1.1.2.21359 = 1.1.3.21447 but for 54 version bytes.
+- [x] **GitHub** (his "Commit and push, and release it as 1.1.3 on GH"): 9c9afdb + ee058b2 pushed,
+      tag v1.1.3 (annotated) on ee058b2, release "Real Glass & Water 1.1.3" Latest, zip = the four
+      tested files, forward slashes. His cleanup the same hour: the GitHub RELEASES v1.1.0, v1.1.1,
+      v1.1.2 deleted (only the Workshop's versions stay: 1.0.0 and 1.1.3); their TAGS kept.
 - [ ] **His Mac on 1.1.3** before the Workshop update (his call): rooms at night, the log clean.
 - [ ] **The Workshop update: 1.1.3, BY HAND** (v1.1.3 is a tag, so release.ps1 refuses) from
-      `Cities_Skylines\RealGlass-1.1.3.*-for-workshop` (= GitHub's zip; do NOT rebuild): game
+      `Cities_Skylines\RealGlass-1.1.3.21447-for-workshop` (= GitHub's zip; do NOT rebuild): game
       closed; copy the four files into the subscribed folder, read them back; Addons\Mods empty
       (nothing to park); Content Manager -> UPDATE; change note `Workshop/ChangeNotes/1.1.3.bbcode.txt`.
       Then CHANGELOG `## 1.1.4 — unreleased`.
