@@ -12,6 +12,7 @@
 [*]Parallax interiors follow each building's own windows: its storeys, floors and the walls between its windows are measured from its model, so the rooms no longer show as stripes or cut through windows. Measured once in the background and remembered, so later loads are quick.
 [*]No rooms on sloped, curved or smooth-shaded glass (glass roofs, pyramids, solar panels, round towers), where they came out slanted or striped.
 [*]The rooms behind the windows no longer fade into a flat glow when a building turns its lights on at night; the painted frames stay dark.
+[*][b]Mac and Linux[/b]: the parallax interiors now show (they never did there), and the city's reflection on the water flickers less. Windows is unchanged.
 [/list]
 [b]Changed[/b]
 [list]

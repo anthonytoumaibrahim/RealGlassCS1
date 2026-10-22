@@ -3,10 +3,19 @@
 All notable changes to Real Glass & Water. The version is `Mod.Version` in `RealGlass/Mod.cs`, shown after
 the mod's name in the game.
 
-## 1.1.2 — 2026-10-21
+## 1.1.2 — 2026-10-22
 
 1.1.0 and 1.1.1 were released on GitHub only: on the Workshop, 1.1.2 brings everything of them
 below, and this.
+
+### Fixed
+
+- **The rooms behind the windows on the Mac and on Linux.** They never showed there, since 1.0.0:
+  Unity 5.6 translates the mod's shaders for Metal and OpenGL, and turned one test -- "are the rooms
+  on for this building?" -- into one that always said no. Windows (Direct3D 11) runs exactly the
+  code it ran before, byte for byte.
+- **The city's reflection on the water flickers less on the Mac and on Linux**: the same fault
+  skipped the step that smooths it from frame to frame there.
 
 ### Changed
 

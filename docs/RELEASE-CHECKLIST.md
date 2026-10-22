@@ -1,4 +1,4 @@
-# Release checklist — Steam Workshop (Real Glass & Water: 1.0.0 published 2026-10-20, 1.1.0 and 1.1.1 on GitHub only, 1.1.2 on GitHub 2026-10-21, the Workshop update next)
+# Release checklist — Steam Workshop (Real Glass & Water: 1.0.0 published 2026-10-20, 1.1.0 and 1.1.1 on GitHub only, 1.1.2 on GitHub 2026-10-21, withdrawn 2026-10-22 for the Mac/Linux rooms fix, to be re-released, then the Workshop update)
 
 The mod's name is **Real Glass & Water** since 2026-10-20 (the author, before the first upload;
 it was Real Glass). The player-visible name is `Mod.DisplayName`; everything internal keeps
@@ -61,12 +61,29 @@ workshop release a bit later"). On the Workshop, 1.1.1 is the update from 1.0.0
 - [x] ~~The Workshop, BY HAND with 1.1.1~~ -- SUPERSEDED: 1.1.1 never went to the Workshop; the
       rooms round became 1.1.2 (section 0a), and the Workshop update is 1.1.2 (below). The 1.1.1
       files in `Cities_Skylines\RealGlass-1.1.1.37038-for-workshop` are no longer needed.
-- [ ] **The Workshop update: 1.1.2, BY HAND** (v1.1.2 is a tag, so release.ps1 refuses): game
-      closed; copy the four files of `Cities_Skylines\RealGlass-1.1.2.42942-for-workshop` (= the
-      GitHub zip's: DLL 1.1.2.42942, built from 78f4dc6, tag v1.1.2, every release check passed on it
-      incl. AMD 195 programs no spills; do NOT rebuild) into `steamapps\workshop\content\255710\3823419476`, read them
-      back (hashes); move Addons\Mods\RealGlass to `Cities_Skylines\RealGlass-dev-parked`; Skyve: the
-      item enabled; a city on it (the first log line 1.1.2); Content Manager -> UPDATE; change note
+- [x] ~~1.1.2 as released on GitHub 2026-10-21 (DLL 1.1.2.42942, tag on 78f4dc6)~~ -- WITHDRAWN
+      2026-10-22 (his "do it in 1.1.2, undo the release ... then re-release 1.1.2"): its rooms never
+      showed on OpenGL Core or Metal (Unity 5.6's HLSLcc: a "not" of a combined condition is never
+      false), the same since 1.0.0. GitHub release and tag v1.1.2 deleted; the
+      `RealGlass-1.1.2.42942-for-workshop` files are OBSOLETE (they have the fault).
+- [ ] **1.1.2 again, with the fix**: Interiors.cginc (the rooms' switch, the venetian blind) and
+      CityReflection.shader (the history pass) without that "not" under UNITY_COMPILER_HLSLCC;
+      bundle-apis fails any GLSL/Metal blob with `~int(u_xlatb`. Direct3D 11: all 9 shaders
+      byte-identical to 78f4dc6's bundle (bundle-apis -Compare); Metal/OpenGL: only Glass and
+      CityReflection changed. Preview on glcore: rooms as on D3D11 (means within 0.001); water
+      flicker without TAA 17.6% -> 0.32% with the history (D3D11 17.3% -> 0.25%). Dry run
+      2026-10-22 ~10:50: every check passed but "uncommitted" (expected), AMD 195 programs no
+      spills; DLL 1.1.2.19425 deployed in Addons\Mods (= the build to test, zip and upload). In his
+      game: Windows (D3D11) unchanged, -force-glcore rooms at night, his Mac if he can.
+      OpenGL session 2026-10-22 10:59 (1.1.2.19425, VolTest3, 4K): no WARN/ERROR, no exception of
+      ours; rooms on at night (paused at 3:33 for ~3 min: homes 8% lit, the late-night share), 364
+      fits remembered, 0 measured, 7 ms; frames 18-20 ms; then day 9:32. The other session's log
+      was overwritten (no city load by Loading Screen Mod's reports between the deploy and 11:00).
+- [ ] **The Workshop update: 1.1.2, BY HAND** from the files HE TESTED (Addons\Mods after the dry
+      run; do NOT rebuild): game closed; copy the four files into
+      `steamapps\workshop\content\255710\3823419476`, read them back (hashes); move
+      Addons\Mods\RealGlass to `Cities_Skylines\RealGlass-dev-parked`; Skyve: the item enabled; a city
+      on it (the first log line 1.1.2); Content Manager -> UPDATE; change note
       `Workshop/ChangeNotes/1.1.2.bbcode.txt`; Update. Then CHANGELOG `## 1.1.3 — unreleased`.
 
 ## 0a. Next version: the rooms fitted to each asset's windows (2026-10-21 night, dev build 1.1.1.40910)
@@ -82,6 +99,17 @@ smooth-shaded glass. Two parts, each its own undo patch (docs/, local). Not yet 
 - [x] **First session** (2026-10-21 22:50, build 1.1.1.40910, his city, 4K): clean log; 891 assets
       fitted in 42.7 s (7.4 s main thread), 504 with their own storeys; he: "the interiors seem
       better". The narrow-side count (bevels counted) fixed after it -- not yet deployed.
+- [x] **Second session** (2026-10-22 10:06, build 1.1.1.42223 from Addons\Mods = the 1.1.2.42942
+      upload byte for byte except its version stamps: 56 bytes differ, all version strings /
+      timestamp / GUIDs; city VolTest3, 4K, D3D11, VW on, PO not installed): 530 lines, no WARN or
+      ERROR, no exception of ours in output_log.txt. Rooms: 892 remembered from the file, 364 assets
+      in the city fitted in 3.2 s (441 ms main thread; 109 remembered, 255 new names measured, 0
+      unmeasurable); the file grew to 1150 entries (= 892 + every new name: no fingerprint mismatch).
+      LOD glass 372 in 4.4 s (674 ms main thread), 157 the model's. Both log trims of 1.1.0 seen
+      working (later LOD rounds one short line; one glitter line per light across dawn). Realistic
+      water switched off/on twice: clean. Just before it, a 1.0.0 session (the Workshop copy, 10:03,
+      same city; its log overwritten) had rewritten RealGlass.xml without the six 1.1 rows, which
+      1.1 then read at their defaults -- expected on a downgrade.
 - [ ] **The fit**: the log after loading: "rooms: fitting the rooms of N building assets ..." then
       "rooms: fitted N building assets to their windows in X s (Y ms of it on the main thread): ...
       storeys ... sides ..." -- no WARN/ERROR; the main-thread ms (the read-back) not a visible hitch.
