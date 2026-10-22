@@ -34,10 +34,13 @@ float4 _RGRoomPools[8];   // per kind of room (Interiors.Pool*): x its first til
 sampler2D _RGRoomAtlas;   // the rooms by night, each lit by its own lamps in a neutral white (sRGB DXT1)
 sampler2D _RGRoomAtlasDay;// the same rooms by day, in the same places
 float4 _RGRoomFitInfo;    // x 1 while both below are bound, y their rows, z a row's texels
-// Read texel by texel (Load): they take no sampler -- the middle and far variants already use all
-// sixteen (Direct3D 11's ps_4_0 and Metal's limit). Every API the bundles carry has Load (Direct3D
-// 11; OpenGL Core and Metal through HLSLcc); anywhere else the rooms stay as before the fit.
-#if defined(SHADER_API_D3D11) || defined(UNITY_COMPILER_HLSLCC)
+// Read texel by texel (Load): on Direct3D 11 that takes no sampler -- the middle and far variants
+// already use all sixteen (ps_4_0's limit). Metal's limit is sixteen too, and there Unity 5.6 gives
+// EVERY texture a sampler of its own, Load or not: these two made 17-18, and the Mac's compiler
+// refused the whole shader (1.1.2, 2026-10-22: the mod stood down). So the fit runs on Direct3D 11
+// and OpenGL Core (HLSLcc); on Metal, and anywhere else, the rooms stand on the storey grid, as
+// before the fit (tools\bundle-apis.ps1 fails a Metal program past sampler 15).
+#if defined(SHADER_API_D3D11) || (defined(UNITY_COMPILER_HLSLCC) && !defined(SHADER_API_METAL))
 #define RG_ROOM_FIT 1
 Texture2D _RGRoomPlaces;  // per building, two texels side by side (RoomFitTextures.cs): its model's origin (world) and its fit's row (0 none); its model's x and z axes (world xz)
 Texture2D _RGRoomFits;    // a row per measured asset (RoomFit.cs): the storey (0 none), the ground storey's top, 1 no rooms, where its floors are; then per side its room width, its walls' place, 1 too narrow, 1 found

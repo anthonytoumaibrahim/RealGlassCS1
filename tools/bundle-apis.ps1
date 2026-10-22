@@ -23,7 +23,8 @@ param(
 #       exit 1 unless EVERY named shader is there and carries exactly these platform ids
 #       (any order), each with real code: an EMPTY, unknown or corrupt blob fails.
 #   Any run fails a GLSL / Metal blob holding "~int(u_xlatb": Unity 5.6's HLSLcc writes a "not"
-#   of a combined condition that way, and it is never false (see Describe).
+#   of a combined condition that way, and it is never false (see Describe); and a Metal blob with
+#   a sampler past slot 15 (Metal's 16, one per texture there: the Mac refuses the shader).
 #       build-bundle.ps1 passes the names read out of BundleBuilder.cs.
 #   .\bundle-apis.ps1 -Bundle <new win bundle> -Compare <old win bundle> [-ComparePlatform 4]
 #       exit 1 unless the decompressed blob for that platform is byte-identical per shader:
@@ -49,6 +50,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 
 public class BundleBlob
 {
@@ -189,6 +191,17 @@ public static class BundleApis
         // 2026-10-22). Every "~int(u_xlatb" / "~uint(u_xlatb" is one.
         int nots = Count(blob, "~int(u_xlatb") + Count(blob, "~uint(u_xlatb");
         if (nots > 0) parts.Add("HLSLCC-NOT x" + nots);
+
+        // Metal takes sixteen samplers a function (slots 0-15), and Unity 5.6 gives every texture
+        // one of its own, Load or not. A slot past 15 and the device's compiler refuses the whole
+        // shader at load: on the Mac, 1.1.2's Glass (18 textures) stood the mod down.
+        if (metal > 0)
+        {
+            int over = 0;
+            foreach (Match m in Regex.Matches(Encoding.ASCII.GetString(blob), @"\[\[\s*sampler\s*\((\d+)\)\s*\]\]"))
+                if (int.Parse(m.Groups[1].Value) > 15) over++;
+            if (over > 0) parts.Add("METAL-SAMPLERS-OVER-16 x" + over);
+        }
 
         return parts.Count > 0 ? string.Join(" + ", parts.ToArray()) : "unknown";
     }
@@ -381,6 +394,10 @@ foreach ($file in $Bundle) {
             }
             if ($b.Kind -like "*HLSLCC-NOT*") {
                 Write-Host ("    {0}: a 'not' that HLSLcc made never false (~int(bool) * -1): write that condition without the 'not' (-DumpDir, grep '~int(u_xlatb')" -f [BundleApis]::PlatformName($b.Platform)) -ForegroundColor Red
+                $failed = $true
+            }
+            if ($b.Kind -like "*METAL-SAMPLERS-OVER-16*") {
+                Write-Host ("    {0}: a program with a sampler past slot 15 -- Metal takes 16, one per texture: the Mac refuses the shader" -f [BundleApis]::PlatformName($b.Platform)) -ForegroundColor Red
                 $failed = $true
             }
         }
