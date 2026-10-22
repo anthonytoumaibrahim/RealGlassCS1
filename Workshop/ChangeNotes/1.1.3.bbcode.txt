@@ -1,0 +1,10 @@
+[h1]Version 1.1.3[/h1]
+[b]Fixed[/b]
+[list]
+[*][b]Mac[/b]: the mod runs again. In 1.1.2 it stayed off on every Mac with a "not supported" message: its glass shader went past what the Mac's graphics (Metal) allow.
+[/list]
+[b]Changed[/b]
+[list]
+[*]On the Mac, the parallax interiors use the storey grid: they show, but are not fitted to each building's windows there yet (on Windows and Linux they are).
+[*]Nothing changed on Windows or Linux. Your settings and saved cities are unchanged.
+[/list]

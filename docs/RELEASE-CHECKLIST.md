@@ -1,4 +1,4 @@
-# Release checklist — Steam Workshop (Real Glass & Water: 1.0.0 published 2026-10-20, 1.1.0 and 1.1.1 on GitHub only, 1.1.2 on GitHub 2026-10-21, withdrawn 2026-10-22 for the Mac/Linux rooms fix, to be re-released, then the Workshop update)
+# Release checklist — Steam Workshop (Real Glass & Water: 1.0.0 published 2026-10-20, 1.1.0 and 1.1.1 on GitHub only, 1.1.2 on GitHub and the Workshop 2026-10-22, 1.1.3 the Mac hotfix)
 
 The mod's name is **Real Glass & Water** since 2026-10-20 (the author, before the first upload;
 it was Real Glass). The player-visible name is `Mod.DisplayName`; everything internal keeps
@@ -23,6 +23,24 @@ that repo's `docs/RELEASE-CHECKLIST.md` has the long version.
 | Preview image | `Workshop/PreviewImage.png`, dropped into the STAGING folder at upload | 512 × 512 PNG, under 1 MB. A copy in the mod folder is never used as the preview |
 | Screenshots | The item's Steam page, *Add/Edit images* | 5–8, 1920 × 1080 or larger, 16:9, each under 1 MB |
 | Required items, visibility, tags | The item's Steam page | Harmony `2040656402` |
+
+## 0. The 1.1.3 hotfix (2026-10-22): the mod runs on the Mac again
+
+His Mac on the Workshop's 1.1.2: "Shader 'RealGlass/Glass' is not supported on this GPU/graphics API
+(Metal, 'Apple M1')" -> NOT SUPPORTED, the mod off. Unity 5.6's Metal gives every texture a sampler of
+its own (Load-only too): the room fit's _RGRoomPlaces/_RGRoomFits took Glass to 17/18 samplers, past
+Metal's 16 (1.1.1: 16/16/15). The fit now runs on Direct3D 11 and OpenGL only (Interiors.cginc); on
+Metal the rooms stand on the storey grid. bundle-apis.ps1 fails a Metal sampler slot past 15.
+
+- [x] **The checks**: win and linux bundles UNCHANGED, whole files (= 1.1.2's); mac: only Metal Glass
+      changed (16/16/15 samplers, no fit textures); every other Metal and the mac OpenGL blobs
+      byte-identical to 1.1.2's. The release dry run (below).
+- [ ] **His Mac on 1.1.3** before the Workshop update (his call): rooms at night, the log clean.
+- [ ] **The Workshop update: 1.1.3, BY HAND** (v1.1.3 is a tag, so release.ps1 refuses) from
+      `Cities_Skylines\RealGlass-1.1.3.*-for-workshop` (= GitHub's zip; do NOT rebuild): game
+      closed; copy the four files into the subscribed folder, read them back; Addons\Mods empty
+      (nothing to park); Content Manager -> UPDATE; change note `Workshop/ChangeNotes/1.1.3.bbcode.txt`.
+      Then CHANGELOG `## 1.1.4 — unreleased`.
 
 ## 0. The 1.1.1 update (2026-10-21, evening): 1.1.0 + the Vanilla look's Water tab
 

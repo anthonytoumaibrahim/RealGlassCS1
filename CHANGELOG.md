@@ -3,7 +3,15 @@
 All notable changes to Real Glass & Water. The version is `Mod.Version` in `RealGlass/Mod.cs`, shown after
 the mod's name in the game.
 
-## 1.1.3 — unreleased
+## 1.1.3 — 2026-10-22
+
+### Fixed
+
+- **The mod runs on the Mac again.** In 1.1.2 it stayed off on every Mac, with a "not supported"
+  message: for the rooms fitted to each building's windows, the glass shader read two more
+  textures, and on the Mac (Metal) that took it past the 16 a shader may use, so the game refused
+  it. On the Mac the rooms now stand on the storey grid -- they show, but are not fitted to each
+  building's windows there yet. Windows and Linux run exactly the code of 1.1.2, byte for byte.
 
 ## 1.1.2 — 2026-10-22
 
