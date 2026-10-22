@@ -79,8 +79,14 @@ workshop release a bit later"). On the Workshop, 1.1.1 is the update from 1.0.0
       ours; rooms on at night (paused at 3:33 for ~3 min: homes 8% lit, the late-night share), 364
       fits remembered, 0 measured, 7 ms; frames 18-20 ms; then day 9:32. The other session's log
       was overwritten (no city load by Loading Screen Mod's reports between the deploy and 11:00).
-- [ ] **The Workshop update: 1.1.2, BY HAND** from the files HE TESTED (Addons\Mods after the dry
-      run; do NOT rebuild): game closed; copy the four files into
+- [x] **Re-released on GitHub 2026-10-22** on his "Commit and push, and release 1.1.2 on GH" (he
+      saw the rooms on OpenGL): commits 68060c6 (the fix) and 8e14402 (1.1.2 ready again), pushed;
+      tag v1.1.2 (annotated) on 8e14402; release "Real Glass & Water 1.1.2", Latest, zip = the
+      four tested files (DLL 1.1.2.19425), forward-slash entries. The same four files kept in
+      `Cities_Skylines\RealGlass-1.1.2.19425-for-workshop`; the old 42942 folder renamed
+      `RealGlass-1.1.2.42942-OBSOLETE-no-mac-linux-rooms`.
+- [ ] **The Workshop update: 1.1.2, BY HAND** from `Cities_Skylines\RealGlass-1.1.2.19425-for-workshop`
+      (the files he tested and GitHub's zip holds; do NOT rebuild): game closed; copy the four files into
       `steamapps\workshop\content\255710\3823419476`, read them back (hashes); move
       Addons\Mods\RealGlass to `Cities_Skylines\RealGlass-dev-parked`; Skyve: the item enabled; a city
       on it (the first log line 1.1.2); Content Manager -> UPDATE; change note
