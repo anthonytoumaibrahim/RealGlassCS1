@@ -1,5 +1,5 @@
 [h1]Version 1.1.2[/h1]
-Procedural Objects Integration, attempt to fix LOD glass and parallax interiors, cleaner panel with folding headings and tooltips. See everything in the [url=https://steamcommunity.com/sharedfiles/filedetails/changelog/3823419476]change notes[/url].
+Procedural Objects Integration, attempt to fix LOD glass and parallax interiors, fix OpenGL (Linux) parallax interiors not showing, cleaner panel with folding headings and tooltips. See everything in the [url=https://steamcommunity.com/sharedfiles/filedetails/changelog/3823419476]change notes[/url].
 If something stopped working after the update, please let me know.
 
 [hr][/hr]

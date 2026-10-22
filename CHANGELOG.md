@@ -3,6 +3,8 @@
 All notable changes to Real Glass & Water. The version is `Mod.Version` in `RealGlass/Mod.cs`, shown after
 the mod's name in the game.
 
+## 1.1.3 — unreleased
+
 ## 1.1.2 — 2026-10-22
 
 1.1.0 and 1.1.1 were released on GitHub only: on the Workshop, 1.1.2 brings everything of them

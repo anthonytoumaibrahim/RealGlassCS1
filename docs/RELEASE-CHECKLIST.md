@@ -85,7 +85,12 @@ workshop release a bit later"). On the Workshop, 1.1.1 is the update from 1.0.0
       four tested files (DLL 1.1.2.19425), forward-slash entries. The same four files kept in
       `Cities_Skylines\RealGlass-1.1.2.19425-for-workshop`; the old 42942 folder renamed
       `RealGlass-1.1.2.42942-OBSOLETE-no-mac-linux-rooms`.
-- [ ] **The Workshop update: 1.1.2, BY HAND** from `Cities_Skylines\RealGlass-1.1.2.19425-for-workshop`
+- [x] **ON THE WORKSHOP 2026-10-22 11:36** (his Update click): the four files staged and read back,
+      Addons\Mods parked; his 11:35 session loaded the subscribed folder's 1.1.2.19425 (clean log,
+      no city). Steam's GetPublishedFileDetails: time_updated 11:36:29, file_size 5145649 B = the
+      four files exactly, public, not banned, description banner "Version 1.1.2"; change notes 2,
+      the newest with the Linux/Mac parallax line; Harmony 2040656402 still required.
+- [x] ~~The Workshop update: 1.1.2, BY HAND~~ (done as above) from `Cities_Skylines\RealGlass-1.1.2.19425-for-workshop`
       (the files he tested and GitHub's zip holds; do NOT rebuild): game closed; copy the four files into
       `steamapps\workshop\content\255710\3823419476`, read them back (hashes); move
       Addons\Mods\RealGlass to `Cities_Skylines\RealGlass-dev-parked`; Skyve: the item enabled; a city
