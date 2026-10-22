@@ -22,6 +22,8 @@ param(
 #   .\bundle-apis.ps1 -Bundle <bundle> -Expect "4,15" -Shaders "RealGlass/Glass,RealGlass/GlassUtil"
 #       exit 1 unless EVERY named shader is there and carries exactly these platform ids
 #       (any order), each with real code: an EMPTY, unknown or corrupt blob fails.
+#   Any run fails a GLSL / Metal blob holding "~int(u_xlatb": Unity 5.6's HLSLcc writes a "not"
+#   of a combined condition that way, and it is never false (see Describe).
 #       build-bundle.ps1 passes the names read out of BundleBuilder.cs.
 #   .\bundle-apis.ps1 -Bundle <new win bundle> -Compare <old win bundle> [-ComparePlatform 4]
 #       exit 1 unless the decompressed blob for that platform is byte-identical per shader:
@@ -180,6 +182,13 @@ public static class BundleApis
             vs.Sort();
             parts.Add("GLSL #version " + string.Join(", ", vs.ToArray()));
         }
+
+        // Unity 5.6's HLSLcc (OpenGL Core, Metal) writes a DXBC "not" of a bool as
+        // "~int(b) * int(0xffffffffu)": the ~ binds first, so not-true is 2 and not-false 1 --
+        // never false. Real Glass's rooms never showed on Linux or the Mac that way (1.0.0 to
+        // 2026-10-22). Every "~int(u_xlatb" / "~uint(u_xlatb" is one.
+        int nots = Count(blob, "~int(u_xlatb") + Count(blob, "~uint(u_xlatb");
+        if (nots > 0) parts.Add("HLSLCC-NOT x" + nots);
 
         return parts.Count > 0 ? string.Join(" + ", parts.ToArray()) : "unknown";
     }
@@ -368,6 +377,10 @@ foreach ($file in $Bundle) {
             }
             elseif ($b.Kind -eq "unknown" -or $b.Kind -like "CORRUPT*") {
                 Write-Host ("    {0}: nothing recognisable in the blob ({1})" -f [BundleApis]::PlatformName($b.Platform), $b.Kind) -ForegroundColor Red
+                $failed = $true
+            }
+            if ($b.Kind -like "*HLSLCC-NOT*") {
+                Write-Host ("    {0}: a 'not' that HLSLcc made never false (~int(bool) * -1): write that condition without the 'not' (-DumpDir, grep '~int(u_xlatb')" -f [BundleApis]::PlatformName($b.Platform)) -ForegroundColor Red
                 $failed = $true
             }
         }

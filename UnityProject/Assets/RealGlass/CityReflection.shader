@@ -317,7 +317,15 @@ Shader "RealGlass/CityReflection"
         float2 uv = i.screen.xy / i.screen.w;
         float4 c = tex2Dlod(_RGWaterTraced, float4(uv, 0.0, 0.0));
         float tSurface;
+#if defined(UNITY_COMPILER_HLSLCC)
+        // No "not" here: Unity 5.6's HLSLcc (OpenGL Core, Metal) writes the "not" of a combined
+        // condition as ~int(b) * int(0xffffffffu), never false -- this pass never ran there, from
+        // 1.0.0 to 2026-10-22. Direct3D 11 keeps its own line, byte for byte.
+        bool water = Water(d, uv, tSurface);
+        if ((water ? c.a : 0.0) <= 0.5 || _RGWaterHistoryInfo.x <= 0.0)
+#else
         if (c.a <= 0.5 || _RGWaterHistoryInfo.x <= 0.0 || !Water(d, uv, tSurface))
+#endif
             return c;
 
         float3 p = _WorldSpaceCameraPos + d * tSurface;

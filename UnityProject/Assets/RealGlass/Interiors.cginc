@@ -157,7 +157,15 @@ float RoomCurtain(float seed, float pool, float2 xy, float2 size, float footprin
 
     // Blinds: roller (a translucent sheet) or venetian (slats), drawn from the top down.
     bool roller = shop || (work ? t >= 0.6 : (t >= 0.82 && t < 0.91));
+#if defined(UNITY_COMPILER_HLSLCC)
+    // Unity 5.6's HLSLcc (OpenGL Core, Metal) writes the "not" of a combined condition as
+    // ~int(b) * int(0xffffffffu): never false (not-true is 2). So no "not" there; Direct3D 11 keeps
+    // its own line, byte for byte (tools\bundle-apis.ps1 fails a bundle with the pattern in it).
+    // A shop's roller wins below, so the shop needs no test here.
+    bool venetian = work ? t < 0.6 : t >= 0.91;
+#else
     bool venetian = !shop && (work ? t < 0.6 : t >= 0.91);
+#endif
     if (roller || venetian)
     {
         float drop = roller ? lerp(0.2, 0.95, r1) : lerp(0.35, 1.0, r1);
@@ -441,7 +449,13 @@ float RoomsBehind(float3 P, float3 n, float3 t, float3 V, float baseY, float foo
     RoomKind(assetA, kind, assetSwitch);
     bool on = _RGRooms2.w > 0.5 && (assetSwitch > 1.5 || (assetSwitch < 0.5 && _RGRooms.x > 0.5));
     float facade = saturate((1.0 - abs(n.y)) * 3.0);
+#if defined(UNITY_COMPILER_HLSLCC)
+    // The same test with no "not" in it (see RoomCurtain): "!on || ..." kept every room away on
+    // OpenGL Core and Metal, from 1.0.0 to 2026-10-22.
+    if ((on ? facade : 0.0) <= 0.0)
+#else
     if (!on || facade <= 0.0)
+#endif
         return 0.0;
 
     // The building's frame: its asset's storeys and rooms where they were fitted. Glass its asset
