@@ -24,6 +24,24 @@ that repo's `docs/RELEASE-CHECKLIST.md` has the long version.
 | Screenshots | The item's Steam page, *Add/Edit images* | 5–8, 1920 × 1080 or larger, 16:9, each under 1 MB |
 | Required items, visibility, tags | The item's Steam page | Harmony `2040656402` |
 
+## 0. Next version (1.1.4): see-through tall waves (fixed 2026-10-23 late, dev 1.1.3.41694, not yet seen in the game)
+
+His report: "in a tsunami ... the waves get super high, the waves are see-through, so we can see the
+back of the wave behind it". Cause (the game's water state read from its m_ParsedForm: ZWrite On,
+ZTest LEqual, Cull Back, Offset -3, 0): WaterSky and WaterFoam drew ZTest Always + Cull Off with a
+hand test against the depth TEXTURE (no water in it), so every water surface along a ray got them.
+Fix: both take the game's test, `ZTest LEqual`, `Offset -3, -2`, `Cull Back`; the hand test removed.
+Preview (foam-render.ps1, new views tsunamiwall / tsunamiwallcity, a 20 m wall; the stand-in water
+now has the game's depth state): tools\preview\out\tsunami-fix.png -- before, a pale band with a hard
+seam on the face; after, one dark face; the calm coast unchanged; OpenGL the same. Tests: bundles
+(ShaderCheck, bundle-apis), test-metal 43 programs, test-water-surface, test-reflection-shader.
+Undo: the two shaders' render-state lines and the hand test (git diff of WaterSky/WaterFoam.shader).
+
+- [ ] A tsunami in his game: the wave's face solid, nothing of its back or the sea beyond in it;
+      the front's foam only on the face.
+- [ ] Calm sea, shores, rivers as before (foam at the waterline, the sky on the water, no gaps at
+      the beach), day and night.
+
 ## 0. Next version (1.1.4): asset creators (built 2026-10-23 evening, dev build, not yet seen in the game)
 
 Plan and IL facts: docs/CREATOR-PLAN.md. The Asset Editor gets the creator window (PerAsset/

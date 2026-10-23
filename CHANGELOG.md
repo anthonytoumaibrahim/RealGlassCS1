@@ -48,6 +48,13 @@ the mod's name in the game.
   in `Addons\Mods` -- the copy that starts second switches itself off and says so. Before, both ran:
   the glass was drawn twice and the water's hook failed.
 
+### Fixed
+
+- **Tall waves are no longer see-through.** In a tsunami, the water behind a high wave -- its crest,
+  its back and the sea beyond -- showed through its face: the mod's sky reflection and foam were
+  drawn on every water surface along the view, not only the nearest. They now take the same depth
+  test as the game's own water, so they lie exactly on the water the game shows.
+
 ## 1.1.3 — 2026-10-22
 
 ### Fixed

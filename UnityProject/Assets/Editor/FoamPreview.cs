@@ -17,7 +17,8 @@ using UnityEngine.Rendering;
 /// a rapid. Its water is the GAME'S DATA: the surface heights in two simulation frames, the terrain's
 /// heights, and the surface maps (normal, flow, depth) at the game's resolutions and in its
 /// encodings, which both the stand-in water (Editor/PreviewGameWater.shader) and the foam read
-/// through WaterGame.cginc, as in the game. "tsunami" views add a 3 m bulge running at the shore.
+/// through WaterGame.cginc, as in the game. "tsunami" views add a 3 m bulge running at the shore,
+/// "tsunamiwall" views a 20 m wall (seen from below its crest and from a city camera).
 /// The camera in legacy deferred HDR like the game's; the city reflection on the sea as the mod
 /// records it. Each shot is one PNG (tonemapped, sRGB).
 /// </summary>
@@ -80,7 +81,7 @@ public static class FoamPreview
         public Vector4[] Rows;
         public float RippleRms;
         public RenderTexture Ripples;
-        public bool? Tsunami;
+        public float? Tsunami;
         public List<string> Log;
 
         // The ripples' generators: the 32 waves' material, the FFT waves (null without a "spectrum"
@@ -93,7 +94,8 @@ public static class FoamPreview
         /// <summary>The data, light and camera for a view (true at night).</summary>
         public bool Set(string view, float strength)
         {
-            bool wantTsunami = view.StartsWith("tsunami", StringComparison.Ordinal);
+            float wantTsunami = view.StartsWith("tsunamiwall", StringComparison.Ordinal) ? Coast.Wall
+                : view.StartsWith("tsunami", StringComparison.Ordinal) ? 3f : 0f;
             if (Tsunami != wantTsunami)
             {
                 Coast.Tsunami = wantTsunami;
@@ -577,7 +579,14 @@ public static class FoamPreview
     /// </summary>
     private sealed class Coast
     {
-        public bool Tsunami;
+        /// <summary>The tsunami's height over the sea (m; 0 none).</summary>
+        public float Tsunami;
+
+        /// <summary>
+        /// The "tsunamiwall" views' tsunami (m): a wall higher than the camera, so that what lies behind
+        /// its face -- its crest, its back, the sea beyond -- must not show through it.
+        /// </summary>
+        public const float Wall = 20f;
 
         /// <summary>
         /// The tsunami's front in the older frame, m from the waterline, and how far it runs a frame: a
@@ -629,10 +638,10 @@ public static class FoamPreview
         /// <summary>The tsunami's height over the sea at s (m from the waterline) in a frame (0 the older).</summary>
         public float Eta(float s, int frame)
         {
-            if (!Tsunami)
+            if (Tsunami <= 0f)
                 return 0f;
             float front = Front + frame * Step;
-            return 3f * (1f - Smooth(front - 40f, front + 10f, s)) * Smooth(front - 520f, front - 260f, s);
+            return Tsunami * (1f - Smooth(front - 40f, front + 10f, s)) * Smooth(front - 520f, front - 260f, s);
         }
 
         /// <summary>The water's surface at (x, z) in a frame (the ground itself where it is dry), and its flow (the game's units).</summary>
@@ -647,7 +656,7 @@ public static class FoamPreview
             if (ground < sea)
             {
                 surface = sea;
-                flow = new Vector2(0.45f * eta / 3f, 0f);
+                flow = new Vector2(Mathf.Min(0.45f * eta / 3f, 0.9f), 0f);
             }
 
             float dz = Mathf.Abs(z - RiverZ(x));
@@ -722,7 +731,7 @@ public static class FoamPreview
                 m.SetVector("_TerrainStatus", new Vector4(0f, 0.5f, 0f, 0f));
             }
 
-            log.Add("data: " + (Tsunami ? "with" : "without") + " the tsunami");
+            log.Add(Tsunami > 0f ? "data: with a " + Tsunami + " m tsunami" : "data: without a tsunami");
         }
 
         /// <summary>
@@ -1017,6 +1026,19 @@ public static class FoamPreview
             float pitch = (glitterDay ? 35f : high ? 11f : 2.5f) * Mathf.Deg2Rad, yaw = -10f * Mathf.Deg2Rad;
             eye = new Vector3(-1950f, SeaLevel + (glitterDay ? 400f : high ? 300f : 30f), 150f);
             at = eye + new Vector3(Mathf.Cos(pitch) * Mathf.Cos(yaw), -Mathf.Sin(pitch), Mathf.Cos(pitch) * Mathf.Sin(yaw)) * 1000f;
+        }
+        else if (view == "tsunamiwall")
+        {
+            // 9 m over the sea, 100 m before the wall's face, looking out to sea: the face fills the
+            // view's middle and hides all behind it.
+            eye = new Vector3(-570f, SeaLevel + 9f, 20f);
+            at = new Vector3(-800f, SeaLevel + 16f, 70f);
+        }
+        else if (view == "tsunamiwallcity")
+        {
+            // A city camera 70 m up, 400 m off: the face, its crest, the sea beyond over the crest.
+            eye = new Vector3(-420f, SeaLevel + 70f, -160f);
+            at = new Vector3(-760f, SeaLevel + 8f, 60f);
         }
         else if (view == "tsunamiclose")
         {

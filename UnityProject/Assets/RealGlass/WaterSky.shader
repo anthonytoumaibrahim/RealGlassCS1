@@ -53,10 +53,14 @@ Shader "RealGlass/WaterSky"
         Pass
         {
             ZWrite Off
-            // As the foam: the game's water lies just in front of the depth buffer's value here, so
-            // what hides the water is tested by hand against the depth texture (terrain, buildings).
-            ZTest Always
-            Cull Off
+            // The game's own test (Custom/Water/Default: ZTest LEqual, Cull Back, Offset -3, 0, and it
+            // writes depth), 2 units nearer for any float of difference: drawn on the nearest water
+            // only, as the game's water shows. (Until 2026-10-23: ZTest Always + a hand test against
+            // the depth texture, which has no water -- every water surface along a ray got the sky,
+            // so a tsunami's crest, back and the sea beyond showed through its face.)
+            ZTest LEqual
+            Offset -3, -2
+            Cull Back
             Blend One OneMinusSrcAlpha
 
             CGPROGRAM
@@ -67,8 +71,6 @@ Shader "RealGlass/WaterSky"
             #include "Finite.cginc"
             #include "WaterGame.cginc"
             #include "WaterCommon.cginc"
-
-            UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
 
             // The sky as the player sees it: a live cube of the skybox (WaterSkyLayer, a global).
             samplerCUBE _RGWaterSkyCube;
@@ -164,7 +166,6 @@ Shader "RealGlass/WaterSky"
                 float3 world : TEXCOORD0;
                 // The water's height (m): the game's pixel program compares the terrain with it.
                 float water : TEXCOORD1;
-                float4 screen : TEXCOORD2;
             };
 
             v2f vert(appdata_base v)
@@ -174,7 +175,6 @@ Shader "RealGlass/WaterSky"
                 o.world = g.world;
                 o.pos = mul(UNITY_MATRIX_VP, float4(g.world, 1.0));
                 o.water = g.waterHeight * _MainTex_ST.x + _MainTex_ST.z;
-                o.screen = ComputeScreenPos(o.pos);
                 return o;
             }
 
@@ -189,9 +189,6 @@ Shader "RealGlass/WaterSky"
                 // needs its neighbours.
                 float depth = i.water - RGGameTerrainPixel(uv);
                 float wet = min(depth, sb.y - 0.001);
-                float scene = LinearEyeDepth(SAMPLE_DEPTH_TEXTURE_PROJ(_CameraDepthTexture, UNITY_PROJ_COORD(i.screen)));
-                float own = i.screen.w;
-                float shown = scene + 0.5 + 0.002 * own - own;
 
                 RGGameRippleReads reads = RGGameRipplePlaces(world.xz, sb);
                 float3 n = RGGameWaterNormalAt(reads, sa);
@@ -237,7 +234,6 @@ Shader "RealGlass/WaterSky"
 
                 float a = FiniteAlpha(reflectance * max(_RGWaterSky.x, 0.0));
                 float3 glitter = _RGWaterSun.w > 0.0 ? Finite(SunGlitter(v, n, averaged) * _RGWaterSun.w) : float3(0.0, 0.0, 0.0);
-                clip(shown);
                 clip(wet);
                 return float4(sky * a + glitter, a);
             }

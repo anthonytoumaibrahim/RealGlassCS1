@@ -40,12 +40,14 @@ Shader "RealGlass/WaterFoam"
         {
             Tags { "LightMode" = "ForwardBase" }
             ZWrite Off
-            // Not the depth buffer: in the game the water's own depth lies just in front of ours (the
-            // first in-game run: only the strip the game's water leaves out showed). What hides the
-            // foam is tested by hand against the depth texture, which holds the terrain and the
-            // buildings but not the water (frag).
-            ZTest Always
-            Cull Off
+            // The game's own test (Custom/Water/Default: ZTest LEqual, Cull Back, Offset -3, 0, and it
+            // writes depth), 2 units nearer for any float of difference: foam on the nearest water
+            // only. (The first in-game run, at plain LEqual, showed only the strip the game's water
+            // leaves out: its Offset -3 puts it in front. Until 2026-10-23: ZTest Always + a hand test
+            // against the depth texture, which has no water -- a tsunami's far side showed through.)
+            ZTest LEqual
+            Offset -3, -2
+            Cull Back
             Blend SrcAlpha OneMinusSrcAlpha
 
             CGPROGRAM
@@ -60,7 +62,6 @@ Shader "RealGlass/WaterFoam"
             #include "WaterGame.cginc"
 
             sampler2D _RGFoamPattern;
-            UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
 
             // x: the lace's repeats a metre, y: the patches' repeats a metre, z: the pattern's texels a
             // side, w: -
@@ -80,7 +81,8 @@ Shader "RealGlass/WaterFoam"
             float4 _RGFoamLook;
             // A diagnostic (the hidden WaterFoamView row; 0 normally): x = 1 shows each source's amount
             // as a colour (red shore, green fast water, blue fronts) on every wet pixel; 2 magenta on
-            // every pixel drawn, before the game's no-water test; 3 the same after it.
+            // every pixel drawn (past the depth test), before the game's no-water test; 3 the same
+            // after it.
             float4 _RGFoamDebug;
 
             struct v2f
@@ -91,7 +93,6 @@ Shader "RealGlass/WaterFoam"
                 // y: its rise from the older frame to the newer (m)
                 float2 water : TEXCOORD1;
                 SHADOW_COORDS(2)
-                float4 screen : TEXCOORD3;
             };
 
             v2f vert(appdata_base v)
@@ -102,7 +103,6 @@ Shader "RealGlass/WaterFoam"
                 o.pos = mul(UNITY_MATRIX_VP, float4(g.world, 1.0));
                 o.water = float2(g.waterHeight * _MainTex_ST.x + _MainTex_ST.z, g.heights.y - g.heights.x);
                 TRANSFER_SHADOW(o);
-                o.screen = ComputeScreenPos(o.pos);
                 return o;
             }
 
@@ -164,12 +164,6 @@ Shader "RealGlass/WaterFoam"
                 float depth = i.water.x - RGGameTerrainPixel(uv);
                 float wet = min(depth, sb.y - 0.001);
 
-                // Hidden by what stands in front (terrain, buildings: the depth texture has them, the
-                // water's bed is behind): by eye depth, with a little slack for the depth's precision.
-                float scene = LinearEyeDepth(SAMPLE_DEPTH_TEXTURE_PROJ(_CameraDepthTexture, UNITY_PROJ_COORD(i.screen)));
-                float own = i.screen.w;
-                float shown = scene + 0.5 + 0.002 * own - own;
-
                 float2 flow = sb.xz * 2.0 - 1.0;
                 float speed = length(flow);
                 float2 tilt = sa.xz * 2.0 - 1.0;
@@ -218,7 +212,6 @@ Shader "RealGlass/WaterFoam"
                 float lit = saturate(dot(n, _WorldSpaceLightPos0.xyz)) * SHADOW_ATTENUATION(i);
                 float3 light = _LightColor0.rgb * lit + ShadeSH9(float4(n, 1.0));
                 float3 colour = Finite(_RGFoamLook.x * light);
-                clip(shown);
                 if (_RGFoamDebug.x > 1.5 && _RGFoamDebug.x < 2.5)
                     return float4(1.0, 0.0, 1.0, 0.85);
                 clip(wet);

@@ -9,6 +9,8 @@
 #
 #   powershell -NoProfile -ExecutionPolicy Bypass -File tools\preview\foam-render.ps1
 #   ... -Views "coast,close,high,river,tsunami,sunset,night"
+#   ... -Views "tsunamiwall,tsunamiwallcity"   a 20 m tsunami wall from 9 m up (below its crest) and from
+#                             a city camera: nothing behind its face may show through it
 #   ... -Later 3              also the foam this many seconds later (the motion; 0: no such column)
 #   ... -Amount 1 -Shore 1 -Fast 1 -Front 1     the foam's amount and each source's share (1 = the model's)
 #   ... -Sources              a last column: each source's amount as a colour (red shore, green fast, blue fronts)

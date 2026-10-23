@@ -6,9 +6,11 @@
 // sky as the mod's cube had it (x _SkyGain; 0 under the sky layer); the sun's highlight (exponent 512,
 // x _SpecGain: the game's x its material's _SpecColor, which the mod turns off under the sun's glitter).
 // The shore: the game's water fades with its thickness along the view, 1 - 10 / (3 t + 10) (its
-// clean-water constant). How the game composites that is not known (its blend state is not in the
-// player's data): here it is an alpha over the terrain, so thin water shows the beach through it.
-// No pollution, rain rings or foam of the game's own.
+// clean-water constant). The game draws Blend One Zero and composites thin water itself (its pass
+// reads a _BackgroundTexture): here it is an alpha over the terrain, so thin water shows the beach
+// through it. Its depth state is the game's (Custom/Water/Default's ForwardBase, read from its
+// m_ParsedForm 2026-10-23): ZWrite On, ZTest LEqual, Cull Back, Offset -3, 0 -- what the layers on the
+// water are tested against. No pollution, rain rings or foam of the game's own.
 Shader "Hidden/RealGlassPreviewGameWater"
 {
     Properties
@@ -28,6 +30,9 @@ Shader "Hidden/RealGlassPreviewGameWater"
         {
             Tags { "LightMode" = "ForwardBase" }
             ZWrite On
+            ZTest LEqual
+            Cull Back
+            Offset -3, 0
             Blend SrcAlpha OneMinusSrcAlpha
             CGPROGRAM
             #pragma vertex vert
