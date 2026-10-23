@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -16,6 +17,11 @@ namespace RealGlass.Water
     /// are its locals, gone by the time a postfix runs. When the game's code changes and no call is
     /// found, nothing is replaced and the log says so (no foam; nothing else touched).
     /// </summary>
+    /// <remarks>
+    /// Other mods first, as the vehicles' hooks (VehicleGlassPatches.cs has the why): Priority.Last, so
+    /// every other mod's transpiler on these methods meets the game's own code; and on anything
+    /// unexpected the code goes back as it came, never an exception into the other mod's patching.
+    /// </remarks>
     [HarmonyPatch]
     public static class WaterFoamDrawPatch
     {
@@ -33,27 +39,49 @@ namespace RealGlass.Water
             yield return AccessTools.Method(typeof(TerrainPatch), "RenderSubPatch");
         }
 
+        [HarmonyPriority(Priority.Last)]
         public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, MethodBase original)
         {
-            var result = new List<CodeInstruction>();
-            int swapped = 0;
-            foreach (CodeInstruction instruction in instructions)
+            string name = original != null ? original.Name : "?";
+
+            // The instructions as they came, never changed (a swapped call is a new instruction with
+            // the old one's labels and blocks): on anything unexpected they go back exactly so.
+            var given = new List<CodeInstruction>(instructions);
+            try
             {
-                if (GameDraw != null && OurDraw != null && (instruction.opcode == OpCodes.Call || instruction.opcode == OpCodes.Callvirt) &&
-                    instruction.operand is MethodInfo called && called == GameDraw)
+                var result = new List<CodeInstruction>(given.Count);
+                int swapped = 0;
+                foreach (CodeInstruction instruction in given)
                 {
-                    instruction.opcode = OpCodes.Call;
-                    instruction.operand = OurDraw;
-                    swapped++;
+                    if (GameDraw != null && OurDraw != null && (instruction.opcode == OpCodes.Call || instruction.opcode == OpCodes.Callvirt) &&
+                        instruction.operand is MethodInfo called && called == GameDraw)
+                    {
+                        result.Add(new CodeInstruction(instruction) { opcode = OpCodes.Call, operand = OurDraw });
+                        swapped++;
+                        continue;
+                    }
+
+                    result.Add(instruction);
                 }
 
-                result.Add(instruction);
+                WaterFoam.NoteHooks(name, swapped);
+                Log.Msg("water: the foam's hook in TerrainPatch." + name + ": " + swapped +
+                        " of the game's draws routed (the game's own call first, unchanged)" + (swapped == 0 ? " -- NONE FOUND: no foam there" : ""));
+                return result;
             }
-
-            WaterFoam.NoteHooks(original != null ? original.Name : "?", swapped);
-            Log.Msg("water: the foam's hook in TerrainPatch." + (original != null ? original.Name : "?") + ": " + swapped +
-                    " of the game's draws routed (the game's own call first, unchanged)" + (swapped == 0 ? " -- NONE FOUND: no foam there" : ""));
-            return result;
+            catch (Exception e)
+            {
+                try
+                {
+                    WaterFoam.NoteHooks(name, 0);
+                    Log.Error("water: the foam's hook in TerrainPatch." + name + " could not be made; the game's code is left as it was (no foam there)", e);
+                }
+                catch
+                {
+                    // the log itself failed: the code still goes back unchanged
+                }
+                return given;
+            }
         }
     }
 }

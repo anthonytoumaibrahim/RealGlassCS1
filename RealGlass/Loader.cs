@@ -26,6 +26,13 @@ namespace RealGlass
         {
             base.OnLevelLoaded(mode);
 
+            // A second copy of the mod, off since it was enabled: it says so once, and does nothing.
+            if (ModCopies.StoodDown)
+            {
+                ModCopies.ShowOnce();
+                return;
+            }
+
             // Wherever there are buildings to see: a city, the asset editor (a creator checking the
             // glass), the scenario editor (a city). Not the map or theme editors: no buildings.
             string where = Where(mode);

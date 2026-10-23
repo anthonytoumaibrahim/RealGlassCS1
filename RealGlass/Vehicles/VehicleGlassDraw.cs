@@ -301,6 +301,7 @@ namespace RealGlass.Vehicles
                 return;
 
             Failed = true;
+            ErrorNotice.Report(ErrorNotice.Vehicles);
             try
             {
                 Log.Error("vehicles: " + where + " failed; the vehicles' glass is off until the next city is loaded", e);

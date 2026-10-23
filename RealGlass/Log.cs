@@ -100,6 +100,20 @@ namespace RealGlass
             }
         }
 
+        /// <summary>
+        /// Writes on in the file another copy of the mod started this session, never starting it
+        /// afresh: a second copy, staying off (<see cref="ModCopies"/>), adds its line to the running
+        /// copy's log instead of wiping it.
+        /// </summary>
+        public static void Continue()
+        {
+            lock (Sync)
+            {
+                _disabled = false;
+                _started = true;
+            }
+        }
+
         public static void Msg(string message)
         {
             Debug.Log("[RealGlass] " + message);

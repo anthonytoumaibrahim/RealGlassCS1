@@ -254,6 +254,11 @@ foreach ($t in $tests) {
     } else { Ok "test-$t : $last" }
 }
 
+# Never stops the release: a list to read (docs/RELEASE-CHECKLIST.md says what to do with it).
+Step "Other installed mods on the methods we patch (to read; it never stops the release)"
+$scan = @(& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root "tools\scan-mods.ps1") -Dll $deployedDll 2>&1)
+$scan | ForEach-Object { Write-Host "   $_" }
+
 # ---- 4. The first upload: Share from Addons\Mods. Every later one: into the subscribed folder. --
 
 if (-not $workshopId) {

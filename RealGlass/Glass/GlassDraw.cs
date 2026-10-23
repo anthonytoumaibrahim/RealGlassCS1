@@ -228,6 +228,7 @@ namespace RealGlass.Glass
                 return;
 
             Failed = true;
+            ErrorNotice.Report(ErrorNotice.Glass);
             try
             {
                 Log.Error("glass: " + where + " failed; the glass is off until the next city is loaded", e);

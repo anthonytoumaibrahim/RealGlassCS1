@@ -35,6 +35,18 @@ the mod's name in the game.
 - **The Asset Editor is the creators'**: the creator window replaces the F8 panel there, and the
   building picker and the water stay out of it. The rooms are fitted to the windows of the building
   being made, measured again when its model or textures change.
+- **Other mods come first.** Where the mod hooks into the game's drawing of vehicles and water, every
+  other mod's change to the same code is now made first, on the game's own code, exactly as if this
+  mod weren't installed, whatever order the mods start in; this mod fits around what they leave. An
+  older mod that looks for the game's exact code finds it. If a mod takes a draw away, those vehicles
+  or that water just go without this mod's glass or foam.
+- **A part that stops after an error says so.** The glass on buildings, the glass on vehicles and
+  the water each switch themselves off after an error, as before, and the rest of the mod runs on;
+  now a message says which part stopped and where the log is, once per session, instead of the log
+  alone.
+- **Installed twice, one copy runs.** With two different copies enabled -- the Workshop item and one
+  in `Addons\Mods` -- the copy that starts second switches itself off and says so. Before, both ran:
+  the glass was drawn twice and the water's hook failed.
 
 ## 1.1.3 — 2026-10-22
 

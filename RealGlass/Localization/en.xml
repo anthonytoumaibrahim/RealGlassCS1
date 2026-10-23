@@ -53,6 +53,27 @@
     {0}
   </String>
 
+  <!-- A second copy of the mod (the Workshop item and a copy in Addons\Mods, both enabled): the
+       copy enabled second stays off. The window, at its first city: {0} the folder of the copy
+       that runs, {1} the folder of the one that is off. The options page's one line: -->
+  <String key="Mod.SecondCopy">
+    Real Glass &amp; Water is installed twice, and only one copy can run. The copy in\n
+    {0}\n
+    runs; the copy in\n
+    {1}\n
+    has switched itself off.\n\n
+    Keep one of them: unsubscribe from the Workshop item, or delete the folder in Addons\Mods.
+    Then restart the game.
+  </String>
+  <String key="Mod.SecondCopyShort">This copy is off: Real Glass &amp; Water is installed twice.</String>
+
+  <!-- The window when a part of the mod stops after an error: once a launch, then the part stays
+       off until the next city. One sentence per part, then Error.Report ({0} the log file). -->
+  <String key="Error.Glass">The glass on buildings stopped after an error, and is off until the next city is loaded. The rest of Real Glass &amp; Water runs as before.</String>
+  <String key="Error.Vehicles">The glass on vehicles stopped after an error, and is off until the next city is loaded. The rest of Real Glass &amp; Water runs as before.</String>
+  <String key="Error.Water">The realistic water stopped after an error: the water is the game's own until the next city is loaded. The rest of Real Glass &amp; Water runs as before.</String>
+  <String key="Error.Report">If it happens again, please report it on the mod's Workshop page, with this file:\n{0}</String>
+
   <String key="Tab.Glass">Glass</String>
   <String key="Tab.Reflections">Reflections</String>
   <String key="Tab.Panes">Panes</String>
@@ -340,6 +361,9 @@
 
   <!-- ==================== F8 panel: Vehicles ==================== -->
   <!-- Glass on the vehicles near the camera: their windows, and the lenses of their lamps. -->
+
+  <!-- The status line at the top of the Vehicles tab, only after an error stopped the vehicles' glass. -->
+  <String key="Status.VehiclesFailed">The glass on vehicles stopped after an error and comes back with the next city. RealGlass.log says why.</String>
 
   <String key="VehicleGlass.Label">Glass on vehicles</String>
   <String key="VehicleGlass.Tooltip">Windows and lamp lenses, on vehicles close enough to see them.</String>

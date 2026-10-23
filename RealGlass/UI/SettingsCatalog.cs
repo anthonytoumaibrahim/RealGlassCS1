@@ -4,6 +4,7 @@ using System.Globalization;
 using ColossalFramework;
 using ColossalFramework.UI;
 using RealGlass.Glass;
+using RealGlass.Vehicles;
 using UnityEngine;
 
 namespace RealGlass.UI
@@ -1484,6 +1485,17 @@ namespace RealGlass.UI
         /// </summary>
         private static void BuildVehicles()
         {
+            // Shown only when the vehicles' glass stopped after an error (VehicleGlassDraw.Fail).
+            Add(new Row
+            {
+                Kind = RowKind.Status,
+                Panel = PanelPage.Vehicles,
+                Id = "VehiclesStatus",
+                StatusText = () => VehicleGlassDraw.Failed ? Localization.Get("Status.VehiclesFailed") : string.Empty,
+                Shown = () => VehicleGlassDraw.Failed,
+                Profiled = false,
+            });
+
             Add(new Row
             {
                 Kind = RowKind.Toggle,

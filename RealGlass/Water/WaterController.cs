@@ -73,6 +73,7 @@ namespace RealGlass.Water
             {
                 Log.Error("water: could not start", e);
                 _failed = true;
+                ErrorNotice.Report(ErrorNotice.Water);
             }
         }
 
@@ -125,6 +126,7 @@ namespace RealGlass.Water
             {
                 Log.Error("water: frame failed; the water is given back and stays the game's until the city is reloaded", e);
                 _failed = true;
+                ErrorNotice.Report(ErrorNotice.Water);
                 Release();
             }
         }

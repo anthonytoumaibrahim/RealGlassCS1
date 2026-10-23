@@ -226,6 +226,10 @@ namespace RealGlass
                 return;
             }
 
+            // A part of the mod that stopped after an error says so, once (never from inside the
+            // rendering where it failed, nor over another window).
+            ErrorNotice.ShowPending();
+
             // The building picker's key (never Unified UI's). Not while a road tool is on: Network
             // Anarchy's editor grid is Alt+G there (IL of NetworkAnarchy.OnGUI, 2026-10-01), and a
             // player laying roads is not picking buildings. None in the asset editor.

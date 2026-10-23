@@ -112,6 +112,50 @@ Harmony 2.0.4; preview on D3D11 and OpenGL; test-metal 43/43.
 - [ ] The tab: four rows (switch, tinted windows, reflections, clear coat), greyed out with the glass
       off; the sliders change the look live; a tinted car stays tinted as it drives and parks.
 
+## 0. Next version (1.1.4): safeguards against other mods (built 2026-10-23 night, dev 1.1.3.40246, not yet seen in the game)
+
+His ask: "guarantee that our mod won't cause a user's game to crash. At most, disable our mod with an
+error message"; "other mods patching our same methods ... take precedent". Four parts, plus the scan:
+
+1. **Other mods first**: the three transpilers (Vehicle.RenderInstance, VehicleParked.RenderInstance,
+   the water's TerrainPatch.Render/RenderSubPatch) and the vehicles' EndRenderingImpl postfix are
+   `Priority.Last`: every other mod's transpiler meets the game's own code, whatever order the mods
+   were enabled in. PROBED in the Unity 5.6 editor with Harmony 2.0.4 (HookOrderProbe, deleted): at
+   Normal an "old mod" patching after us did NOT find its pattern (the gap, real); at Last it found
+   both draws, ours then found none (no glass, game draws intact); an inserting old mod and ours both
+   worked, our notes right.
+2. **Our transpilers never fail another mod's patching**: on anything unexpected they hand back the
+   game's code unchanged (probed: a fault half-way -> the method runs as the game's, and an old mod
+   patching after still patches).
+3. **An error window, once a launch per part** (ErrorNotice: the buildings' glass, the vehicles'
+   glass, the water), shown from ModController.Update (never from inside the rendering); the Vehicles
+   tab gets a status line after an error. Same ExceptionPanel call as the "not supported" message.
+4. **A second copy stands down** (ModCopies; an AppDomain claim): the first copy enabled runs, a
+   later one does nothing but one log line (appended to the running copy's log, which it no longer
+   wipes), one options-page line and a window at its first city. The game enables Addons\Mods before
+   the Workshop (IL), so a dev build wins over the subscribed copy; a rebuilt DLL's old copy gives the
+   claim back in OnDisabled before the new one is enabled (IL), so hot reload is untouched. Copies are
+   told apart by BUILD: two byte-identical copies (the GitHub zip + the Workshop item of one release)
+   are one assembly to the game (Mono reuses an assembly by name: why every build gets a new number),
+   so they already run as one. 1.1.3 on the Workshop has no claim: until 1.1.4 is out, keep disabling
+   the Workshop copy while testing.
+5. **tools\scan-mods.ps1** (release.ps1 prints it, never stops on it): every installed mod DLL read
+   with Mono.Cecil, against OUR methods read from our own DLL (13 now, the creator window's three
+   included). First run 2026-10-23: 153 DLLs; nobody else on the vehicles', water's or buildings'
+   draw methods; LoadAssetPanel.OnLoad also patched by TM:PE, Custom Effect Loader, Adaptive Roads
+   (and reflected by IMT, Node Controller); SaveAssetPanel.SaveRoutine also by Custom Effect Loader;
+   GameKeyShortcuts.Escape by 10 tool mods (known, harmless).
+
+- [ ] The log: "vehicles: the glass's hook in Vehicle.RenderInstance: after N" and
+      "...VehicleParked.RenderInstance: after N" (N > 0, as before: Last changed nothing alone), the
+      two "water: the foam's hook in TerrainPatch..." lines with their counts, "harmony: ... other mods
+      patching the same methods" as before, no "could not be made".
+- [ ] Nothing else changed: buildings, water, vehicles look and cost as in the last session.
+- [ ] (Optional, two builds side by side) the second-copy window: needs two DIFFERENT builds, both
+      with the claim -- e.g. the deployed folder copied to Addons\Mods\RealGlass-test and enabled, then
+      a rebuild deployed to Addons\Mods\RealGlass: RealGlass runs, RealGlass-test says it is off (log
+      line, options line, window at the city). Delete RealGlass-test afterwards.
+
 ## 0. The 1.1.3 hotfix (2026-10-22): the mod runs on the Mac again
 
 His Mac on the Workshop's 1.1.2: "Shader 'RealGlass/Glass' is not supported on this GPU/graphics API
@@ -623,6 +667,12 @@ stands.
       issues (TAA flicker, SSR, LOD glass, the Mac blink), Source code, Reporting a bug; about
       4,060 of 8,000 characters Steam's way; the links Volumetric Weather, Harmony, GitHub.
 - [x] `Workshop/ChangeNotes/1.0.0.bbcode.txt`; `1.1.0.bbcode.txt` 2026-10-21 (section 0).
+- [ ] **Every release**: read release.ps1's "Other installed mods on the methods we patch" (or run
+      `tools\scan-mods.ps1`): a mod new on the list is looked at before the upload. First subscribe
+      to any suspect mods (disabled in Skyve is enough: the scan reads every installed DLL).
+- [ ] **1.1.4's description**: in Compatibility, beside the asset-creators notice, one line: if another
+      mod changes how vehicles are drawn and they look wrong, turn off *Glass on vehicles* (Vehicles
+      tab). Not before 1.1.4 is uploaded (the description must not name a feature players lack).
 
 ## 6. Publish
 

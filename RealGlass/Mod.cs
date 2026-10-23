@@ -32,6 +32,16 @@ namespace RealGlass
         /// <summary>Called by the game via reflection when the mod is enabled.</summary>
         public void OnEnabled()
         {
+            // Another copy of the mod already running: this one stays off, touching nothing of it --
+            // not its log, its settings file or its hooks (ModCopies).
+            if (!ModCopies.Claim())
+            {
+                Log.Continue();
+                Log.Warn("A second copy of the mod (" + ModCopies.Here + ", build " + typeof(Mod).Assembly.GetName().Version +
+                         ") stays off: the copy in " + ModCopies.Running + " is running. Keep one of them.");
+                return;
+            }
+
             Log.Start();
             Log.Msg("Mod enabled. Log file: " + Log.Path);
 
@@ -47,11 +57,23 @@ namespace RealGlass
         /// <summary>Called by the game via reflection when the mod is disabled.</summary>
         public void OnDisabled()
         {
-            // First: the controller gives the camera and the water back while the patches are
-            // still in place, and nothing of ours runs on in the city after the mod is off.
-            Loader.Shutdown();
-            Patcher.Unpatch();
-            SettingsXml.Shutdown();
+            // A copy that stayed off started nothing; the running copy's Harmony ID is the same as
+            // ours, so above all no Unpatch from here.
+            if (ModCopies.StoodDown)
+                return;
+
+            try
+            {
+                // First: the controller gives the camera and the water back while the patches are
+                // still in place, and nothing of ours runs on in the city after the mod is off.
+                Loader.Shutdown();
+                Patcher.Unpatch();
+                SettingsXml.Shutdown();
+            }
+            finally
+            {
+                ModCopies.Release();
+            }
         }
 
         /// <summary>
@@ -62,6 +84,14 @@ namespace RealGlass
         /// </summary>
         public void OnSettingsUI(UIHelperBase helper)
         {
+            // A copy that stayed off: one line (a group title: UIHelper has no plain label), and no
+            // settings -- they are the running copy's.
+            if (ModCopies.StoodDown)
+            {
+                helper.AddGroup(Localization.Get("Mod.SecondCopyShort"));
+                return;
+            }
+
             OptionsUI.Build(helper);
         }
     }
