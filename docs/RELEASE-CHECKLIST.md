@@ -24,6 +24,61 @@ that repo's `docs/RELEASE-CHECKLIST.md` has the long version.
 | Screenshots | The item's Steam page, *Add/Edit images* | 5–8, 1920 × 1080 or larger, 16:9, each under 1 MB |
 | Required items, visibility, tags | The item's Steam page | Harmony `2040656402` |
 
+## 0. Next version (1.1.4): glass on vehicles (built 2026-10-23, dev build, not yet seen in the game)
+
+The Vehicles tab (car icon): the switch, tinted windows (5% of vehicles), reflections (100% = 3x
+physics), clear coat on paint (100%). Shader `RealGlass/VehicleGlass` (its instancing variants kept:
+BundleBuilder sets the Graphics settings' "Instancing Variants" to Keep All -- the first build had
+stripped them), drawn by `Vehicles/VehicleGlassDraw.cs` from a transpiler after the game's own
+`DrawMesh` in `Vehicle.RenderInstance` and `VehicleParked.RenderInstance` (the game's calls kept),
+flushed after `VehicleManager.EndRenderingImpl`. Transpiler probed in the Unity 5.6 editor with
+Harmony 2.0.4; preview on D3D11 and OpenGL; test-metal 43/43.
+
+- [x] **First session** (2026-10-23 17:53, dev 1.1.3.31932, his city, 4K): the hook and instancing
+      ran (50-800 vehicles a second), every row tried; "not shiny/reflective enough, even with the slider
+      at 100%" (he tried 300%). THE WORKSHOP COPY WAS LOADED TOO (doubled log lines, two building-glass
+      layers, "water: surface capture requires both water draw hooks; found Render 0, RenderSubPatch 0").
+      -> THE CLEAR COAT (his pick from tools/preview/out/vehicle-coat-trial.png: "cabin 3% + coat, refl
+      200%"): Filament's clear coat over the paint the game recolours (the colour mask; the spec map
+      cannot tell, most authors leave the paint's at 0), Default vehicle shader only; new row
+      VehicleCoat "Clear coat on paint" (100%); VehicleReflections default 200% (glass and coat);
+      the cabin behind the glass 3% of the sky's light (was the buildings' 10%). Dev 1.1.3.34039.
+- [x] **Second session** (2026-10-23 19:23, dev 1.1.3.34039, ONE copy loaded, night, 3840x2018): "It
+      looks beautiful!"; clean log (no WARN/ERROR); hooks 5 + 2 draws; 700-2,700 vehicles a second in
+      560-1,100 instanced draws; frames 16.5-19.7 ms in every settled window (like his sessions before
+      the vehicle glass); NO clean on/off A/B (every vehicles-off spell under the 5 s window). He played
+      at reflections 300%. -> his asks: the lights inside GONE; the four kinds -> one "Window tint"
+      slider (VehicleTint, 5%: 0% clear VLT 78% .. 100% the darkest film 5%, even in proportion);
+      reflections RESCALED (100% = the old 300% = 3x physics, VehicleGlassLook.ReflectionBase; 300% = 9x)
+      and now scaling the REFLECTANCE (paint/inside dimmed by what is reflected, capped at a mirror; a
+      lamp's lens keeps physics' share so lit lamps shine through); the hook passes no vehicle id any
+      more (one VehicleGlassDraw.Note; the transpiler minus one instruction -- NOT re-probed in the
+      editor: check the two "the glass's hook in ..." lines). Dev 1.1.3.35440. Pictures:
+      tools/preview/out/veh-refl-scale.png, veh-tint-scale.png.
+- [x] **Third session** (19:50, dev 1.1.3.35440): clean log, the id-less hook ran (5 + 2 draws), frames
+      ~17.7 ms; he moved the tint slider and corrected it: "I meant it as percentage of cars which have
+      tinted windows, not that all cars should have this value. Like how we had the car interior light
+      percent slider". -> VehicleTinted "Tinted windows" (5% of vehicles, road vehicles only): each
+      chosen car (its seed, as the light's was) gets a film of its own shade, 35% .. 5% let through,
+      log-even; the per-vehicle seed and the hook's vehicle id are BACK, exactly the form that ran at
+      17:53 and 19:23. Dev 1.1.3.35925. NOTE: by day tinted and clear look alike (the 3% cabin is already
+      dark under 100% reflections; tools/preview/out/veh-tinted-share.png).
+- [ ] The log: "vehicles: the glass's hook in Vehicle.RenderInstance: after N of the game's draws"
+      (N > 0) and the same for VehicleParked.RenderInstance; "vehicles: glass drawn with GPU
+      instancing"; "vehicles: glass on (tinted windows on 5% of them, reflections 100%, clear coat
+      100%)"; no "vehicles: ... failed". ONLY THE DEV COPY loaded (one "loaded: a city" per load).
+- [ ] Street level, by day: car windows reflect the street, buildings and sky; nothing but windows
+      (and lamps) turns to glass; no glass floating off a moving car (sway, turns).
+- [ ] The coat: the paint mirrors the sky and street, sun highlights on bonnets and roofs; tyres, rims,
+      trim, grilles NOT coated (a colour-masked rim would show a static coat over a turning wheel);
+      vehicles with a fixed livery (no colour mask: police, liveried trucks, buses) have none yet.
+- [ ] At night: windows dark (no light inside any car); trains keep their own lit windows; brake
+      lights and indicators still light through their lenses, also at reflections 300%.
+- [ ] The 5 s line: "vehicles N a second in M draws" -- M far below N (instancing); the frame time
+      with the switch on and off (one each, same view).
+- [ ] The tab: four rows (switch, tinted windows, reflections, clear coat), greyed out with the glass
+      off; the sliders change the look live; a tinted car stays tinted as it drives and parks.
+
 ## 0. The 1.1.3 hotfix (2026-10-22): the mod runs on the Mac again
 
 His Mac on the Workshop's 1.1.2: "Shader 'RealGlass/Glass' is not supported on this GPU/graphics API
