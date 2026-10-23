@@ -18,12 +18,13 @@ Adds rooms behind the windows at night (optionally by day too), with lights that
 [*][b]Press Alt+G[/b] and select a building to customize individual buildings.
 [/olist]
 [h3]Default Settings[/h3]
-The default settings were tested on a vanilla game with no LUT, so they might look a bit rough or aggressive if you use an LUT. Feel free to customize it to your liking, you have full control over every setting.
+The default settings were tested on a vanilla game with no LUT, so they might look wrong if you use an LUT. By opening F8, you can adjust the global settings to your liking.
 
 [hr][/hr]
 [h1]Compatibility[/h1]
-Works [i]well[/i] with most vanilla and custom building assets. No conflicts found with Render It!, AD Cloud Replacer, Move It!, TM:PE, FPS Booster and more. Buildings converted with Procedural Objects get the glass too. Safe to remove: it saves nothing in your cities.
+Works [i]well[/i] with most vanilla and custom building assets. You can safely unsubscribe from the mod since it doesn't store anything in your save data.
 [h3]For asset creators[/h3]
+[b]I'm working on making this mod work better in the Asset Editor and to allow you to ship custom settings for the asset (such as glass color, amount of reflections, etc.).[/b]
 The mod by default checks for 70% specular (changeable by the user) or brighter in your specular map ([i]_s[/i]) to decide what is glass, so keep metal and other shiny parts below that. A building without specular map doesn't show glass.
 Windows that light up at night in your illumination map ([i]_i[/i]) also count as glass even with a slightly lower specular, so painting them properly helps.
 For LOD textures, make sure to include specular for it too ([i]_lod_s[/i]), otherwise the mod will try to display glass according to the full detail model.
