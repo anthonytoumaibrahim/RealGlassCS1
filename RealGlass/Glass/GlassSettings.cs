@@ -4,15 +4,14 @@ namespace RealGlass.Glass
 {
     /// <summary>
     /// The player's settings as the glass wants them (GlassParams), read once a frame. In the asset
-    /// editor, the creator window's preview's (PerAsset.CreatorAsset.Preview): by default the mod's
-    /// own defaults, what a player with the mod sees.
+    /// editor, the creator window's preview's (PerAsset.CreatorAsset.Preview): the mod's own defaults,
+    /// what a player with the mod sees.
     /// </summary>
     public static class GlassSettings
     {
         public static GlassParams Read()
         {
-            GlassParams p = ReadSettings();
-            return PerAsset.CreatorAsset.InEditor ? PerAsset.CreatorAsset.Preview(p) : p;
+            return PerAsset.CreatorAsset.InEditor ? PerAsset.CreatorAsset.Preview() : ReadSettings();
         }
 
         private static GlassParams ReadSettings()

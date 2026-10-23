@@ -464,37 +464,28 @@
   <!-- The asset editor's own window, opened there by the mod's key and button instead of the F8
        panel: the glass of the building being made, for every player who has the mod. Saved with the
        asset in RealGlassDefinition.xml and shared with it. Its rows are the building window's. -->
-  <String key="Creator.Title">Real Glass &amp; Water for creators</String>
+  <String key="Creator.Title">Real Glass &amp; Water - Asset Editor</String>
 
-  <!-- The status line. -->
-  <String key="Creator.NoAsset">Open or make an asset to set its glass here.</String>
-  <String key="Creator.NotBuilding">This asset is not a building: only buildings get glass here.</String>
-  <String key="Creator.New">Not saved yet. Its glass is saved with the asset.</String>
+  <!-- The status line: its glass is saved with the asset. -->
+  <String key="Creator.NoAsset">No asset open.</String>
+  <String key="Creator.NotBuilding">Buildings only.</String>
+  <String key="Creator.New">Not saved yet.</String>
   <!-- {0}: the asset's name, as typed when saving it. -->
   <String key="Creator.Saved">Saved with '{0}'.</String>
-  <String key="Creator.Changed">Changed: save '{0}' to keep its glass.</String>
-  <!-- {0}: how many settings the creator set. -->
-  <String key="Creator.Own">Settings of its own: {0}. The rest follow each player's.</String>
-  <String key="Creator.None">Nothing of its own: it follows each player's settings.</String>
+  <String key="Creator.Changed">Unsaved changes.</String>
 
-  <String key="Creator.OpenFolder">Open its folder</String>
-
-  <!-- On hover over a row's reset icon here. -->
-  <String key="Creator.Global.Hint">Left to each player's own setting</String>
+  <String key="Creator.OpenFolder">Open Folder</String>
 
   <String key="Group.CreatorPreview">Preview</String>
 
-  <String key="CreatorGameLook.Label">Without the mod</String>
-  <String key="CreatorGameLook.Tooltip">The game's own look: how subscribers without the mod see it.</String>
-
-  <String key="CreatorPlayersSee.Label">At the mod's default settings</String>
-  <String key="CreatorPlayersSee.Tooltip">Off: at your own settings, as in your cities.</String>
+  <!-- The mod's glass on the asset, at the mod's default settings. Off (the default): the game's own look. -->
+  <String key="CreatorShowGlass.Label">Real Glass</String>
+  <String key="CreatorShowGlass.Tooltip">Off: how subscribers without the mod see it.</String>
 
   <String key="CreatorShowMask.Label">Show what counts as glass</String>
-  <String key="CreatorShowMask.Tooltip">Paints its glass magenta. Lower Shininess needed for more.</String>
+  <String key="CreatorShowMask.Tooltip">Paints its glass magenta.</String>
 
-  <String key="CreatorRoomsByDay.Label">Show the rooms by day</String>
-  <String key="CreatorRoomsByDay.Tooltip">The asset editor has no night.</String>
+  <String key="CreatorRoomsByDay.Label">Show rooms by day</String>
 
   <!-- ==================== The game's options page ==================== -->
 

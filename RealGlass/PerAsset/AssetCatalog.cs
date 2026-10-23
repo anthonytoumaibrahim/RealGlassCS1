@@ -221,21 +221,20 @@ namespace RealGlass.PerAsset
 
         /// <summary>
         /// The creator window's preview, above the asset's rows (CreatorAsset's switches, never saved):
-        /// the asset as the game draws it (how most of a creator's subscribers see it), the mod at its
-        /// default settings (what a player with the mod sees), what counts as glass, the rooms by day
-        /// (the asset editor has no night).
+        /// the mod's glass (off: the asset as the game draws it, how most of a creator's subscribers see
+        /// it; on: at the mod's default settings; the asset's rows grey out while it is off), what counts
+        /// as glass, the rooms by day (the asset editor has no night).
         /// </summary>
         private static void AddPreview(List<Row> rows)
         {
-            rows.Add(Preview(CreatorAsset.GameLook, CreatorAsset.DefaultGameLook, "CreatorPreview", null, "the game's own look"));
-            rows.Add(Preview(CreatorAsset.PlayersSee, CreatorAsset.DefaultPlayersSee, null, GlassShows, "the mod's default settings"));
+            rows.Add(Preview(CreatorAsset.ShowGlass, CreatorAsset.DefaultShowGlass, "CreatorPreview", null, "the mod's glass"));
             rows.Add(Preview(CreatorAsset.ShowMask, CreatorAsset.DefaultShowMask, null, GlassShows, "what counts as glass"));
             rows.Add(Preview(CreatorAsset.RoomsByDay, CreatorAsset.DefaultRoomsByDay, null, GlassShows, "the rooms by day"));
         }
 
         private static bool GlassShows()
         {
-            return !CreatorAsset.GameLook.value;
+            return CreatorAsset.ShowGlass.value;
         }
 
         private static Row Preview(BoolSetting setting, bool initial, string group, Func<bool> enabled, string what)

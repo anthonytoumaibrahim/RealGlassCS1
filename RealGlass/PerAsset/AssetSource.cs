@@ -98,7 +98,7 @@ namespace RealGlass.PerAsset
 
         public override bool CanEdit
         {
-            get { return CreatorAsset.Info != null && !CreatorAsset.GameLook.value; }
+            get { return CreatorAsset.Info != null && CreatorAsset.ShowGlass.value; }
         }
 
         public override AssetRecord Own
@@ -113,12 +113,12 @@ namespace RealGlass.PerAsset
 
         public override int GlobalPreset
         {
-            get { return CreatorAsset.GlobalPreset; }
+            get { return Settings.Defaults.GlassPreset; }
         }
 
         public override string ResetHintKey
         {
-            get { return "Creator.Global.Hint"; }
+            get { return "Reset.Default"; }
         }
 
         public override AssetRecord Editable()

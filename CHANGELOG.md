@@ -21,9 +21,9 @@ the mod's name in the game.
 - **For asset creators: an asset's glass ships with it.** In the Asset Editor the mod's key and
   button open a window made for creators: the glass of the building being made -- strength, kind of
   glass, color, reflectivity, clarity, what counts as glass, lit windows, its rooms, its LOD's glass
-  -- shown on it as it is set. Its preview shows the asset without the mod (how subscribers without
-  it see it), at the mod's default settings (what a player with it sees, the default) or at the
-  creator's own, what counts as glass, and the rooms by day (the Asset Editor has no night). Saving
+  -- shown on it as it is set. Its preview starts without the mod's glass (how subscribers without
+  the mod see the asset); switched on, the glass shows at the mod's default settings, with what
+  counts as glass and the rooms by day (the Asset Editor has no night) to hand. Saving
   the asset writes its glass into `RealGlassDefinition.xml` beside its .crp; sharing it from the
   Content Manager puts that file into the upload. Opening the asset again brings its glass back.
 - **Players get the creators' glass**: every setting an asset's creator set is that asset's, in

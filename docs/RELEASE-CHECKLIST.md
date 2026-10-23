@@ -34,19 +34,28 @@ postfix), read back on load (LoadAssetPanel.OnLoad prefix); players' cities read
 (PerAsset/CreatorDefinitions.cs) under their own Alt+G glass (PerAsset/AssetRecords.cs,
 AssetRecord.Over). No shader change. test-settings + test-localization pass.
 
-- [ ] **Asset Editor, a building asset of his** (e.g. Sama Beirut, Addons\Assets): F8 / the button
-      open "Real Glass & Water for creators" (no F8 panel, no Alt+G, our water absent). Log:
-      "creator: the asset editor", "creator: editing '<name>' ... opened from ...crp", "creator
-      window built: N controls", "Harmony patches applied ... 3 more classes than before
-      (LoadAssetPatch, SaveAssetPatch, ShareAssetPatch)".
-- [ ] The rows change the edited building live (color, reflectivity, strength 0 = no glass, shininess
-      needed with "Show what counts as glass"); "Without the mod" shows the game's look; "At the mod's
-      default settings" off shows his own RealGlass.xml look; "Show the rooms by day" shows rooms.
-      The status's third line: "Its rooms follow its windows: storeys of X m" (log: "rooms: measuring
-      the windows of the building being made").
-- [ ] Save the asset: log "creator: '<name>' saved as <file>.crp: its glass (...) written to
-      ...\Addons\Assets\RealGlassDefinition.xml"; the status says "Saved with '<name>'". The file reads
-      as designed (one Asset element by the asset name).
+**Session 2026-10-23 22:28-22:37 (dev 1.1.3.40246)**: a NEW asset from the template 'H3 3x4
+Office14', saved as "Test Asset 123" (TESTASSET123.crp). The window opened, its rows and switches
+changed the building live, rooms fitted (storeys 2.5 m, 4 sides), the save wrote the entry (Custom,
+clarity 98%, own color 60%), the Snapshot tool kept the glass off for the pictures, no WARN/ERROR.
+Boformer's CustomEffectLoader also patches LoadAssetPanel.OnLoad and SaveAssetPanel.SaveRoutine: both
+ran. In the asset editor the color row is a text field only ("colour rows: the game's colour field
+(LineTemplate/LineColor) NOT FOUND": no transport-line template there). UI calls after it: the
+"At the mod's default settings" switch removed (the preview is always at the defaults); "Without the
+mod" became "Real Glass", OFF by default (the asset's rows grey out until it is on); Creator.Own /
+Creator.None / Creator.Global.Hint and the rooms-by-day tooltip removed (the reset says "Back to the
+default"); new texts: title "Real Glass & Water - Asset Editor", "Open Folder".
+
+- [x] **Asset Editor**: F8 / the button open the creator window (no F8 panel, no Alt+G, our water
+      absent). Log: "creator: the asset editor", "creator window built: 15 controls", our three new
+      patches listed. (Opening an EXISTING asset not tried yet: below.)
+- [x] The rows change the edited building live; the preview switches; "Show the rooms by day";
+      "rooms: measuring the windows of the building being made" -> storeys 2.500 m.
+- [ ] Again after the UI calls: the window opens with "Real Glass" OFF, the game's look, the rows
+      greyed; on: the mod's defaults, the rows editable; the reset icon's hint "Back to the default".
+- [x] Save the asset: "creator: 'Test Asset 123' saved as TESTASSET123.crp: its glass (glass Custom,
+      clarity 98%, own colour 60%) written to ...\Addons\Assets\RealGlassDefinition.xml"; the file
+      holds one Asset element named "Test Asset 123".
 - [ ] Load it again (in the editor): the window comes back with its glass ("its glass from
       RealGlassDefinition.xml").
 - [ ] Share (Content Manager -> the asset -> Share; cancel before Upload is fine): log "creator: sharing

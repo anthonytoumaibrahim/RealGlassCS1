@@ -650,7 +650,6 @@ $under.Preset = 5
 $o = $recType::Over($top, $under)
 Check "  a number of the player's over the creator's kind: Custom, the kind's other numbers kept" ("" + $o.Preset + " " + $o.Reflectivity + " " + ($o.Colour -ne $null) + " " + ($o.Clarity -ne $null)) "0 0.1 True True"
 Check "  one side missing or empty: the other, as it is" ("" + [object]::ReferenceEquals($recType::Over($null, $under), $under) + [object]::ReferenceEquals($recType::Over($top, (NewRecord "T")), $top)) "TrueTrue"
-Check "  how many settings of its own (a kind of glass and its numbers count once)" ("" + $under.OwnCount + " " + $o.OwnCount) "1 1"
 
 # ---- the renderer's own copy of the defaults ------------------------------------------------
 # GlassParams.Default() (Glass\GlassParams.cs) is what the GPU preview draws with; it must be

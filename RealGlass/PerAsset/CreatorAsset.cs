@@ -12,7 +12,7 @@ namespace RealGlass.PerAsset
     /// texel 0, the editor's building; RoomFitMap: its windows measured), written into
     /// RealGlassDefinition.xml beside its .crp when the asset is saved, put into the upload when it is
     /// shared (CreatorPatches), and read back when it is opened again. The creator window
-    /// (UI.CreatorPanel) shows and changes it, with the preview's four switches.
+    /// (UI.CreatorPanel) shows and changes it, with the preview's three switches.
     /// </summary>
     /// <remarks>
     /// Names (IL, 2026-10-23): the editor saves to Addons\Assets\&lt;save name&gt;.crp, the prefab inside
@@ -28,11 +28,10 @@ namespace RealGlass.PerAsset
         /// </summary>
         private const int LoadFrames = 600;
 
-        // The preview's switches: the creator window's own, never saved (the next asset editor starts
-        // as players see it). Defaults: the glass on, at the mod's default settings.
-        public const bool DefaultGameLook = false, DefaultPlayersSee = true, DefaultShowMask = false, DefaultRoomsByDay = false;
-        public static readonly BoolSetting GameLook = new BoolSetting("CreatorGameLook", DefaultGameLook, false);
-        public static readonly BoolSetting PlayersSee = new BoolSetting("CreatorPlayersSee", DefaultPlayersSee, false);
+        // The preview's switches: the creator window's own, never saved. Each asset editor starts
+        // without the mod's glass: how most of a creator's subscribers see the asset.
+        public const bool DefaultShowGlass = false, DefaultShowMask = false, DefaultRoomsByDay = false;
+        public static readonly BoolSetting ShowGlass = new BoolSetting("CreatorShowGlass", DefaultShowGlass, false);
         public static readonly BoolSetting ShowMask = new BoolSetting("CreatorShowMask", DefaultShowMask, false);
         public static readonly BoolSetting RoomsByDay = new BoolSetting("CreatorRoomsByDay", DefaultRoomsByDay, false);
 
@@ -251,24 +250,19 @@ namespace RealGlass.PerAsset
         }
 
         /// <summary>
-        /// The glass the editor draws with: the mod's default settings while the preview is "as players
-        /// see it", else the creator's own (RealGlass.xml); none at all for the game's own look; the
-        /// window's view of what counts as glass; the rooms by day if asked (the asset editor has no night).
+        /// The glass the editor draws with: none until the window's Real Glass switch is on (the game's
+        /// own look, how most subscribers see the asset), then the mod's default settings (what a player
+        /// with the mod sees, whatever the creator's own RealGlass.xml says); the window's view of what
+        /// counts as glass; the rooms by day if asked (the asset editor has no night).
         /// </summary>
-        public static GlassParams Preview(GlassParams own)
+        public static GlassParams Preview()
         {
-            GlassParams p = PlayersSee.value ? GlassParams.Default() : own;
-            p.Enabled = p.Enabled && !GameLook.value;
+            GlassParams p = GlassParams.Default();
+            p.Enabled = ShowGlass.value;
             p.ShowMask = ShowMask.value;
             if (RoomsByDay.value)
                 p.InteriorsByDay = true;
             return p;
-        }
-
-        /// <summary>The kind of glass a setting left to the players shows as: the default's, or the creator's own.</summary>
-        public static int GlobalPreset
-        {
-            get { return PlayersSee.value || !Settings.IsInitialised ? Settings.Defaults.GlassPreset : Settings.GlassPreset.value; }
         }
 
         /// <summary>The creator window's status line.</summary>
@@ -280,11 +274,9 @@ namespace RealGlass.PerAsset
                 return Localization.Get("Creator.NotBuilding");
 
             string saved = AssetName == null ? Localization.Get("Creator.New")
-                : Localization.Get(Changed ? "Creator.Changed" : "Creator.Saved", AssetName);
-            int own = Record != null ? Record.OwnCount : 0;
-            string mine = own > 0 ? Localization.Get("Creator.Own", own) : Localization.Get("Creator.None");
+                : (Changed ? Localization.Get("Creator.Changed") : Localization.Get("Creator.Saved", AssetName));
             string rooms = AssetSelection.RoomsText(GlassController.RoomFitOf(Info));
-            return saved + "\n" + mine + (rooms.Length > 0 ? "\n" + rooms : "");
+            return rooms.Length > 0 ? saved + "\n" + rooms : saved;
         }
     }
 }

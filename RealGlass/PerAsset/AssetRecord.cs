@@ -86,24 +86,6 @@ namespace RealGlass.PerAsset
             return (AssetRecord)MemberwiseClone();
         }
 
-        /// <summary>How many settings it has of its own (a kind of glass and its three numbers count once).</summary>
-        public int OwnCount
-        {
-            get
-            {
-                int n = 0;
-                if (Strength.HasValue) n++;
-                if (PaintedDetail.HasValue) n++;
-                if (Preset.HasValue || Colour.HasValue || Reflectivity.HasValue || Clarity.HasValue) n++;
-                if (OwnColour.HasValue) n++;
-                if (Threshold.HasValue) n++;
-                if (NightWindows.HasValue) n++;
-                if (Interiors.HasValue) n++;
-                if (LodGlass.HasValue) n++;
-                return n;
-            }
-        }
-
         /// <summary>
         /// The settings of <paramref name="top"/> where it has them, else <paramref name="under"/>'s: a
         /// player's own glass for an asset (RealGlassAssets.xml) over the glass its creator shipped with
