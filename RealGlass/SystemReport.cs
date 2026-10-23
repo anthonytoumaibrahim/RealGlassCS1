@@ -89,7 +89,11 @@ namespace RealGlass
                         " switching=" + Percent(Settings.InteriorsSwitching, Settings.Defaults.InteriorsSwitching) +
                         " brightness=" + Percent(Settings.InteriorsBrightness, Settings.Defaults.InteriorsBrightness) +
                         " coloured=" + Percent(Settings.InteriorsColoured, Settings.Defaults.InteriorsColoured) +
-                        " curtains=" + Percent(Settings.InteriorsCurtains, Settings.Defaults.InteriorsCurtains));
+                        " curtains=" + Percent(Settings.InteriorsCurtains, Settings.Defaults.InteriorsCurtains) +
+                        " | vehicles=" + On(Settings.VehicleGlass, Settings.Defaults.VehicleGlass) +
+                        " tinted=" + Percent(Settings.VehicleTinted, Settings.Defaults.VehicleTinted) +
+                        " reflections=" + Percent(Settings.VehicleReflections, Settings.Defaults.VehicleReflections) +
+                        " coat=" + Percent(Settings.VehicleCoat, Settings.Defaults.VehicleCoat));
 
                 Log.Msg("panel key: " + (Settings.PanelKey != null ? SettingsXmlFormat.FormatKey(Settings.PanelKey.value) : "?") +
                         ", Unified UI wanted=" + On(Settings.UseUnifiedUI, Settings.Defaults.UseUnifiedUI) +

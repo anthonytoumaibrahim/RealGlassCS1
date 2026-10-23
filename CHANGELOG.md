@@ -5,6 +5,20 @@ the mod's name in the game.
 
 ## 1.1.4 — unreleased
 
+### New
+
+- **Glass on vehicles**, on a tab of its own (Vehicles). The windows of every vehicle close enough to
+  see get real car glass: the street, the buildings and the sky in them, a dark inside behind them.
+  Exactly the windows the game itself treats as windows on each vehicle, nothing else. Its lamps --
+  headlights, brake lights, indicators -- get a lens over the game's own light. At night the windows
+  stay dark. The tab has the share of vehicles with tinted windows (5% by default; each such car its
+  own shade of tint film, the rest clear glass) and how strongly the glass and paint reflect. Drawn
+  once per vehicle model in view (GPU instancing), not once per vehicle.
+- **A clear coat on vehicle paint** (the Vehicles tab, on by default): the paint mirrors the sky and
+  the street and catches the sun, as a car's lacquer does -- most of all on dark cars. Only the paint
+  the game recolours gets it: tyres, wheels, trim, grilles and lights stay as they are. Vehicles
+  painted in a fixed livery (no recolouring) don't get it yet.
+
 ## 1.1.3 — 2026-10-22
 
 ### Fixed

@@ -31,6 +31,7 @@ public static class BundleBuilder
         "Assets/RealGlass/WaterSurfaceMask.shader",
         "Assets/RealGlass/WaterSky.shader",
         "Assets/RealGlass/WaterWaves.shader",
+        "Assets/RealGlass/VehicleGlass.shader",
     };
 
     /// <summary>
@@ -102,8 +103,50 @@ public static class BundleBuilder
         Debug.Log("BUNDLE BUILD ALL OK");
     }
 
+    /// <summary>
+    /// The vehicles' glass is drawn with GPU instancing (Graphics.DrawMeshInstanced), so its shader's
+    /// INSTANCING_ON variant must be in the bundles. Unity 5.6 strips instancing variants that no
+    /// material in the build asks for ("Instancing Variants: Strip Unused", Graphics settings), and
+    /// these bundles hold shaders, no materials: the first build of VehicleGlass had 2 programs an API,
+    /// the instanced pair gone, silently. So the setting is put to keep them all, read by its own
+    /// option names (the serialized enum), and logged.
+    /// </summary>
+    private static bool KeepInstancingVariants()
+    {
+        Object[] settings = AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/GraphicsSettings.asset");
+        SerializedProperty p = settings.Length > 0 ? new SerializedObject(settings[0]).FindProperty("m_InstancingStripping") : null;
+        if (p == null)
+        {
+            Debug.LogError("BUNDLE BUILD FAILED: no m_InstancingStripping in the Graphics settings");
+            return false;
+        }
+
+        string[] names = p.propertyType == SerializedPropertyType.Enum ? p.enumNames : new string[0];
+        int keep = System.Array.FindIndex(names, n => n.Replace(" ", "").ToLowerInvariant() == "keepall");
+        if (keep < 0)
+        {
+            Debug.LogError("BUNDLE BUILD FAILED: m_InstancingStripping has no \"Keep All\" (" + p.propertyType + ": " + string.Join(", ", names) + ")");
+            return false;
+        }
+
+        if (p.enumValueIndex != keep)
+        {
+            Debug.Log("BUNDLE BUILD: instancing variants were \"" + names[p.enumValueIndex] + "\"; now \"" + names[keep] + "\"");
+            p.enumValueIndex = keep;
+            p.serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            AssetDatabase.SaveAssets();
+        }
+        else
+        {
+            Debug.Log("BUNDLE BUILD: instancing variants \"" + names[keep] + "\"");
+        }
+        return true;
+    }
+
     private static bool BuildOne(Target target)
     {
+        if (!KeepInstancingVariants())
+            return false;
         PlayerSettings.SetUseDefaultGraphicsAPIs(target.BuildTarget, false);
         PlayerSettings.SetGraphicsAPIs(target.BuildTarget, target.Apis);
 

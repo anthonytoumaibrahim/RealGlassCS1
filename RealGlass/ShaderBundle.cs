@@ -49,6 +49,9 @@ namespace RealGlass
         /// <summary>The Water tab: the ripples as an ocean's waves, by an inverse FFT of a wind-sea spectrum.</summary>
         public const string WaterWaves = "RealGlass/WaterWaves";
 
+        /// <summary>The Vehicles tab: the glass of every vehicle near enough to be drawn in full, instanced per model.</summary>
+        public const string VehicleGlass = "RealGlass/VehicleGlass";
+
         /// <summary>
         /// "RealGlass.Resources.realglass-win.bundle" and so on: the csproj's LogicalName for each
         /// bundle, with the name from <see cref="BundleFor"/> in between.

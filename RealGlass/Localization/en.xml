@@ -58,6 +58,7 @@
   <String key="Tab.Panes">Panes</String>
   <String key="Tab.Interiors">Interiors</String>
   <String key="Tab.Water">Water</String>
+  <String key="Tab.Vehicles">Vehicles</String>
 
   <String key="Key.Press">Press a key</String>
 
@@ -336,6 +337,27 @@
 
   <String key="WaterCityLength.Label">City reflection length</String>
   <String key="WaterCityLength.Tooltip">How much longer than the city its reflection is drawn.</String>
+
+  <!-- ==================== F8 panel: Vehicles ==================== -->
+  <!-- Glass on the vehicles near the camera: their windows, and the lenses of their lamps. -->
+
+  <String key="VehicleGlass.Label">Glass on vehicles</String>
+  <String key="VehicleGlass.Tooltip">Windows and lamp lenses, on vehicles close enough to see them.</String>
+
+  <!-- The share of vehicles whose windows are tinted (each car its own shade of tint film); the
+       others have clear glass. -->
+  <String key="VehicleTinted.Label">Tinted windows</String>
+  <String key="VehicleTinted.Tooltip">The share of vehicles with tinted windows; the rest are clear.</String>
+
+  <!-- How strongly the glass and the paint's clear coat mirror the sky and the street. -->
+  <String key="VehicleReflections.Label">Reflections</String>
+  <String key="VehicleReflections.Tooltip">How strongly the glass and paint mirror the sky and street.</String>
+
+  <!-- The clear lacquer over a car's paint, which mirrors the sky and the street. Only the paint the
+       game recolours gets it, not tyres, trim or lights. -->
+  <String key="VehicleCoat.Label">Clear coat on paint</String>
+  <String key="VehicleCoat.Tooltip">The paint mirrors the sky and street, as lacquer does.</String>
+
 
   <!-- ==================== The building window ==================== -->
   <!-- One building asset's own glass: every copy of it, in every city. Opened by clicking a

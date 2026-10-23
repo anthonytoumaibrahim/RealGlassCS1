@@ -66,7 +66,7 @@ namespace RealGlass.UI
 
         private static readonly PanelPage[] Tabs =
         {
-            PanelPage.Glass, PanelPage.Reflections, PanelPage.Panes, PanelPage.Interiors, PanelPage.Water,
+            PanelPage.Glass, PanelPage.Reflections, PanelPage.Panes, PanelPage.Interiors, PanelPage.Water, PanelPage.Vehicles,
         };
 
         /// <summary>
@@ -82,6 +82,7 @@ namespace RealGlass.UI
                 case PanelPage.Panes: return "grid-2x2";
                 case PanelPage.Interiors: return "sofa";
                 case PanelPage.Water: return "waves";
+                case PanelPage.Vehicles: return "car";
                 default: return null;
             }
         }

@@ -40,7 +40,7 @@ namespace RealGlass.UI
     /// Which tab of the in-game (F8) panel a row appears on. None = not in it. (One building asset's
     /// own glass is the building window's: PerAsset.AssetCatalog's rows, not this catalog's.)
     /// </summary>
-    public enum PanelPage { None, Glass, Reflections, Panes, Interiors, Water }
+    public enum PanelPage { None, Glass, Reflections, Panes, Interiors, Water, Vehicles }
 
     /// <summary>General = the game's mod options page (no tabs). None = not on it.</summary>
     public enum OptionsPage { None, General }
@@ -755,6 +755,11 @@ namespace RealGlass.UI
             return GlassOn() && Settings.InteriorsEnabled != null && Settings.InteriorsEnabled.value;
         }
 
+        private static bool VehiclesOn()
+        {
+            return GlassOn() && Settings.VehicleGlass != null && Settings.VehicleGlass.value;
+        }
+
         private static bool WaterOn()
         {
             return Settings.WaterEnabled != null && Settings.WaterEnabled.value;
@@ -835,6 +840,7 @@ namespace RealGlass.UI
             BuildPanes();
             BuildInteriors();
             BuildWater();
+            BuildVehicles();
 
             // The options page, top to bottom: the mod, what the glass may cost, then diagnostics
             // and the reset last.
@@ -1459,6 +1465,64 @@ namespace RealGlass.UI
         /// F8 -> Water: the map's water (Water/WaterController.cs), on by default, apart from the glass.
         /// Its switch, then six headings: color, ripples, foam, sky, glitter, city.
         /// </summary>
+        /// <summary>
+        /// F8 -> Vehicles: glass on every vehicle near enough for the game to draw it in full
+        /// (Vehicles/VehicleGlassDraw.cs): the windows its own vehicle shader shows as windows, the
+        /// lamps' lenses, a dark inside, and a clear coat over the paint. Its own look (automotive glass,
+        /// Glass/VehicleGlassLook.cs: clear, tinted on a share of the vehicles), not the Glass tab's (the
+        /// author, 2026-10-23). No headings: four rows, and a heading new to a player's file would open folded
+        /// (PanelOpenGroups lists the open ones).
+        /// </summary>
+        private static void BuildVehicles()
+        {
+            Add(new Row
+            {
+                Kind = RowKind.Toggle,
+                Panel = PanelPage.Vehicles,
+                Bool = Settings.VehicleGlass,
+                DefaultBool = Settings.Defaults.VehicleGlass,
+                Enabled = GlassOn,
+                AfterChange = State("glass on vehicles", OnOff(Settings.VehicleGlass)),
+            });
+
+            // The share of vehicles with tinted windows, chosen per vehicle; the rest clear glass (VehicleGlassLook).
+            Add(new Row
+            {
+                Kind = RowKind.Percent,
+                Panel = PanelPage.Vehicles,
+                Float = Settings.VehicleTinted,
+                DefaultFloat = Settings.Defaults.VehicleTinted,
+                Min = 0f, Max = 100f, Step = 1f,
+                Enabled = VehiclesOn,
+                AfterChange = Changed,
+            });
+
+            // 100% = three times real car glass's and lacquer's own reflectance (VehicleGlassLook.ReflectionBase):
+            // the glass and the coat both.
+            Add(new Row
+            {
+                Kind = RowKind.Percent,
+                Panel = PanelPage.Vehicles,
+                Float = Settings.VehicleReflections,
+                DefaultFloat = Settings.Defaults.VehicleReflections,
+                Min = 0f, Max = 300f, Step = 5f,
+                Enabled = VehiclesOn,
+                AfterChange = Changed,
+            });
+
+            // The clear coat over the paint (what the game recolours): 100% real lacquer, 0% none.
+            Add(new Row
+            {
+                Kind = RowKind.Percent,
+                Panel = PanelPage.Vehicles,
+                Float = Settings.VehicleCoat,
+                DefaultFloat = Settings.Defaults.VehicleCoat,
+                Min = 0f, Max = 100f, Step = 5f,
+                Enabled = VehiclesOn,
+                AfterChange = Changed,
+            });
+        }
+
         private static void BuildWater()
         {
             Add(new Row

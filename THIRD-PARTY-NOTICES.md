@@ -108,7 +108,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 | --- | --- | --- | --- |
 | `RealGlass/Resources/GlassIcon.png` | [*Window*](https://openclipart.org/detail/173814/window) by ali2013 on Openclipart (2012), as an 80×80 PNG with a transparent background | Public domain (CC0 1.0) | The mod's button icon, embedded in the DLL. No attribution is required; this entry records where it came from, with thanks |
 | `RealGlass/Resources/rooms-night.bytes`, `rooms-day.bytes` | 64 views cut from 37 of [Poly Haven](https://polyhaven.com/hdris/indoor)'s indoor HDRI panoramas (2k), each listed with its direction in `tools/interiors/rooms.txt`; reprojected onto box rooms, graded for day and night and compressed by `tools/interiors/build-rooms.ps1` | CC0 1.0 ([Poly Haven's licence](https://polyhaven.com/license): "You can redistribute them ... even in a product you sell"; no attribution required) | The pictures of the rooms behind the windows (the Interiors tab), embedded in the DLL. Views with people in them, walls of paintings and readable brand signs were left out |
-| The panels' icons: the tab icons (`RealGlass/Resources/PanelIcons.png`, listed in `PanelIcons.lucide.txt`) and the library's glyphs (`ModsLibCS1/sprites/sheet.png`) | Drawn by the ModsLibCS1 UI library's tools (the library is compiled into the DLL) from the path data of [Lucide](https://lucide.dev) icons (lucide-static 0.460.0): building-2, sparkles, grid-2x2, sofa, waves (the tabs); rotate-ccw, chevron-down, chevron-right, x (reset, fold, dropdown, close) | ISC (copyright Lucide Contributors; portions Cole Bemis, as part of Feather, MIT); its notice follows | The tab icons, the reset icons, the close cross and the dropdown arrow of the F8 panel and the building window, embedded in the DLL |
+| The panels' icons: the tab icons (`RealGlass/Resources/PanelIcons.png`, listed in `PanelIcons.lucide.txt`) and the library's glyphs (`ModsLibCS1/sprites/sheet.png`) | Drawn by the ModsLibCS1 UI library's tools (the library is compiled into the DLL) from the path data of [Lucide](https://lucide.dev) icons (lucide-static 0.460.0): building-2, sparkles, grid-2x2, sofa, waves, car (the tabs); rotate-ccw, chevron-down, chevron-right, x (reset, fold, dropdown, close) | ISC (copyright Lucide Contributors; portions Cole Bemis, as part of Feather, MIT); its notice follows | The tab icons, the reset icons, the close cross and the dropdown arrow of the F8 panel and the building window, embedded in the DLL |
 
 Lucide's licence, as published in its repository:
 
@@ -192,7 +192,10 @@ attribute-preserving resampling of simplified meshes (1998), through Fujimoto, T
 uniform grid (1986), Möller and Trumbore's test and Williams's mip-maps (1983), the two glasses
 compared by Jaccard's index (1912) -- and, to fit the rooms to each asset's own windows, the
 period of its rows and columns of windows by autocorrelation as Rabiner found the pitch of speech
-(1977), refined by epoch folding (Leahy et al. 1983) --
+(1977), refined by epoch folding (Leahy et al. 1983) -- and for vehicles, automotive glass as a
+slab of soda-lime with the light transmittance UN Regulation No. 43 asks of a windscreen, and the
+paint's clear coat as Filament's clear-coat layer (Guy and Agopian) with Autodesk Standard
+Surface's coat roughness --
 listed with links under *References* below. Apart from the ray tracer above, the implementations
 were written for this mod.
 
@@ -411,6 +414,15 @@ Every technique here has shipped in a game or is published:
     Signal Processing 25(1), 1977) -- then refined to the millimetre by epoch folding, the period
     whose folded profile varies most (D. A. Leahy et al., **On searches for pulsed emission with
     application to four globular cluster X-ray sources**, The Astrophysical Journal 266, 1983).
+22. Vehicles: their glass a slab of soda-lime (n 1.52, its two surfaces and the light passing
+    between them summed as a slab's multiple reflections), clear by the at least 70% light
+    transmittance **UN Regulation No. 43** asks of a windscreen
+    ([UNECE](https://unece.org/transport/vehicle-regulations-wp29/standards/addenda-1958-agreement-regulations-41-60));
+    their paint under a clear coat as **Filament**'s clear-coat layer -- lacquer of n 1.5, the paint
+    beneath dimmed by the coat's Fresnel reflectance (Romain Guy and Mathias Agopian, **Physically
+    Based Rendering in Filament**, [documentation](https://google.github.io/filament/Filament.html))
+    -- at the default coat roughness of **Autodesk Standard Surface**
+    ([specification](https://autodesk.github.io/standard-surface/)).
 
 ## Trademarks
 

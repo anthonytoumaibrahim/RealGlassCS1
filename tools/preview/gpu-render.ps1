@@ -29,6 +29,10 @@ param(
     [string]$Api = "d3d11",
     [double]$Storey = 3.8,
     [switch]$Shapes,
+    # Real vehicle assets for the street south of the middle block (views car, carback, cars,
+    # carsabove, carsfar, night...): Workshop .crp files on this machine, ";"-separated, read by the
+    # editor (Assets\Editor\PreviewVehicles.cs) -- preview pictures only, nothing of them is copied.
+    [string]$Vehicles = "",
     [string]$Unity = "C:\Program Files\Unity\Editor\Unity.exe"
 )
 
@@ -57,6 +61,7 @@ $env:RG_SUN = $Sun.ToString($inv)
 $env:RG_EXPOSURE = $Exposure.ToString($inv)
 $env:RG_STOREY = $Storey.ToString($inv)
 $env:RG_SHAPES = $(if ($Shapes) { "1" } else { "0" })
+$env:RG_VEHICLES = $Vehicles
 
 if (Test-Path $log) { Remove-Item $log -Force }
 $sw = [Diagnostics.Stopwatch]::StartNew()

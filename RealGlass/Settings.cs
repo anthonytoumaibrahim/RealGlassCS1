@@ -365,6 +365,18 @@ namespace RealGlass
         /// <summary>1..3: the city's reflection drawn this many times as long as the city is tall (1 = a mirror).</summary>
         public static FloatSetting WaterCityLength { get; private set; }
 
+        /// <summary>Glass on vehicles (Vehicles/VehicleGlassDraw.cs): the windows the game's own vehicle shaders show as windows, and the lamps' lenses.</summary>
+        public static BoolSetting VehicleGlass { get; private set; }
+
+        /// <summary>0..1: the share of vehicles with tinted windows (Glass/VehicleGlassLook.cs; the rest clear glass).</summary>
+        public static FloatSetting VehicleTinted { get; private set; }
+
+        /// <summary>0..3: the vehicles' reflections, the glass's and the paint's coat (1 = VehicleGlassLook.ReflectionBase times physics).</summary>
+        public static FloatSetting VehicleReflections { get; private set; }
+
+        /// <summary>0..1: the clear coat over the vehicles' paint (Glass/VehicleGlassLook.cs; 1 = real lacquer, 0 none).</summary>
+        public static FloatSetting VehicleCoat { get; private set; }
+
         /// <summary>
         /// Every default, in one place. A new one reaches only new installs and a Reset: a player's
         /// file already lists every row.
@@ -498,6 +510,22 @@ namespace RealGlass
 
             /// <summary>130%: the city's reflection a little longer than a mirror's (the author's, 2026-10-07).</summary>
             public const float WaterCityLength = 1.3f;
+
+            /// <summary>Glass on vehicles on (the author, 2026-10-23: "go ahead with the in-game side").</summary>
+            public const bool VehicleGlass = true;
+
+            /// <summary>5% of vehicles (the author, 2026-10-23: "percentage of cars which have tinted windows ... like 5%").</summary>
+            public const float VehicleTinted = Glass.VehicleGlassLook.DefaultTintedShare;
+
+            /// <summary>
+            /// 100% = three times physics (VehicleGlassLook.ReflectionBase): the old scale's 300%, where the
+            /// author played, made the base (2026-10-23: "increasing the base reflections ... going more than
+            /// 300% but not actually make the slider go above that").
+            /// </summary>
+            public const float VehicleReflections = 1f;
+
+            /// <summary>Real lacquer over the paint (his pick from the clear-coat trial, 2026-10-23).</summary>
+            public const float VehicleCoat = 1f;
 
             /// <summary>Moving ripples on (the author, 2026-10-05: step 1 of the water plan, "a proof of concept").</summary>
             public const bool WaterRipples = true;
@@ -651,6 +679,10 @@ namespace RealGlass
                 WaterCityWaves = new FloatSetting("WaterCityWaves", Defaults.WaterCityWaves);
                 WaterCityStreaks = new FloatSetting("WaterCityStreaks", Defaults.WaterCityStreaks);
                 WaterCityLength = new FloatSetting("WaterCityLength", Defaults.WaterCityLength);
+                VehicleGlass = new BoolSetting("VehicleGlass", Defaults.VehicleGlass);
+                VehicleTinted = new FloatSetting("VehicleTinted", Defaults.VehicleTinted);
+                VehicleReflections = new FloatSetting("VehicleReflections", Defaults.VehicleReflections);
+                VehicleCoat = new FloatSetting("VehicleCoat", Defaults.VehicleCoat);
 
                 Language = new IntSetting("Language", Defaults.Language);
                 PanelKey = new SavedInputKey("PanelKey", InMemory, DefaultPanelKey, false);

@@ -47,6 +47,39 @@ public static class GlassPreview
     private const string UtilShaderPath = "Assets/RealGlass/GlassUtil.shader";
     private const string StandInPath = "Assets/Editor/PreviewBuilding.shader";
     private const string CloudsPath = "Assets/Editor/PreviewClouds.shader";
+    private const string VehicleGlassPath = "Assets/RealGlass/VehicleGlass.shader";
+    private const string VehicleStandInPath = "Assets/Editor/PreviewVehicle.shader";
+
+    /// <summary>
+    /// The vehicles' glass, the variant's "Veh.*" keys: Veh.Tinted=0..1 (VehicleGlassLook: the share of
+    /// vehicles with tinted windows), Veh.Strength / Veh.Refl (the Reflections slider: 1 = 3x physics) / Veh.Glint /
+    /// Veh.Edge / Veh.Rough (numbers), Veh.Lenses=0 (no lens on the lamps), Veh=0 (no vehicle glass),
+    /// Inst=0 (one DrawMesh a vehicle instead of DrawMeshInstanced); Bld=0: no glass on the buildings.
+    /// </summary>
+    /// <summary>The view is by night (the vehicles' lights).</summary>
+    private static bool _night;
+
+    private static float _vehTinted = VehicleGlassLook.DefaultTintedShare;
+    private static float _vehStrength = 1f, _vehRefl = 1f, _vehGlint = 1f, _vehEdge = 1f, _vehRough = 0.03f;
+    private static bool _vehLenses = true, _vehOff, _vehSingle, _bldOff;
+    // The paint's clear coat: Veh.Coat=0..1, Veh.CoatRough=x, Veh.Liveries=1 (also an unmasked
+    // body light enough to be a livery: it coats the wheels too), Veh.Cabin=x (the cabin's light behind
+    // a window, a share of the sky's).
+    private static float _vehCoat, _vehCoatRough = VehicleGlassLook.CoatRoughness, _vehCabin = VehicleGlassLook.Cabin;
+    private static bool _vehLiveries;
+
+    private sealed class Vehicle
+    {
+        public PreviewVehicleAsset Asset;
+        public Matrix4x4 Matrix;
+        public Color Paint;
+
+        /// <summary>Its own random number (VehicleGlassLook.Seed of its id): whether its windows are tinted, and how dark.</summary>
+        public float Seed;
+
+        /// <summary>The game's _LightState: front, rear, left, right (by day the brake lights of a few, an indicator).</summary>
+        public Vector4 DayLights, NightLights;
+    }
 
     /// <summary>The variant's "Debug=n": the shader's check view (0 = the picture); "Level=n": the level view 9 shows.</summary>
     private static float _debug, _debugLevel;
@@ -136,6 +169,13 @@ public static class GlassPreview
 
         /// <summary>The rooms fitted to each stand-in's windows (the mod's RoomFit and RoomFitTextures, same files).</summary>
         public RoomFitTextures RoomFits = new RoomFitTextures();
+
+        /// <summary>Real vehicle assets (RG_VEHICLES: Workshop .crp files) along the street at StreetZ.</summary>
+        public List<Vehicle> Vehicles = new List<Vehicle>();
+        public List<PreviewVehicleAsset> VehicleAssets = new List<PreviewVehicleAsset>();
+        public Material VehicleStandIn, VehicleGlass;
+        public MaterialPropertyBlock VehicleBlock;
+        public int VehicleDraws;
     }
 
     /// <summary>The variant's "Fit=0": the rooms on the storey grid, as before they were fitted to the windows.</summary>
@@ -342,7 +382,84 @@ public static class GlassPreview
         UnityEngine.Object.DestroyImmediate(s.Clouds.GetComponent<Collider>());
         s.Clouds.GetComponent<MeshRenderer>().sharedMaterial = new Material(Load(CloudsPath));
         s.Clouds.transform.localScale = Vector3.one * 9000f;
+
+        BuildVehicles(s);
         return s;
+    }
+
+    private static string MeanOf(Texture2D t)
+    {
+        Color[] px = t.GetPixels(Mathf.Min(4, t.mipmapCount - 1));
+        Color m = Color.black;
+        foreach (Color c in px)
+            m += c;
+        return Fmt(m / Mathf.Max(px.Length, 1));
+    }
+
+    /// <summary>The vehicles' street: the road along z = -300 (14 m of asphalt), the low blocks of the
+    /// city's south edge on its sunny side, the towers of the next blocks north behind it.</summary>
+    private const float StreetZ = -300f;
+
+    /// <summary>
+    /// The vehicles' street (StreetZ) with real cars from RG_VEHICLES (";"-separated .crp paths): two
+    /// lanes of traffic and a row parked at each kerb, each car its own paint. A vehicle faces +z in its
+    /// own space (the game's lights tell front from rear by it).
+    /// </summary>
+    private static void BuildVehicles(Scene s)
+    {
+        string list = Env("RG_VEHICLES", "");
+        foreach (string path in list.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries))
+        {
+            try
+            {
+                PreviewVehicleAsset a = PreviewVehicleAsset.Load(path.Trim());
+                s.VehicleAssets.Add(a);
+                Bounds bb = a.Mesh.bounds;
+                Debug.Log("RG PREVIEW: vehicle '" + a.Name + "' " + a.Mesh.vertexCount + " vertices, " + bb.size.ToString("F1") +
+                          " m (min " + bb.min.ToString("F2") + "), floor " + a.Floor.ToString("F2") + ", textures " + a.Main.width + "x" + a.Main.height +
+                          " " + a.Xys.format + ", mean main " + MeanOf(a.Main) + " xys " + MeanOf(a.Xys) + " aci " + MeanOf(a.Aci));
+            }
+            catch (Exception e)
+            {
+                Debug.Log("RG PREVIEW: vehicle not loaded: " + e.Message);
+            }
+        }
+        if (s.VehicleAssets.Count == 0)
+            return;
+
+        s.VehicleStandIn = new Material(Load(VehicleStandInPath));
+        s.VehicleGlass = new Material(Load(VehicleGlassPath));
+        s.VehicleGlass.enableInstancing = true;
+        s.VehicleBlock = new MaterialPropertyBlock();
+        Debug.Log("RG PREVIEW: vehicle glass supported=" + s.VehicleGlass.shader.isSupported + " instancing supported=" + SystemInfo.supportsInstancing);
+
+        Color[] paints =
+        {
+            new Color(0.85f, 0.85f, 0.83f), new Color(0.05f, 0.05f, 0.06f), new Color(0.55f, 0.56f, 0.58f), new Color(0.30f, 0.31f, 0.33f),
+            new Color(0.55f, 0.06f, 0.05f), new Color(0.08f, 0.16f, 0.38f), new Color(0.75f, 0.74f, 0.70f), new Color(0.14f, 0.22f, 0.16f),
+        };
+        // (x, z from the street's centre line, heading in degrees: 90 = towards +x). The hero car of the
+        // "car" views sits at x = 0 in the westbound lane.
+        float[,] spots =
+        {
+            { 0f, 1.8f, -90f }, { -14f, 1.8f, -90f }, { 13f, 1.8f, -90f }, { -31f, 1.8f, -90f },
+            { -7f, -1.8f, 90f }, { 7f, -1.8f, 90f }, { -24f, -1.8f, 90f }, { 22f, -1.8f, 90f },
+            { -20f, -5.6f, 90f }, { -12.5f, -5.6f, 90f }, { 4f, -5.6f, 90f }, { 11.5f, -5.6f, 90f },
+            { -18f, 5.6f, -90f }, { -3f, 5.6f, -90f }, { 18f, 5.6f, -90f }, { 30f, 5.6f, -90f },
+        };
+        for (int k = 0; k < spots.GetLength(0); k++)
+        {
+            PreviewVehicleAsset a = s.VehicleAssets[k % s.VehicleAssets.Count];
+            var v = new Vehicle { Asset = a, Paint = paints[(k * 3) % paints.Length], Seed = VehicleGlassLook.Seed(k + 1) };
+            v.Matrix = Matrix4x4.TRS(new Vector3(spots[k, 0], 0f, StreetZ + spots[k, 1]), Quaternion.Euler(0f, spots[k, 2], 0f), Vector3.one);
+            // In traffic (the first eight): every third braking, the hero car (0) signalling left; parked
+            // cars dark. At night the moving ones with their headlights and tail lights on.
+            bool moving = k < 8;
+            float brake = moving && k % 3 == 0 ? 1f : 0f;
+            v.DayLights = new Vector4(0f, brake, k == 0 ? 1f : 0f, 0f);
+            v.NightLights = moving ? new Vector4(1f, Mathf.Max(0.5f, brake), k == 0 ? 1f : 0f, 0f) : Vector4.zero;
+            s.Vehicles.Add(v);
+        }
     }
 
     /// <summary>
@@ -1341,8 +1458,24 @@ public static class GlassPreview
         bool street = view == "street" || view == "nightstreet";
         if (street)
             camPos = new Vector3(-40f, 3f, -95f);
+        // The vehicles' street (BuildVehicles): "car" the hero car from 7 m, "cars" along the street from
+        // the pavement, "carsabove" from 40 m up and back, "carsfar" from a city-builder's 140 m.
+        string baseView = night ? view.Substring(5) : view;
+        bool lookAt = street;
+        switch (baseView)
+        {
+            // From the street's north side (the cars against the sun) and its south side (the sun behind
+            // the camera, the towers behind the cars).
+            case "car": camPos = new Vector3(-5.5f, 1.6f, StreetZ + 6.0f); target = new Vector3(0f, 0.9f, StreetZ + 1.8f); lookAt = true; break;
+            case "carsouth": camPos = new Vector3(-4.5f, 1.6f, StreetZ - 4.0f); target = new Vector3(0f, 0.9f, StreetZ + 1.8f); lookAt = true; break;
+            case "carback": camPos = new Vector3(6.0f, 1.6f, StreetZ - 3.5f); target = new Vector3(0f, 0.9f, StreetZ + 1.8f); lookAt = true; break;
+            case "cars": camPos = new Vector3(-34f, 1.7f, StreetZ + 7.2f); target = new Vector3(0f, 1.0f, StreetZ - 1f); lookAt = true; break;
+            case "carssouth": camPos = new Vector3(-34f, 1.7f, StreetZ - 7.2f); target = new Vector3(0f, 1.0f, StreetZ + 1f); lookAt = true; break;
+            case "carsabove": camPos = new Vector3(-25f, 22f, StreetZ - 25f); target = new Vector3(0f, 0f, StreetZ); lookAt = true; break;
+            case "carsfar": camPos = new Vector3(-80f, 90f, StreetZ - 50f); target = new Vector3(0f, 0f, StreetZ); lookAt = true; break;
+        }
         s.Camera.transform.position = camPos;
-        s.Camera.transform.rotation = street ? Quaternion.LookRotation(target - camPos) : rot;
+        s.Camera.transform.rotation = lookAt ? Quaternion.LookRotation(target - camPos) : rot;
 
         // The glass, as the mod sets it.
         bool drawGlass = variant.StartsWith("glass", StringComparison.OrdinalIgnoreCase);
@@ -1361,8 +1494,25 @@ public static class GlassPreview
         _budgetOverrides.Clear();
         _asset = new AssetOverride();
         _hour = null;
+        _vehTinted = VehicleGlassLook.DefaultTintedShare;
+        _vehStrength = 1f;
+        _vehRefl = 1f;   // the mod's default (Settings.Defaults.VehicleReflections: 3x physics)
+        _vehGlint = 1f;
+        _vehEdge = 1f;
+        _vehRough = 0.03f;
+        _vehLenses = true;
+        _vehCoat = 1f;   // the mod's default (Settings.Defaults.VehicleCoat)
+        _vehCoatRough = VehicleGlassLook.CoatRoughness;
+        _vehLiveries = false;
+        _vehCabin = VehicleGlassLook.Cabin;
+        _vehOff = false;
+        _vehSingle = false;
+        _bldOff = false;
         if (drawGlass)
             p = Override(p, variant);
+        VehicleGlassLook.Apply(_vehTinted, _vehStrength, _vehRefl, _vehGlint, _vehEdge, _vehRough, _vehLenses,
+                               _vehCoat, _vehCoatRough, _vehLiveries, _vehCabin);
+        _night = night;
 
         // Every building's kind of rooms, as the mod's AssetMap writes it while there are rooms;
         // then the full-glass tower's own settings, as it writes an asset's.
@@ -1461,7 +1611,8 @@ public static class GlassPreview
                " | sky cube " + (p.SkySource == 0 ? s.SkyCube.FacesDone + " faces, " + s.SkyCube.Mips + " mips" + (s.SkyCube.Problem.Length > 0 ? " " + s.SkyCube.Problem : "") : "game map") +
                " | stride " + GlassUniforms.Stride(p.Quality, s.Height).ToString("0", CultureInfo.InvariantCulture) + " x " +
                GlassUniforms.StepCount(p.Quality).ToString("0", CultureInfo.InvariantCulture) +
-               " | budget " + q + " | hi-z " + s.Screen.HiZLevels + " levels | " + lodInfo;
+               " | budget " + q + " | hi-z " + s.Screen.HiZLevels + " levels | " + lodInfo +
+               " | vehicles " + s.Vehicles.Count + ", glass draws " + s.VehicleDraws + (_vehSingle ? " (one by one)" : " (instanced)");
         return pixels;
     }
 
@@ -1486,7 +1637,7 @@ public static class GlassPreview
             s.Block.SetTexture("_ACIMap", b.Aci);
             s.Block.SetVector("_ObjectIndex", b.ObjectIndex);
             Graphics.DrawMesh(b.Mesh, b.Matrix, s.StandIn, 0, s.Camera, 0, s.Block, true, true);
-            if (!drawGlass)
+            if (!drawGlass || _bldOff)
                 continue;
 
             if (_tier == "lod")
@@ -1518,8 +1669,81 @@ public static class GlassPreview
             }
         }
 
-        if (drawGlass && _tier == "group")
+        if (drawGlass && !_bldOff && _tier == "group")
             Graphics.DrawMesh(_lod == "turned" ? s.BakedTurned : s.Baked, Matrix4x4.identity, s.GlassGroup, 0, s.Camera, 0, null, false, false);
+
+        DrawVehicles(s, drawGlass && !_vehOff);
+    }
+
+    /// <summary>
+    /// The vehicles: the game's draw of each (the stand-in, its paint and floor), then -- glass -- ours,
+    /// as the mod will draw it: every copy of one model in ONE Graphics.DrawMeshInstanced with the
+    /// model's maps in a block ("Inst=0": one DrawMesh each, the fallback where instancing is missing).
+    /// </summary>
+    private static void DrawVehicles(Scene s, bool glass)
+    {
+        s.VehicleDraws = 0;
+        if (s.Vehicles.Count == 0)
+            return;
+        foreach (Vehicle v in s.Vehicles)
+        {
+            s.VehicleBlock.Clear();
+            s.VehicleBlock.SetTexture("_MainTex", v.Asset.Main);
+            s.VehicleBlock.SetTexture("_XYSMap", v.Asset.Xys);
+            s.VehicleBlock.SetTexture("_ACIMap", v.Asset.Aci);
+            s.VehicleBlock.SetVector("_FloorParams", v.Asset.Floor);
+            s.VehicleBlock.SetColor("_Color", v.Paint.linear);
+            s.VehicleBlock.SetVector("_LightState", _night ? v.NightLights : v.DayLights);
+            Graphics.DrawMesh(v.Asset.Mesh, v.Matrix, s.VehicleStandIn, 0, s.Camera, 0, s.VehicleBlock, true, true);
+        }
+        if (!glass)
+            return;
+
+        foreach (PreviewVehicleAsset a in s.VehicleAssets)
+        {
+            var matrices = new List<Matrix4x4>();
+            var seeds = new List<float>();
+            foreach (Vehicle v in s.Vehicles)
+            {
+                if (v.Asset != a)
+                    continue;
+                matrices.Add(v.Matrix);
+                seeds.Add(v.Seed);
+            }
+            if (matrices.Count == 0)
+                continue;
+            if (_vehSingle || !SystemInfo.supportsInstancing)
+            {
+                for (int k = 0; k < matrices.Count; k++)
+                {
+                    var block = VehicleGlassBlock(a);
+                    block.SetFloat("_RGVehicleSeed", seeds[k]);
+                    Graphics.DrawMesh(a.Mesh, matrices[k], s.VehicleGlass, 0, s.Camera, 0, block, false, false);
+                    s.VehicleDraws++;
+                }
+            }
+            else
+            {
+                // One number per instance: the block's array, read through UNITY_ACCESS_INSTANCED_PROP.
+                var block = VehicleGlassBlock(a);
+                block.SetFloatArray("_RGVehicleSeed", seeds);
+                Graphics.DrawMeshInstanced(a.Mesh, 0, s.VehicleGlass, matrices.ToArray(), matrices.Count, block, ShadowCastingMode.Off, false, 0, s.Camera);
+                s.VehicleDraws++;
+            }
+        }
+    }
+
+    /// <summary>A model's maps for its glass draw (the game's vehicle shader: Default).</summary>
+    private static MaterialPropertyBlock VehicleGlassBlock(PreviewVehicleAsset a)
+    {
+        var block = new MaterialPropertyBlock();
+        block.SetTexture("_MainTex", a.Main);
+        block.SetTexture("_XYSMap", a.Xys);
+        block.SetTexture("_ACIMap", a.Aci);
+        block.SetVector("_FloorParams", a.Floor);
+        block.SetFloat("_RGVehicleShader", 0f);
+        block.SetVector("_RGVehicleST", new Vector4(1f, 1f, 0f, 0f));
+        return block;
     }
 
     /// <summary>"glass:Trace=0;Reflectivity=0.3" -> the defaults with those GlassParams fields set.</summary>
@@ -1534,6 +1758,30 @@ public static class GlassPreview
             string[] kv = pair.Split('=');
             if (kv.Length != 2)
                 continue;
+            string vkey = kv[0].Trim().ToLowerInvariant();
+            if (vkey == "veh" || vkey.StartsWith("veh.") || vkey == "inst" || vkey == "bld")
+            {
+                string text = kv[1].Trim();
+                switch (vkey)
+                {
+                    case "veh": _vehOff = text == "0"; break;
+                    case "inst": _vehSingle = text == "0"; break;
+                    case "bld": _bldOff = text == "0"; break;
+                    case "veh.tinted": _vehTinted = float.Parse(text, CultureInfo.InvariantCulture); break;
+                    case "veh.strength": _vehStrength = float.Parse(text, CultureInfo.InvariantCulture); break;
+                    case "veh.refl": _vehRefl = float.Parse(text, CultureInfo.InvariantCulture); break;
+                    case "veh.glint": _vehGlint = float.Parse(text, CultureInfo.InvariantCulture); break;
+                    case "veh.edge": _vehEdge = float.Parse(text, CultureInfo.InvariantCulture); break;
+                    case "veh.rough": _vehRough = float.Parse(text, CultureInfo.InvariantCulture); break;
+                    case "veh.lenses": _vehLenses = text != "0"; break;
+                    case "veh.coat": _vehCoat = float.Parse(text, CultureInfo.InvariantCulture); break;
+                    case "veh.coatrough": _vehCoatRough = float.Parse(text, CultureInfo.InvariantCulture); break;
+                    case "veh.liveries": _vehLiveries = text != "0"; break;
+                    case "veh.cabin": _vehCabin = float.Parse(text, CultureInfo.InvariantCulture); break;
+                    default: throw new Exception("no vehicle key '" + kv[0] + "'");
+                }
+                continue;
+            }
             if (kv[0].Trim().Equals("Debug", StringComparison.OrdinalIgnoreCase))
             {
                 // Not a setting: the shader's check views (GlassCommon.cginc, _RGDebug).

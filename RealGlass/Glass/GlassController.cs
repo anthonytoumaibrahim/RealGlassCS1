@@ -1,5 +1,6 @@
 using System;
 using ColossalFramework;
+using RealGlass.Vehicles;
 using UnityEngine;
 
 namespace RealGlass.Glass
@@ -40,6 +41,12 @@ namespace RealGlass.Glass
         private GlassQuality _quality = GlassQuality.ForTier(GlassQuality.Ultra);
         private Vector3 _look;
         private Material _near, _lod, _group, _util;
+
+        /// <summary>RealGlass/VehicleGlass (Vehicles/VehicleGlassDraw.cs), instancing enabled; null where the shader is missing.</summary>
+        private Material _vehicle;
+
+        /// <summary>The vehicles' glass as last logged: on, off, or why not.</summary>
+        private string _loggedVehicles;
         private Texture _atlasRgb, _atlasXys, _atlasAci;
         private int _buildingLayers;
         private bool _layersKnown;
@@ -147,6 +154,19 @@ namespace RealGlass.Glass
                 GlassDraw.Near = _near;
                 GlassDraw.Lod = _lod;
                 GlassDraw.Group = _group;
+
+                // The vehicles' glass: its own shader, drawn instanced (one draw per model in view).
+                VehicleGlassDraw.Reset();
+                Shader vehicle = ShaderBundle.Get(ShaderBundle.VehicleGlass);
+                if (vehicle != null && vehicle.isSupported)
+                {
+                    _vehicle = new Material(vehicle) { name = "RealGlass vehicles", hideFlags = HideFlags.HideAndDontSave, enableInstancing = true };
+                    VehicleGlassDraw.Glass = _vehicle;
+                }
+                else
+                {
+                    Log.Warn("vehicles: the vehicle glass shader is " + (vehicle == null ? "missing" : "not supported here") + ": no glass on vehicles");
+                }
                 FindBuildingLayers();
                 Log.Msg("glass: renderer ready (shader '" + glass.name + "', util " + (_util != null ? "yes" : "no") +
                         "); building layers " + DescribeLayers() + "; " + DescribeSettings(GlassSettings.Read()) +
@@ -256,6 +276,7 @@ namespace RealGlass.Glass
             if (!on)
             {
                 GlassDraw.Active = false;
+                VehicleGlassDraw.Active = false;
                 if (_wasOn)
                 {
                     // Off means nothing runs: the copy leaves the camera, the cube is freed, the
@@ -354,6 +375,7 @@ namespace RealGlass.Glass
 
             GlassDraw.Active = true;
             ProceduralBuildings.Draw();
+            UpdateVehicles();
             _status = "";
             _lastNear = GlassDraw.NearDraws;
             _lastLod = GlassDraw.LodDraws;
@@ -380,6 +402,8 @@ namespace RealGlass.Glass
                            "; hi-z " + (copied ? _screen.HiZLevels + " levels" : "-") +
                            "; rooms " + (rooms ? DescribeRooms(p, f) + "; " + _roomFit.Describe() : "off") +
                            "; " + _lodGlass.Describe() +
+                           "; vehicles " + (VehicleGlassDraw.Active ? VehicleGlassDraw.Vehicles / 5 + " a second in " + VehicleGlassDraw.Draws / 5 +
+                               " draws (materials seen: " + VehicleGlassDraw.DescribeShaders() + ")" : "off") +
                            "; shaders seen: " + GlassDraw.DescribeShaders());
                 ResetCounters();
             }
@@ -405,6 +429,7 @@ namespace RealGlass.Glass
         private void ResetCounters()
         {
             GlassDraw.NearDraws = GlassDraw.LodDraws = GlassDraw.GroupDraws = GlassDraw.NearSkipped = GlassDraw.ProceduralDraws = 0;
+            VehicleGlassDraw.Vehicles = VehicleGlassDraw.Draws = 0;
             _lastNear = _lastLod = _lastFar = 0;
             _frames = 0;
             _frameTime = 0f;
@@ -621,11 +646,40 @@ namespace RealGlass.Glass
             return Mathf.Clamp(Mathf.RoundToInt(c * 255f), 0, 255).ToString("X2");
         }
 
+        /// <summary>
+        /// The vehicles' glass this frame (the buildings' glass is on): its switch, and its look's
+        /// numbers for VehicleGlass.shader (VehicleGlassLook: the Vehicles tab's tinted share, reflections and
+        /// clear coat; glint, edge-on and smoothness as physics has them). One line when it changes.
+        /// </summary>
+        private void UpdateVehicles()
+        {
+            bool wanted = Settings.IsInitialised && Settings.VehicleGlass.value;
+            bool on = wanted && _vehicle != null && !VehicleGlassDraw.Failed;
+            if (on)
+            {
+                VehicleGlassLook.Apply(Settings.VehicleTinted.value, 1f, Settings.VehicleReflections.value, 1f, 1f, VehicleGlassLook.Roughness,
+                    true, Settings.VehicleCoat.value);
+            }
+            VehicleGlassDraw.Active = on;
+
+            string state = on ? "on (tinted windows on " + (Settings.VehicleTinted.value * 100f).ToString("F0") + "% of them, reflections " +
+                                (Settings.VehicleReflections.value * 100f).ToString("F0") + "%, clear coat " +
+                                (Settings.VehicleCoat.value * 100f).ToString("F0") + "%)"
+                : !wanted ? "off" : (VehicleGlassDraw.Failed ? "stopped after an error (above)" : "no shader");
+            if (state != _loggedVehicles)
+            {
+                _loggedVehicles = state;
+                Log.Msg("vehicles: glass " + state);
+            }
+        }
+
         private void OnDestroy()
         {
             GlassDraw.Active = false;
             GlassDraw.Near = GlassDraw.Lod = GlassDraw.Group = null;
             GlassDraw.Reset();
+            VehicleGlassDraw.Reset();
+            VehicleGlassDraw.Glass = null;
             _screen.Detach();
             _sky.Destroy();
             _heights.Destroy();
@@ -635,7 +689,7 @@ namespace RealGlass.Glass
             _roomFit.Destroy();
             ProceduralBuildings.Reset();
             RestoreCamera();
-            foreach (Material m in new[] { _near, _lod, _group, _util })
+            foreach (Material m in new[] { _near, _lod, _group, _util, _vehicle })
             {
                 if (m != null)
                     Destroy(m);
