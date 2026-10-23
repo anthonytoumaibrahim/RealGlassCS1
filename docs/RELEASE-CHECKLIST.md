@@ -24,6 +24,39 @@ that repo's `docs/RELEASE-CHECKLIST.md` has the long version.
 | Screenshots | The item's Steam page, *Add/Edit images* | 5–8, 1920 × 1080 or larger, 16:9, each under 1 MB |
 | Required items, visibility, tags | The item's Steam page | Harmony `2040656402` |
 
+## 0. Next version (1.1.4): asset creators (built 2026-10-23 evening, dev build, not yet seen in the game)
+
+Plan and IL facts: docs/CREATOR-PLAN.md. The Asset Editor gets the creator window (PerAsset/
+CreatorAsset.cs, UI/CreatorPanel.cs, the building window's rows through PerAsset/AssetSource.cs);
+`RealGlassDefinition.xml` beside the .crp (PerAsset/CreatorFile.cs) written on Save
+(SaveAssetPanel.SaveRoutine postfix), put into the upload (WorkshopAssetUploadPanel.PrepareStagingArea
+postfix), read back on load (LoadAssetPanel.OnLoad prefix); players' cities read it
+(PerAsset/CreatorDefinitions.cs) under their own Alt+G glass (PerAsset/AssetRecords.cs,
+AssetRecord.Over). No shader change. test-settings + test-localization pass.
+
+- [ ] **Asset Editor, a building asset of his** (e.g. Sama Beirut, Addons\Assets): F8 / the button
+      open "Real Glass & Water for creators" (no F8 panel, no Alt+G, our water absent). Log:
+      "creator: the asset editor", "creator: editing '<name>' ... opened from ...crp", "creator
+      window built: N controls", "Harmony patches applied ... 3 more classes than before
+      (LoadAssetPatch, SaveAssetPatch, ShareAssetPatch)".
+- [ ] The rows change the edited building live (color, reflectivity, strength 0 = no glass, shininess
+      needed with "Show what counts as glass"); "Without the mod" shows the game's look; "At the mod's
+      default settings" off shows his own RealGlass.xml look; "Show the rooms by day" shows rooms.
+      The status's third line: "Its rooms follow its windows: storeys of X m" (log: "rooms: measuring
+      the windows of the building being made").
+- [ ] Save the asset: log "creator: '<name>' saved as <file>.crp: its glass (...) written to
+      ...\Addons\Assets\RealGlassDefinition.xml"; the status says "Saved with '<name>'". The file reads
+      as designed (one Asset element by the asset name).
+- [ ] Load it again (in the editor): the window comes back with its glass ("its glass from
+      RealGlassDefinition.xml").
+- [ ] Share (Content Manager -> the asset -> Share; cancel before Upload is fine): log "creator: sharing
+      '<package>': 1 asset's glass put into the upload (...\WorkshopStagingArea\<guid>\Content\
+      RealGlassDefinition.xml)"; the staging Content folder holds the .crp and the file.
+- [ ] A city with that asset: log "creators: N loaded building assets carry their creator's glass (...)";
+      the asset shows its creator's glass; Alt+G on it: "Its creator set its glass", rows show the
+      creator's values, moving one = the player's own (Alt+G first), "Restore settings" back to the
+      creator's. Frame time unchanged; no WARN/ERROR.
+
 ## 0. Next version (1.1.4): glass on vehicles (built 2026-10-23, dev build, not yet seen in the game)
 
 The Vehicles tab (car icon): the switch, tinted windows (5% of vehicles), reflections (100% = 3x

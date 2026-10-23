@@ -18,6 +18,23 @@ the mod's name in the game.
   the street and catches the sun, as a car's lacquer does -- most of all on dark cars. Only the paint
   the game recolours gets it: tyres, wheels, trim, grilles and lights stay as they are. Vehicles
   painted in a fixed livery (no recolouring) don't get it yet.
+- **For asset creators: an asset's glass ships with it.** In the Asset Editor the mod's key and
+  button open a window made for creators: the glass of the building being made -- strength, kind of
+  glass, color, reflectivity, clarity, what counts as glass, lit windows, its rooms, its LOD's glass
+  -- shown on it as it is set. Its preview shows the asset without the mod (how subscribers without
+  it see it), at the mod's default settings (what a player with it sees, the default) or at the
+  creator's own, what counts as glass, and the rooms by day (the Asset Editor has no night). Saving
+  the asset writes its glass into `RealGlassDefinition.xml` beside its .crp; sharing it from the
+  Content Manager puts that file into the upload. Opening the asset again brings its glass back.
+- **Players get the creators' glass**: every setting an asset's creator set is that asset's, in
+  every city; the rest follow the player's settings. A player's own settings for an asset (Alt+G)
+  come first, and the building window says when a creator set its glass.
+
+### Changed
+
+- **The Asset Editor is the creators'**: the creator window replaces the F8 panel there, and the
+  building picker and the water stay out of it. The rooms are fitted to the windows of the building
+  being made, measured again when its model or textures change.
 
 ## 1.1.3 — 2026-10-22
 

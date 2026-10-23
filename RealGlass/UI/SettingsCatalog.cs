@@ -147,6 +147,12 @@ namespace RealGlass.UI
         public Action ClearOverride;
 
         /// <summary>
+        /// The language key of the words over the reset icon of a row with <see cref="ClearOverride"/>:
+        /// where it goes back to in that window. Null: "Asset.Global.Hint".
+        /// </summary>
+        public string ResetHintKey;
+
+        /// <summary>
         /// False only for the machine (rendering cost) and housekeeping: what a future profile
         /// would not carry. Nothing reads it yet.
         /// </summary>
@@ -375,7 +381,7 @@ namespace RealGlass.UI
         /// </summary>
         public string ResetHint
         {
-            get { return Localization.Get(ClearOverride != null ? "Asset.Global.Hint" : "Reset.Default"); }
+            get { return Localization.Get(ClearOverride != null ? (ResetHintKey ?? "Asset.Global.Hint") : "Reset.Default"); }
         }
     }
 
@@ -473,12 +479,14 @@ namespace RealGlass.UI
                     " Interiors=" + CountForPanel(PanelPage.Interiors) +
                     " Water=" + CountForPanel(PanelPage.Water) +
                     " | options page=" + CountForOptions(OptionsPage.General) +
-                    " | building window=" + PerAsset.AssetCatalog.Rows.Count +
+                    " | building window=" + PerAsset.AssetCatalog.Picked.Rows.Count +
+                    " | creator window=" + PerAsset.AssetCatalog.Edited.Rows.Count +
                     " | rows with no UI=" + nowhere);
 
             var missing = new List<string>();
             var every = new List<Row>(Rows);
-            every.AddRange(PerAsset.AssetCatalog.Rows);
+            every.AddRange(PerAsset.AssetCatalog.Picked.Rows);
+            every.AddRange(PerAsset.AssetCatalog.Edited.Rows);
             foreach (Row row in every)
             {
                 foreach (string key in row.TextKeys())
@@ -628,6 +636,7 @@ namespace RealGlass.UI
 
             GlassPanel.RefreshOpenPanel();
             AssetPanel.RefreshOpenPanel();
+            CreatorPanel.RefreshOpenPanel();
         }
 
         /// <summary>

@@ -73,7 +73,16 @@ namespace RealGlass.Glass
 
             /// <summary>Remembered from an earlier load (not measured now); Fresh: measured now by RoomFit (worth remembering).</summary>
             public bool Remembered, Fresh;
+
+            /// <summary>The asset editor's building: neither taken from nor written to the cache (it changes as it is made).</summary>
+            public bool Unremembered;
         }
+
+        /// <summary>Where the asset editor draws the building being made (GlassPatches.EditorRenderMeshPatch), as building 0.</summary>
+        private static readonly Vector3 EditorOrigin = new Vector3(0f, 60f, 0f);
+
+        /// <summary>How often the building being made is looked at for a new model or textures, seconds.</summary>
+        private const float EditorCheckEvery = 1f;
 
         private readonly RoomFitTextures _textures = new RoomFitTextures();
         private readonly HashSet<BuildingInfo> _seen = new HashSet<BuildingInfo>();
@@ -97,6 +106,11 @@ namespace RealGlass.Glass
 
         private int _nextRow = 1, _next = 1;
         private float _nextScan, _nextUpload;
+
+        // The asset editor's building being made: which, and its model and shine map as last measured.
+        private BuildingInfo _editorInfo;
+        private string _editorKey;
+        private float _nextEditorCheck;
         private bool _failed, _reported, _warnedRows, _loggedStart;
         private Stopwatch _roundWatch;
         private long _mainTicks;
@@ -189,11 +203,14 @@ namespace RealGlass.Glass
                 Scan();
             }
 
+            EditorAsset(now);
             if (util != null)
                 ReadSome(util);
             Dispatch();
             bool collected = Collect();
             Places();
+            if (_editorInfo != null)
+                Place(0, EditorOrigin, Quaternion.identity, _editorInfo);
 
             if ((_textures.FitsPending || collected) || (_textures.PlacesPending && now >= _nextUpload))
             {
@@ -247,10 +264,56 @@ namespace RealGlass.Glass
         }
 
         /// <summary>
+        /// The asset editor's building being made (PerAsset.CreatorAsset): no building of the buffer,
+        /// drawn as building 0 at <see cref="EditorOrigin"/>. Measured when it comes, and again when its
+        /// model or shine map is another object (the creator imported a new one); never cached.
+        /// </summary>
+        private void EditorAsset(float now)
+        {
+            BuildingInfo info = PerAsset.CreatorAsset.InEditor ? PerAsset.CreatorAsset.Info : null;
+            if (info == null)
+            {
+                if (_editorInfo != null)
+                {
+                    _textures.ClearPlace(0);
+                    _editorInfo = null;
+                    _editorKey = null;
+                }
+                return;
+            }
+
+            if (info == _editorInfo && now < _nextEditorCheck)
+                return;
+            _nextEditorCheck = now + EditorCheckEvery;
+
+            string key = EditorKey(info);
+            if (info == _editorInfo && key == _editorKey)
+                return;
+
+            bool again = info == _editorInfo;
+            _editorInfo = info;
+            _editorKey = key;
+            _seen.Remove(info);
+            if (Add(info, false) > 0)
+                Log.Msg("rooms: measuring the windows of the building being made" + (again ? " again (a new model or textures)" : "") + " (" + key + ")");
+        }
+
+        /// <summary>What the fit of the building being made depends on: its model, its shine map (the objects), their tiling.</summary>
+        private static string EditorKey(BuildingInfo info)
+        {
+            Material m = info.m_material;
+            Texture xys = m != null && m.HasProperty("_XYSMap") ? m.GetTexture("_XYSMap") : null;
+            return "mesh " + (info.m_mesh != null ? info.m_mesh.GetInstanceID() + " " + info.m_mesh.vertexCount + "v" : "none") +
+                   ", shine " + (xys != null ? xys.GetInstanceID() + " " + xys.width + "x" + xys.height : "none") +
+                   (m != null ? ", st " + m.mainTextureScale + m.mainTextureOffset : "");
+        }
+
+        /// <summary>
         /// One asset, if it draws with the glass (a building shader with a shine map, a mesh): its fit
         /// from an earlier load when its fingerprint is the same, else queued to be measured. 1 if either.
+        /// remember: false for the asset editor's building (no cache either way).
         /// </summary>
-        private int Add(BuildingInfo info)
+        private int Add(BuildingInfo info, bool remember = true)
         {
             if (info == null || !_seen.Add(info))
                 return 0;
@@ -272,9 +335,10 @@ namespace RealGlass.Glass
                 Clamp = xys.wrapMode == TextureWrapMode.Clamp,
             };
             job.Fingerprint = RoomFitCache.Fingerprint(info.m_mesh, xys, job.St, job.CellWidth);
+            job.Unremembered = !remember;
 
             RoomFitResult remembered;
-            if (_cache != null && _cache.TryGet(job.Asset, job.Fingerprint, out remembered))
+            if (remember && _cache != null && _cache.TryGet(job.Asset, job.Fingerprint, out remembered))
             {
                 job.Result = remembered;
                 job.Remembered = true;
@@ -519,7 +583,7 @@ namespace RealGlass.Glass
                 Job job = done[i];
                 _round.Add(job);
                 _resultOf[job.Asset] = job.Result;
-                if (job.Fresh && _cache != null)
+                if (job.Fresh && _cache != null && !job.Unremembered)
                     _cache.Put(job.Asset, job.Fingerprint, job.Result);
                 if (!job.Result.Measured)
                     continue;
@@ -876,6 +940,8 @@ namespace RealGlass.Glass
             _resultOf.Clear();
             _round.Clear();
             _failed = false;
+            _editorInfo = null;
+            _editorKey = null;
         }
     }
 }

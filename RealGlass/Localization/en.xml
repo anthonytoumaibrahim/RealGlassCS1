@@ -368,6 +368,8 @@
   <!-- {0}: how many of the asset stand in this city. -->
   <String key="Asset.Own">{0} in this city</String>
   <String key="Asset.Global">{0} in this city. It follows the Glass tab.</String>
+  <!-- Its creator shipped glass settings with it (RealGlassDefinition.xml); the player's come first. -->
+  <String key="Asset.Creator">{0} in this city. Its creator set its glass.</String>
 
   <String key="Asset.Pick">Pick another building</String>
   <String key="Asset.UseGlobal">Restore settings</String>
@@ -429,10 +431,46 @@
   <String key="AssetInteriorsEnabled.Tooltip">A room behind every window of this asset.</String>
 
   <!-- On hover over a row's reset icon here (an icon has no label of its own). -->
-  <String key="Asset.Global.Hint">Back to the global setting</String>
+  <String key="Asset.Global.Hint">Back to the global setting (or its creator's)</String>
 
   <!-- By the cursor while the building picker is on. {0}: the building's asset, as the game names it. -->
   <String key="Picker.Building">{0}\nClick: its glass. Right-click: stop.</String>
+
+  <!-- ==================== The creator window ==================== -->
+  <!-- The asset editor's own window, opened there by the mod's key and button instead of the F8
+       panel: the glass of the building being made, for every player who has the mod. Saved with the
+       asset in RealGlassDefinition.xml and shared with it. Its rows are the building window's. -->
+  <String key="Creator.Title">Real Glass &amp; Water for creators</String>
+
+  <!-- The status line. -->
+  <String key="Creator.NoAsset">Open or make an asset to set its glass here.</String>
+  <String key="Creator.NotBuilding">This asset is not a building: only buildings get glass here.</String>
+  <String key="Creator.New">Not saved yet. Its glass is saved with the asset.</String>
+  <!-- {0}: the asset's name, as typed when saving it. -->
+  <String key="Creator.Saved">Saved with '{0}'.</String>
+  <String key="Creator.Changed">Changed: save '{0}' to keep its glass.</String>
+  <!-- {0}: how many settings the creator set. -->
+  <String key="Creator.Own">Settings of its own: {0}. The rest follow each player's.</String>
+  <String key="Creator.None">Nothing of its own: it follows each player's settings.</String>
+
+  <String key="Creator.OpenFolder">Open its folder</String>
+
+  <!-- On hover over a row's reset icon here. -->
+  <String key="Creator.Global.Hint">Left to each player's own setting</String>
+
+  <String key="Group.CreatorPreview">Preview</String>
+
+  <String key="CreatorGameLook.Label">Without the mod</String>
+  <String key="CreatorGameLook.Tooltip">The game's own look: how subscribers without the mod see it.</String>
+
+  <String key="CreatorPlayersSee.Label">At the mod's default settings</String>
+  <String key="CreatorPlayersSee.Tooltip">Off: at your own settings, as in your cities.</String>
+
+  <String key="CreatorShowMask.Label">Show what counts as glass</String>
+  <String key="CreatorShowMask.Tooltip">Paints its glass magenta. Lower Shininess needed for more.</String>
+
+  <String key="CreatorRoomsByDay.Label">Show the rooms by day</String>
+  <String key="CreatorRoomsByDay.Tooltip">The asset editor has no night.</String>
 
   <!-- ==================== The game's options page ==================== -->
 
@@ -568,6 +606,27 @@
     building). You can edit it while the game is running too: the mod reads it again within a
     second. Take an asset's element out, or delete the file with the game closed, and it has
     the global glass again.
+  </String>
+
+  <!-- ==================== The creators' file (RealGlassDefinition.xml) ==================== -->
+
+  <!-- Shipped with assets, beside their .crp. One line of the file per \n. -->
+  <String key="CreatorFile.Header">
+    Real Glass &amp; Water (Steam Workshop 3823419476): the glass of the building assets in this
+    folder, as their creator set it, for every player who has the mod. A player's own settings
+    for an asset (Alt+G) come first.\n
+    \n
+    One Asset element per asset, named by the asset's own name (as typed when saving it), holding
+    only what its creator set: everything else follows each player's settings. The same names and
+    units as RealGlassAssets.xml:\n
+    - a percentage the way its slider shows it: 47 means 47%; GlassThreshold goes from 10 to 95;\n
+    - GlassColor as #RRGGBB; GlassNightWindows, InteriorsEnabled and LodGlassFromModel as true
+    or false;\n
+    - GlassPreset as the number of a kind of glass (0 Custom, 1 to 10).\n
+    \n
+    The asset editor writes this file when the asset is saved (set its glass in the creator
+    window: the mod's key or button there), and puts it into the upload when the asset is
+    shared from the Content Manager. Uploading another way, put this file beside the .crp.
   </String>
 
 </Language>

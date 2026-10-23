@@ -38,10 +38,16 @@ namespace RealGlass.PerAsset
             get { return Info != null ? Info.name : null; }
         }
 
-        /// <summary>The asset's own glass as stored, or null while it follows every global setting.</summary>
+        /// <summary>The asset's own glass as the player stored it, or null while it follows its creator's and the global settings.</summary>
         public static AssetRecord Record
         {
             get { return Info != null ? AssetFile.Get(Info.name) : null; }
+        }
+
+        /// <summary>The glass its creator shipped with it (RealGlassDefinition.xml), beneath the player's; null for none.</summary>
+        public static AssetRecord CreatorRecord
+        {
+            get { return Info != null ? CreatorDefinitions.Of(Info) : null; }
         }
 
         /// <summary>A copy of the asset's glass to change and <see cref="Store"/>.</summary>
@@ -89,9 +95,10 @@ namespace RealGlass.PerAsset
             Copies = CountCopies(info);
             _nextCount = Time.realtimeSinceStartup + CountEvery;
 
-            AssetRecord record = Record;
+            AssetRecord record = Record, creator = CreatorRecord;
             Log.Msg("assets: picked " + what + ": asset '" + info.name + "' (" + Title + "), " + Copies + " in this city, " +
-                    (record != null ? "with glass of its own: " + Describe(record) : "on the global glass"));
+                    (record != null ? "with glass of its own: " + Describe(record) : "on the global glass") +
+                    (creator != null ? "; its creator's glass beneath: " + Describe(creator) : ""));
         }
 
         /// <summary>The asset's copies with glass: the city's buildings and Procedural Objects' own.</summary>
@@ -152,7 +159,7 @@ namespace RealGlass.PerAsset
                 Copies = CountCopies(Info);
             }
 
-            string status = Localization.Get(Record != null ? "Asset.Own" : "Asset.Global", Copies);
+            string status = Localization.Get(Record != null ? "Asset.Own" : (CreatorRecord != null ? "Asset.Creator" : "Asset.Global"), Copies);
             string lod = LodText(GlassController.LodVerdictOf(Info));
             if (lod.Length > 0)
                 status += "\n" + lod;
@@ -161,7 +168,7 @@ namespace RealGlass.PerAsset
         }
 
         /// <summary>What was found of the asset's windows for its rooms (RoomFit), the status line's third line; "" while nothing is known.</summary>
-        private static string RoomsText(RoomFitResult r)
+        internal static string RoomsText(RoomFitResult r)
         {
             if (r == null)
                 return "";

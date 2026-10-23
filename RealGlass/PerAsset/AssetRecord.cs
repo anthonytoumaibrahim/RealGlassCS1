@@ -86,6 +86,79 @@ namespace RealGlass.PerAsset
             return (AssetRecord)MemberwiseClone();
         }
 
+        /// <summary>How many settings it has of its own (a kind of glass and its three numbers count once).</summary>
+        public int OwnCount
+        {
+            get
+            {
+                int n = 0;
+                if (Strength.HasValue) n++;
+                if (PaintedDetail.HasValue) n++;
+                if (Preset.HasValue || Colour.HasValue || Reflectivity.HasValue || Clarity.HasValue) n++;
+                if (OwnColour.HasValue) n++;
+                if (Threshold.HasValue) n++;
+                if (NightWindows.HasValue) n++;
+                if (Interiors.HasValue) n++;
+                if (LodGlass.HasValue) n++;
+                return n;
+            }
+        }
+
+        /// <summary>
+        /// The settings of <paramref name="top"/> where it has them, else <paramref name="under"/>'s: a
+        /// player's own glass for an asset (RealGlassAssets.xml) over the glass its creator shipped with
+        /// it (RealGlassDefinition.xml). Either may be null; with one missing the other is returned
+        /// as it is. A kind of glass gives its colour, reflectivity and clarity to the side that chose
+        /// it before the two are laid together: a player's kind of glass is its three numbers, not
+        /// the creator's colour under the player's name.
+        /// </summary>
+        public static AssetRecord Over(AssetRecord top, AssetRecord under)
+        {
+            if (top == null || top.IsEmpty)
+                return under;
+            if (under == null || under.IsEmpty)
+                return top;
+
+            AssetRecord t = WithPresetNumbers(top), u = WithPresetNumbers(under);
+            var r = new AssetRecord(t.Name)
+            {
+                Title = t.Title ?? u.Title,
+                Strength = t.Strength ?? u.Strength,
+                PaintedDetail = t.PaintedDetail ?? u.PaintedDetail,
+                Colour = t.Colour ?? u.Colour,
+                Reflectivity = t.Reflectivity ?? u.Reflectivity,
+                Clarity = t.Clarity ?? u.Clarity,
+                OwnColour = t.OwnColour ?? u.OwnColour,
+                Threshold = t.Threshold ?? u.Threshold,
+                NightWindows = t.NightWindows ?? u.NightWindows,
+                Interiors = t.Interiors ?? u.Interiors,
+                LodGlass = t.LodGlass ?? u.LodGlass,
+            };
+
+            // The kind of glass shown: the top's; a number of its own over the creator's kind is Custom.
+            if (t.Preset.HasValue)
+                r.Preset = t.Preset;
+            else if (t.Colour.HasValue || t.Reflectivity.HasValue || t.Clarity.HasValue)
+                r.Preset = GlassPresets.Custom;
+            else
+                r.Preset = u.Preset;
+            return r;
+        }
+
+        /// <summary>A copy whose kind of glass has written its three numbers where the record has none of its own.</summary>
+        private static AssetRecord WithPresetNumbers(AssetRecord record)
+        {
+            GlassPreset preset;
+            if (!record.Preset.HasValue || !GlassPresets.TryGet(record.Preset.Value, out preset))
+                return record;
+
+            AssetRecord r = record.Clone();
+            r.Colour = r.Colour ?? preset.Colour;
+            r.Reflectivity = r.Reflectivity ?? preset.Reflectivity;
+            r.Clarity = r.Clarity ?? preset.Clarity;
+            return r;
+        }
+
         /// <summary>Same settings (the title aside): a save that would change nothing is skipped.</summary>
         public bool SameSettings(AssetRecord other)
         {

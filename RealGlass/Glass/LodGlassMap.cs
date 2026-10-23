@@ -79,7 +79,7 @@ namespace RealGlass.Glass
         private bool _reported;
 
         // Deciding.
-        private int _seenVersion = -1;
+        private long _seenVersion = -1;
         private bool _seenOn;
         private float _seenThreshold = -1f;
         private float _decideAt = -1f;
@@ -172,10 +172,11 @@ namespace RealGlass.Glass
                 Report();
             }
 
-            if (AssetFile.Version != _seenVersion || p.LodGlass != _seenOn || p.Threshold != _seenThreshold)
+            long version = AssetRecords.Stamp;
+            if (version != _seenVersion || p.LodGlass != _seenOn || p.Threshold != _seenThreshold)
             {
                 bool first = _seenVersion < 0;
-                _seenVersion = AssetFile.Version;
+                _seenVersion = version;
                 _seenOn = p.LodGlass;
                 _seenThreshold = p.Threshold;
                 if (!first)
@@ -444,7 +445,7 @@ namespace RealGlass.Glass
             for (int i = 0; i < _entries.Count; i++)
             {
                 LodGlassEntry e = _entries[i];
-                AssetRecord record = AssetFile.Get(e.Asset);
+                AssetRecord record = AssetRecords.OfName(e.Asset);
                 e.Mode = record == null || !record.LodGlass.HasValue ? LodGlass.ModeAuto : (record.LodGlass.Value ? LodGlass.ModeModel : LodGlass.ModeOwn);
                 e.Threshold = record != null && record.Threshold.HasValue ? record.Threshold.Value : p.Threshold;
             }

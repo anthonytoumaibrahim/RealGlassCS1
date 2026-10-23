@@ -24,6 +24,12 @@ namespace RealGlass.Glass
     ///
     /// Procedural Objects' buildings have texels past the buildings' (ProceduralBuildings), set from
     /// their assets every frame.
+    ///
+    /// An asset's glass is everything it has of its own (PerAsset.AssetRecords): the player's, over
+    /// its creator's (RealGlassDefinition.xml). In the asset editor, the building being made
+    /// (PerAsset.CreatorAsset) is no building of the buffer: the editor draws it with the colour index
+    /// of building 0 (GlassPatches.EditorRenderMeshPatch), so its glass goes on texel 0, sent at once,
+    /// and on every building there (its sub-buildings): all of them are the asset being made.
     /// </remarks>
     internal sealed class AssetMap
     {
@@ -47,7 +53,8 @@ namespace RealGlass.Glass
         private readonly List<ResolvedAsset> _resolved = new List<ResolvedAsset>();
         private readonly bool[] _taken = new bool[AssetTextures.GlassSlots];
         private int _nextSlot;
-        private int _seenVersion = -1;
+        private long _seenVersion = -1;
+        private BuildingInfo _seenEdited;
         private ulong _seenGlobal = ulong.MaxValue;
         private int _next = 1;
         private int _passLeft;
@@ -81,27 +88,32 @@ namespace RealGlass.Glass
 
             ulong globalKey = GlassKey(GlassUniforms.Tint(global.TintR, global.TintG, global.TintB), global.OwnColour,
                                        global.Reflectivity, global.Clarity, global.Threshold, global.NightWindows);
-            if (AssetFile.Version != _seenVersion || globalKey != _seenGlobal)
+            long version = AssetRecords.Stamp;
+            bool editor = CreatorAsset.InEditor;
+            if (version != _seenVersion || globalKey != _seenGlobal || (editor && CreatorAsset.Info != _seenEdited))
             {
                 bool first = _seenVersion < 0;
-                _seenVersion = AssetFile.Version;
+                _seenVersion = version;
                 _seenGlobal = globalKey;
+                _seenEdited = CreatorAsset.Info;
                 Resolve(global);
-                if (AssetFile.Count > 0 || !first)
+                if (LoadedAssets > 0 || !first)
                     _passLeft = Singleton<BuildingManager>.instance.m_buildings.m_buffer.Length;
-                if (first && AssetFile.Count > 0)
-                {
-                    Log.Msg("assets: " + LoadedAssets + " of the " + AssetFile.Count + " building assets with glass of their own are loaded" +
-                            " (" + _slotOf.Count + " glasses of their own)");
-                }
+                if (first && LoadedAssets > 0 && !editor)
+                    Log.Msg("assets: " + AssetRecords.Describe() + "; " + _slotOf.Count + " glasses of their own");
             }
 
-            int budget = _passLeft > 0 ? PassPerFrame : (_texelOf.Count > 0 || _rooms ? WatchPerFrame : 0);
+            int budget = _passLeft > 0 ? PassPerFrame : (_texelOf.Count > 0 || _rooms || editor ? WatchPerFrame : 0);
             if (budget > 0)
                 Scan(budget);
             SetProcedural(null);
 
-            if (_textures.Pending && (_passLeft <= 0 || ++_sinceUpload >= UploadEvery))
+            // The asset editor's building: its texel now, and sent now (a slider being dragged).
+            bool now = false;
+            if (editor)
+                now = _textures.Set(0, CreatorAsset.Info != null ? TexelOf(CreatorAsset.Info) : AllGlobal);
+
+            if (_textures.Pending && (now || _passLeft <= 0 || ++_sinceUpload >= UploadEvery))
             {
                 _textures.Upload();
                 _sinceUpload = 0;
@@ -119,9 +131,10 @@ namespace RealGlass.Glass
             if (info == null || !_textures.IsCreated)
                 return;
 
-            if (AssetFile.Version != _seenVersion)
+            long version = AssetRecords.Stamp;
+            if (version != _seenVersion)
             {
-                _seenVersion = AssetFile.Version;
+                _seenVersion = version;
                 Resolve(global);
                 _passLeft = Singleton<BuildingManager>.instance.m_buildings.m_buffer.Length;
             }
@@ -168,12 +181,13 @@ namespace RealGlass.Glass
                 int i = _next;
                 _next = _next + 1 < n ? _next + 1 : 1;
 
-                // Only main buildings: a sub-building's draws read its main building's texel.
+                // Only main buildings: a sub-building's draws read its main building's texel. In the
+                // asset editor every building there is part of the asset being made.
                 Color32 texel = AllGlobal;
                 if ((buffer[i].m_flags & (Building.Flags.Created | Building.Flags.Deleted)) == Building.Flags.Created &&
                     buffer[i].m_parentBuilding == 0)
                 {
-                    texel = TexelOf(buffer[i].Info);
+                    texel = TexelOf(CreatorAsset.InEditor && CreatorAsset.Info != null ? CreatorAsset.Info : buffer[i].Info);
                 }
 
                 _textures.Set(i, texel);
@@ -200,7 +214,7 @@ namespace RealGlass.Glass
                 texel = AllGlobal;
             if (_rooms)
             {
-                AssetRecord record = AssetFile.Get(info.name);
+                AssetRecord record = AssetRecords.Of(info);
                 int assetSwitch = record == null || !record.Interiors.HasValue ? Interiors.FollowGlobal
                     : (record.Interiors.Value ? Interiors.AssetOn : Interiors.AssetOff);
                 texel.a = Interiors.Texel(KindOf(info), assetSwitch);
@@ -280,11 +294,11 @@ namespace RealGlass.Glass
             _resolved.Clear();
             LoadedAssets = 0;
 
-            foreach (AssetRecord record in AssetFile.All)
+            List<KeyValuePair<BuildingInfo, AssetRecord>> loaded = AssetRecords.Loaded;
+            for (int k = 0; k < loaded.Count; k++)
             {
-                BuildingInfo info = PrefabCollection<BuildingInfo>.FindLoaded(record.Name);
-                if (info == null)
-                    continue;
+                BuildingInfo info = loaded[k].Key;
+                AssetRecord record = loaded[k].Value;
                 LoadedAssets++;
 
                 var r = new ResolvedAsset { Info = info, Record = record };
@@ -459,6 +473,7 @@ namespace RealGlass.Glass
             _slotOf.Clear();
             _nextSlot = 0;
             _seenVersion = -1;
+            _seenEdited = null;
         }
     }
 }

@@ -587,6 +587,71 @@ Check "back to the global settings: the asset's entry is gone" ("" + $before + "
 $r = ParseAssets "<RealGlass><Asset name=`"A`"/></RealGlass>"
 Check "the settings file is not an assets file" ($r.Error -ne $null) "True"
 
+# ---- a creator's glass (RealGlassDefinition.xml, PerAsset\CreatorFile.cs) ---------------------
+# Shipped beside an asset's .crp and named by the asset's OWN name: the game saves the package again
+# under its Workshop id on upload, so "Tower.Tower_Data" in the creator's game is
+# "1407415712.Tower_Data" in a player's. Beneath the player's own glass for the asset (Alt+G).
+
+Check "own name: the package before the first dot, _Data off" ($assetFmt::OwnName("1407415712.Tour Incity - Lyon_Data")) "Tour Incity - Lyon"
+Check "  a dot in the asset's own name stays" ($assetFmt::OwnName("Tower.Tower 2.0_Data")) "Tower 2.0"
+Check "  the game's own assets (no package) have none" ($assetFmt::OwnName("H1 2x2 Sweatshop06") -eq $null) "True"
+Check "the same asset: Tower_Data and Tower, letter case aside; not Tower 2" ("" + $assetFmt::SameAsset("Tower_Data", "Tower") + $assetFmt::SameAsset("tower", "Tower") + $assetFmt::SameAsset("Tower 2", "Tower")) "TrueTrueFalse"
+
+$defs = [Activator]::CreateInstance($recList)
+$d1 = NewRecord "Tour Incity - Lyon"
+$d1.Reflectivity = [TestHelp]::Div(30, 100)
+$d2 = NewRecord "1407415712.Other_Data"
+$d2.Strength = [TestHelp]::Div(50, 100)
+$defs.Add($d2); $defs.Add($d1)
+Check "found by its own name in a player's city (the Workshop id) and the creator's (the save name)" (($assetFmt::FindDefinition($defs, "1407415712.Tour Incity - Lyon_Data")).Name + " | " + ($assetFmt::FindDefinition($defs, "Tour Incity.Tour Incity - Lyon_Data")).Name) "Tour Incity - Lyon | Tour Incity - Lyon"
+Check "  by the full name too" ($assetFmt::FindDefinition($defs, "1407415712.Other_Data")).Name "1407415712.Other_Data"
+Check "  none for another asset, none from no file" ("" + ($assetFmt::FindDefinition($defs, "1407415712.Third_Data") -eq $null) + ($assetFmt::FindDefinition($null, "1.A_Data") -eq $null)) "TrueTrue"
+
+function MergeDef([string]$existing, [string]$name, $record) {
+    $problems = New-Object 'System.Collections.Generic.List[string]'
+    $err = $null
+    $text = $assetFmt::MergeDefinition($existing, $name, $record, "Header", $problems, [ref]$err)
+    $version = 0; $err2 = $null
+    $back = $assetFmt::Parse($text, $assetFmt::DefinitionRoot, [ref]$version, $problems, [ref]$err2)
+    return @{ Text = $text; Error = $err; Back = @($back); BackError = $err2 }
+}
+$c1 = NewRecord "anything"
+$c1.Colour = $green
+$c1.Threshold = [TestHelp]::Div(80, 100)
+$m = MergeDef $null "Tower_Data" $c1
+Check "a new creators' file: the asset under its own name, under its own root" ("" + ($m.Text -match '<RealGlassDefinition version="1">') + ($m.Text -match '<Asset name="Tower">') + ($m.Text -match '<GlassColor>#6E9C7C</GlassColor>') + ($m.BackError -eq $null)) "TrueTrueTrueTrue"
+$c2 = NewRecord "anything"
+$c2.Strength = [TestHelp]::Div(50, 100)
+$m = MergeDef $m.Text "Annex" $c2
+Check "  another asset saved into the same folder: both kept" (($m.Back | ForEach-Object { $_.Name }) -join " | ") "Annex | Tower"
+$m = MergeDef $m.Text "tower" $c2
+$tower = $m.Back | Where-Object { $_.Name -eq "tower" }
+Check "  saved again: replaced (letter case aside), the other kept" ("" + $m.Back.Count + " " + $tower.Strength + " " + ($tower.Colour -eq $null)) "2 0.5 True"
+$m = MergeDef $m.Text "Tower" (NewRecord "anything")
+Check "  saved with nothing of its own: its entry taken out" (($m.Back | ForEach-Object { $_.Name }) -join " | ") "Annex"
+$m = MergeDef "<RealGlassDefinition><Asset name=`"A`"><GlassStrength>5</GlassStrength></Asset><Asset name=`"B><GlassStrength>6</GlassStrength></Asset></RealGlassDefinition>" "C" $c2
+Check "  a broken file: said (kept aside by the caller), what it holds salvaged" ("" + ($m.Error -ne $null) + " " + (($m.Back | ForEach-Object { $_.Name }) -join ",")) "True A,C"
+Check "the creators' file is not the player's" ((ParseAssets (MergeDef $null "Tower" $c1).Text).Error -ne $null) "True"
+
+# The player's glass for an asset over its creator's (PerAsset\AssetRecord.Over).
+$top = NewRecord "T"
+$top.Preset = 8
+$under = NewRecord "T"
+$under.Colour = $green
+$under.Strength = [TestHelp]::Div(60, 100)
+$under.Interiors = $false
+$o = $recType::Over($top, $under)
+Check "player over creator: the player's kind of glass brings its own color, not the creator's" ("" + ($colorText::Format($o.Colour) -ne "#6E9C7C") + " " + $o.Preset) "True 8"
+Check "  the creator's other settings stay beneath" ("" + $o.Strength + " " + $o.Interiors) "0.6 False"
+$top = NewRecord "T"
+$top.Reflectivity = [TestHelp]::Div(10, 100)
+$under = NewRecord "T"
+$under.Preset = 5
+$o = $recType::Over($top, $under)
+Check "  a number of the player's over the creator's kind: Custom, the kind's other numbers kept" ("" + $o.Preset + " " + $o.Reflectivity + " " + ($o.Colour -ne $null) + " " + ($o.Clarity -ne $null)) "0 0.1 True True"
+Check "  one side missing or empty: the other, as it is" ("" + [object]::ReferenceEquals($recType::Over($null, $under), $under) + [object]::ReferenceEquals($recType::Over($top, (NewRecord "T")), $top)) "TrueTrue"
+Check "  how many settings of its own (a kind of glass and its numbers count once)" ("" + $under.OwnCount + " " + $o.OwnCount) "1 1"
+
 # ---- the renderer's own copy of the defaults ------------------------------------------------
 # GlassParams.Default() (Glass\GlassParams.cs) is what the GPU preview draws with; it must be
 # what the mod ships (Settings.Defaults), or the preview's pictures are of another look.

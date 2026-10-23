@@ -341,9 +341,10 @@ namespace RealGlass.Glass
                 _heights.Update(_look, Time.realtimeSinceStartup);
             _heights.Map.Bind(p.Neighbours);
 
-            // Each building asset's own glass, on every copy of it (RealGlassAssets.xml), and every
-            // building's kind of rooms while there are rooms anywhere.
-            bool roomsWanted = p.Interiors || PerAsset.AssetFile.AnyInteriorsOn;
+            // Each building asset's own glass, on every copy of it (RealGlassAssets.xml over its
+            // creator's RealGlassDefinition.xml), and every building's kind of rooms while there are
+            // rooms anywhere.
+            bool roomsWanted = p.Interiors || PerAsset.AssetRecords.AnyInteriorsOn;
             bool rooms = RoomsReady(roomsWanted) && roomsWanted;
             _assets.Update(p, rooms);
             _roomFit.Update(rooms, _util);

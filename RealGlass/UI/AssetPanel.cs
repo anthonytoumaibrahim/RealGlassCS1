@@ -87,7 +87,7 @@ namespace RealGlass.UI
             _useGlobal.eventClick += (component, e) =>
             {
                 AssetSelection.UseGlobal();
-                AssetCatalog.Sync();
+                AssetCatalog.Picked.Sync();
                 SettingsCatalog.RefreshAllUIs();
             };
             y += ButtonsHeight;
@@ -95,7 +95,7 @@ namespace RealGlass.UI
             UIPanel page = AddUIComponent<UIPanel>();
             page.size = new Vector2(inner, 10f);
             page.relativePosition = new Vector3(Margin, y);
-            float content = _rows.Build(page, AssetCatalog.Rows, "building window");
+            float content = _rows.Build(page, AssetCatalog.Picked.Rows, "building window");
             page.height = content;
             height = y + content + Margin;
 
@@ -134,7 +134,7 @@ namespace RealGlass.UI
             if (_rows == null)
                 return;
 
-            AssetCatalog.Sync();
+            AssetCatalog.Picked.Sync();
 
             ShowTitle(AssetSelection.HasSelection ? AssetSelection.Title : Mod.DisplayName);
             if (_status != null)

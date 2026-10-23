@@ -84,23 +84,26 @@ if ($catalog -match "public enum PanelPage \{([^}]*)\}") {
     foreach ($v in ($Matches[1] -split ',')) { $v = $v.Trim(); if ($v -and $v -ne 'None') { [void]$needed.Add("Tab.$v") } }
 }
 
-# The building window's rows (PerAsset\AssetCatalog.cs, not the catalog's): each setting it shows
-# (its Label), its group headings. Its status line and buttons are key-shaped literals ("Asset.Pick").
-$assetSrc = Get-Content (Join-Path $root "PerAsset\AssetCatalog.cs") -Raw
+# The building window's and the creator window's rows (PerAsset\AssetCatalog.cs, not the
+# catalog's; the creator window's preview switches are CreatorAsset.cs's settings): each setting
+# shown (its Label), the group headings. Status lines and buttons are key-shaped literals ("Asset.Pick").
 $assetRows = 0
-foreach ($m in [regex]::Matches($assetSrc, 'new (?:Float|Bool|Int|Color)Setting\("(\w+)"')) {
-    [void]$needed.Add($m.Groups[1].Value + ".Label"); $assetRows++
-    [void]$rowNames.Add($m.Groups[1].Value)
+foreach ($file in @("PerAsset\AssetCatalog.cs", "PerAsset\CreatorAsset.cs")) {
+    $assetSrc = Get-Content (Join-Path $root $file) -Raw
+    foreach ($m in [regex]::Matches($assetSrc, 'new (?:Float|Bool|Int|Color)Setting\("(\w+)"')) {
+        [void]$needed.Add($m.Groups[1].Value + ".Label"); $assetRows++
+        [void]$rowNames.Add($m.Groups[1].Value)
+    }
+    foreach ($m in [regex]::Matches($assetSrc, 'Group = "(\w+)"|Percent\(_\w+, "(\w+)"|Preview\(CreatorAsset\.\w+, CreatorAsset\.\w+, "(\w+)"')) {
+        $g = if ($m.Groups[1].Success) { $m.Groups[1].Value } elseif ($m.Groups[2].Success) { $m.Groups[2].Value } else { $m.Groups[3].Value }
+        [void]$needed.Add("Group.$g")
+    }
 }
-foreach ($m in [regex]::Matches($assetSrc, 'Group = "(\w+)"|Percent\(_\w+, "(\w+)"')) {
-    $g = if ($m.Groups[1].Success) { $m.Groups[1].Value } else { $m.Groups[2].Value }
-    [void]$needed.Add("Group.$g")
-}
-Write-Host "      ($assetRows rows in the building window)"
+Write-Host "      ($assetRows rows in the building and creator windows)"
 
 # Key-shaped literals anywhere in the code ("Unit.Pixels", "Colour.Copy"...), including the ones
 # picked by a ?: that a Localization.Get("...") search would miss.
-$prefixes = 'Mod|Tab|Key|Status|Unit|Readout|File|Language|Group|ResetAll|Reset|Colour|GlassPreset|SsrQuality|SkyReflection|OffscreenFill|GlassDistance|Asset|AssetFile|Picker'
+$prefixes = 'Mod|Tab|Key|Status|Unit|Readout|File|Language|Group|ResetAll|Reset|Colour|GlassPreset|SsrQuality|SkyReflection|OffscreenFill|GlassDistance|Asset|AssetFile|Picker|Creator|CreatorFile'
 foreach ($file in Get-ChildItem $root -Recurse -Filter *.cs | Where-Object { $_.FullName -notmatch '\\(bin|obj)\\' }) {
     foreach ($m in [regex]::Matches((Get-Content $file.FullName -Raw), "`"((?:$prefixes)\.[A-Z][A-Za-z.]*[A-Za-z])`"")) {
         [void]$needed.Add($m.Groups[1].Value)

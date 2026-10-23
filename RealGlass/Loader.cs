@@ -19,6 +19,9 @@ namespace RealGlass
         /// </summary>
         public static bool HasStoodDown { get; private set; }
 
+        /// <summary>A city or an editor of ours is loaded (its prefabs ready): what the creators' files are read against.</summary>
+        public static bool InLevel { get; private set; }
+
         public override void OnLevelLoaded(LoadMode mode)
         {
             base.OnLevelLoaded(mode);
@@ -33,6 +36,12 @@ namespace RealGlass
                 return;
 
             Log.Msg("loaded: " + where);
+
+            // The asset editor is the creators' (PerAsset.CreatorAsset): the creator window, the glass
+            // of the building being made. A city reads its assets' creators' glass afresh.
+            PerAsset.CreatorAsset.Enter(mode == LoadMode.NewAsset || mode == LoadMode.LoadAsset);
+            PerAsset.CreatorDefinitions.Clear();
+            InLevel = true;
 
             if (!CanDrawGlass())
             {
@@ -62,6 +71,10 @@ namespace RealGlass
         /// </summary>
         public static void Shutdown()
         {
+            InLevel = false;
+            PerAsset.CreatorAsset.Leave();
+            PerAsset.CreatorDefinitions.Clear();
+
             if (_root == null)
                 return;
 

@@ -11,11 +11,18 @@ namespace RealGlass
     /// One per loaded city: watches the panel's key, owns the panel and its button, and starts
     /// the glass renderer (<see cref="GlassController"/>) on the same GameObject.
     /// </summary>
+    /// <remarks>
+    /// In the asset editor the mod is the creator's (<see cref="PerAsset.CreatorAsset"/>): its key and
+    /// button open the creator window (<see cref="CreatorPanel"/>) instead of the F8 panel, and there is
+    /// no building picker, no building window and no water of ours -- the glass and the rooms of the
+    /// building being made, and the vehicles' glass.
+    /// </remarks>
     public class ModController : MonoBehaviour
     {
         public static ModController Instance { get; private set; }
 
-        private GlassPanel _panel;
+        /// <summary>The panel the key and the button open: the F8 panel, or the creator window in the asset editor.</summary>
+        private UIPanel _panel;
         private AssetPanel _assetPanel;
         private ModButton _hudButton;
         private bool _hotkeyWasDown;
@@ -74,12 +81,15 @@ namespace RealGlass
 
             gameObject.AddComponent<GlassController>();
 
-            // The Water tab (the map's water; on by default, apart from the glass).
-            gameObject.AddComponent<Water.WaterController>();
-
-            // The building picker of the building window (each asset's own glass).
             PerAsset.AssetSelection.Clear();
-            PerAsset.AssetPicker.Create();
+            if (!PerAsset.CreatorAsset.InEditor)
+            {
+                // The Water tab (the map's water; on by default, apart from the glass).
+                gameObject.AddComponent<Water.WaterController>();
+
+                // The building picker of the building window (each asset's own glass).
+                PerAsset.AssetPicker.Create();
+            }
 
             BuildButton();
         }
@@ -102,11 +112,23 @@ namespace RealGlass
                 Destroy(_panel.gameObject);
             }
 
-            _panel = UIView.GetAView().AddUIComponent(typeof(GlassPanel)) as GlassPanel;
+            if (PerAsset.CreatorAsset.InEditor)
+            {
+                var creator = UIView.GetAView().AddUIComponent(typeof(CreatorPanel)) as CreatorPanel;
+                if (creator != null)
+                    creator.InitialPosition = position;
+                _panel = creator;
+            }
+            else
+            {
+                var glass = UIView.GetAView().AddUIComponent(typeof(GlassPanel)) as GlassPanel;
+                if (glass != null)
+                    glass.InitialPosition = position;
+                _panel = glass;
+            }
+
             if (_panel == null)
                 return;
-
-            _panel.InitialPosition = position;
 
             // Stays open if it was open. From the game's options screen (a modal) that needs one
             // more step: a new component is born on top of everything, so the rebuilt panel
@@ -126,7 +148,8 @@ namespace RealGlass
             // The old panel was unhooked before it went, so Unified UI heard nothing; tell it.
             UUIIntegration.SetPressed(wasVisible);
 
-            CreateAssetPanel();
+            if (!PerAsset.CreatorAsset.InEditor)
+                CreateAssetPanel();
         }
 
         /// <summary>The building window, replacing the one that exists: where it stood, open if it was.</summary>
@@ -191,6 +214,9 @@ namespace RealGlass
 
         private void Update()
         {
+            // The asset editor: what is being made (a building, or something else), and its glass.
+            PerAsset.CreatorAsset.Tick();
+
             // Don't steal a key while a text field has focus or a modal is up, otherwise typing
             // into a rename box toggles the panel.
             if (UIView.HasModalInput() || UIView.HasInputFocus())
@@ -202,10 +228,10 @@ namespace RealGlass
 
             // The building picker's key (never Unified UI's). Not while a road tool is on: Network
             // Anarchy's editor grid is Alt+G there (IL of NetworkAnarchy.OnGUI, 2026-10-01), and a
-            // player laying roads is not picking buildings.
+            // player laying roads is not picking buildings. None in the asset editor.
             bool pickerDown = IsHotkeyDown(Settings.PickerKey);
-            if (pickerDown && !_pickerKeyWasDown && !(ToolsModifierControl.toolController != null &&
-                                                     ToolsModifierControl.toolController.CurrentTool is NetTool))
+            if (pickerDown && !_pickerKeyWasDown && !PerAsset.CreatorAsset.InEditor &&
+                !(ToolsModifierControl.toolController != null && ToolsModifierControl.toolController.CurrentTool is NetTool))
             {
                 PerAsset.AssetPicker.Toggle();
             }

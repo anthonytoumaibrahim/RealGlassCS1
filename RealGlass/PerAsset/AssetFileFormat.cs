@@ -24,6 +24,17 @@ namespace RealGlass.PerAsset
         public const string RootName = "RealGlassAssets";
         public const string AssetElement = "Asset";
 
+        /// <summary>
+        /// The root of RealGlassDefinition.xml: the glass an asset's CREATOR gave it, shipped next to its
+        /// .crp (CreatorFile) -- the same Asset elements, named by the asset's own name ("Tower", what
+        /// its creator typed when saving it), not by the name the game gives it in a city
+        /// ("123456789.Tower_Data": the package is saved again under its Workshop id on upload).
+        /// </summary>
+        public const string DefinitionRoot = "RealGlassDefinition";
+
+        /// <summary>The suffix the game gives a saved asset's prefab (SaveAssetPanel: assetName + "_Data").</summary>
+        public const string DataSuffix = "_Data";
+
         /// <summary>Goes up when a name or a unit in the file changes meaning.</summary>
         public const int Version = 1;
 
@@ -53,6 +64,12 @@ namespace RealGlass.PerAsset
 
         public static string Write(IList<AssetRecord> records, string header)
         {
+            return Write(records, header, RootName);
+        }
+
+        /// <summary>The text of a file under <paramref name="root"/> (<see cref="RootName"/> or <see cref="DefinitionRoot"/>).</summary>
+        public static string Write(IList<AssetRecord> records, string header, string root)
+        {
             var sorted = new List<AssetRecord>(records);
             sorted.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
 
@@ -67,7 +84,7 @@ namespace RealGlass.PerAsset
                 text.Append("-->").Append(NewLine);
             }
 
-            text.Append('<').Append(RootName).Append(" version=\"")
+            text.Append('<').Append(root).Append(" version=\"")
                 .Append(Version.ToString(CultureInfo.InvariantCulture)).Append("\">").Append(NewLine);
 
             foreach (AssetRecord record in sorted)
@@ -106,7 +123,7 @@ namespace RealGlass.PerAsset
                 text.Append("  </").Append(AssetElement).Append('>').Append(NewLine);
             }
 
-            text.Append(NewLine).Append("</").Append(RootName).Append('>').Append(NewLine);
+            text.Append(NewLine).Append("</").Append(root).Append('>').Append(NewLine);
             return text.ToString();
         }
 
@@ -131,6 +148,12 @@ namespace RealGlass.PerAsset
         /// </remarks>
         public static List<AssetRecord> Parse(string text, out int version, List<string> problems, out string error)
         {
+            return Parse(text, RootName, out version, problems, out error);
+        }
+
+        /// <summary>As <see cref="Parse(string, out int, List{string}, out string)"/>, for a file under <paramref name="rootName"/>.</summary>
+        public static List<AssetRecord> Parse(string text, string rootName, out int version, List<string> problems, out string error)
+        {
             version = 0;
             error = null;
             var found = new Found();
@@ -143,14 +166,14 @@ namespace RealGlass.PerAsset
                 XmlElement root;
                 if (!SafeXml.TryLoad(text, out root, out error))
                 {
-                    Salvage(text, found, problems);
+                    Salvage(text, rootName, found, problems);
                     return found.Records();
                 }
 
-                if (root.Name != RootName)
+                if (root.Name != rootName)
                 {
-                    error = "the outermost element is <" + root.Name + ">, not <" + RootName + ">";
-                    Salvage(text, found, problems);
+                    error = "the outermost element is <" + root.Name + ">, not <" + rootName + ">";
+                    Salvage(text, rootName, found, problems);
                     return found.Records();
                 }
 
@@ -231,7 +254,7 @@ namespace RealGlass.PerAsset
         /// &lt;/Asset&gt; (or the next &lt;Asset, or the end) is parsed on its own, closed for it
         /// where its end tag is missing. What still cannot be read is said, with its line.
         /// </summary>
-        private static void Salvage(string text, Found found, List<string> problems)
+        private static void Salvage(string text, string rootName, Found found, List<string> problems)
         {
             MatchCollection starts = Regex.Matches(text, @"<\s*" + AssetElement + @"\b", RegexOptions.IgnoreCase);
             for (int i = 0; i < starts.Count; i++)
@@ -249,7 +272,7 @@ namespace RealGlass.PerAsset
                 else
                 {
                     // The last asset of a file cut short: whatever closes the root is not its.
-                    Match rootClose = Regex.Match(piece, @"</\s*" + RootName + @"\s*>", RegexOptions.IgnoreCase);
+                    Match rootClose = Regex.Match(piece, @"</\s*" + rootName + @"\s*>", RegexOptions.IgnoreCase);
                     if (rootClose.Success)
                         piece = piece.Substring(0, rootClose.Index);
                 }
@@ -342,6 +365,92 @@ namespace RealGlass.PerAsset
                                   OwnColourName + ", " + ThresholdName + ", " + NightWindowsName + ", " + InteriorsName + " and " +
                                   LodGlassName);
             }
+        }
+
+        // ---- a creator's file (RealGlassDefinition.xml) ---------------------------------------
+
+        /// <summary>A saved asset's own name: "Tower" for "Tower_Data" (and for "Tower").</summary>
+        public static string Stem(string assetName)
+        {
+            if (string.IsNullOrEmpty(assetName))
+                return assetName ?? "";
+
+            string name = assetName.Trim();
+            return name.Length > DataSuffix.Length && name.EndsWith(DataSuffix, StringComparison.Ordinal)
+                ? name.Substring(0, name.Length - DataSuffix.Length)
+                : name;
+        }
+
+        /// <summary>
+        /// The asset's own name in the name the game gives it: "Tower" for "123456789.Tower_Data". The
+        /// package is everything before the FIRST dot (PackageManager.FindAssetByName splits there); a
+        /// name without one is the game's own asset, never a creator's: null.
+        /// </summary>
+        public static string OwnName(string fullName)
+        {
+            if (string.IsNullOrEmpty(fullName))
+                return null;
+
+            int dot = fullName.IndexOf('.');
+            return dot > 0 && dot < fullName.Length - 1 ? Stem(fullName.Substring(dot + 1)) : null;
+        }
+
+        /// <summary>An entry named <paramref name="entryName"/> is the asset whose own name is <paramref name="assetName"/>
+        /// ("Tower" or "Tower_Data" for "Tower"; letter case aside: the file is written by hand too).</summary>
+        public static bool SameAsset(string entryName, string assetName)
+        {
+            return entryName != null && assetName != null &&
+                   string.Equals(Stem(entryName), Stem(assetName), StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// The creator's entry for the asset the game calls <paramref name="fullName"/>
+        /// ("123456789.Tower_Data"): the one named by its own name ("Tower" or "Tower_Data"), else the
+        /// one named by the full name. Null when the file has none.
+        /// </summary>
+        public static AssetRecord FindDefinition(IList<AssetRecord> entries, string fullName)
+        {
+            if (entries == null || fullName == null)
+                return null;
+
+            string own = OwnName(fullName);
+            AssetRecord byFullName = null;
+            for (int i = 0; i < entries.Count; i++)
+            {
+                AssetRecord e = entries[i];
+                if (e == null || e.Name == null)
+                    continue;
+                if (own != null && SameAsset(e.Name, own))
+                    return e;
+                if (string.Equals(e.Name, fullName, StringComparison.OrdinalIgnoreCase))
+                    byFullName = e;
+            }
+            return byFullName;
+        }
+
+        /// <summary>
+        /// A creator's file with one asset's entry put in under its own name, or taken out when the
+        /// record has nothing of its own; every other entry kept. <paramref name="existing"/>: the
+        /// file's text, null for no file. <paramref name="error"/> is set when the existing text could
+        /// not be read in full: the entries returned are the ones salvaged from it, and the caller
+        /// keeps the old file aside before writing.
+        /// </summary>
+        public static string MergeDefinition(string existing, string assetName, AssetRecord record, string header,
+                                             List<string> problems, out string error)
+        {
+            int version;
+            List<AssetRecord> entries = Parse(existing, DefinitionRoot, out version, problems, out error);
+            string own = Stem(assetName);
+            entries.RemoveAll(e => SameAsset(e.Name, own));
+
+            if (record != null && !record.IsEmpty)
+            {
+                AssetRecord put = record.Clone();
+                put.Name = own;
+                entries.Add(put);
+            }
+
+            return Write(entries, header, DefinitionRoot);
         }
 
         /// <summary>A kind of glass by its number, or by its English name ("Silver reflective").</summary>
