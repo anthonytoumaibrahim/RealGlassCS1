@@ -53,6 +53,22 @@ seam on the face; after, one dark face; the calm coast unchanged; OpenGL the sam
 (ShaderCheck, bundle-apis), test-metal 43 programs, test-water-surface, test-reflection-shader.
 Undo: the two shaders' render-state lines and the hand test (git diff of WaterSky/WaterFoam.shader).
 
+**Seen 2026-10-24 (dev 1.1.3.23296, his screenshot of open sea, FXAA too): thin dark dashes all over
+the water** -- the water's own color with the sky taken out, chevrons round the mesh's vertices. Cause:
+at `Offset -3, -2` the layers sat exactly on the game's water depth; the driver compiles the game's
+program and ours apart (same maths, same DXBC order but for one association), and the depth buffer is a
+reversed-Z float, where 2 units are ~2.4e-7 of the distance (0.1 mm at 500 m) -- wherever ours rounded
+behind, the sky layer failed the test. Preview (foam-render.ps1 -DepthSkew: the stand-in's vertices
+moved at random along their eye rays): 0.1 mm reproduces his picture (dashes-skew-small.png), 1 mm
+whole triangles (dashes-skew-before.png). Fix (dev 1.1.3.24880): both layers drawn 2 cm nearer along
+each eye ray (WaterGame.cginc RGGameLayerClip, screen place unchanged) and `Offset -4, -2` (one unit of
+slope more than the game's: far triangles seen edge-on had their slope term tilted by the rounding --
+specks left at 2 cm alone). Clean at 0.1 and 1 mm skews (dashes-f4-skew01/1.png); tsunami wall still
+solid with the sky layer and the foam (dashes-final-tsunami(-sky).png); coast/close shores unchanged.
+Only WaterSky + WaterFoam blobs changed (bundle-apis -Compare); test-water-surface, test-metal 43 ok.
+
+- [ ] His open sea as in the screenshot: no dark dashes, near or far, at his settings (sky 10%) and
+      at the default 100%.
 - [ ] A tsunami in his game: the wave's face solid, nothing of its back or the sea beyond in it;
       the front's foam only on the face.
 - [ ] Calm sea, shores, rivers as before (foam at the waterline, the sky on the water, no gaps at

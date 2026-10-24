@@ -49,6 +49,11 @@ Shader "Hidden/RealGlassPreviewGameWater"
             float4 _PreviewSun;      // xyz: toward the sun; w: its intensity
             float4 _PreviewSunColour;
             float4 _PreviewAmbient;
+            // The rounding the game's own program differs from ours by (m, a global; 0 = none): in the
+            // game the GPU's driver compiles the game's water and our layers apart, so a vertex can land
+            // a hair nearer or farther along its eye ray than ours. Each vertex here moves a pseudo-random
+            // share of this along its eye ray (its screen place unchanged), as the game's might.
+            float _PreviewDepthSkew;
             UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
 
             struct v2f
@@ -64,7 +69,9 @@ Shader "Hidden/RealGlassPreviewGameWater"
                 RGGameWaterVertex g = RGGameWaterAt(v.vertex);
                 v2f o;
                 o.world = g.world;
-                o.pos = mul(UNITY_MATRIX_VP, float4(g.world, 1.0));
+                float2 key = mul(unity_ObjectToWorld, v.vertex).xz;
+                float skew = (frac(sin(dot(key, float2(12.9898, 78.233))) * 43758.5453) * 2.0 - 1.0) * _PreviewDepthSkew;
+                o.pos = mul(UNITY_MATRIX_VP, float4(g.world + normalize(_WorldSpaceCameraPos - g.world) * skew, 1.0));
                 o.water = g.waterHeight;
                 o.screen = ComputeScreenPos(o.pos);
                 return o;

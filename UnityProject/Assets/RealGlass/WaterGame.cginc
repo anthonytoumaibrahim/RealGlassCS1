@@ -210,4 +210,26 @@ RGGameWaterVertex RGGameWaterAt(float4 vertex)
     return o;
 }
 
+// Where a layer on the water (the sky, the foam) is drawn from: the water's point pulled this far (m)
+// toward the eye along its own eye ray, so its place on the screen is unchanged and only its depth is
+// nearer. The layers take the game's depth test (ZTest LEqual against the depth the game's water
+// writes), and the game's program and ours, though the same maths, are compiled apart by the GPU's
+// driver: a vertex lands a rounding nearer or farther than the game's, and the depth buffer is a float
+// (reversed Z, Direct3D 11 and Metal) in which 2 Offset units are only ~2.4e-7 of the distance -- a
+// tenth of a millimetre at 500 m. Where ours landed behind, the sky layer failed the test and the water
+// showed thin dark dashes, without its sky, round the mesh's vertices (2026-10-24, his screenshot; the
+// foam preview's -DepthSkew 0.0001 draws the same). 2 cm is far past any rounding and far short of what
+// lies behind a wave's face; never more than a quarter of the way to the eye. (The layers' Offset takes
+// one more unit of slope than the game's too: on far triangles seen edge-on the rounding tilts the
+// slope term itself, past any fixed pull.)
+#define RG_WATER_LAYER_PULL 0.02
+
+float4 RGGameLayerClip(float3 world)
+{
+    float3 toEye = _WorldSpaceCameraPos - world;
+    float d = length(toEye);
+    float pull = min(RG_WATER_LAYER_PULL, 0.25 * d);
+    return mul(UNITY_MATRIX_VP, float4(world + toEye * (pull / max(d, 1e-4)), 1.0));
+}
+
 #endif

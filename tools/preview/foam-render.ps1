@@ -31,6 +31,9 @@
 #                             the author's game measured 0.527)
 #   ... -Strength 1.43        the Ripple strength (1 = 100%), as the mod passes it: Dynamic waves multiply it
 #                             by WaterWeather.RoughnessGain (the city reflection's gain stays the game's texture's)
+#   ... -DepthSkew 0.001      the stand-in's vertices each moved up to this (m) along their eye ray, at random:
+#                             the rounding the game's own water program and ours differ by in the game (the
+#                             driver compiles them apart); 0 = none, the two land on the same depth
 # Run after build-bundle.ps1 (the shaders compile) and a DLL build.
 
 param(
@@ -60,6 +63,7 @@ param(
     [string]$Spectrum = "7,50000,30,1,1",
     [double]$RippleRms = -1.0,
     [double]$Strength = 1.0,
+    [double]$DepthSkew = 0.0,
     [string]$Name = "foam",
     [ValidateSet("d3d11", "glcore")]
     [string]$Api = "d3d11",
@@ -109,6 +113,7 @@ $slope = $optics::RippleSlope($rms, $Strength)
 $lines.Add("skyripples " + (N $start) + " " + (N $span) + " " + $optics::RippleTexels + " " + (N ($slope * $slope)))
 if ($Body -ne "") { $lines.Add("body " + $Body) }
 if ($Spectrum -ne "") { $lines.Add("spectrum " + ($Spectrum.Split(',') -join " ")) }
+$lines.Add("depthskew " + (N $DepthSkew))
 $lines.Add("citygain " + (N ($optics::CityRippleGain(1.0, $rms))))
 $spread = $optics::Spread($optics::SlopeVariance($optics::CityWind))
 $lines.Add("streak " + (N ($optics::StreakSigma($Streaks, $spread, 45.0))))

@@ -54,12 +54,15 @@ Shader "RealGlass/WaterSky"
         {
             ZWrite Off
             // The game's own test (Custom/Water/Default: ZTest LEqual, Cull Back, Offset -3, 0, and it
-            // writes depth), 2 units nearer for any float of difference: drawn on the nearest water
-            // only, as the game's water shows. (Until 2026-10-23: ZTest Always + a hand test against
-            // the depth texture, which has no water -- every water surface along a ray got the sky,
-            // so a tsunami's crest, back and the sea beyond showed through its face.)
+            // writes depth): drawn on the nearest water only, as the game's water shows. Ours is drawn
+            // 2 cm nearer along each eye ray (RGGameLayerClip) with one more unit of slope than the
+            // game's: at -3, -2 alone the driver's rounding put ours behind in thin dark dashes, and on
+            // far triangles seen edge-on a hair of rounding tilts the slope term itself; the 2 units
+            // stay for OpenGL's fixed-point depth. (Until 2026-10-23: ZTest Always + a hand test
+            // against the depth texture, which has no water -- every water surface along a ray got the
+            // sky, so a tsunami's crest, back and the sea beyond showed through its face.)
             ZTest LEqual
-            Offset -3, -2
+            Offset -4, -2
             Cull Back
             Blend One OneMinusSrcAlpha
 
@@ -173,7 +176,7 @@ Shader "RealGlass/WaterSky"
                 RGGameWaterVertex g = RGGameWaterAt(v.vertex);
                 v2f o;
                 o.world = g.world;
-                o.pos = mul(UNITY_MATRIX_VP, float4(g.world, 1.0));
+                o.pos = RGGameLayerClip(g.world);
                 o.water = g.waterHeight * _MainTex_ST.x + _MainTex_ST.z;
                 return o;
             }

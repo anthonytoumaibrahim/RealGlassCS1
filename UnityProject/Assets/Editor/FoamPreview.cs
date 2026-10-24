@@ -241,6 +241,8 @@ public static class FoamPreview
                     body = Hex(p[1]) ?? body;
                 else if (p[0] == "spectrum")
                     waveSpec = new double[] { WaterPreview.F(p[1]), WaterPreview.F(p[2]), WaterPreview.F(p[3]), WaterPreview.F(p[4]), WaterPreview.F(p[5]) };
+                else if (p[0] == "depthskew")
+                    Shader.SetGlobalFloat("_PreviewDepthSkew", WaterPreview.F(p[1]));
                 else if (p[0] == "shot")
                     shots.Add(new Shot
                     {
