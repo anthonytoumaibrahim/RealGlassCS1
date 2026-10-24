@@ -173,10 +173,15 @@ convolution (Knutsson and Westin, 1993), steadied frame to frame by reprojected,
 history (Karis 2014; Pedersen 2016; with Sousa's distorted mirror, GPU Gems 2, 2005, and a
 ray-cone read, Akenine-Möller et al., Ray Tracing Gems, 2019, compiled in but switched off), and
 foam from the game's own water simulation -- along
-shores as Crest's (Bowles et al. 2017) and War Thunder's (Tcheblokov 2015) shore foam, on rising
-fronts by Chentanez and Mueller's breaking test (2010) -- carried along the flow in two phases
-(Vlachos 2010), its pattern Worley's cellular texture (1996) and a fractal sum of noise (Perlin
-1985), as bright as dense sea foam (Koepke 1984) -- and the rooms behind the windows: layered as
+shores as Crest's (Bowles et al. 2017) and War Thunder's (Tcheblokov 2015) shore foam, a band
+measured from the shore as War Thunder phases its shore waves, broken waves running in at the
+shallow-water speed in wave groups (McCowan 1894; Longuet-Higgins 1984), the swell beyond them
+spilling here and there (Galvin 1968), on rising, steep fronts by Chentanez and Mueller's breaking
+test (2010) -- in the layers of a whitecap's life (Monahan and Lu 1990; Potter et al. 2015; Callaghan et al. 2012), the bubbles under
+it as Crest's and as the water's own colour made paler (Gordon et al. 1975; Morel and Prieur 1977;
+Terrill, Melville and Stramski 2001; Pope and Fry 1997), carried along the flow in two phases
+(Vlachos 2010), its pattern Worley's cellular texture (1996), a fractal sum of noise (Perlin 1985)
+and domain warping (Quilez), as bright as dense sea foam (Koepke 1984) -- and the rooms behind the windows: layered as
 Forza Horizon 4's windows (Harwood, Playground Games, 2019), box rooms by van Dongen's interior
 mapping (2008) kept as one picture each as SimCity did (Willmott, Maxis, 2013; Golus's write-up),
 lit windows scattered at random and offices a floor at a time as in
@@ -365,6 +370,33 @@ Every technique here has shipped in a game or is published:
     SIGGRAPH 1985) for the patches, each equalized so that a share a of foam leaves exactly a of
     the pattern white. Its brightness: dense sea foam's reflectance, Peter Koepke, **Effective
     reflectance of oceanic whitecaps**, Applied Optics 23(11), 1984.
+    Its layers, as a whitecap ages: the foam of a crest breaking now and the sheet it leaves
+    (stages A and B: Edward Monahan and Ming Lu, **Acoustically relevant bubble assemblages and their
+    dependence on meteorological parameters**, IEEE Journal of Oceanic Engineering 15(4), 1990), how
+    long each lasts (Jamie Potter et al., **Magnitude and spatial variability of the whitecap foam
+    lifetime**, 2015; Adrian Callaghan et al., **Observed physical and environmental causes of scatter
+    in whitecap coverage values in a fetch-limited coastal zone**, Journal of Geophysical Research
+    117, 2012, [paper](https://data-ww3.ifremer.fr/BIB/Callaghan_etal_JGR2012.pdf)), and the bubbles a
+    break pushes under the surface (Eric Terrill, W. Kendall Melville and Dariusz Stramski, **Bubble
+    entrainment by breaking waves and their influence on optical scattering in the upper ocean**,
+    Journal of Geophysical Research 106(C8), 2001), seen as the water's own colour made paler -- its
+    body reflectance f b_b / (a + b_b) (Howard Gordon, Otis Brown and Michael Jacobs, **Computed
+    relationships between the inherent and apparent optical properties of a flat homogeneous ocean**,
+    Applied Optics 14(2), 1975; André Morel and Louis Prieur, **Analysis of variations in ocean
+    color**, Limnology and Oceanography 22(4), 1977) through the water above them (Robin Pope and
+    Edward Fry, **Absorption spectrum (380-700 nm) of pure water**, Applied Optics 36(33), 1997) --
+    drawn under the white with a parallax, and the fresh foam lit as if it had volume, as Crest's
+    foam bubbles and foam lighting are ([documentation](https://crest.readthedocs.io/en/stable/user/water-appearance.html)).
+    The surf: a band along the shore measured in distance from it, as War Thunder phases its shore
+    waves by the distance to the shore (Tcheblokov, above) -- the distance here the depth over the
+    seabed's slope -- broken waves running in at the shallow-water speed, the bigger breaking
+    farther out, as deep as their height allows (James McCowan, **On the highest wave of permanent
+    type**, Philosophical Magazine 38, 1894), in sets (Michael Longuet-Higgins, **Statistical
+    properties of wave groups in a random sea state**, Philosophical Transactions of the Royal Society
+    A 312, 1984); beyond the surf the swell's crests breaking only here and there, gently, the
+    spilling breakers of Cyril Galvin, **Breaker type classification on three laboratory beaches**,
+    Journal of Geophysical Research 73(12), 1968. The lace torn into streaks by domain warping (Inigo Quilez, **Domain warping**,
+    [article](https://iquilezles.org/articles/warp/)).
 17. The rooms behind the windows: layered as **Forza Horizon 4**'s windows are -- the room, a
     curtain or blind of its own that lets the room's light through at night, a picture per room
     from a group of its building's kind, one flat picture far away (Gareth Harwood, Playground

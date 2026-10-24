@@ -488,7 +488,7 @@
   <String key="HudButtonX.Label">Botón del mod (sin Unified UI): distancia desde la izquierda</String>
   <String key="HudButtonY.Label">Botón del mod (sin Unified UI): distancia desde arriba</String>
 
-  <String key="WaterFoamView.Label">Vista de diagnóstico de la espuma: 0 desactivada, 1 sus fuentes, 2 o 3 dónde se dibuja</String>
+  <String key="WaterFoamView.Label">Vista de diagnóstico de la espuma: 0 desactivada, 1 sus fuentes, 2 o 3 dónde se dibuja, 4 sus capas</String>
 
   <String key="PanelOpenGroups.Label">Encabezados abiertos del panel del juego, separados por comas</String>
 

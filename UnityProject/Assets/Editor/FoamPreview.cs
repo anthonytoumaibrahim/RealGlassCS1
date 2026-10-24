@@ -38,6 +38,9 @@ public static class FoamPreview
         public string View;
         public bool Foam;
         public bool Sources;
+        // The foam drawn (the layered-foam experiment): 0 none, 1 RealGlass/WaterFoam, 2 its sources,
+        // 3 today's foam (Editor/PreviewFoamToday.shader, frozen at 2b509fc), 4 the layers' view.
+        public int Mode;
         public float Seconds;
         public float Strength;
         // The sky on the water: 0 the mod's cube until 2026-10-08 (the stand-in's own, x SkyGain); 1 the
@@ -91,6 +94,9 @@ public static class FoamPreview
         public int WaveMode;
         public float Chop;
 
+        // The layered foam: today's foam for the comparison (Editor/PreviewFoamToday.shader).
+        public Material FoamToday;
+
         /// <summary>The data, light and camera for a view (true at night).</summary>
         public bool Set(string view, float strength)
         {
@@ -99,7 +105,7 @@ public static class FoamPreview
             if (Tsunami != wantTsunami)
             {
                 Coast.Tsunami = wantTsunami;
-                Coast.Bind(new[] { Water, Foam, Surface, Sky }, Log);
+                Coast.Bind(FoamToday != null ? new[] { Water, Foam, FoamToday, Surface, Sky } : new[] { Water, Foam, Surface, Sky }, Log);
                 Tsunami = wantTsunami;
             }
 
@@ -121,6 +127,9 @@ public static class FoamPreview
             Shader.SetGlobalVector("_RGWaterSky", new Vector4(shot.SkyGain, SkyInfo.y, SkyInfo.z, 0f));
             Reflection.SetVector("_RGWaterGeom", new Vector4(SeaLevel, strength, shot.SkyGain, 1f));
             Water.SetColor("_BodyColour", shot.Body.HasValue ? shot.Body.Value : BodyColour);
+            // The bubbles take the water's own colour, linear (the mod: the colour it draws the water with).
+            Color bodyLinear = (shot.Body.HasValue ? shot.Body.Value : BodyColour).linear;
+            Foam.SetVector("_RGFoamWater", new Vector4(bodyLinear.r, bodyLinear.g, bodyLinear.b, 0f));
 
             // The ripples' generator, the sky layer's averaging (the FFT waves' table, at the ripples'
             // root-mean-square slope, or the 32 waves' own), and the sun's glitter: the game's highlight
@@ -180,9 +189,19 @@ public static class FoamPreview
 
         public void ShowFoam(bool on, bool sources)
         {
+            ShowFoam(on ? (sources ? 2 : 1) : 0);
+        }
+
+        /// <summary>The foam for a shot's mode (<see cref="Shot.Mode"/>).</summary>
+        public void ShowFoam(int mode)
+        {
+            Material m = mode == 3 && FoamToday != null ? FoamToday : Foam;
             foreach (Renderer r in FoamRenderers)
-                r.enabled = on;
-            Foam.SetVector("_RGFoamDebug", new Vector4(sources ? 1f : 0f, 0f, 0f, 0f));
+            {
+                r.enabled = mode != 0;
+                r.sharedMaterial = m;
+            }
+            Foam.SetVector("_RGFoamDebug", new Vector4(mode == 2 ? 1f : mode == 4 ? 4f : 0f, 0f, 0f, 0f));
         }
     }
 
@@ -196,6 +215,7 @@ public static class FoamPreview
             var table = new Vector4[33];
             var rows = new Vector4[64];
             var foam = new Vector4[6];
+            var layers = new Vector4[10];
             var shots = new List<Shot>();
             var seqs = new List<Seq>();
             var taa = new float[] { 64f, 32f, 60f, 1f, 0.94f, 0.15f };
@@ -235,6 +255,8 @@ public static class FoamPreview
                 }
                 else if (p[0] == "foam")
                     foam[int.Parse(p[1], CultureInfo.InvariantCulture)] = new Vector4(WaterPreview.F(p[2]), WaterPreview.F(p[3]), WaterPreview.F(p[4]), WaterPreview.F(p[5]));
+                else if (p[0] == "layer")
+                    layers[int.Parse(p[1], CultureInfo.InvariantCulture)] = new Vector4(WaterPreview.F(p[2]), WaterPreview.F(p[3]), WaterPreview.F(p[4]), WaterPreview.F(p[5]));
                 else if (p[0] == "skyripples")
                     skyRipples = new Vector4(WaterPreview.F(p[1]), WaterPreview.F(p[2]), WaterPreview.F(p[3]), WaterPreview.F(p[4]));
                 else if (p[0] == "body")
@@ -246,7 +268,8 @@ public static class FoamPreview
                 else if (p[0] == "shot")
                     shots.Add(new Shot
                     {
-                        Name = p[1], View = p[2], Foam = p[3] != "0", Sources = p[3] == "2", Seconds = WaterPreview.F(p[4]), Strength = WaterPreview.F(p[5]),
+                        Name = p[1], View = p[2], Foam = p[3] != "0", Sources = p[3] == "2", Mode = int.Parse(p[3], CultureInfo.InvariantCulture),
+                        Seconds = WaterPreview.F(p[4]), Strength = WaterPreview.F(p[5]),
                         SkyMode = p.Length > 6 ? int.Parse(p[6], CultureInfo.InvariantCulture) : 0,
                         SkyGain = p.Length > 7 ? WaterPreview.F(p[7]) : 1f,
                         Body = p.Length > 8 ? Hex(p[8]) : null,
@@ -274,6 +297,24 @@ public static class FoamPreview
             string[] names = { "_RGFoamScale", "_RGFoamFeature", "_RGFoamShore", "_RGFoamFast", "_RGFoamFront", "_RGFoamLook" };
             for (int i = 0; i < names.Length; i++)
                 foamMaterial.SetVector(names[i], foam[i]);
+            string[] layerNames = { "_RGFoamLayers", "_RGFoamSheet", "_RGFoamBubbles", "_RGFoamSurf", "_RGFoamScale2", "_RGFoamExtra", "_RGFoamCrest", "_RGFoamAbsorb", "_RGFoamOuter", "_RGFoamSteep" };
+            for (int i = 0; i < layerNames.Length; i++)
+                foamMaterial.SetVector(layerNames[i], layers[i]);
+
+            // Today's foam, frozen, for the comparison column (the same six vectors and pattern: its two
+            // channels are today's).
+            Material foamToday = null;
+            foreach (Shot s in shots)
+            {
+                if (s.Mode != 3 || foamToday != null)
+                    continue;
+                Shader todayShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/Editor/PreviewFoamToday.shader");
+                log.Add("today's foam shader " + (todayShader != null ? todayShader.name + " supported=" + todayShader.isSupported : "MISSING"));
+                foamToday = new Material(todayShader);
+                foamToday.SetTexture("_RGFoamPattern", foamMaterial.GetTexture("_RGFoamPattern"));
+                for (int i = 0; i < names.Length; i++)
+                    foamToday.SetVector(names[i], foam[i]);
+            }
             var water = new Material(AssetDatabase.LoadAssetAtPath<Shader>("Assets/Editor/PreviewGameWater.shader"));
             water.SetColor("_BodyColour", body);
 
@@ -381,6 +422,7 @@ public static class FoamPreview
                     "spectrum: wind {0} m/s, fetch {1} km, heading {2} deg: {3} waves, peak {4:F1} m; choppiness {5}; tail {6:F3} of the texture's slopes",
                     waveSpec[0], waveSpec[1] / 1000.0, waveSpec[2], spectrum.WaveCount, spectrum.PeakWavelength, waveSpec[4], spectrum.TailXX + spectrum.TailZZ));
             }
+            scene.FoamToday = foamToday;
             scene.SkyFor(new Shot(), 1f);
             if (seqs.Count > 0)
                 Flicker(seqs, scene, taa, exposureDay, exposureNight, outDir);
@@ -389,7 +431,7 @@ public static class FoamPreview
             {
                 bool night = scene.Set(shot.View, shot.Strength);
                 scene.SkyFor(shot, shot.Strength);
-                scene.ShowFoam(shot.Foam, shot.Sources);
+                scene.ShowFoam(shot.Mode);
                 scene.Clock(shot.Seconds);
 
                 camera.Render();
@@ -575,7 +617,8 @@ public static class FoamPreview
 
     /// <summary>
     /// The coast's shape and water, as functions of world x, z. The sea at <see cref="SeaLevel"/> west
-    /// of a waterline that wanders round x = 0, its bed rising from 14 m deep 500 m out to the beach;
+    /// of a waterline that wanders round x = 0, its bed rising from 14 m deep 500 m out to the beach
+    /// (south of z = -450 steeply, 12 cm a metre: the game's coasts);
     /// the land rising to a plateau 6-10 m above the sea; the river in a 64 m channel along z = 210
     /// (meandering 40 m), its surface climbing 0.3% and 3 m at a rapid 380-440 m inland.
     /// </summary>
@@ -622,7 +665,12 @@ public static class FoamPreview
             if (s < -500f)
                 land = SeaLevel - 14f;
             else if (s < 0f)
-                land = SeaLevel - 14f + 14f * Mathf.Pow((s + 500f) / 500f, 1.6f);
+            {
+                // South of z = -450 the seabed drops as the game's coasts do (the author's city,
+                // 2026-10-24: under 6% of its shore's water shallower than 2 m): 12 cm a metre.
+                float gentle = SeaLevel - 14f + 14f * Mathf.Pow((s + 500f) / 500f, 1.6f);
+                land = Mathf.Lerp(gentle, SeaLevel - Mathf.Min(14f, -0.12f * s), Smooth(-250f, -450f, z));
+            }
             else
                 land = SeaLevel + 4.5f * (1f - Mathf.Exp(-s / 60f)) + 4f * Smooth(250f, 600f, s);
 
@@ -1041,6 +1089,44 @@ public static class FoamPreview
             // A city camera 70 m up, 400 m off: the face, its crest, the sea beyond over the crest.
             eye = new Vector3(-420f, SeaLevel + 70f, -160f);
             at = new Vector3(-760f, SeaLevel + 8f, 60f);
+        }
+        else if (view == "photo")
+        {
+            // The layered foam: his reference picture's view -- the surf seen from 14 m up, nearly
+            // straight down over the shore band (the waterline at x = 12).
+            eye = new Vector3(-6f, SeaLevel + 14f, 0f);
+            at = new Vector3(-3.5f, SeaLevel, 3f);
+        }
+        else if (view == "beach")
+        {
+            // The surf from a city camera 90 m up, the beach across the frame.
+            eye = new Vector3(-210f, SeaLevel + 90f, -130f);
+            at = new Vector3(0f, SeaLevel, 30f);
+        }
+        else if (view == "steep")
+        {
+            // The steep coast (as the game's) from a city camera 90 m up; its waterline near x = 38.
+            eye = new Vector3(-170f, SeaLevel + 90f, -760f);
+            at = new Vector3(30f, SeaLevel, -580f);
+        }
+        else if (view == "steepclose")
+        {
+            // The steep coast from 30 m up, close.
+            eye = new Vector3(-40f, SeaLevel + 30f, -650f);
+            at = new Vector3(25f, SeaLevel, -590f);
+        }
+        else if (view == "steepdown")
+        {
+            // The steep coast from 120 m up, looking well down, out over the sea beyond the surf (his
+            // picture of streaks of foam out past the big foam, 2026-10-24).
+            eye = new Vector3(-60f, SeaLevel + 120f, -560f);
+            at = new Vector3(-60f, SeaLevel, -640f);
+        }
+        else if (view == "steephigh")
+        {
+            // The steep coast from 300 m up, the usual city view of a shoreline.
+            eye = new Vector3(-520f, SeaLevel + 300f, -980f);
+            at = new Vector3(20f, SeaLevel, -560f);
         }
         else if (view == "tsunamiclose")
         {

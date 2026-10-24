@@ -76,7 +76,7 @@ namespace RealGlass
         /// </summary>
         public static FloatSetting HudButtonX { get; private set; }
 
-        /// <summary>Hidden: the foam's diagnostic view (0 none, 1 its sources, 2 / 3 where it draws: WaterFoam.shader).</summary>
+        /// <summary>Hidden: the foam's diagnostic view (0 none, 1 its sources, 2 / 3 where it draws, 4 its layers: WaterFoam.shader).</summary>
         public static FloatSetting WaterFoamView { get; private set; }
         public static FloatSetting HudButtonY { get; private set; }
 

@@ -489,7 +489,7 @@
   <String key="HudButtonX.Label">The mod's button (without Unified UI): distance from the left edge</String>
   <String key="HudButtonY.Label">The mod's button (without Unified UI): distance from the top edge</String>
 
-  <String key="WaterFoamView.Label">Foam diagnostic view: 0 off, 1 its sources, 2 or 3 where it draws</String>
+  <String key="WaterFoamView.Label">Foam diagnostic view: 0 off, 1 its sources, 2 or 3 where it draws, 4 its layers</String>
 
   <String key="PanelOpenGroups.Label">The in-game panel's open headings, comma separated</String>
 

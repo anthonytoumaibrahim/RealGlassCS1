@@ -24,6 +24,62 @@ that repo's `docs/RELEASE-CHECKLIST.md` has the long version.
 | Screenshots | The item's Steam page, *Add/Edit images* | 5–8, 1920 × 1080 or larger, 16:9, each under 1 MB |
 | Required items, visibility, tags | The item's Steam page | Harmony `2040656402` |
 
+## 0. Next version (1.1.4): layered foam on the shores (built 2026-10-24; dev 1.1.3.28778 deployed, not yet seen in the game; his word on the preview sheet foam-shore-1.png: "Yep, beautiful. Really good preview")
+
+His ask: "In real life, the foam is often layered / multiple foams" (his surf photo), into 1.1.4,
+pictures first (two preview rounds: tools\preview\out\foam-layers2-*.png). The foam ages in layers --
+fresh crest (bright, lit as if it had volume), residual lace (torn by domain warping), bubbles under
+it (the water's own color, paler, under the sky's reflection) -- from the surf (bores every 7.5 s
+running in, in sets; their crests solid from a third of the Amount up), fast water and fronts (and
+their falling backs). The Amount keeps its meaning (the share of the foam).
+
+**Seen 2026-10-24 (dev 1.1.3.26737, his city, the theme's water #000E1C):** "it looks really wrong.
+Just white caps every where which is just bad. I mostly care about the foam on the shores, those should
+be layered. Right now it's just one foam line." The log: his coasts drop steeply -- of the wet 30 m
+surface texels round the camera, 80 of 1489 and 27 of 3639 under 2 m deep -- so the surf, a band of
+DEPTH (1.2 m), was a few metres wide: crest, lace and bubbles in one line (the preview's beach shelves
+1:22, so it looked layered there). FIXED in 1.1.3.27940: the surf is a band 70 m from the waterline,
+the distance = depth / the seabed's slope (the terrain +-8 m round the pixel, one-sided at a patch's
+edge, measured only where the surf can reach), to 8 m deep; the bores keep a 1:30 beach's pace
+everywhere, so about four lie in the band at once (test-settings). The WHITECAPS are TAKEN OUT (his
+word): row, map, WaterWaves pass, FoldMoments, all of it -- kept as docs/foam-layers-whitecaps-2026-10-24.patch
+(gitignored). His RealGlass.xml still has WaterFoamWhitecaps (ignored, dropped at the next save).
+Preview: the coast south of z = -450 now drops 12 cm a metre; views steep / steepclose / steephigh:
+foam-shore-1.png (his water color, his 30%): today a faint band, now three crest lines with lace
+between. Flicker under TAA (moving bores included): steep 0.04%, steephigh 0.01%, beach 0.03%. Tests:
+test-settings, test-localization, test-water-surface, test-metal 43 programs (WaterFoam fragments 7 / 6
+samplers).
+
+**Seen 2026-10-24 (dev 1.1.3.28060, his Fronts at 65%):** the shore "i really like it" (his
+screenshot); but "Foam on wave fronts is affecting the entire sea ... the white foams are just
+disappearing and relocating every now and then ... they should be only at the seafront". Cause (his
+log): the calm sea rises and falls 0.3 m a water frame (median), 0.9 m (95%), everywhere; the fronts'
+falling side had been given half the threshold (0.75 m) -- at 65% the open sea foamed at random, a
+new place each water frame (~1 s). FIXED in 1.1.3.28778: both sides at the full 1.5-3 m and only on a
+steep face (Chentanez & Mueller's test: the surface map's slope 6-15%; his calm sea's steepest 6%).
+His second ask, with a picture of plopped foam assets: "really small waves/foam behind the big foam"
+-> OUTSIDE THE SURF (1.1.3.28778): the bores' phase carried on past the band as the swell's crests,
+breaking here and there (spilling: Galvin 1968) to 3 x the surf's width and 20 m deep: streaks 0.4 s of
+white (~2-3 m) along each crest where a noise of 80 m blotches (a fresh draw per wave) clears a level
+rising with the distance (0.42 -> 0.85), each its own strength, a faint lace trail x the Amount.
+Preview: foam-shore-5.png (steepdown, beach, steep at 443/445/447 s; his water color, his settings).
+
+- [ ] The open sea with his Fronts at 65%: no foam anywhere but the shores (and a real tsunami's face).
+- [ ] Beyond the surf: rows of short white streaks on the incoming crests, fewer farther out, never
+      far out at sea; each wave breaking in other places.
+- [ ] His coast from a city camera: several crest lines running in, parallel to the shore, lace
+      between them, the swash at the edge; at his 30% not emptier than before.
+- [ ] Close (ACME / First Person Camera): the crest a ragged lit ridge with bubble holes, lace in
+      streaks, the bubbles visibly under the surface.
+- [ ] No seams where two terrain patches meet along a coast (1920 m apart); quays and cliffs: hardly
+      any surf (a steep wall leaves no band); lakes and rivers above the sea's level: none.
+- [ ] No flicker, sparkle or crawling on the foam while the camera moves (TAA on and off).
+- [ ] Paused: the foam stands still; game speed 3x: the bores run 3x.
+- [ ] Night: the foam dark under the moon, as before; info views and the snapshot tool: no foam.
+- [ ] A tsunami (fronts): white on the rising face, residual and bubbles on its back (thresholds still
+      to calibrate from the log's "rise a water frame").
+- [ ] Frame time with foam on vs off at 4K (the glass's 5 s line), against before.
+
 ## 0. Next version (1.1.4): the rooms' opacity by day (built 2026-10-24, dev 1.1.3.22218; with the tooltips trimmed 1.1.3.22759; not yet seen in the game)
 
 His ask: "an option for interiors opacity during the day"; his picks: opacity 0-100% (not a

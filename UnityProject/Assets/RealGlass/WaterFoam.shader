@@ -2,24 +2,50 @@
 // game's own water meshes, right after each of the game's water draws, with the game's property
 // block (WaterGame.cginc): the vertices land where the game's water is, and every input is the
 // game's simulation as the game's own shader reads it. The game's water is drawn untouched first;
-// this only adds white, nothing anywhere else.
+// this only adds foam, nothing anywhere else.
 //
-// HOW MUCH FOAM a point has (0..1, the share of it that is white), from three sources, combined as
-// independent chances (1 - (1 - a)(1 - b)(1 - c)):
-//   SHORE   where the water is shallow at the sea's level: within the shore depth of the waterline
-//           (Crest's shoreline foam; War Thunder's shore foam), the band breathing in and out as
-//           waves run up the beach (a 10 s cycle, its phase drifting along the shore).
-//   FAST    where the flow is fast (rapids, weirs, dam outflows), more where the surface is steep.
-//   FRONTS  where the water is rising fast: the front of a tsunami, a flood or a dam break
-//           (Chentanez & Mueller 2010's breaking test on a height field: rising fast and steep).
-// WHERE it is white: the foam pattern (FoamPattern.cs: 0.6 patches + 0.4 lace, each uniform on
-// 0..1), thresholded at the level that leaves that share above it; carried along the flow in two
-// phases half a cycle apart and crossfaded (Vlachos 2010, the game's own way with its ripples).
+// IN LAYERS (2026-10-24, the author: "In real life, the foam is often layered"), as foam ages
+// (Monahan & Lu 1990's stages of a whitecap; FoamOptics' numbers):
+//   FRESH    stage A, made by a crest breaking now: dense, the brightest (Koepke 1984), patch-heavy
+//            sheets with small burst-bubble holes, lit as if it had volume (a normal from its
+//            thickness: Crest's "foam 3D lighting"); gone in about a second.
+//   RESIDUAL stage B, the sheet left behind: lace-heavy (its holes grow), thinner (the water shows
+//            through), dimmer, its lace torn into streaks (domain warping); tens of seconds (Potter
+//            et al. 2015), so the foam of the last few waves lies one over the other.
+//   BUBBLES  under both, the bubbles the break pushed down: the water's own colour made paler (the
+//            body reflectance f b_b / (a + b_b) with the bubbles' backscatter added: Gordon et al.
+//            1975, Morel & Prieur 1977), seen a little under the surface (a parallax offset along the
+//            refracted eye ray: Crest's "foam bubbles") through the water above them (pure water's
+//            absorption, Pope & Fry 1997), under the sky's reflection (x 1 - Fresnel).
+// THE AMOUNT (the Amount row) is the share of the model's foam, as it always was; each layer keeps
+// its own life. A breaking crest and the swash stay solid white from a third of it up.
+//
+// HOW MUCH FOAM, and HOW OLD, from three sources, combined as independent chances:
+//   SHORE    the surf, a band of the sea along the waterline measured in DISTANCE from it (War
+//            Thunder phases its shore waves by the distance to the shore): the distance is the depth
+//            over the seabed's slope under the point (the game's coasts drop steeply -- in the
+//            author's city under 6% of the shore's water is shallower than 2 m -- so a band of depth
+//            alone was a single thin line, 2026-10-24). Broken waves (bores) every few seconds, the
+//            bigger breaking farther out (McCowan 1894: as deep as their height allows), running in at
+//            the shallow-water speed sqrt(g d) of a gently shelving beach -- slowing and bunching
+//            toward the waterline -- in sets of strong and weak ones (wave groups). A point's age is
+//            the time since the last bore passed it: a bright crest line, the residual sheet and the
+//            bubbles fading behind it, the last bores' foam under the next. The swash at the very
+//            edge stays white. Farther out the same crests are the swell coming in, breaking here and
+//            there before they reach the surf (spilling): short streaks of white, fewer the farther
+//            out (the author's picture of such streaks, 2026-10-24). At the sea's level only.
+//   FAST     where the flow is fast (rapids, weirs, dam outflows), more where the surface is steep;
+//            the core fresh, the fringe old.
+//   FRONTS   where the water is rising fast on a steep face: the front of a tsunami, a flood or a dam
+//            break, fresh (Chentanez & Mueller 2010's breaking test: fast and steep -- the game's calm
+//            sea rises and falls up to a metre a water frame everywhere, but gently); and on its back,
+//            where the water falls again behind the crest, the residual sheet and the bubbles.
+// WHERE it is white: the foam pattern (FoamPattern.cs), thresholded at the level that leaves that
+// share above it; carried along the flow in two phases half a cycle apart and crossfaded (Vlachos
+// 2010, the game's own way with its ripples).
 // FILTERED so it does not sparkle: where a pixel spans more than the pattern's features, the
 // threshold turns into a ramp as wide as the variation averaged away, and far away the pixel shows
-// exactly the share of white it should (the amount itself).
-// LIT as a rough white surface: Koepke 1984's reflectance of dense foam, the sun or moon (with the
-// game's shadows) and the sky's ambient.
+// exactly the share it should (the amount itself).
 Shader "RealGlass/WaterFoam"
 {
     // _MainTex is the game's (the block sets it per patch); declared so that its _MainTex_ST is the
@@ -51,7 +77,8 @@ Shader "RealGlass/WaterFoam"
             ZTest LEqual
             Offset -4, -2
             Cull Back
-            Blend SrcAlpha OneMinusSrcAlpha
+            // Premultiplied: the bubbles and the white composited in the shader.
+            Blend One OneMinusSrcAlpha
 
             CGPROGRAM
             #pragma target 3.5
@@ -83,10 +110,41 @@ Shader "RealGlass/WaterFoam"
             // cycle (s), w: the strength of it all (0..)
             float4 _RGFoamLook;
             // A diagnostic (the hidden WaterFoamView row; 0 normally): x = 1 shows each source's amount
-            // as a colour (red shore, green fast water, blue fronts) on every wet pixel; 2 magenta on
-            // every pixel drawn (past the depth test), before the game's no-water test; 3 the same
-            // after it.
+            // as a colour (red shore, green fast water, blue fronts) on every wet pixel;
+            // 2 magenta on every pixel drawn (past the depth test), before the game's no-water test; 3
+            // the same after it; 4 the layers (red fresh, green residual, blue the bubbles).
             float4 _RGFoamDebug;
+
+            // The layers (FoamOptics.LayerVectors).
+            // x, y, z: how long fresh foam, the residual sheet and the bubbles last (s); w: a fresh
+            // sheet's reflectance
+            float4 _RGFoamLayers;
+            // x: an old sheet's reflectance, y: how much of the water it hides, z, w: the share of a
+            // fresh and of an old sheet in burst-bubble holes
+            float4 _RGFoamSheet;
+            // x: Morel & Prieur's f, y: the bubbles' backscattering over the water's own at their
+            // densest, z: how deep they are seen (m), w: how much of the water they hide at most
+            float4 _RGFoamBubbles;
+            // The surf. x: a bore every this many s, y: the slope of the beach the bores run in at the
+            // pace of, z: bores in a set, w: the swash's width (m from the waterline)
+            float4 _RGFoamSurf;
+            // x: the bubbles' repeats a metre, y: the bubble clouds', z, w: their features (texels; log2)
+            float4 _RGFoamScale2;
+            // x: a fresh sheet's thickness for its lighting (m), y: the bubbles' spread over the white,
+            // z: the bubble clouds' edge, w: the surf's width (m from the waterline)
+            float4 _RGFoamExtra;
+            // x: how long a bore's crest stays nearly solid (s), y: how far either side the seabed's
+            // slope is measured (m), z: the deepest water the surf reaches (m), w: the least slope
+            float4 _RGFoamCrest;
+            // rgb: the water's colour (linear, as the game's water is drawn with it); w: -
+            float4 _RGFoamWater;
+            // rgb: pure water's absorption in red, green and blue (per m); w: -
+            float4 _RGFoamAbsorb;
+            // Outside the surf. x: how far the swell's crests break (x the surf's width), y: in water no
+            // deeper than (m), z: how long a streak's foam lasts (s), w: the noise's blotches (m)
+            float4 _RGFoamOuter;
+            // Fronts: the surface's slope their foam starts at (x) and is full at (y); z, w: -
+            float4 _RGFoamSteep;
 
             struct v2f
             {
@@ -109,20 +167,18 @@ Shader "RealGlass/WaterFoam"
                 return o;
             }
 
-            // The patches' and the lace's mix, and the threshold that leaves a share a of it above:
-            // the inverse of the distribution of A U1 + B U2 (U1, U2 uniform on 0..1), a trapezoid.
-            #define RG_A 0.6
-            #define RG_B 0.4
-
-            float FoamThreshold(float a)
+            // The threshold that leaves a share a of w G + (1 - w) R above it (G, R uniform on 0..1):
+            // the inverse of the distribution of the sum, a trapezoid.
+            float FoamThreshold(float a, float w)
             {
+                float hi = max(w, 1.0 - w), lo = min(w, 1.0 - w);
                 float p = 1.0 - saturate(a);
-                float lo = RG_B / (2.0 * RG_A);
-                if (p < lo)
-                    return sqrt(2.0 * RG_A * RG_B * p);
-                if (p > 1.0 - lo)
-                    return 1.0 - sqrt(2.0 * RG_A * RG_B * (1.0 - p));
-                return RG_A * p + 0.5 * RG_B;
+                float edge = lo / (2.0 * hi);
+                if (p < edge)
+                    return sqrt(2.0 * hi * lo * p);
+                if (p > 1.0 - edge)
+                    return 1.0 - sqrt(2.0 * hi * lo * (1.0 - p));
+                return hi * p + 0.5 * lo;
             }
 
             // How far a channel is averaged away at this pixel: 0 while a texel is no bigger than the
@@ -134,25 +190,83 @@ Shader "RealGlass/WaterFoam"
                 return saturate(log2(texels) / max(feature, 1.0));
             }
 
-            // The white share at one phase: the pattern at xz against the threshold for amount a.
-            float Coverage(float2 xz, float a, float t)
+            // The white share at one phase: patches and lace (patch weight w) against the threshold t
+            // for amount a, less the burst-bubble holes (share h). thick: how far inside the sheet
+            // (0 at its edge, 1 well in; 0 where the lace is averaged away).
+            float Coverage(float2 xz, float a, float t, float w, float h, out float thick)
             {
-                float2 uvLace = xz * _RGFoamScale.x;
+                // The lace's cells torn about: its place warped by two noises a few metres across
+                // (domain warping), so the bubble walls run in streaks and swirls, not a net of cells.
+                float2 warp = tex2D(_RGFoamPattern, xz * (1.0 / 9.0)).ga - 0.5;
+                float2 uvLace = (xz + warp * 2.2) * _RGFoamScale.x;
                 float2 uvPatch = xz * _RGFoamScale.y;
+                float2 uvHole = xz * _RGFoamScale2.x;
                 float lace = tex2D(_RGFoamPattern, uvLace).r;
                 float patch = tex2D(_RGFoamPattern, uvPatch).g;
+                float hole = tex2D(_RGFoamPattern, uvHole).b;
                 float rLace = Averaged(uvLace, _RGFoamFeature.x);
                 float rPatch = Averaged(uvPatch, _RGFoamFeature.y);
+                float rHole = Averaged(uvHole, _RGFoamScale2.z);
 
-                float field = RG_A * patch + RG_B * lace;
-                // Where the lace is averaged away its share of the field is spread evenly over 0..0.4
-                // round the patches' value: the share above t is then a ramp half that wide -- exact
-                // once the lace is fully averaged. Plus the pixel's own change across it (the glass's
-                // anti-aliased threshold, 0.75 fwidth). Where the patches too are averaged away, the
-                // amount itself.
-                float e = 0.5 * RG_B * rLace + 0.75 * fwidth(field) + 1e-3;
+                float field = w * patch + (1.0 - w) * lace;
+                // Where the lace is averaged away its share of the field is spread evenly round the
+                // patches' value: the share above t is then a ramp half that wide. Plus the pixel's own
+                // change across it (the glass's anti-aliased threshold, 0.75 fwidth) -- of the field
+                // AND of the threshold, which moves with the amount (a patch of foam's edge). Where the
+                // patches too are averaged away, the amount itself.
+                float e = 0.5 * (1.0 - w) * rLace + 0.75 * fwidth(field - t) + 1e-3;
                 float c = saturate((field - t + e) / (2.0 * e));
-                return lerp(c, a, rPatch);
+                thick = saturate((field - t) / 0.12) * (1.0 - rLace);
+                // The holes: the share h of the bubble channel at its top, its own ramp; averaged
+                // away, exactly h of the sheet.
+                float eh = 0.75 * fwidth(hole) + 0.02;
+                float holes = lerp(saturate((hole - (1.0 - h) + eh) / (2.0 * eh)), h, rHole);
+                return lerp(c, a, rPatch) * (1.0 - holes);
+            }
+
+            // The bubble clouds' share at one phase, read deeper along the eye ray (under).
+            float Clouds(float2 xz, float b)
+            {
+                float2 uv = xz * _RGFoamScale2.y;
+                float v = tex2D(_RGFoamPattern, uv).a;
+                float r = Averaged(uv, _RGFoamScale2.w);
+                float e = _RGFoamExtra.z + 0.75 * fwidth(v);
+                float c = saturate((v - (1.0 - b) + e) / (2.0 * e));
+                return lerp(c, b, r);
+            }
+
+            // The world gradient (per m) of a value from its screen derivatives and the point's: the
+            // 2 x 2 system solved, 0 where it is degenerate.
+            float2 WorldGradient(float f, float2 xz)
+            {
+                float2 dx = ddx(xz), dy = ddy(xz);
+                float fx = ddx(f), fy = ddy(f);
+                float det = dx.x * dy.y - dx.y * dy.x;
+                float inv = det / (det * det + 1e-12);
+                return float2(dy.y * fx - dx.y * fy, dx.x * fy - dy.x * fx) * inv;
+            }
+
+            // The seabed's slope at uv: the terrain's heights span m either side each way (one-sided at
+            // the patch's edges, where its maps end), as the game's pixel program reads them.
+            float SeabedSlope(float2 uv, float span)
+            {
+                float2 step = span * _SurfaceMapping.z;
+                float2 lo = max(uv - step, _TerrainMapping.xz), hi = min(uv + step, 1.0 - _TerrainMapping.xz);
+                float dx = RGGameTerrainPixel(float2(hi.x, uv.y)) - RGGameTerrainPixel(float2(lo.x, uv.y));
+                float dz = RGGameTerrainPixel(float2(uv.x, hi.y)) - RGGameTerrainPixel(float2(uv.x, lo.y));
+                float2 run = max(hi - lo, 1e-6) / max(_SurfaceMapping.z, 1e-9);
+                return length(float2(dx / run.x, dz / run.y));
+            }
+
+            float Hash(float n)
+            {
+                return frac(sin(n * 12.9898 + 4.1414) * 43758.5453);
+            }
+
+            // Independent chances: the share of a point covered by either.
+            float Either(float a, float b)
+            {
+                return 1.0 - (1.0 - saturate(a)) * (1.0 - saturate(b));
             }
 
             float4 frag(v2f i) : SV_Target
@@ -172,57 +286,196 @@ Shader "RealGlass/WaterFoam"
                 float2 tilt = sa.xz * 2.0 - 1.0;
                 float steep = length(tilt);
                 float clock = _SimulationTime.x;
+                // The amount: the share of the model's foam, as ever (each layer keeps its own life); a
+                // breaking crest and the swash stay solid white from a third up (a crest breaks white
+                // however much foam the sea makes), and fade out below it.
+                float amount = max(_RGFoamLook.w, 0.0);
+                float solid = saturate(3.0 * amount);
+                float lifeA = _RGFoamLayers.x, lifeB = _RGFoamLayers.y, lifeC = _RGFoamLayers.z;
 
-                // SHORE: at the sea's level, within the (breathing) shore depth of the waterline.
+                // SHORE: the surf, at the sea's level, in a band measured from the waterline: the
+                // distance is the depth over the seabed's slope here (measured only where the surf can
+                // reach: its terrain reads are the costly part).
                 float sea = 1.0 - smoothstep(_RGFoamShore.w, 2.0 * _RGFoamShore.w, abs(i.water.x - _RGFoamShore.z));
-                float breathe = 0.7 + 0.3 * sin(6.2831853 * clock / 10.0 + 0.031 * world.x + 0.023 * world.z);
-                float reach = max(_RGFoamShore.y * breathe, 0.01);
-                float shore = _RGFoamShore.x * sea * (1.0 - smoothstep(0.0, reach, depth));
-                // Broken waves: lines of white along the depth's contours (parallel to the beach on a
-                // shelving shore), running in toward the waterline once a cycle -- the shore waves'
-                // phase taken from the depth, as War Thunder takes it from the distance to the shore.
-                // The swash at the very edge stays white.
-                float lines = 0.5 + 0.5 * cos(6.2831853 * (2.0 * depth / max(_RGFoamShore.y, 0.01) + clock / 10.0));
-                float broken = lerp(0.35, 1.0, smoothstep(0.3, 0.9, lines));
-                shore *= max(broken, 1.0 - smoothstep(0.0, 0.3 * reach, depth));
+                float deepest = max(_RGFoamCrest.z, 0.1);
+                float outerDeepest = max(_RGFoamOuter.y, deepest);
+                float slope = 1.0;
+                [branch]
+                if (sea > 0.001 && depth < outerDeepest)
+                    slope = SeabedSlope(uv, _RGFoamCrest.y);
+                slope = max(slope, max(_RGFoamCrest.w, 1e-4));
+                float x = max(depth, 0.0) / slope;
+                float surf = max(_RGFoamExtra.w, 1.0);
+                float period = max(_RGFoamSurf.x, 0.5);
+                float sets = max(_RGFoamSurf.z, 1.0);
+                // A bore broken at the band's edge reaches x after 2 (sqrt(surf) - sqrt(x)) / sqrt(g s):
+                // at sqrt(g d) with d = s x, s the gentle beach the bores keep the pace of (the same on
+                // every coast: the lines stay apart on a steep one); its phase drifts slowly along the shore.
+                // Past the band's edge the same crests are the swell coming in, before they break (the
+                // time to the edge, negative).
+                float travel = 2.0 * (sqrt(surf) - sqrt(x)) / sqrt(9.80665 * max(_RGFoamSurf.y, 1e-3));
+                float along = (0.031 * world.x + 0.023 * world.z) / 6.2831853;
+                // A broken wave's front is ragged: its phase jittered by the patches' noise, a few metres
+                // across (two scales of it).
+                float ragged = 0.12 * (tex2D(_RGFoamPattern, world.xz * (1.0 / 60.0)).g - 0.5) + 0.05 * (tex2D(_RGFoamPattern, world.xz * (1.0 / 17.0)).a - 0.5);
+                float phase = clock / period - travel / period + along + ragged;
+                float bore = floor(phase);
+                float age = frac(phase) * period;
+                // The last three bores' foam, each its own generation (the older ones' residual still
+                // under the newer: the layers of the surf).
+                float shoreW = 0.0, shoreF = 0.0, shoreB = 0.0, crest = 0.0;
+                for (int k = 0; k < 3; k++)
+                {
+                    float id = bore - k;
+                    float inSet = id - sets * floor(id / sets);
+                    // A set: the big ones together, then a lull.
+                    float strength = saturate(0.55 + 0.4 * cos(6.2831853 * inSet / sets) + 0.2 * (Hash(inSet) - 0.5));
+                    // The bigger it is the farther out it broke (as deep as its height allows); none
+                    // past the deepest water the surf reaches.
+                    float breaks = surf * (0.45 + 0.55 * strength);
+                    float broken = strength * (1.0 - smoothstep(0.8 * breaks, breaks, x)) * (1.0 - smoothstep(0.8 * deepest, deepest, depth));
+                    float t = age + k * period;
+                    shoreW = Either(shoreW, broken * exp(-t / lifeB));
+                    shoreF = Either(shoreF, broken * exp(-t / lifeA));
+                    shoreB = Either(shoreB, broken * exp(-t / lifeC));
+                    // The crest itself, the bore's churning front: nearly solid white for its first
+                    // moments (its width the bore's run over them).
+                    if (k == 0)
+                        crest = saturate(1.3 * broken) * exp(-t / max(_RGFoamCrest.x, 0.05));
+                }
+                // The swash, white at the very edge.
+                crest = Either(crest, 0.8 * (1.0 - smoothstep(0.0, max(_RGFoamSurf.w, 0.01), x)));
 
-                // FAST: the flow's speed, the steeper the surface the sooner.
-                float fast = _RGFoamFast.x * smoothstep(_RGFoamFast.y, _RGFoamFast.z, speed * (1.0 + _RGFoamFast.w * steep));
+                // OUTSIDE THE SURF: the swell's crests coming in break here and there before they reach
+                // it (spilling breakers) -- short streaks of white along each crest with a little trail,
+                // fewer the farther out; each wave breaks in other places (its own draw of the noise,
+                // blotches a few tens of metres across, cut by the thin crest into streaks of every
+                // length), each streak its own strength.
+                float outerReach = surf * max(_RGFoamOuter.x, 1.0);
+                float outerBand = smoothstep(0.85 * surf, 1.05 * surf, x) * (1.0 - smoothstep(0.7 * outerReach, outerReach, x)) *
+                                  (1.0 - smoothstep(0.8 * outerDeepest, outerDeepest, depth));
+                float farOut = saturate((x - surf) / max(outerReach - surf, 1.0));
+                float chance = lerp(0.42, 0.85, farOut);
+                float2 q = world.xz / max(_RGFoamOuter.w, 1.0);
+                float2 qWave = q + float2(Hash(bore + 0.71) * 7.1, Hash(bore + 0.37) * 5.3);
+                // (the gradients of the place, not of the wave's jump: no seam of a coarse mip along the crest)
+                float blot = tex2Dgrad(_RGFoamPattern, qWave, ddx(q), ddy(q)).g;
+                float streak = outerBand * smoothstep(chance, chance + 0.08, blot) * (0.45 + 0.55 * Hash(bore + 0.13));
+                float outerLife = max(_RGFoamOuter.z, 0.05);
+                // Solid along the crest, with a faint trail of lace behind it.
+                float spill = streak * saturate(1.3 * exp(-age / outerLife));
+                shoreW = Either(shoreW, 0.3 * streak * exp(-age / (3.0 * outerLife)));
+                crest = Either(crest, spill);
 
-                // FRONTS: rising fast.
-                float front = _RGFoamFront.x * smoothstep(_RGFoamFront.y, _RGFoamFront.z, i.water.y);
+                float shoreAmount = _RGFoamShore.x * sea;
+                shoreW = Either(shoreW * amount, crest * solid) * shoreAmount;
+                shoreF = Either(shoreF * amount, crest * solid) * shoreAmount;
+                shoreB = Either(shoreB * amount, 0.5 * spill * solid) * shoreAmount;
+                // Each bore's foam a pattern of its own (the set's place in the minute picks it).
+                float set = bore - sets * floor(bore / sets);
+                float2 boreShift = shoreW > 0.001 ? float2(Hash(set + 0.5) * 53.1, Hash(set + 0.25) * 71.3) : float2(0.0, 0.0);
 
-                float a = 1.0 - (1.0 - saturate(shore)) * (1.0 - saturate(fast)) * (1.0 - saturate(front));
-                a = saturate(a * _RGFoamLook.w);
+                // FAST: the flow's speed, the steeper the surface the sooner; the core fresh.
+                float fastSource = _RGFoamFast.x * smoothstep(_RGFoamFast.y, _RGFoamFast.z, speed * (1.0 + _RGFoamFast.w * steep));
+                float fastW = saturate(fastSource * amount);
+                float fastF = fastW * smoothstep(0.3, 1.0, fastSource);
+                float fastB = saturate(fastSource * _RGFoamExtra.y * amount);
+
+                // FRONTS: rising fast (fresh); falling again behind the crest (the residual, the bubbles)
+                // -- and steep, as Chentanez & Mueller's breaking test asks: the game's calm sea rises and
+                // falls up to a metre from one water frame to the next everywhere (the author's city), on
+                // a surface no steeper than 6%; a wave's face is far steeper.
+                float faces = smoothstep(_RGFoamSteep.x, _RGFoamSteep.y, steep);
+                float up = _RGFoamFront.x * smoothstep(_RGFoamFront.y, _RGFoamFront.z, i.water.y) * faces;
+                float down = _RGFoamFront.x * smoothstep(_RGFoamFront.y, _RGFoamFront.z, -i.water.y) * faces;
+                float frontW = saturate(Either(up, 0.7 * down) * amount);
+                float frontF = saturate(up * amount);
+                float frontB = saturate(Either(up, down) * _RGFoamExtra.y * amount);
+
+                float a = Either(Either(shoreW, fastW), frontW);
+                float fresh = min(Either(Either(shoreF, fastF), frontF), a);
+                float bubbles = max(Either(Either(shoreB, fastB), frontB), a);
+                // How much of the white is fresh (stage A): its look, from residual (0) to fresh (1).
+                float share = saturate(fresh / max(a, 1e-4));
 
                 // Carried along the flow: two phases half a cycle apart, each reset when the other is
                 // whole (Vlachos 2010), with a slow offset across the map so the resets do not pulse
                 // in step (the game's own term).
                 float cycle = max(_RGFoamLook.z, 0.5);
-                float phase = clock / cycle + 0.2 * cos(0.06 * world.x) * cos(0.06 * world.z);
-                float f0 = frac(phase), f1 = frac(phase + 0.5);
+                float flowPhase = clock / cycle + 0.2 * cos(0.06 * world.x) * cos(0.06 * world.z);
+                float f0 = frac(flowPhase), f1 = frac(flowPhase + 0.5);
                 float2 reachFlow = flow * _RGFoamLook.y * cycle;
-                float t = FoamThreshold(a);
-                float c0 = Coverage(world.xz - reachFlow * (f0 - 0.5), a, t);
-                float c1 = Coverage(world.xz - reachFlow * (f1 - 0.5) + float2(17.3, 29.1), a, t);
-                float white = lerp(c0, c1, 2.0 * abs(0.5 - f0));
+                float blend = 2.0 * abs(0.5 - f0);
+                float2 p0 = world.xz - reachFlow * (f0 - 0.5) + boreShift;
+                float2 p1 = world.xz - reachFlow * (f1 - 0.5) + boreShift + float2(17.3, 29.1);
+
+                // The white: fresh sheets are patch-heavy and dense, old ones lace-heavy and holed.
+                float w = lerp(0.5, 0.8, share);
+                float h = lerp(_RGFoamSheet.w, _RGFoamSheet.z, share);
+                float asked = min(a / max(1.0 - h, 0.05), 1.0);
+                float t = FoamThreshold(asked, w);
+                float thick0, thick1;
+                float c0 = Coverage(p0, asked, t, w, h, thick0);
+                float c1 = Coverage(p1, asked, t, w, h, thick1);
+                float white = lerp(c0, c1, blend);
+                float thick = lerp(thick0, thick1, blend);
                 // Sparse foam as grey, not lone white specks (they would only sparkle): no pixel more
                 // than four times the share asked for; and a trace of foam is none.
                 white = min(white, 4.0 * a) * smoothstep(0.01, 0.05, a);
 
-                // A rough white surface on the water's large-scale slope.
+                // The bubbles, under: read where the refracted eye ray meets their depth.
+                float3 toEye = normalize(_WorldSpaceCameraPos - world);
+                float3 down3 = refract(-toEye, float3(0.0, 1.0, 0.0), 0.75);
+                float2 under = down3.xz / max(-down3.y, 0.2) * _RGFoamBubbles.z;
+                // Their clouds spread wider than the white; they are as thick as the bubbles are many (a
+                // plume thins as it rises and spreads: soft edges, no discs).
+                float spread = saturate(bubbles * _RGFoamExtra.y);
+                float b0 = Clouds(p0 + under, spread);
+                float b1 = Clouds(p1 + under, spread);
+                float cloud = lerp(b0, b1, blend) * saturate(bubbles);
+
+                // The light. The water's large-scale slope; the fresh sheet's own, from its thickness.
                 float3 n = normalize(float3(tilt.x, sqrt(max(1.0 - dot(tilt, tilt), 0.04)), tilt.y));
-                float lit = saturate(dot(n, _WorldSpaceLightPos0.xyz)) * SHADOW_ATTENUATION(i);
-                float3 light = _LightColor0.rgb * lit + ShadeSH9(float4(n, 1.0));
-                float3 colour = Finite(_RGFoamLook.x * light);
+                float2 grad = WorldGradient(thick, world.xz) * _RGFoamExtra.x * share;
+                grad /= max(length(grad) / 1.5, 1.0);
+                float3 nFoam = normalize(n + float3(-grad.x, 0.0, -grad.y));
+                float shadow = SHADOW_ATTENUATION(i);
+                float3 sun = _LightColor0.rgb * shadow;
+                float3 l = _WorldSpaceLightPos0.xyz;
+                float3 litFoam = sun * saturate(dot(nFoam, l)) + ShadeSH9(float4(nFoam, 1.0));
+                float3 litWater = sun * saturate(dot(n, l)) + ShadeSH9(float4(n, 1.0));
+
+                float3 white3 = lerp(_RGFoamSheet.x, _RGFoamLayers.w, share) * litFoam;
+                // The bubbles: the water's own body reflectance (f b_b / (a + b_b)), its a / b_b from
+                // the colour the water is drawn with, the bubbles' backscatter added.
+                float3 r0 = max(_RGFoamWater.rgb, 1e-4);
+                float f = _RGFoamBubbles.x;
+                float3 ratio = max(f / r0 - 1.0, 0.0);
+                float beta = _RGFoamBubbles.y * spread;
+                float3 rb = f * (1.0 + beta) / (ratio + 1.0 + beta);
+                // Seen through the water above them: the light's way down to them and back up to the
+                // eye, absorbed as pure water absorbs (Pope & Fry 1997) -- red the most: turquoise.
+                float path = _RGFoamBubbles.z * (1.0 + 1.0 / max(-down3.y, 0.2));
+                rb = max(rb * exp(-_RGFoamAbsorb.rgb * path), r0);
+                float3 bubble3 = rb * litWater;
+                float fresnel = 0.0204 + 0.9796 * pow(1.0 - saturate(dot(n, toEye)), 5.0);
+
+                float aw = white * lerp(_RGFoamSheet.y, 1.0, share);
+                float ab = cloud * _RGFoamBubbles.w * (1.0 - fresnel);
+                float3 colour = white3 * aw + bubble3 * ab * (1.0 - aw);
+                float alpha = aw + ab * (1.0 - aw);
+
                 if (_RGFoamDebug.x > 1.5 && _RGFoamDebug.x < 2.5)
-                    return float4(1.0, 0.0, 1.0, 0.85);
+                    return float4(0.85, 0.0, 0.85, 0.85);
                 clip(wet);
+                if (_RGFoamDebug.x > 3.5)
+                    return float4(0.85 * saturate(float3(white * share, white * (1.0 - share), cloud)), 0.85);
                 if (_RGFoamDebug.x > 2.5)
-                    return float4(1.0, 0.0, 1.0, 0.85);
+                    return float4(0.85, 0.0, 0.85, 0.85);
                 if (_RGFoamDebug.x > 0.5)
-                    return float4(saturate(float3(shore, fast, front)), 0.85);
-                return float4(colour, a > 0.0 ? FiniteAlpha(white) : 0.0);
+                    return float4(0.85 * saturate(float3(shoreW, fastW, frontW)), 0.85);
+                alpha = FiniteAlpha(alpha);
+                return float4(Finite(colour) * (alpha > 0.0 ? 1.0 : 0.0), alpha);
             }
             ENDCG
         }

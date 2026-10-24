@@ -37,6 +37,15 @@ the mod's name in the game.
   English, as in Volumetric Weather. A game set to one of them shows it automatically; *Show this
   mod in* on the options page picks one by hand. These translations were made with AI, so some
   wording may be off -- corrections are welcome. Any text not yet translated shows in English.
+- **Foam in layers along the shores.** The surf is now a band some 70 m wide along the sea's shores,
+  however steeply the seabed drops (before, on the game's steep coasts, the shore foam was one thin
+  line). Waves break in it one after another and run in, in sets of bigger and smaller ones, each
+  with a bright, churning crest, leaving a sheet of lace that thins and tears into streaks over the
+  next seconds, the older waves' foam still under the newer; under the foam a cloud of bubbles turns
+  the water paler, in the water's own color. Out beyond the surf the swell coming in breaks here
+  and there in short white streaks, fewer the farther out, each wave in other places. The Foam
+  amount means what it did: the share of the foam; a breaking crest stays white from about a third
+  up.
 
 ### Changed
 
@@ -62,6 +71,10 @@ the mod's name in the game.
   its back and the sea beyond -- showed through its face: the mod's sky reflection and foam were
   drawn on every water surface along the view, not only the nearest. They now take the same depth
   test as the game's own water, so they lie exactly on the water the game shows.
+- **Foam on wave fronts no longer speckles the open sea**, jumping to new places every second. It
+  foamed wherever the water rose fast between two of the game's water frames, which the calm sea
+  does here and there all the time; now only where that water is also steep, as a tsunami's or a
+  flood's face is.
 
 ## 1.1.3 — 2026-10-22
 

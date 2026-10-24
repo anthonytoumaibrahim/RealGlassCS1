@@ -475,7 +475,7 @@
   <String key="HudButtonX.Label">模组按钮（不使用 Unified UI）：距左边缘</String>
   <String key="HudButtonY.Label">模组按钮（不使用 Unified UI）：距上边缘</String>
 
-  <String key="WaterFoamView.Label">泡沫诊断视图：0 关闭，1 显示来源，2 或 3 显示绘制位置</String>
+  <String key="WaterFoamView.Label">泡沫诊断视图：0 关闭，1 显示来源，2 或 3 显示绘制位置，4 显示分层</String>
 
   <String key="PanelOpenGroups.Label">游戏内面板中展开的标题，以逗号分隔</String>
 

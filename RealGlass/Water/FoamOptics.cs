@@ -78,5 +78,137 @@ namespace RealGlass.Water
                 Reflectance, FlowSpeed, Cycle, Math.Max(0.0, amount),
             };
         }
+
+        // ---- THE LAYERS (2026-10-24; docs: the layered-foam plan) ----
+        // A whitecap's two stages (Monahan & Lu 1990): STAGE A, the foam a crest makes as it breaks --
+        // dense, the brightest, 0.4-5 s (Potter et al. 2015); STAGE B, the sheet left behind, thinning
+        // into lace over tens of seconds, its reflectance decaying exponentially (Koepke 1984: 20-55% as
+        // a wave breaks, 3-10% ten seconds on; Callaghan et al. 2012); and under both the bubbles the
+        // break pushed down (Terrill, Melville & Stramski 2001), seen as the water's own colour made
+        // paler (the body reflectance R = f b_b / (a + b_b): Gordon et al. 1975, Morel & Prieur 1977) --
+        // Crest's "foam bubbles" under its white foam.
+
+        /// <summary>
+        /// How long each layer lasts (s, e-folding): stage A (Potter et al. 2015: 0.4-5 s), the stage-B
+        /// sheet's cover (residual foam lasts tens of seconds, Potter et al.; its reflectance falls
+        /// faster, Koepke's ~6 s: the sheet's look dims with its share of fresh foam), the bubbles under
+        /// them (Terrill et al. 2001: tens of seconds).
+        /// </summary>
+        public const double FreshLife = 1.2;
+
+        public const double ResidualLife = 10.0;
+
+        public const double BubbleLife = 20.0;
+
+        /// <summary>Pure water's absorption (per m) in red (650 nm), green (550 nm) and blue (450 nm): Pope &amp; Fry 1997.</summary>
+        public const double AbsorptionRed = 0.340, AbsorptionGreen = 0.0565, AbsorptionBlue = 0.0092;
+
+        /// <summary>A fresh sheet's reflectance (Koepke's upper value) and an old one's.</summary>
+        public const double FreshReflectance = 0.55;
+
+        public const double ResidualReflectance = 0.40;
+
+        /// <summary>How much of the water an old, thin sheet hides (a fresh one: all).</summary>
+        public const double ResidualOpacity = 0.7;
+
+        /// <summary>The share of a sheet in burst-bubble holes: fresh, old.</summary>
+        public const double FreshHoles = 0.12;
+
+        public const double ResidualHoles = 0.30;
+
+        /// <summary>A fresh sheet's thickness for its lighting (m): the slope its edges are lit with.</summary>
+        public const double FreshThickness = 0.25;
+
+        /// <summary>Morel &amp; Prieur's f (R = f b_b / a), and the bubbles' backscattering over the water's own at their densest.</summary>
+        public const double BodyF = 0.33;
+
+        public const double BubbleBackscatter = 20.0;
+
+        /// <summary>How deep the bubble clouds are seen (m: the parallax), how much of the water they hide at most, their spread over the white's and their edge.</summary>
+        public const double BubbleDepth = 0.5;
+
+        public const double BubbleOpacity = 0.65;
+
+        public const double BubbleSpread = 1.4;
+
+        public const double BubbleEdge = 0.15;
+
+        /// <summary>
+        /// The surf: a band <see cref="SurfWidth"/> m wide along the waterline, measured in distance
+        /// from it (War Thunder phases its shore waves by the distance to the shore) -- the depth over
+        /// the seabed's slope, that slope from the terrain <see cref="SlopeSpan"/> m either side (no
+        /// less than <see cref="MinSlope"/>), and no surf where the water is deeper than
+        /// <see cref="SurfDepth"/> m. The game's coasts drop steeply (the author's city, 2026-10-24:
+        /// under 6% of the shore's water shallower than 2 m), so a band of DEPTH (1.2 m) was a single
+        /// thin line there. A broken wave (a bore) every <see cref="BorePeriod"/> s (8 a minute: the
+        /// game's clock wraps at 60 s), the bigger breaking farther out, running in at the
+        /// shallow-water speed sqrt(g d) of a beach of <see cref="BeachSlope"/> (on every coast: the
+        /// lines keep apart on a steep one); sets of <see cref="SetLength"/> (wave groups); the swash
+        /// white to <see cref="SwashWidth"/> m from the edge.
+        /// </summary>
+        public const double SurfWidth = 70.0;
+
+        public const double SlopeSpan = 8.0;
+
+        public const double MinSlope = 0.01;
+
+        public const double SurfDepth = 8.0;
+
+        public const double BorePeriod = 7.5;
+
+        public const double BeachSlope = 1.0 / 30.0;
+
+        public const double SetLength = 8.0;
+
+        public const double SwashWidth = 3.0;
+
+        /// <summary>How long a bore's churning crest stays nearly solid white (s): its width is its run over that.</summary>
+        public const double CrestLife = 0.35;
+
+        /// <summary>
+        /// Outside the surf (the author's picture, 2026-10-24: short streaks of foam out beyond the big
+        /// foam): the swell's crests coming in break here and there (spilling breakers) out to
+        /// <see cref="OuterReach"/> x the surf's width, in water no deeper than <see cref="OuterDepth"/> m;
+        /// each streak's foam lasts <see cref="OuterLife"/> s; where along a crest it breaks, from noise
+        /// in blotches <see cref="OuterScale"/> m across, a fresh draw for each wave.
+        /// </summary>
+        public const double OuterReach = 3.0;
+
+        public const double OuterDepth = 20.0;
+
+        public const double OuterLife = 0.4;
+
+        public const double OuterScale = 80.0;
+
+        /// <summary>
+        /// Fronts foam only on a steep face (Chentanez &amp; Mueller's test is rising fast AND steep): the
+        /// game's calm sea rises and falls up to a metre from one water frame to the next (the author's
+        /// city, 2026-10-24: 95% within 0.9 m, on a surface sloping 6% at the most), which alone whitened
+        /// the open sea at random, a new place every frame. The surface's slope it starts at, and is full at.
+        /// </summary>
+        public const double FrontSteepStart = 0.06;
+
+        public const double FrontSteepFull = 0.15;
+
+        /// <summary>
+        /// The layers' ten vectors (_RGFoamLayers, _RGFoamSheet, _RGFoamBubbles, _RGFoamSurf,
+        /// _RGFoamScale2, _RGFoamExtra, _RGFoamCrest, _RGFoamAbsorb, _RGFoamOuter, _RGFoamSteep).
+        /// </summary>
+        public static double[] LayerVectors()
+        {
+            return new[]
+            {
+                FreshLife, ResidualLife, BubbleLife, FreshReflectance,
+                ResidualReflectance, ResidualOpacity, FreshHoles, ResidualHoles,
+                BodyF, BubbleBackscatter, BubbleDepth, BubbleOpacity,
+                BorePeriod, BeachSlope, SetLength, SwashWidth,
+                1.0 / FoamPattern.BubbleTile, 1.0 / FoamPattern.CloudTile, Math.Log(FoamPattern.BubbleFeature, 2.0), Math.Log(FoamPattern.CloudFeature, 2.0),
+                FreshThickness, BubbleSpread, BubbleEdge, SurfWidth,
+                CrestLife, SlopeSpan, SurfDepth, MinSlope,
+                AbsorptionRed, AbsorptionGreen, AbsorptionBlue, 0.0,
+                OuterReach, OuterDepth, OuterLife, OuterScale,
+                FrontSteepStart, FrontSteepFull, 0.0, 0.0,
+            };
+        }
     }
 }

@@ -846,7 +846,8 @@ $same = $true
 for ($i = 0; $i -lt $texels.Length; $i += 97) { if ($texels[$i] -ne $again[$i]) { $same = $false; break } }
 Check "  the same every time (no clock, no Random)" $same "True"
 # Each channel uniform on 0..255 (histogram-equalised): every value size^2 / 256 times, give or take one.
-foreach ($channel in 0, 1) {
+# r the lace, g the patches, b the bubbles' holes, a the bubble clouds (the layers, 2026-10-24).
+foreach ($channel in 0, 1, 2, 3) {
     $counts = New-Object int[] 256
     for ($i = $channel; $i -lt $texels.Length; $i += 4) { $counts[$texels[$i]]++ }
     $expected = $size * $size / 256
@@ -857,7 +858,7 @@ foreach ($channel in 0, 1) {
 # It tiles: the steps across the wrap (last column to first, last row to first) are no bigger than the
 # steps inside it, on average (a seam would be a line of large jumps).
 function Byte([int]$x, [int]$y, [int]$c) { return [int]$texels[(($y % $size) * $size + ($x % $size)) * 4 + $c] }
-foreach ($channel in 0, 1) {
+foreach ($channel in 0, 1, 2, 3) {
     $inside = 0.0; $wrap = 0.0
     for ($y = 0; $y -lt $size; $y++) {
         $inside += [Math]::Abs((Byte ($size / 2) $y $channel) - (Byte ($size / 2 - 1) $y $channel))
@@ -875,6 +876,21 @@ Check "  the flow carries it as the game's ripples: 0.14 of 1/0.0061 m every 2.5
 Check "  the advection's cycle divides the game's 60 s clock" ((60.0 % $v[22]) -eq 0.0) "True"
 Check "  a negative share is none" ("{0} {1}" -f ($foamOptics::Vectors(-1.0, -1.0, 1.0, 1.0, 40.0))[23], ($foamOptics::Vectors(-1.0, -1.0, 1.0, 1.0, 40.0))[8]) "0 0"
 Check "the foam's defaults: on, 30%; shores 100%, fast water 5%, fronts 10%" ("{0} {1} {2} {3} {4}" -f (Default 'WaterFoam'), (Default 'WaterFoamAmount'), (Default 'WaterFoamShore'), (Default 'WaterFoamRapids'), (Default 'WaterFoamFronts')) "True 0.3 1 0.05 0.1"
+# The layers (FoamOptics.LayerVectors): the foam's ages, and the surf in a band measured from the waterline.
+$lv = $foamOptics::LayerVectors()
+Check "the foam's layers: 10 vectors of 4" $lv.Length 40
+Check "  outside the surf: the swell breaks out to 3 x its width, to 20 m deep, a streak's white lasting 0.4 s" ("{0} {1} {2}" -f $lv[32], $lv[33], $lv[34]) "3 20 0.4"
+Check "  fronts only on a face steeper than the author's calm sea ever is (6%)" (($lv[36] -ge 0.06) -and ($lv[37] -gt $lv[36])) "True"
+Check "  fresh foam goes first, the residual sheet next, the bubbles last" (($lv[0] -lt $lv[1]) -and ($lv[1] -lt $lv[2])) "True"
+Check "  a fresh sheet is brighter than an old one, both within Koepke's 20-55%" (($lv[3] -gt $lv[4]) -and ($lv[4] -ge 0.2) -and ($lv[3] -le 0.55)) "True"
+Check "  a bore every few seconds, dividing the game's 60 s clock" ((60.0 % $lv[12]) -eq 0.0) "True"
+Check "  the surf: 70 m from the waterline, to 8 m deep, the seabed's slope over +-8 m (no less than 1%)" ("{0} {1} {2} {3}" -f $lv[23], $lv[26], $lv[25], $lv[27]) "70 8 8 0.01"
+# On a coast as steep as the author's (2 m deep within ~30 m: 7%) the surf now spans 70 m of it; the
+# 1.2 m band of depth it replaced was 17 m. At the bores' pace (a 1:30 beach) a bore crosses the band in
+# 2 sqrt(70) / sqrt(g / 30) = 29 s: about four of them in it at once, 7.5 s apart.
+$cross = 2.0 * [Math]::Sqrt($lv[23]) / [Math]::Sqrt(9.80665 * $lv[13])
+Check "  about four bores in the surf at once" ([Math]::Round($cross / $lv[12])) 4
+Check "  pure water absorbs red most, blue least (Pope & Fry 1997)" (($lv[28] -gt $lv[29]) -and ($lv[29] -gt $lv[30])) "True"
 
 # ---- the FFT waves (WaterSpectrum; the GPU against it: UnityProject\Assets\Editor\WaterWavesTest.cs) --
 $spectrumType = $asm.GetType('RealGlass.Water.WaterSpectrum', $true)

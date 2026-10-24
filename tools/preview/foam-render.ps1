@@ -34,6 +34,13 @@
 #   ... -DepthSkew 0.001      the stand-in's vertices each moved up to this (m) along their eye ray, at random:
 #                             the rounding the game's own water program and ours differ by in the game (the
 #                             driver compiles them apart); 0 = none, the two land on the same depth
+#   ... -Layers               the layered foam (2026-10-24): columns today's foam (Editor/PreviewFoamToday,
+#                             frozen at 2b509fc), the layers, the layers -Later s on, and the layers' view
+#                             (red fresh, green residual, blue the bubbles under); every column with the mod's
+#                             defaults for the rest (the sky layer at 100%, FFT waves, glitter 35% at size 50%,
+#                             #0E222B or -Body's). Views photo (his reference's: 14 m over the surf), beach, and
+#                             steep / steepclose / steephigh (the coast south of z = -450 drops as the game's do)
+#   ... -Times "443,445,447"  with -Layers: a column of the layers at each of these seconds instead
 # Run after build-bundle.ps1 (the shaders compile) and a DLL build.
 
 param(
@@ -64,6 +71,8 @@ param(
     [double]$RippleRms = -1.0,
     [double]$Strength = 1.0,
     [double]$DepthSkew = 0.0,
+    [switch]$Layers,
+    [string]$Times = "",
     [string]$Name = "foam",
     [ValidateSet("d3d11", "glcore")]
     [string]$Api = "d3d11",
@@ -121,9 +130,30 @@ $lines.Add("length " + (N $Length))
 $lines.Add("exposure " + (N $ExposureDay) + " " + (N $ExposureNight))
 $v = $foam::Vectors($Amount, $Shore, $Fast, $Front, 40.0)
 for ($i = 0; $i -lt 6; $i++) { $lines.Add("foam " + $i + " " + (N $v[4 * $i]) + " " + (N $v[4 * $i + 1]) + " " + (N $v[4 * $i + 2]) + " " + (N $v[4 * $i + 3])) }
+# The layers' vectors (FoamOptics.LayerVectors).
+$lv = $foam::LayerVectors()
+for ($i = 0; $i -lt $lv.Length / 4; $i++) { $lines.Add("layer " + $i + " " + (N $lv[4 * $i]) + " " + (N $lv[4 * $i + 1]) + " " + (N $lv[4 * $i + 2]) + " " + (N $lv[4 * $i + 3])) }
 
 $columns = New-Object System.Collections.Generic.List[object]
-if ($SkyColumns -ne "") {
+if ($Layers) {
+    # The mod's defaults for everything else: the sky layer 100%, FFT waves, glitter 35% at size 50%, the
+    # water #0E222B (or -Body's).
+    $sky = @{ Mode = 1; Gain = 1.0; Body = $(if ($Body -ne "") { $Body } else { "#0E222B" }); Waves = 1; Glitter = 0.35; GlitterSize = 0.5 }
+    if ($Times -ne "") {
+        # A time series of the layers (the surf's bores passing).
+        foreach ($s in $Times.Split(',')) {
+            $sec = [double]::Parse($s, $inv)
+            $columns.Add(($sky + @{ Foam = 1; Seconds = $sec; Label = ("layered, t = {0:F1} s" -f $sec) }))
+        }
+    }
+    else {
+        $columns.Add(($sky + @{ Foam = 3; Seconds = 443.0; Label = "today's foam (one layer)" }))
+        $columns.Add(($sky + @{ Foam = 1; Seconds = 443.0; Label = "layered foam" }))
+        if ($Later -gt 0.0) { $columns.Add(($sky + @{ Foam = 1; Seconds = 443.0 + $Later; Label = ("layered, {0:F1} s later" -f $Later) })) }
+        $columns.Add(($sky + @{ Foam = 4; Seconds = 443.0; Label = "layers: red fresh, green residual, blue bubbles under" }))
+    }
+}
+elseif ($SkyColumns -ne "") {
     foreach ($spec in $SkyColumns.Split(',')) {
         $part = $spec.Split(':')
         $mode = if ($part[0] -eq "new") { 1 } else { 0 }
@@ -155,7 +185,7 @@ if ($Flicker -ne "") {
         $lines.Add(("seq flicker-{0} {0} 443 {1}" -f $view, (N $strength)))
     }
 }
-$rows = if ($Views -eq "none") { @() } else { $Views.Split(',') }
+$rows = @(if ($Views -eq "none") { } else { $Views.Split(',') })
 foreach ($view in $rows) {
     $strength = if ($view -like "night*") { $Night } else { $Day }
     for ($c = 0; $c -lt $columns.Count; $c++) {

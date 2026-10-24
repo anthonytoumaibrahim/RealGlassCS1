@@ -3,7 +3,7 @@ using System;
 namespace RealGlass.Water
 {
     /// <summary>
-    /// The foam's pattern: one tileable texture, two channels the foam shader thresholds by how much
+    /// The foam's pattern: one tileable texture, four channels the foam shader thresholds by how much
     /// foam a point has (RealGlass/WaterFoam). Pure and deterministic: the GPU preview runs this same
     /// file (tools/preview/sync-sim.ps1), and the mod builds the texture from it once.
     /// </summary>
@@ -14,11 +14,17 @@ namespace RealGlass.Water
     ///   F2 - F1), two scales of cells.
     /// - G, the PATCHES: the foam's larger structure (streaks and clumps tens of metres across), a
     ///   periodic value-noise fractal sum (Perlin 1985's fBm, on a lattice).
+    /// - B, the BUBBLES: the small round holes in a fresh sheet of foam, where single bubbles have
+    ///   burst -- Worley's cells again, the hole round each feature point (small F1), two sizes, on a
+    ///   tile of its own (<see cref="BubbleTile"/>).
+    /// - A, the BUBBLE CLOUDS: the bubbles a break pushes under the surface, seen through the water as
+    ///   paler patches (Crest's "foam bubbles") -- a smoother fBm on a tile of its own
+    ///   (<see cref="CloudTile"/>).
     /// - Each channel is HISTOGRAM-EQUALISED (every value by its rank), so it is uniform on 0..1: the
-    ///   share of a channel above 1 - a is exactly a. The shader mixes the two as 0.6 G + 0.4 R, whose
+    ///   share of a channel above 1 - a is exactly a. The shader mixes R and G as w G + (1 - w) R, whose
     ///   distribution is then known (a trapezoid), so a point given an amount a of foam shows exactly
     ///   that share of white wherever the pattern is resolved, and a far away where it is averaged.
-    /// - Both tile: the cells and the lattice wrap at the texture's edge.
+    /// - All four tile: the cells and the lattice wrap at the texture's edge.
     /// </remarks>
     public static class FoamPattern
     {
@@ -46,14 +52,34 @@ namespace RealGlass.Water
 
         public const double PatchFeature = (double)Size / (PatchPeriod * 4);
 
+        /// <summary>The bubbles' repeat on the water (m), and their cells across it: holes of about 25 cm and 10 cm.</summary>
+        public const double BubbleTile = 8.0;
+
+        public const int BubbleCells = 32;
+
+        public const int BubbleCellsFine = 80;
+
+        public const double BubbleFeature = (double)Size / BubbleCells;
+
+        /// <summary>The bubble clouds' repeat on the water (m), lattice and octaves: clouds of about 0.75-6 m.</summary>
+        public const double CloudTile = 24.0;
+
+        public const int CloudPeriod = 4;
+
+        public const int CloudOctaves = 4;
+
+        public const double CloudFeature = (double)Size / (CloudPeriod * 4);
+
         private const uint Seed = 0x5EAF0A11u;
 
-        /// <summary>The texture's texels, RGBA32 row by row (r lace, g patches, b 128, a 255).</summary>
+        /// <summary>The texture's texels, RGBA32 row by row (r lace, g patches, b bubbles, a bubble clouds).</summary>
         public static byte[] Generate()
         {
             int n = Size * Size;
             double[] lace = new double[n];
             double[] patch = new double[n];
+            double[] bubbles = new double[n];
+            double[] clouds = new double[n];
             for (int y = 0; y < Size; y++)
             {
                 for (int x = 0; x < Size; x++)
@@ -61,21 +87,48 @@ namespace RealGlass.Water
                     double u = (x + 0.5) / Size, v = (y + 0.5) / Size;
                     lace[y * Size + x] = 0.6 * Lace(u, v, LaceCells, 1u) + 0.4 * Lace(u, v, LaceCellsFine, 2u);
                     patch[y * Size + x] = Fbm(u, v);
+                    bubbles[y * Size + x] = Math.Max(0.8 * Hole(u, v, BubbleCells, 3u), Hole(u, v, BubbleCellsFine, 4u));
+                    clouds[y * Size + x] = Fbm(u, v, CloudPeriod, CloudOctaves, 30u);
                 }
             }
 
             byte[] r = Equalise(lace);
             byte[] g = Equalise(patch);
+            byte[] b = Equalise(bubbles);
+            byte[] a = Equalise(clouds);
             var rgba = new byte[n * 4];
             for (int i = 0; i < n; i++)
             {
                 rgba[4 * i] = r[i];
                 rgba[4 * i + 1] = g[i];
-                rgba[4 * i + 2] = 128;
-                rgba[4 * i + 3] = 255;
+                rgba[4 * i + 2] = b[i];
+                rgba[4 * i + 3] = a[i];
             }
 
             return rgba;
+        }
+
+        /// <summary>
+        /// A bubble's hole at (u, v) of a tile of <paramref name="cells"/> x <paramref name="cells"/> Worley
+        /// cells: 1 at a feature point, falling to 0 under half a cell from it.
+        /// </summary>
+        public static double Hole(double u, double v, int cells, uint salt)
+        {
+            double px = u * cells, py = v * cells;
+            int cx = (int)Math.Floor(px), cy = (int)Math.Floor(py);
+            double f1 = double.MaxValue;
+            for (int j = -1; j <= 1; j++)
+            {
+                for (int i = -1; i <= 1; i++)
+                {
+                    int gx = cx + i, gy = cy + j;
+                    int wx = ((gx % cells) + cells) % cells, wy = ((gy % cells) + cells) % cells;
+                    double fx = gx + Unit(wx, wy, salt, 0u), fy = gy + Unit(wx, wy, salt, 1u);
+                    f1 = Math.Min(f1, Math.Sqrt((fx - px) * (fx - px) + (fy - py) * (fy - py)));
+                }
+            }
+
+            return 1.0 - Math.Min(1.0, f1 / 0.45);
         }
 
         /// <summary>
@@ -112,11 +165,16 @@ namespace RealGlass.Water
         /// <summary>The patches at (u, v): <see cref="PatchOctaves"/> octaves of periodic value noise, each half the last.</summary>
         public static double Fbm(double u, double v)
         {
+            return Fbm(u, v, PatchPeriod, PatchOctaves, 10u);
+        }
+
+        /// <summary>The same on a lattice of its own: <paramref name="octaves"/> octaves from <paramref name="period"/> cells across.</summary>
+        public static double Fbm(double u, double v, int period, int octaves, uint salt)
+        {
             double sum = 0.0, amplitude = 1.0;
-            int period = PatchPeriod;
-            for (int o = 0; o < PatchOctaves; o++)
+            for (int o = 0; o < octaves; o++)
             {
-                sum += amplitude * ValueNoise(u * period, v * period, period, (uint)(10 + o));
+                sum += amplitude * ValueNoise(u * period, v * period, period, (uint)(salt + o));
                 amplitude *= 0.5;
                 period *= 2;
             }

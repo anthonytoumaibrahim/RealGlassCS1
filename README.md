@@ -91,7 +91,9 @@ glitter and foam.
 - **Sun and moon glitter**: the sun's road of light on the waves, and the moon's at night. **1.1**
   gives each its own strength and size.
 - **Foam** along the sea's shores, on fast water (rapids, weirs, a dam's outflow) and on rising
-  wave fronts, carried along by the flow.
+  wave fronts, carried along by the flow. Along the shores in layers, as real surf is: waves break
+  and run in one after another, in sets, each with a bright crest and the lace it leaves behind,
+  over paler water where the bubbles hang under it.
 
 ### Each asset its own glass
 

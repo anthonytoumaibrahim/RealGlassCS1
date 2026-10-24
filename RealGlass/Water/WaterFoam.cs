@@ -20,6 +20,9 @@ namespace RealGlass.Water
     ///   tool's (InfoManager.SetActualMode, WaterTool), where the foam is off anyway.
     /// - Off in info views and under the snapshot tool (an asset's pictures ship to players without the
     ///   mod), as the city reflection.
+    /// - IN LAYERS (2026-10-24, the author: "In real life, the foam is often layered"): fresh foam,
+    ///   the residual sheet and the bubbles under them, by age (the shader's header); the surf as broken
+    ///   waves running in, in a band measured from the waterline.
     /// - With Detailed logging, every 5 s: the foam's draws a frame, and the simulation's numbers round
     ///   the camera the thresholds are set against (the rise a water frame, the flow's speed) -- the
     ///   front thresholds wait on a real tsunami's.
@@ -36,6 +39,17 @@ namespace RealGlass.Water
             Shader.PropertyToID("_RGFoamScale"), Shader.PropertyToID("_RGFoamFeature"), Shader.PropertyToID("_RGFoamShore"),
             Shader.PropertyToID("_RGFoamFast"), Shader.PropertyToID("_RGFoamFront"), Shader.PropertyToID("_RGFoamLook"),
         };
+
+        // The layers (FoamOptics.LayerVectors) and the water's colour (the bubbles take it).
+        private static readonly int[] IdLayers =
+        {
+            Shader.PropertyToID("_RGFoamLayers"), Shader.PropertyToID("_RGFoamSheet"), Shader.PropertyToID("_RGFoamBubbles"),
+            Shader.PropertyToID("_RGFoamSurf"), Shader.PropertyToID("_RGFoamScale2"), Shader.PropertyToID("_RGFoamExtra"),
+            Shader.PropertyToID("_RGFoamCrest"), Shader.PropertyToID("_RGFoamAbsorb"), Shader.PropertyToID("_RGFoamOuter"),
+            Shader.PropertyToID("_RGFoamSteep"),
+        };
+        private static readonly int IdWater = Shader.PropertyToID("_RGFoamWater");
+        private static readonly int IdClean = Shader.PropertyToID("_WaterColorClean");
 
         // Read by the draw hook on every one of the game's terrain draws: kept to plain fields.
         private static Material s_material;
@@ -147,6 +161,10 @@ namespace RealGlass.Water
             for (int i = 0; i < IdVectors.Length; i++)
                 _material.SetVector(IdVectors[i], new Vector4((float)v[4 * i], (float)v[4 * i + 1], (float)v[4 * i + 2], (float)v[4 * i + 3]));
 
+            double[] layers = FoamOptics.LayerVectors();
+            for (int i = 0; i < IdLayers.Length; i++)
+                _material.SetVector(IdLayers[i], new Vector4((float)layers[4 * i], (float)layers[4 * i + 1], (float)layers[4 * i + 2], (float)layers[4 * i + 3]));
+
             // The water's heights texture is read through _MainTex_ST as the game's own material has it.
             Material water = terrain.m_waterMaterial;
             if (water != null && water.HasProperty(IdMainTex))
@@ -154,6 +172,11 @@ namespace RealGlass.Water
                 _material.SetTextureScale(IdMainTex, water.GetTextureScale(IdMainTex));
                 _material.SetTextureOffset(IdMainTex, water.GetTextureOffset(IdMainTex));
             }
+
+            // The bubbles under the foam are the water's own colour made paler: the colour it is drawn
+            // with (the Water color row's, or the theme's), linear as the shader takes it.
+            Color clean = water != null && water.HasProperty(IdClean) ? water.GetColor(IdClean).linear : ((Color)Settings.Defaults.WaterColor).linear;
+            _material.SetVector(IdWater, new Vector4(clean.r, clean.g, clean.b, 0f));
 
             s_material = _material;
             s_gameWater = water;
@@ -185,7 +208,7 @@ namespace RealGlass.Water
             UnityEngine.Object.Destroy(_pattern);
         }
 
-        /// <summary>The pattern texture (FoamPattern: r lace, g patches), mipmapped and tiling.</summary>
+        /// <summary>The pattern texture (FoamPattern: r lace, g patches, b bubbles' holes, a bubble clouds), mipmapped and tiling.</summary>
         private static Texture2D BuildPattern()
         {
             byte[] rgba = FoamPattern.Generate();
