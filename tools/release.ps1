@@ -257,7 +257,7 @@ foreach ($t in $tests) {
     } else { Ok "test-$t : $last" }
 }
 
-# Never stops the release: a list to read (docs/RELEASE-CHECKLIST.md says what to do with it).
+# Never stops the release: a list to read.
 Step "Other installed mods on the methods we patch (to read; it never stops the release)"
 $scan = @(& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root "tools\scan-mods.ps1") -Dll $deployedDll 2>&1)
 $scan | ForEach-Object { Write-Host "   $_" }
@@ -315,7 +315,7 @@ if ($DryRun) { Write-Host "DRY RUN finished: every check passed. Run it without 
 if (-not $workshopId) {
     Write-Host "Ready: $version ($deployedVersion) is built, tested and deployed in Addons\Mods\RealGlass." -ForegroundColor Green
     Write-Host ""
-    Write-Host "By hand, in this order (docs\RELEASE-CHECKLIST.md, steps 6-8):"
+    Write-Host "By hand, in this order:"
     Write-Host "  1. Launch the game and load a city. The first log line must read '$version'. (Claude reads the log.)"
     Write-Host "  2. Content Manager -> Mods -> Real Glass & Water -> Share. Drop Workshop\PreviewImage.png into"
     Write-Host "     the staging folder (the panel's folder button); title 'Real Glass & Water'; description ="

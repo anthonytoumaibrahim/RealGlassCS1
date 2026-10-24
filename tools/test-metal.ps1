@@ -21,7 +21,7 @@
 # FAIL when a program does not compile at a version, or a shader of BundleBuilder.cs's list has no
 # Metal programs. Warnings are counted, not failed (HLSLcc's code is full of unused variables). The
 # table also prints each program's textures, samplers and buffers against Metal's limits (16
-# samplers a function, Unity 5.6 giving every texture its own: docs/RELEASE-CHECKLIST.md's 1.1.3).
+# samplers a function, Unity 5.6 giving every texture its own: CHANGELOG.md's 1.1.3).
 # What it cannot see: the GPU's own back-end compile when a pipeline is made, and anything at run
 # time (wrong pixels; the HLSLcc "not" that is never false is bundle-apis.ps1's to find).
 
