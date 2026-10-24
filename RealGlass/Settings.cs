@@ -241,6 +241,9 @@ namespace RealGlass
         /// <summary>The rooms by day too; off, they show from dusk (the author: "by default interiors only show up at night").</summary>
         public static BoolSetting InteriorsByDay { get; private set; }
 
+        /// <summary>0..1: how much of the rooms shows by day (0 the dark inside, as with InteriorsByDay off; 1 the rooms in full).</summary>
+        public static FloatSetting InteriorsDayOpacity { get; private set; }
+
         /// <summary>0..1: the rooms as boxes with depth behind the glass (1) or flat pictures on it (0).</summary>
         public static FloatSetting InteriorsDepth { get; private set; }
 
@@ -457,6 +460,9 @@ namespace RealGlass
             public const bool InteriorsEnabled = true;
             public const bool InteriorsByDay = false;
 
+            /// <summary>Half (the author, 2026-10-24): by day the rooms show faintly, the reflections win.</summary>
+            public const float InteriorsDayOpacity = 0.5f;
+
             /// <summary>Full depth (the author, 2026-10-07: "a slider would be better, some people might not prefer the parallax").</summary>
             public const float InteriorsDepth = 1f;
 
@@ -641,6 +647,7 @@ namespace RealGlass
 
                 InteriorsEnabled = new BoolSetting("InteriorsEnabled", Defaults.InteriorsEnabled);
                 InteriorsByDay = new BoolSetting("InteriorsByDay", Defaults.InteriorsByDay);
+                InteriorsDayOpacity = new FloatSetting("InteriorsDayOpacity", Defaults.InteriorsDayOpacity);
                 InteriorsDepth = new FloatSetting("InteriorsDepth", Defaults.InteriorsDepth);
                 InteriorsMatchLods = new BoolSetting("InteriorsMatchLods", Defaults.InteriorsMatchLods);
                 InteriorsLit = new FloatSetting("InteriorsLit", Defaults.InteriorsLit);

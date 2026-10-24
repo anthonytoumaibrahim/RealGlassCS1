@@ -51,6 +51,7 @@ namespace RealGlass.Glass
         // Interiors (Interiors.cs, Interiors.cginc): rooms behind every window, on by default
         public bool Interiors;              // rooms behind the windows of every building (an asset can say otherwise)
         public bool InteriorsByDay;         // by day too; off: the dark inside by day, the rooms from dusk
+        public float InteriorsDayOpacity;   // 0..1: by day, the dark inside (0) .. the rooms in full (1)
         public float InteriorsDepth;        // 0..1: a room with depth behind the glass (1) .. a flat picture on it (0)
         public bool InteriorsMatchLods;     // up close, the rooms laid out as on the LOD models (the storey grid); off: the asset's painted windows
         public float InteriorsLit;          // 0.05..0.9: the share of rooms lit at the busiest hour
@@ -105,6 +106,7 @@ namespace RealGlass.Glass
 
             p.Interiors = true;
             p.InteriorsByDay = false;
+            p.InteriorsDayOpacity = 0.5f;
             p.InteriorsDepth = 1f;
             p.InteriorsMatchLods = true;
             p.InteriorsLit = 0.45f;

@@ -253,7 +253,8 @@ namespace RealGlass.PerAsset
         /// The glass the editor draws with: none until the window's Real Glass switch is on (the game's
         /// own look, how most subscribers see the asset), then the mod's default settings (what a player
         /// with the mod sees, whatever the creator's own RealGlass.xml says); the window's view of what
-        /// counts as glass; the rooms by day if asked (the asset editor has no night).
+        /// counts as glass; the rooms by day if asked (the asset editor has no night), in full: the
+        /// switch is there to see how they sit.
         /// </summary>
         public static GlassParams Preview()
         {
@@ -261,7 +262,10 @@ namespace RealGlass.PerAsset
             p.Enabled = ShowGlass.value;
             p.ShowMask = ShowMask.value;
             if (RoomsByDay.value)
+            {
                 p.InteriorsByDay = true;
+                p.InteriorsDayOpacity = 1f;
+            }
             return p;
         }
 

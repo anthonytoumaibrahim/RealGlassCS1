@@ -24,6 +24,22 @@ that repo's `docs/RELEASE-CHECKLIST.md` has the long version.
 | Screenshots | The item's Steam page, *Add/Edit images* | 5–8, 1920 × 1080 or larger, 16:9, each under 1 MB |
 | Required items, visibility, tags | The item's Steam page | Harmony `2040656402` |
 
+## 0. Next version (1.1.4): the rooms' opacity by day (built 2026-10-24, dev 1.1.3.22218; with the tooltips trimmed 1.1.3.22759; not yet seen in the game)
+
+His ask: "an option for interiors opacity during the day"; his picks: opacity 0-100% (not a
+brightness), default 50%. Row InteriorsDayOpacity (Interiors tab, under "Show the rooms by day",
+greyed until it is on). C# only, no shader or bundle change: Interiors.Apply writes it into
+_RGRooms.y (was the switch's 0/1), which Glass.shader already uses as a fade -- lerp(inside, roomDay,
+rooms x y) and the window's cover from the glass's strength to the whole window. The creator
+window's "Show rooms by day" keeps them at 100% (the editor has no night: it is there to see them).
+Preview: tools\preview\out\day-opacity.png (street / close / near at 14:00; off | 0% | 50% | 100%):
+0% = off to 0.001 in the mean, 50% exactly halfway, 100% = the old "by day too". Tests:
+test-settings, test-localization.
+
+- [ ] By day with "Show the rooms by day" on: the slider fades the rooms from none (0%, the
+      same as the switch off) to full (100%); 50% faint; nothing at night changes with it.
+- [ ] The row greyed while the switch is off; the log's settings line "ROOMS day (50%) and night".
+
 ## 0. Next version (1.1.4): see-through tall waves (fixed 2026-10-23 late, dev 1.1.3.41694, not yet seen in the game)
 
 His report: "in a tsunami ... the waves get super high, the waves are see-through, so we can see the

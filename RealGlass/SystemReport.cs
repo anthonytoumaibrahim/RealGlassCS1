@@ -82,6 +82,7 @@ namespace RealGlass
                         " followWindows=" + On(Settings.PanesFollowWindows, Settings.Defaults.PanesFollowWindows) +
                         " | rooms=" + On(Settings.InteriorsEnabled, Settings.Defaults.InteriorsEnabled) +
                         " byDay=" + On(Settings.InteriorsByDay, Settings.Defaults.InteriorsByDay) +
+                        " dayOpacity=" + Percent(Settings.InteriorsDayOpacity, Settings.Defaults.InteriorsDayOpacity) +
                         " depth=" + Percent(Settings.InteriorsDepth, Settings.Defaults.InteriorsDepth) +
                         " matchLods=" + On(Settings.InteriorsMatchLods, Settings.Defaults.InteriorsMatchLods) +
                         " lit=" + Percent(Settings.InteriorsLit, Settings.Defaults.InteriorsLit) +

@@ -61,6 +61,7 @@ namespace RealGlass.Glass
 
             p.Interiors = Settings.InteriorsEnabled.value;
             p.InteriorsByDay = Settings.InteriorsByDay.value;
+            p.InteriorsDayOpacity = Settings.InteriorsDayOpacity.value;
             p.InteriorsDepth = Settings.InteriorsDepth.value;
             p.InteriorsMatchLods = Settings.InteriorsMatchLods.value;
             p.InteriorsLit = Settings.InteriorsLit.value;

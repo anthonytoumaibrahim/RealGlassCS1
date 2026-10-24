@@ -131,7 +131,11 @@ namespace RealGlass.Glass
         {
             Ids();
             bool loaded = atlas != null && atlas.Loaded;
-            Shader.SetGlobalVector(_rooms, new Vector4(p.Interiors ? 1f : 0f, p.InteriorsByDay ? 1f : 0f, f.Clock,
+            // y: how much of the rooms shows by day. Glass.shader fades from the dark inside to the
+            // room (lerp(inside, roomDay, rooms x y)) and the window's cover from the glass's strength
+            // to the whole window with it: 1 is the rooms in full, 0 the same as no rooms by day.
+            float byDay = p.InteriorsByDay ? Mathf.Clamp01(p.InteriorsDayOpacity) : 0f;
+            Shader.SetGlobalVector(_rooms, new Vector4(p.Interiors ? 1f : 0f, byDay, f.Clock,
                                                        HoursPerState(p.InteriorsSwitching)));
             Shader.SetGlobalVector(_rooms2, new Vector4(Mathf.Max(p.InteriorsBrightness, 0f) * LitRoomLuminance,
                                                         Mathf.Clamp(p.InteriorsColoured, 0f, 1f), Mathf.Clamp01(p.InteriorsCurtains),

@@ -12,7 +12,8 @@
 #     key-shaped string literal in *.cs (Glass\ included);
 #   - English has no key nothing asks for (dead text a translator would translate for nothing);
 #   - a tooltip (Name.Tooltip) belongs to a row that exists and fits one line, 70 characters. Only
-#     rows whose name leaves a question have one (the author, 2026-10-21: "add tooltips where
+#     rows whose name leaves a question about what they do have one (the author, 2026-10-24: "remove
+#     redundant tooltips ... all that are obvious what they do"; 2026-10-21: "add tooltips where
 #     needed"; 2026-10-04 he had taken out every row's: "the labels are already pretty descriptive");
 #   - a translation has no key English lacks, and says which English keys it has not done yet;
 #   - wrapped texts come out as one line, \n as a real break.

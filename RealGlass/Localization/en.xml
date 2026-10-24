@@ -98,7 +98,6 @@
   <String key="Group.TheGlass">Glass</String>
 
   <String key="GlassPreset.Label">Kind of glass</String>
-  <String key="GlassPreset.Tooltip">Real glass products: each sets the color, reflectivity and clarity.</String>
   <String key="GlassPreset.ReflectiveBlue">Reflective blue</String>
   <String key="GlassPreset.ClearLowE">Clear low-E</String>
   <String key="GlassPreset.AquaBlue">Aqua blue</String>
@@ -114,10 +113,8 @@
   <String key="GlassColor.Label">Glass color</String>
 
   <String key="GlassReflectivity.Label">Reflectivity, head-on</String>
-  <String key="GlassReflectivity.Tooltip">How much it mirrors, seen straight on. Real glass: 8 to 40%.</String>
 
   <String key="GlassGlancing.Label">Reflectivity, at an angle</String>
-  <String key="GlassGlancing.Tooltip">How much it mirrors seen edge-on. Lower it if towers glare.</String>
 
   <String key="GlassEdgeSilver.Label">Silvery edge-on</String>
   <String key="GlassEdgeSilver.Tooltip">Seen edge-on, coated glass loses its color and turns silvery.</String>
@@ -126,15 +123,12 @@
   <String key="GlassClarity.Tooltip">How much light gets through. Lower: darker glass.</String>
 
   <String key="GlassStrength.Label">Strength</String>
-  <String key="GlassStrength.Tooltip">0%: the game's own windows. 100%: all new glass.</String>
 
   <String key="Group.BuildingsOwnLook">Building's own look</String>
 
   <String key="GlassOwnColour.Label">Keep the building's color</String>
-  <String key="GlassOwnColour.Tooltip">How much of the color the building painted on its glass stays.</String>
 
   <String key="GlassPaintedDetail.Label">Keep the painted detail</String>
-  <String key="GlassPaintedDetail.Tooltip">Floor lines and frames painted on all-glass towers stay visible.</String>
 
   <String key="Group.WhatIsGlass">What counts as glass</String>
 
@@ -146,10 +140,8 @@
   <!-- An asset's LOD (its low-detail model, drawn from the middle distance on) whose glass is not
        its full model's (none, or in other places): it shows the model's glass instead. -->
   <String key="LodGlassFromModel.Label">LODs show the model's glass</String>
-  <String key="LodGlassFromModel.Tooltip">Where a building's far-off LOD has no glass, or has it elsewhere.</String>
 
   <String key="GlassShowMask.Label">Show what counts as glass</String>
-  <String key="GlassShowMask.Tooltip">Paints the glass magenta, to check the two settings above.</String>
 
   <!-- ==================== F8 panel: Reflections ==================== -->
 
@@ -158,33 +150,26 @@
   <String key="ReflectionBrightness.Label">Reflection brightness</String>
 
   <String key="GlassSmoothness.Label">Smoothness</String>
-  <String key="GlassSmoothness.Tooltip">Lower: softer, blurrier reflections.</String>
 
   <String key="SunGlint.Label">Sun glint</String>
 
   <String key="SteadyGlints.Label">Steady glints</String>
-  <String key="SteadyGlints.Tooltip">Keeps glints and far reflections from flickering.</String>
 
   <String key="Group.CityInGlass">City in the glass</String>
 
   <String key="SsrEnabled.Label">Reflect what is on screen</String>
-  <String key="SsrEnabled.Tooltip">Streets, cars and buildings in view show in the glass.</String>
 
   <String key="ReflectFinished.Label">Reflect fog, clouds and lights</String>
-  <String key="ReflectFinished.Tooltip">The glass mirrors the city with its haze, clouds and lamps' glow.</String>
 
   <String key="ReflectNeighbours.Label">Reflect the buildings around</String>
-  <String key="ReflectNeighbours.Tooltip">The towers across the street show in the glass, not open sky.</String>
 
   <String key="SsrQuality.Label">Reflection quality</String>
-  <String key="SsrQuality.Tooltip">Higher: sharper, with fewer gaps. Costs frame rate.</String>
   <String key="SsrQuality.Low">Low</String>
   <String key="SsrQuality.Medium">Medium</String>
   <String key="SsrQuality.High">High</String>
   <String key="SsrQuality.Ultra">Ultra</String>
 
   <String key="SsrEdgeFade.Label">Fade at the screen's edges</String>
-  <String key="SsrEdgeFade.Tooltip">Softens reflections cut off by the screen's edges.</String>
 
   <String key="OffscreenFill.Label">Below the horizon</String>
   <String key="OffscreenFill.Tooltip">What the glass shows where the screen has nothing to mirror.</String>
@@ -203,28 +188,23 @@
   <String key="SkyClouds.Tooltip">Volumetric Weather's clouds show in the glass too.</String>
 
   <String key="SkyDusk.Label">Sky dims at dusk</String>
-  <String key="SkyDusk.Tooltip">The mirrored sky darkens as the sun sets, as a real sky does.</String>
 
   <!-- ==================== F8 panel: Panes ==================== -->
 
   <String key="Group.ThePanes">Panes</String>
 
   <String key="PaneWidth.Label">Pane width</String>
-  <String key="PaneWidth.Tooltip">Each pane bends what it mirrors on its own.</String>
 
   <String key="FloorHeight.Label">Story height</String>
   <String key="FloorHeight.Tooltip">A pane is a story tall; so are the floors of mirrored buildings.</String>
 
   <String key="PanesFollowWindows.Label">Panes follow the windows</String>
-  <String key="PanesFollowWindows.Tooltip">Up close, each pane fits a window the building painted.</String>
 
   <String key="Group.Distortion">How the panes bend the reflections</String>
 
   <String key="PanePillow.Label">Cushioned panes</String>
-  <String key="PanePillow.Tooltip">Panes bow in or out like cushions: round distortions.</String>
 
   <String key="PaneTilt.Label">Pane tilt</String>
-  <String key="PaneTilt.Tooltip">Each pane set at a slightly different angle.</String>
 
   <String key="RollerWave.Label">Ripple</String>
   <String key="RollerWave.Tooltip">The faint waves of toughened glass.</String>
@@ -234,62 +214,52 @@
 
   <!-- ==================== F8 panel: Interiors ==================== -->
   <!-- Rooms behind every building's windows: pictures of real rooms, each with its own lamp and
-       curtain. On by default; at night only unless "by day too" is ticked. -->
+       curtain. On by default; at night only unless "Show the rooms by day" is ticked. -->
 
   <String key="InteriorsEnabled.Label">Parallax interiors</String>
-  <String key="InteriorsEnabled.Tooltip">A room behind every window, with its own lamp and curtain.</String>
 
   <String key="Group.TheRooms">Rooms</String>
 
-  <String key="InteriorsByDay.Label">Show the rooms by day too</String>
+  <String key="InteriorsByDay.Label">Show the rooms by day</String>
+
+  <String key="InteriorsDayOpacity.Label">Opacity by day</String>
 
   <String key="InteriorsDepth.Label">Room depth</String>
-  <String key="InteriorsDepth.Tooltip">0%: a flat picture on the glass. 100%: a room with depth.</String>
 
   <String key="InteriorsMatchLods.Label">Same rooms up close and on LODs</String>
-  <String key="InteriorsMatchLods.Tooltip">Keeps the rooms from changing as a building switches to its LOD.</String>
 
   <String key="InteriorsCurtains.Label">Windows with curtains or blinds</String>
 
   <String key="Group.RoomLights">Lights at night</String>
 
   <String key="InteriorsLit.Label">Lit rooms</String>
-  <String key="InteriorsLit.Tooltip">The share of rooms lit at the busiest hour.</String>
 
   <String key="InteriorsLateNight.Label">Fewer lights late at night</String>
 
   <String key="InteriorsSwitching.Label">Lights switching on and off</String>
-  <String key="InteriorsSwitching.Tooltip">100%: a room may switch every 4 game hours. 0%: never.</String>
 
   <String key="InteriorsBrightness.Label">Room light brightness</String>
-  <String key="InteriorsBrightness.Tooltip">100%: about as bright as the game's own lit windows.</String>
 
   <String key="InteriorsColoured.Label">Colored lights (LED, RGB)</String>
-  <String key="InteriorsColoured.Tooltip">The share of rooms lit by colored lamps.</String>
 
   <!-- ==================== F8 panel: Water ==================== -->
   <!-- The map's water: its color and brightness, the sky in it, the city in it. On by default. -->
 
   <String key="WaterEnabled.Label">Realistic water</String>
-  <String key="WaterEnabled.Tooltip">Off: the game's own water, untouched.</String>
 
   <String key="Group.WaterColour">Water color</String>
 
   <String key="WaterThemeColor.Label">Use the map theme's water color</String>
-  <String key="WaterThemeColor.Tooltip">The map theme's color, or Theme Mixer's when it runs.</String>
   <String key="WaterColor.Label">Water color</String>
   <String key="WaterBrightness.Label">Water brightness</String>
 
   <String key="Group.WaterRipples">Ripples</String>
 
   <String key="WaterRipples.Label">Moving ripples</String>
-  <String key="WaterRipples.Tooltip">Moving ripples in place of the game's still ones.</String>
 
   <String key="WaterRippleStrength.Label">Ripple strength</String>
-  <String key="WaterRippleStrength.Tooltip">100%: as rough as the game's own water.</String>
 
   <String key="WaterOceanWaves.Label">Ocean waves</String>
-  <String key="WaterOceanWaves.Tooltip">Waves raised by the wind, as on a real sea.</String>
 
   <String key="WaterDynamicWaves.Label">Dynamic waves</String>
   <String key="WaterDynamicWaves.Tooltip">Waves rise with the game's rain and storms, and calm down after.</String>
@@ -298,7 +268,6 @@
   <String key="WaterWind.Tooltip">With Dynamic waves off: stronger wind, longer waves (not rougher).</String>
 
   <String key="WaterChop.Label">Choppiness</String>
-  <String key="WaterChop.Tooltip">Sharper crests between flatter troughs.</String>
 
   <String key="WaterRippleSize.Label">Ripple size</String>
   <String key="WaterRippleSize.Tooltip">With Ocean waves off: longer or shorter ripples.</String>
@@ -321,43 +290,32 @@
   <String key="Group.WaterSky">Sky in the water</String>
 
   <String key="WaterRealSky.Label">Reflect the sky like real water</String>
-  <String key="WaterRealSky.Tooltip">Little sky looking straight down, more toward the horizon.</String>
 
   <String key="WaterSky.Label">Sky reflection</String>
-  <String key="WaterSky.Tooltip">100%: as much sky as real water mirrors.</String>
 
   <String key="Group.WaterGlitter">Sun and moon glitter</String>
 
   <String key="WaterGlitter.Label">Sun glitter</String>
-  <String key="WaterGlitter.Tooltip">The sun's path of light on the waves. 100%: real water's.</String>
 
   <String key="WaterGlitterSize.Label">Sun glitter size</String>
-  <String key="WaterGlitterSize.Tooltip">Smaller is narrower, not dimmer.</String>
 
   <String key="WaterMoonGlitter.Label">Moon glitter</String>
 
   <String key="WaterMoonGlitterSize.Label">Moon glitter size</String>
-  <String key="WaterMoonGlitterSize.Tooltip">Smaller is narrower, not dimmer.</String>
 
   <String key="Group.WaterCity">City in the water</String>
 
   <String key="WaterCity.Label">Water reflects the city</String>
-  <String key="WaterCity.Tooltip">Buildings and lights in the water, as far as they're on screen.</String>
 
   <String key="WaterCityDay.Label">City reflection by day</String>
-  <String key="WaterCityDay.Tooltip">100%: real water: faint from above, strong across the water.</String>
 
   <String key="WaterCityNight.Label">City reflection by night</String>
-  <String key="WaterCityNight.Tooltip">The city's lights in the water. Dusk blends day and night.</String>
 
   <String key="WaterCityWaves.Label">City reflection waves</String>
-  <String key="WaterCityWaves.Tooltip">How much the ripples bend the city's reflection. 0%: a mirror.</String>
 
   <String key="WaterCityStreaks.Label">City reflection streaks</String>
-  <String key="WaterCityStreaks.Tooltip">Lights drawn out into streaks, as waves do. 0%: none.</String>
 
   <String key="WaterCityLength.Label">City reflection length</String>
-  <String key="WaterCityLength.Tooltip">How much longer than the city its reflection is drawn.</String>
 
   <!-- ==================== F8 panel: Vehicles ==================== -->
   <!-- Glass on the vehicles near the camera: their windows, and the lenses of their lamps. -->
@@ -366,21 +324,17 @@
   <String key="Status.VehiclesFailed">The glass on vehicles stopped after an error and comes back with the next city. RealGlass.log says why.</String>
 
   <String key="VehicleGlass.Label">Glass on vehicles</String>
-  <String key="VehicleGlass.Tooltip">Windows and lamp lenses, on vehicles close enough to see them.</String>
 
   <!-- The share of vehicles whose windows are tinted (each car its own shade of tint film); the
        others have clear glass. -->
-  <String key="VehicleTinted.Label">Tinted windows</String>
-  <String key="VehicleTinted.Tooltip">The share of vehicles with tinted windows; the rest are clear.</String>
+  <String key="VehicleTinted.Label">Tinted windows %</String>
 
   <!-- How strongly the glass and the paint's clear coat mirror the sky and the street. -->
   <String key="VehicleReflections.Label">Reflections</String>
-  <String key="VehicleReflections.Tooltip">How strongly the glass and paint mirror the sky and street.</String>
 
   <!-- The clear lacquer over a car's paint, which mirrors the sky and the street. Only the paint the
        game recolours gets it, not tyres, trim or lights. -->
   <String key="VehicleCoat.Label">Clear coat on paint</String>
-  <String key="VehicleCoat.Tooltip">The paint mirrors the sky and street, as lacquer does.</String>
 
 
   <!-- ==================== The building window ==================== -->
@@ -401,24 +355,19 @@
   <String key="Group.AssetGlass">This asset will have its own settings</String>
 
   <String key="AssetGlassStrength.Label">Strength</String>
-  <String key="AssetGlassStrength.Tooltip">0%: this asset's own windows. 100%: all new glass.</String>
 
   <String key="AssetGlassPaintedDetail.Label">Keep the painted detail</String>
-  <String key="AssetGlassPaintedDetail.Tooltip">Floor lines and frames this asset painted stay visible.</String>
 
   <String key="AssetGlassPreset.Label">Kind of glass</String>
-  <String key="AssetGlassPreset.Tooltip">Real glass products: each sets the color, reflectivity and clarity.</String>
 
   <String key="AssetGlassColor.Label">Glass color</String>
 
   <String key="AssetGlassReflectivity.Label">Reflectivity, head-on</String>
-  <String key="AssetGlassReflectivity.Tooltip">How much it mirrors, seen straight on. Real glass: 8 to 40%.</String>
 
   <String key="AssetGlassClarity.Label">Clarity</String>
   <String key="AssetGlassClarity.Tooltip">How much light gets through. Lower: darker glass.</String>
 
   <String key="AssetGlassOwnColour.Label">Keep the building's color</String>
-  <String key="AssetGlassOwnColour.Tooltip">How much of the color this asset painted on its glass stays.</String>
 
   <String key="AssetGlassThreshold.Label">Shininess needed</String>
   <String key="AssetGlassThreshold.Tooltip">Lower: more of this asset counts as glass, walls too.</String>
@@ -452,7 +401,6 @@
   <String key="Group.AssetInteriors">Interiors</String>
 
   <String key="AssetInteriorsEnabled.Label">Parallax interiors</String>
-  <String key="AssetInteriorsEnabled.Tooltip">A room behind every window of this asset.</String>
 
   <!-- On hover over a row's reset icon here (an icon has no label of its own). -->
   <String key="Asset.Global.Hint">Back to the global setting (or its creator's)</String>
@@ -483,7 +431,6 @@
   <String key="CreatorShowGlass.Tooltip">Off: how subscribers without the mod see it.</String>
 
   <String key="CreatorShowMask.Label">Show what counts as glass</String>
-  <String key="CreatorShowMask.Tooltip">Paints its glass magenta.</String>
 
   <String key="CreatorRoomsByDay.Label">Show rooms by day</String>
 
@@ -513,7 +460,6 @@
   <String key="Group.Rendering">Rendering</String>
 
   <String key="GlassDistance.Label">Glass on</String>
-  <String key="GlassDistance.Tooltip">Fewer buildings cost less frame rate in big cities.</String>
   <String key="GlassDistance.Near">Near buildings</String>
   <String key="GlassDistance.Middle">Near and middle</String>
   <String key="GlassDistance.City">The whole city</String>
@@ -521,7 +467,6 @@
   <String key="Group.LiveSky">Live sky in the glass</String>
 
   <String key="SkyCubeSize.Label">Sky detail</String>
-  <String key="SkyCubeSize.Tooltip">The size of the live sky's picture: sharper, but slower.</String>
 
   <String key="SkyCubeRate.Label">Sky updates</String>
   <String key="SkyCubeRate.Tooltip">Sides of the live sky redrawn each frame. 6: all of it.</String>

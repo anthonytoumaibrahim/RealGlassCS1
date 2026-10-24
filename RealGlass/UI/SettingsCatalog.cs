@@ -52,9 +52,11 @@ namespace RealGlass.UI
     /// <remarks>
     /// A row holds no words. Its texts are in Localization/en.xml (and its translations) under its
     /// <see cref="Name"/>: "FloorHeight.Label", and so on, read in the player's language every time
-    /// a UI asks. A tooltip ("FloorHeight.Tooltip") only where the name leaves a question: what 100%
-    /// is, what off gives back (the author, 2026-10-21, "add tooltips where needed"; on 2026-10-04
-    /// every row had one and he took them all out: "the labels are already pretty descriptive").
+    /// a UI asks. A tooltip ("FloorHeight.Tooltip") only where the name leaves a question about what
+    /// the row does -- not to say what 100% is or what off gives back (the author, 2026-10-24: "remove
+    /// redundant tooltips ... all that are obvious what they do"; 2026-10-21 "add tooltips where
+    /// needed"; on 2026-10-04 every row had one and he took them all out: "the labels are already
+    /// pretty descriptive").
     /// <see cref="SettingsCatalog.LogLayout"/> checks at startup that English has every key a row
     /// needs. (Volumetric Weather's catalog row.)
     /// </remarks>
@@ -765,6 +767,11 @@ namespace RealGlass.UI
             return GlassOn() && Settings.InteriorsEnabled != null && Settings.InteriorsEnabled.value;
         }
 
+        private static bool RoomsByDayOn()
+        {
+            return InteriorsOn() && Settings.InteriorsByDay != null && Settings.InteriorsByDay.value;
+        }
+
         private static bool VehiclesOn()
         {
             return GlassOn() && Settings.VehicleGlass != null && Settings.VehicleGlass.value;
@@ -1329,6 +1336,18 @@ namespace RealGlass.UI
                 DefaultBool = Settings.Defaults.InteriorsByDay,
                 Enabled = InteriorsOn,
                 AfterChange = State("rooms by day too", OnOff(Settings.InteriorsByDay)),
+            });
+
+            // 0%: by day the dark inside, as with the switch above off; 100%: the rooms in full.
+            Add(new Row
+            {
+                Kind = RowKind.Percent,
+                Panel = PanelPage.Interiors,
+                Float = Settings.InteriorsDayOpacity,
+                DefaultFloat = Settings.Defaults.InteriorsDayOpacity,
+                Min = 0f, Max = 100f, Step = 5f,
+                Enabled = RoomsByDayOn,
+                AfterChange = Changed,
             });
 
             // 0%: each room a flat picture on the glass; 100%: a room with depth behind it.

@@ -29,6 +29,9 @@ the mod's name in the game.
 - **Players get the creators' glass**: every setting an asset's creator set is that asset's, in
   every city; the rest follow the player's settings. A player's own settings for an asset (Alt+G)
   come first, and the building window says when a creator set its glass.
+- **Opacity by day** for the rooms (the Interiors tab, under "Show the rooms by day"): how much
+  of the rooms shows behind the glass in daylight, from none (the plain dark inside) to the rooms in
+  full. 50% by default.
 
 ### Changed
 
