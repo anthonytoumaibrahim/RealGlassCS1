@@ -109,6 +109,7 @@ glitter and foam.
   of help.
 - **Four looks**: *Frosted glass* (the default), *See-through*, *Blue*, or *Vanilla*, the game's
   own style.
+- **Languages**: English, Spanish, French and Simplified Chinese.
 - **Settings in a file**: `RealGlass.xml`, plain text, which you can also edit while the game runs.
 - **In the editors**: the Asset Editor and the Scenario Editor as well as cities.
 
@@ -244,10 +245,11 @@ What happens before each release is in [`docs/RELEASE-CHECKLIST.md`](docs/RELEAS
 ## Translations
 
 Every text the mod shows lives in
-[`RealGlass/Localization/en.xml`](RealGlass/Localization/en.xml), in English for now. To add a
-language, copy it under the game's code for it (`de.xml`, `es.xml`, `fr.xml`, `ko.xml`, `pl.xml`,
-`pt.xml`, `ru.xml` or `zh.xml`) and translate the text between the tags; the comment at the top
-explains the rest. Anything not yet translated shows in English.
+[`RealGlass/Localization/en.xml`](RealGlass/Localization/en.xml), with Spanish (`es.xml`), French
+(`fr.xml`) and Simplified Chinese (`zh.xml`) beside it. To add a language, copy `en.xml` under the
+game's code for it (`de.xml`, `ko.xml`, `pl.xml`, `pt.xml` or `ru.xml`) and translate the text
+between the tags; the comment at the top explains the rest. Anything not yet translated shows in
+English. The translations were made with AI: corrections from native speakers are welcome.
 
 ## Building
 

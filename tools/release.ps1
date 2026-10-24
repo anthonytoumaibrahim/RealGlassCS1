@@ -13,8 +13,9 @@
 #      bundles were built after the last shader edit.
 #   2. Builds (which deploys to Addons\Mods) and checks the deployed DLL: it carries Mod.Version and
 #      embeds the three shader bundles at their sizes on disk, both room atlases, the icon and
-#      en.xml; each bundle holds every shader with real code for every API of its platform; the
-#      folder holds exactly the four shipped files, the libraries and notices as in the repo.
+#      every Localization\*.xml; each bundle holds every shader with real code for every API of
+#      its platform; the folder holds exactly the four shipped files, the libraries and notices as
+#      in the repo.
 #   3. Runs every offline test, the Metal (Mac) and AMD compile checks of the shipped shaders
 #      included; one failure stops the release.
 #   4. THE FIRST UPLOAD ($workshopId empty): stops there -- the game's Share button uploads
@@ -193,7 +194,7 @@ if ((ReleaseOf $deployedVersion) -ne $version) {
 # The csproj embeds a resource only if its file exists, so a missing or renamed file gives a clean
 # build, 0 warnings, every test green -- and a stand-down (no bundle) or no rooms on that machine.
 # Read the DLL. From its bytes: Windows' application control can block a fresh DLL loaded by path.
-Step "The deployed DLL embeds the bundles, the room atlases, the icon and en.xml"
+Step "The deployed DLL embeds the bundles, the room atlases, the icon and every language file"
 $asm = [System.Reflection.Assembly]::ReflectionOnlyLoad([System.IO.File]::ReadAllBytes($deployedDll))
 $resourceNames = @($asm.GetManifestResourceNames())
 $embedded = @()
@@ -201,7 +202,9 @@ foreach ($b in $bundles) { $embedded += ,@("RealGlass.Resources.realglass-$($b.N
 $embedded += ,@("RealGlass.Resources.rooms-night.bytes", "RealGlass\Resources\rooms-night.bytes")
 $embedded += ,@("RealGlass.Resources.rooms-day.bytes", "RealGlass\Resources\rooms-day.bytes")
 $embedded += ,@("RealGlass.Resources.GlassIcon.png", "RealGlass\Resources\GlassIcon.png")
-$embedded += ,@("Localization.en.xml", "RealGlass\Localization\en.xml")
+foreach ($f in Get-ChildItem (Join-Path $root "RealGlass\Localization") -Filter *.xml) {
+    $embedded += ,@("Localization.$($f.Name)", "RealGlass\Localization\$($f.Name)")
+}
 foreach ($e in $embedded) {
     $res = $e[0]
     if ($resourceNames -notcontains $res) { Stop-Release "$res is not embedded"; continue }

@@ -32,6 +32,11 @@ the mod's name in the game.
 - **Opacity by day** for the rooms (the Interiors tab, under "Show the rooms by day"): how much
   of the rooms shows behind the glass in daylight, from none (the plain dark inside) to the rooms in
   full. 50% by default.
+- **Spanish, French and Simplified Chinese.** The panel, the building and creator windows, the
+  options page and the messages are now in Spanish, French and Simplified Chinese as well as
+  English, as in Volumetric Weather. A game set to one of them shows it automatically; *Show this
+  mod in* on the options page picks one by hand. These translations were made with AI, so some
+  wording may be off -- corrections are welcome. Any text not yet translated shows in English.
 
 ### Changed
 

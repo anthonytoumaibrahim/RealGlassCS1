@@ -1,0 +1,591 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Real Glass & Water: every text a player reads, in Spanish, translated from en.xml (the source
+  for every translation). Made with AI: corrections from native speakers are welcome.
+
+  To translate: copy en.xml, name it with the game's code for your language (de.xml, es.xml,
+  fr.xml, ko.xml, pl.xml, pt.xml, ru.xml, zh.xml), set code and name below, and translate the
+  text between the tags. Leave the keys alone.
+
+  - {0}, {1}... are filled in by the mod (a number, a name). Keep every one of them.
+  - A long text can be wrapped over several lines here: the break reads as one space.
+  - \n is a real line break (used in the dialogs).
+  - A key missing from a translation shows in English, so a partial translation works.
+
+  The game's own words: asset = elemento, Asset Editor = Editor de elementos, Content Manager =
+  Gestor de contenidos, Snapshot tool = herramienta de captura de imagen, info view = vista de
+  información. Glass = vidrio, a pane = un cristal, a storey = una planta.
+-->
+<Language code="es" name="Español">
+
+  <!-- ==================== The mod ==================== -->
+
+  <!-- One line in the game's mods list: about 30 characters fit before it wraps. -->
+  <String key="Mod.Description">Vidrio y agua realistas</String>
+  <String key="Mod.Unsupported">
+    Real Glass &amp; Water no pudo dibujar su vidrio en este equipo, así que se ha desactivado: no
+    cambia nada en esta ciudad.\n\n
+    El mod necesita Metal u OpenGL 3.3, y el juego no dispone de ninguno aquí. Si el juego se
+    inicia con una opción que cambia los gráficos (Steam: clic derecho en el juego, Propiedades,
+    Opciones de lanzamiento), quítala y reinicia el juego.
+  </String>
+  <String key="Mod.UnsupportedLinux">
+    Real Glass &amp; Water no pudo dibujar su vidrio en este equipo, así que se ha desactivado: no
+    cambia nada en esta ciudad.\n\n
+    El mod necesita OpenGL 3.3, y el juego no lo tiene aquí. Si el juego se inicia con una opción
+    que cambia los gráficos (Steam: clic derecho en el juego, Propiedades, Opciones de
+    lanzamiento), quítala y reinicia el juego.\n\n
+    La versión de Windows del juego ejecuta el mod mediante Proton: Steam, clic derecho en el
+    juego, Propiedades, Compatibilidad, marca "Forzar el uso de una herramienta específica de
+    compatibilidad de Steam Play" y elige una versión de Proton.
+  </String>
+  <String key="Mod.UnsupportedWindows">
+    Real Glass &amp; Water no pudo dibujar su vidrio en este PC, así que se ha desactivado: no
+    cambia nada en esta ciudad.\n\n
+    Las causas habituales:\n
+    - el juego se inicia con una opción como -force-d3d9, o -force-glcore en una tarjeta gráfica
+    con OpenGL anterior a 3.3 (Steam: clic derecho en el juego, Propiedades, Opciones de
+    lanzamiento). Quítala y reinicia el juego.\n
+    - la tarjeta gráfica es anterior a DirectX 10.\n\n
+    Si no es ninguno de estos casos, repórtalo en la página del mod en Workshop, junto con este
+    archivo:\n
+    {0}
+  </String>
+
+  <!-- A second copy of the mod (the Workshop item and a copy in Addons\Mods, both enabled): the
+       copy enabled second stays off. The window, at its first city: {0} the folder of the copy
+       that runs, {1} the folder of the one that is off. The options page's one line: -->
+  <String key="Mod.SecondCopy">
+    Real Glass &amp; Water está instalado dos veces y solo puede funcionar una copia. La copia de\n
+    {0}\n
+    funciona; la copia de\n
+    {1}\n
+    se ha desactivado.\n\n
+    Conserva solo una: cancela la suscripción en Workshop o borra la carpeta de Addons\Mods.
+    Después reinicia el juego.
+  </String>
+  <String key="Mod.SecondCopyShort">Esta copia está desactivada: Real Glass &amp; Water está instalado dos veces.</String>
+
+  <!-- The window when a part of the mod stops after an error: once a launch, then the part stays
+       off until the next city. One sentence per part, then Error.Report ({0} the log file). -->
+  <String key="Error.Glass">El vidrio de los edificios se detuvo tras un error y queda desactivado hasta que se cargue la próxima ciudad. El resto de Real Glass &amp; Water sigue funcionando.</String>
+  <String key="Error.Vehicles">El vidrio de los vehículos se detuvo tras un error y queda desactivado hasta que se cargue la próxima ciudad. El resto de Real Glass &amp; Water sigue funcionando.</String>
+  <String key="Error.Water">El agua realista se detuvo tras un error: el agua es la del juego hasta que se cargue la próxima ciudad. El resto de Real Glass &amp; Water sigue funcionando.</String>
+  <String key="Error.Report">Si vuelve a ocurrir, repórtalo en la página del mod en Workshop, junto con este archivo:\n{0}</String>
+
+  <String key="Tab.Glass">Vidrio</String>
+  <String key="Tab.Reflections">Reflejos</String>
+  <String key="Tab.Panes">Cristales</String>
+  <String key="Tab.Interiors">Interiores</String>
+  <String key="Tab.Water">Agua</String>
+  <String key="Tab.Vehicles">Vehículos</String>
+
+  <String key="Key.Press">Pulsa una tecla</String>
+
+  <!-- ==================== F8 panel: Glass ==================== -->
+
+  <!-- The status line at the top of the Glass tab. {0} {1} {2}: buildings drawn with glass
+       last frame, near / middle distance / far blocks. -->
+  <String key="Status.Off">El vidrio está desactivado.</String>
+  <String key="Status.Waiting">Esperando la cámara de la ciudad.</String>
+  <String key="Status.InfoView">En pausa mientras hay una vista de información abierta.</String>
+  <String key="Status.Failed">El vidrio se detuvo tras un error y volverá con la próxima ciudad. RealGlass.log explica por qué.</String>
+  <String key="Status.Snapshot">En pausa mientras se usa la herramienta de captura de imagen: las imágenes muestran el elemento como lo dibuja el juego.</String>
+
+  <String key="GlassEnabled.Label">Vidrio realista</String>
+
+  <String key="Group.TheGlass">Vidrio</String>
+
+  <String key="GlassPreset.Label">Tipo de vidrio</String>
+  <String key="GlassPreset.ReflectiveBlue">Azul reflectante</String>
+  <String key="GlassPreset.ClearLowE">Claro bajo emisivo</String>
+  <String key="GlassPreset.AquaBlue">Azul agua</String>
+  <String key="GlassPreset.OceanBlue">Azul océano</String>
+  <String key="GlassPreset.SkyBlue">Azul cielo</String>
+  <String key="GlassPreset.Green">Verde</String>
+  <String key="GlassPreset.Bronze">Bronce</String>
+  <String key="GlassPreset.Grey">Gris</String>
+  <String key="GlassPreset.SilverReflective">Plata reflectante</String>
+  <String key="GlassPreset.GoldReflective">Oro reflectante</String>
+  <String key="GlassPreset.Custom">Personalizado</String>
+
+  <String key="GlassColor.Label">Color del vidrio</String>
+
+  <String key="GlassReflectivity.Label">Reflectividad, de frente</String>
+
+  <String key="GlassGlancing.Label">Reflectividad, en ángulo</String>
+
+  <String key="GlassEdgeSilver.Label">Plateado en ángulo rasante</String>
+  <String key="GlassEdgeSilver.Tooltip">Casi de lado, el vidrio tratado pierde su color y se ve plateado.</String>
+
+  <String key="GlassClarity.Label">Claridad</String>
+  <String key="GlassClarity.Tooltip">Cuánta luz pasa. Menos: vidrio más oscuro.</String>
+
+  <String key="GlassStrength.Label">Intensidad</String>
+
+  <String key="Group.BuildingsOwnLook">Aspecto propio del edificio</String>
+
+  <String key="GlassOwnColour.Label">Conservar el color del edificio</String>
+
+  <String key="GlassPaintedDetail.Label">Conservar el detalle pintado</String>
+
+  <String key="Group.WhatIsGlass">Qué cuenta como vidrio</String>
+
+  <String key="GlassThreshold.Label">Brillo necesario</String>
+  <String key="GlassThreshold.Tooltip">Menos: más parte del edificio cuenta como vidrio, paredes incluidas.</String>
+
+  <String key="GlassNightWindows.Label">Las ventanas iluminadas de noche son vidrio</String>
+
+  <!-- An asset's LOD (its low-detail model, drawn from the middle distance on) whose glass is not
+       its full model's (none, or in other places): it shows the model's glass instead. -->
+  <String key="LodGlassFromModel.Label">Los LOD muestran el vidrio del modelo</String>
+
+  <String key="GlassShowMask.Label">Mostrar qué cuenta como vidrio</String>
+
+  <!-- ==================== F8 panel: Reflections ==================== -->
+
+  <String key="Group.TheReflections">Reflejos</String>
+
+  <String key="ReflectionBrightness.Label">Brillo de los reflejos</String>
+
+  <String key="GlassSmoothness.Label">Suavidad</String>
+
+  <String key="SunGlint.Label">Destello del sol</String>
+
+  <String key="SteadyGlints.Label">Destellos estables</String>
+
+  <String key="Group.CityInGlass">La ciudad en el vidrio</String>
+
+  <String key="SsrEnabled.Label">Reflejar lo que hay en pantalla</String>
+
+  <String key="ReflectFinished.Label">Reflejar niebla, nubes y luces</String>
+
+  <String key="ReflectNeighbours.Label">Reflejar los edificios cercanos</String>
+
+  <String key="SsrQuality.Label">Calidad de los reflejos</String>
+  <String key="SsrQuality.Low">Baja</String>
+  <String key="SsrQuality.Medium">Media</String>
+  <String key="SsrQuality.High">Alta</String>
+  <String key="SsrQuality.Ultra">Ultra</String>
+
+  <String key="SsrEdgeFade.Label">Atenuar en los bordes de la pantalla</String>
+
+  <String key="OffscreenFill.Label">Bajo el horizonte</String>
+  <String key="OffscreenFill.Tooltip">Lo que muestra el vidrio donde la pantalla no tiene nada que reflejar.</String>
+  <String key="OffscreenFill.Mirror">Pantalla reflejada</String>
+  <String key="OffscreenFill.City">Color de la ciudad</String>
+  <String key="OffscreenFill.Sky">Solo el cielo</String>
+
+  <String key="Group.SkyInGlass">El cielo en el vidrio</String>
+
+  <String key="SkyReflection.Label">Cielo en el vidrio</String>
+  <String key="SkyReflection.Tooltip">Cielo en vivo: sigue la hora del día y el clima.</String>
+  <String key="SkyReflection.Live">Cielo en vivo</String>
+  <String key="SkyReflection.Game">El del juego</String>
+
+  <String key="SkyClouds.Label">Nubes en el cielo en vivo</String>
+  <String key="SkyClouds.Tooltip">Las nubes de Volumetric Weather también se ven en el vidrio.</String>
+
+  <String key="SkyDusk.Label">El cielo se oscurece al anochecer</String>
+
+  <!-- ==================== F8 panel: Panes ==================== -->
+
+  <String key="Group.ThePanes">Cristales</String>
+
+  <String key="PaneWidth.Label">Ancho del cristal</String>
+
+  <String key="FloorHeight.Label">Altura de planta</String>
+  <String key="FloorHeight.Tooltip">Un cristal mide una planta de alto, como los pisos reflejados.</String>
+
+  <String key="PanesFollowWindows.Label">Los cristales siguen las ventanas</String>
+
+  <String key="Group.Distortion">Cómo deforman los cristales los reflejos</String>
+
+  <String key="PanePillow.Label">Cristales abombados</String>
+
+  <String key="PaneTilt.Label">Inclinación de los cristales</String>
+
+  <String key="RollerWave.Label">Ondulación</String>
+  <String key="RollerWave.Tooltip">Las ondas leves del vidrio templado.</String>
+
+  <String key="PaneWeather.Label">Los cristales siguen el clima</String>
+  <String key="PaneWeather.Tooltip">Se abomban en los días de calor y se hunden en los de frío.</String>
+
+  <!-- ==================== F8 panel: Interiors ==================== -->
+  <!-- Rooms behind every building's windows: pictures of real rooms, each with its own lamp and
+       curtain. On by default; at night only unless "Show the rooms by day" is ticked. -->
+
+  <String key="InteriorsEnabled.Label">Interiores con paralaje</String>
+
+  <String key="Group.TheRooms">Habitaciones</String>
+
+  <String key="InteriorsByDay.Label">Mostrar las habitaciones de día</String>
+
+  <String key="InteriorsDayOpacity.Label">Opacidad de día</String>
+
+  <String key="InteriorsDepth.Label">Profundidad de las habitaciones</String>
+
+  <String key="InteriorsMatchLods.Label">Mismas habitaciones de cerca y en los LOD</String>
+
+  <String key="InteriorsCurtains.Label">Ventanas con cortinas o persianas</String>
+
+  <String key="Group.RoomLights">Luces de noche</String>
+
+  <String key="InteriorsLit.Label">Habitaciones iluminadas</String>
+
+  <String key="InteriorsLateNight.Label">Menos luces de madrugada</String>
+
+  <String key="InteriorsSwitching.Label">Luces que se encienden y se apagan</String>
+
+  <String key="InteriorsBrightness.Label">Brillo de las luces interiores</String>
+
+  <String key="InteriorsColoured.Label">Luces de colores (LED, RGB)</String>
+
+  <!-- ==================== F8 panel: Water ==================== -->
+  <!-- The map's water: its color and brightness, the sky in it, the city in it. On by default. -->
+
+  <String key="WaterEnabled.Label">Agua realista</String>
+
+  <String key="Group.WaterColour">Color del agua</String>
+
+  <String key="WaterThemeColor.Label">Usar el color del agua del tema del mapa</String>
+  <String key="WaterColor.Label">Color del agua</String>
+  <String key="WaterBrightness.Label">Brillo del agua</String>
+
+  <String key="Group.WaterRipples">Ondas</String>
+
+  <String key="WaterRipples.Label">Ondas en movimiento</String>
+
+  <String key="WaterRippleStrength.Label">Intensidad de las ondas</String>
+
+  <String key="WaterOceanWaves.Label">Olas del océano</String>
+
+  <String key="WaterDynamicWaves.Label">Olas dinámicas</String>
+  <String key="WaterDynamicWaves.Tooltip">Crecen con la lluvia y las tormentas del juego, y luego se calman.</String>
+
+  <String key="WaterWind.Label">Velocidad del viento</String>
+  <String key="WaterWind.Tooltip">Sin Olas dinámicas: más viento, olas más largas (no más bravas).</String>
+
+  <String key="WaterChop.Label">Agitación</String>
+
+  <String key="WaterRippleSize.Label">Tamaño de las ondas</String>
+  <String key="WaterRippleSize.Tooltip">Sin Olas del océano: ondas más largas o más cortas.</String>
+
+  <String key="WaterWaveSize.Label">Tamaño de las olas</String>
+  <String key="WaterWaveSize.Tooltip">Sin Olas del océano. Menos: agua más tranquila, solo ondas cortas.</String>
+
+  <String key="Group.WaterFoam">Espuma</String>
+
+  <String key="WaterFoam.Label">Espuma</String>
+
+  <String key="WaterFoamAmount.Label">Cantidad de espuma</String>
+
+  <String key="WaterFoamShore.Label">Espuma en las orillas</String>
+
+  <String key="WaterFoamRapids.Label">Espuma en aguas rápidas</String>
+
+  <String key="WaterFoamFronts.Label">Espuma en los frentes de ola</String>
+
+  <String key="Group.WaterSky">El cielo en el agua</String>
+
+  <String key="WaterRealSky.Label">Reflejar el cielo como el agua real</String>
+
+  <String key="WaterSky.Label">Reflejo del cielo</String>
+
+  <String key="Group.WaterGlitter">Destellos del sol y la luna</String>
+
+  <String key="WaterGlitter.Label">Destellos del sol</String>
+
+  <String key="WaterGlitterSize.Label">Tamaño de los destellos del sol</String>
+
+  <String key="WaterMoonGlitter.Label">Destellos de la luna</String>
+
+  <String key="WaterMoonGlitterSize.Label">Tamaño de los destellos de la luna</String>
+
+  <String key="Group.WaterCity">La ciudad en el agua</String>
+
+  <String key="WaterCity.Label">El agua refleja la ciudad</String>
+
+  <String key="WaterCityDay.Label">Reflejo de la ciudad de día</String>
+
+  <String key="WaterCityNight.Label">Reflejo de la ciudad de noche</String>
+
+  <String key="WaterCityWaves.Label">Ondas en el reflejo de la ciudad</String>
+
+  <String key="WaterCityStreaks.Label">Estelas en el reflejo de la ciudad</String>
+
+  <String key="WaterCityLength.Label">Longitud del reflejo de la ciudad</String>
+
+  <!-- ==================== F8 panel: Vehicles ==================== -->
+  <!-- Glass on the vehicles near the camera: their windows, and the lenses of their lamps. -->
+
+  <!-- The status line at the top of the Vehicles tab, only after an error stopped the vehicles' glass. -->
+  <String key="Status.VehiclesFailed">El vidrio de los vehículos se detuvo tras un error y volverá con la próxima ciudad. RealGlass.log explica por qué.</String>
+
+  <String key="VehicleGlass.Label">Vidrio en los vehículos</String>
+
+  <!-- The share of vehicles whose windows are tinted (each car its own shade of tint film); the
+       others have clear glass. -->
+  <String key="VehicleTinted.Label">Ventanillas tintadas %</String>
+
+  <!-- How strongly the glass and the paint's clear coat mirror the sky and the street. -->
+  <String key="VehicleReflections.Label">Reflejos</String>
+
+  <!-- The clear lacquer over a car's paint, which mirrors the sky and the street. Only the paint the
+       game recolours gets it, not tyres, trim or lights. -->
+  <String key="VehicleCoat.Label">Barniz sobre la pintura</String>
+
+
+  <!-- ==================== The building window ==================== -->
+  <!-- One building asset's own glass: every copy of it, in every city. Opened by clicking a
+       building with the building picker. Its title is the asset's name. -->
+
+  <!-- The status line with nothing picked. {0}: the key that turns the building picker on. -->
+  <String key="Asset.None">Pulsa {0} y haz clic en un edificio para personalizar su vidrio.</String>
+  <!-- {0}: how many of the asset stand in this city. -->
+  <String key="Asset.Own">{0} en esta ciudad</String>
+  <String key="Asset.Global">{0} en esta ciudad. Sigue la pestaña Vidrio.</String>
+  <!-- Its creator shipped glass settings with it (RealGlassDefinition.xml); the player's come first. -->
+  <String key="Asset.Creator">{0} en esta ciudad. Su creador definió su vidrio.</String>
+
+  <String key="Asset.Pick">Elegir otro edificio</String>
+  <String key="Asset.UseGlobal">Restablecer ajustes</String>
+
+  <String key="Group.AssetGlass">Este elemento tendrá sus propios ajustes</String>
+
+  <String key="AssetGlassStrength.Label">Intensidad</String>
+
+  <String key="AssetGlassPaintedDetail.Label">Conservar el detalle pintado</String>
+
+  <String key="AssetGlassPreset.Label">Tipo de vidrio</String>
+
+  <String key="AssetGlassColor.Label">Color del vidrio</String>
+
+  <String key="AssetGlassReflectivity.Label">Reflectividad, de frente</String>
+
+  <String key="AssetGlassClarity.Label">Claridad</String>
+  <String key="AssetGlassClarity.Tooltip">Cuánta luz pasa. Menos: vidrio más oscuro.</String>
+
+  <String key="AssetGlassOwnColour.Label">Conservar el color del edificio</String>
+
+  <String key="AssetGlassThreshold.Label">Brillo necesario</String>
+  <String key="AssetGlassThreshold.Tooltip">Menos: más de este elemento cuenta como vidrio, paredes incluidas.</String>
+
+  <String key="AssetGlassNightWindows.Label">Las ventanas iluminadas de noche son vidrio</String>
+
+  <!-- The glass of the asset's LOD (its low-detail model, drawn from the middle distance on). -->
+  <String key="AssetLodGlass.Label">Vidrio en su LOD</String>
+  <String key="AssetLodGlass.Tooltip">Automático: el vidrio del modelo completo donde el del LOD difiere.</String>
+  <String key="Asset.LodGlass.Auto">Automático</String>
+  <String key="Asset.LodGlass.Model">El del modelo</String>
+  <String key="Asset.LodGlass.Own">El propio del LOD</String>
+
+  <!-- The status line's second line: what the asset's LOD shows. -->
+  <String key="Asset.Lod.Agrees">El vidrio de su LOD coincide con el del modelo.</String>
+  <String key="Asset.Lod.NoGlass">Ni el modelo ni su LOD tienen vidrio.</String>
+  <String key="Asset.Lod.Borrowed">El vidrio de su LOD difiere: muestra el del modelo.</String>
+  <String key="Asset.Lod.ShapeDiffers">Su LOD no tiene la forma del modelo: se deja como está.</String>
+  <String key="Asset.Lod.Forced">Su LOD muestra el vidrio del modelo.</String>
+  <String key="Asset.Lod.KeptOwn">Su LOD conserva su propio vidrio.</String>
+  <String key="Asset.Lod.Off">El vidrio de su LOD difiere; la pestaña Vidrio lo deja como está.</String>
+  <String key="Asset.Lod.Failed">No se pudo comparar su LOD con el modelo (mira el registro).</String>
+
+  <!-- The status line's third line: the rooms fitted to the asset's own windows ({0} its storey in metres). -->
+  <String key="Asset.Rooms.Fitted">Sus habitaciones siguen sus ventanas: plantas de {0} m.</String>
+  <String key="Asset.Rooms.FittedNarrow">Sus habitaciones siguen sus ventanas: plantas de {0} m, ninguna en los lados estrechos.</String>
+  <String key="Asset.Rooms.Grid">No hay ninguna fila de ventanas: sus habitaciones siguen la cuadrícula de plantas.</String>
+  <String key="Asset.Rooms.None">Sin habitaciones: sus ventanas son franjas finas.</String>
+  <String key="Asset.Rooms.Failed">No se pudieron medir sus ventanas para las habitaciones (mira el registro).</String>
+
+  <String key="Group.AssetInteriors">Interiores</String>
+
+  <String key="AssetInteriorsEnabled.Label">Interiores con paralaje</String>
+
+  <!-- On hover over a row's reset icon here (an icon has no label of its own). -->
+  <String key="Asset.Global.Hint">Volver al ajuste global (o al de su creador)</String>
+
+  <!-- By the cursor while the building picker is on. {0}: the building's asset, as the game names it. -->
+  <String key="Picker.Building">{0}\nClic: su vidrio. Clic derecho: salir.</String>
+
+  <!-- ==================== The creator window ==================== -->
+  <!-- The asset editor's own window, opened there by the mod's key and button instead of the F8
+       panel: the glass of the building being made, for every player who has the mod. Saved with the
+       asset in RealGlassDefinition.xml and shared with it. Its rows are the building window's. -->
+  <String key="Creator.Title">Real Glass &amp; Water - Editor de elementos</String>
+
+  <!-- The status line: its glass is saved with the asset. -->
+  <String key="Creator.NoAsset">Ningún elemento abierto.</String>
+  <String key="Creator.NotBuilding">Solo edificios.</String>
+  <String key="Creator.New">Aún no se ha guardado.</String>
+  <!-- {0}: the asset's name, as typed when saving it. -->
+  <String key="Creator.Saved">Guardado con '{0}'.</String>
+  <String key="Creator.Changed">Cambios sin guardar.</String>
+
+  <String key="Creator.OpenFolder">Abrir carpeta</String>
+
+  <String key="Group.CreatorPreview">Vista previa</String>
+
+  <!-- The mod's glass on the asset, at the mod's default settings. Off (the default): the game's own look. -->
+  <String key="CreatorShowGlass.Label">Real Glass</String>
+  <String key="CreatorShowGlass.Tooltip">Desactivado: como lo ven los suscriptores sin el mod.</String>
+
+  <String key="CreatorShowMask.Label">Mostrar qué cuenta como vidrio</String>
+
+  <String key="CreatorRoomsByDay.Label">Mostrar las habitaciones de día</String>
+
+  <!-- ==================== The game's options page ==================== -->
+
+  <String key="Group.Language">Idioma</String>
+
+  <String key="Language.Label">Mostrar este mod en</String>
+  <String key="Language.Game">Igual que el juego</String>
+
+  <String key="Group.Panel">Panel del juego</String>
+
+  <String key="PanelKey.Label">Abrir este panel</String>
+
+  <String key="PickerKey.Label">Elegir un edificio: el vidrio propio de su elemento</String>
+
+  <!-- The F8 panel's and the building window's look. Vanilla is the game's own look. -->
+  <String key="PanelSkin.Label">Aspecto del panel</String>
+  <String key="PanelSkin.Frosted">Vidrio esmerilado</String>
+  <String key="PanelSkin.SeeThrough">Transparente</String>
+  <String key="PanelSkin.GameBlue">Azul</String>
+  <String key="PanelSkin.Vanilla">Original</String>
+
+  <String key="UseUnifiedUI.Label">Mostrar el icono en Unified UI</String>
+
+  <String key="Group.Rendering">Renderizado</String>
+
+  <String key="GlassDistance.Label">Vidrio en</String>
+  <String key="GlassDistance.Near">Edificios cercanos</String>
+  <String key="GlassDistance.Middle">Cercanos y a media distancia</String>
+  <String key="GlassDistance.City">Toda la ciudad</String>
+
+  <String key="Group.LiveSky">Cielo en vivo en el vidrio</String>
+
+  <String key="SkyCubeSize.Label">Detalle del cielo</String>
+
+  <String key="SkyCubeRate.Label">Actualización del cielo</String>
+  <String key="SkyCubeRate.Tooltip">Lados del cielo en vivo redibujados en cada fotograma. 6: todos.</String>
+
+  <String key="Group.Diagnostics">Diagnóstico</String>
+
+  <String key="DetailedLogging.Label">Registro detallado</String>
+  <String key="DetailedLogging.Tooltip">Para informes de errores. Normalmente, déjalo desactivado.</String>
+
+  <String key="Group.StartingOver">Empezar de nuevo</String>
+
+  <String key="ResetAll.Label">Restablecer todos los ajustes</String>
+  <String key="ResetAll.Confirm">
+    ¿Dejar todos los ajustes como vienen con el mod?\n\n
+    Esto descarta todo lo que has ajustado, incluidos el color del vidrio y los cambios hechos en
+    el panel del juego.
+  </String>
+
+  <!-- ==================== No row in either UI ==================== -->
+
+  <String key="HudButtonX.Label">Botón del mod (sin Unified UI): distancia desde la izquierda</String>
+  <String key="HudButtonY.Label">Botón del mod (sin Unified UI): distancia desde arriba</String>
+
+  <String key="WaterFoamView.Label">Vista de diagnóstico de la espuma: 0 desactivada, 1 sus fuentes, 2 o 3 dónde se dibuja</String>
+
+  <String key="PanelOpenGroups.Label">Encabezados abiertos del panel del juego, separados por comas</String>
+
+  <!-- ==================== The color row ==================== -->
+
+  <String key="Colour.Copy">Copiar</String>
+  <String key="Colour.Copied">Copiado</String>
+  <String key="Colour.Paste">Pegar</String>
+
+  <!-- On hover over a row's reset icon in the F8 panel (an icon has no label of its own). -->
+  <String key="Reset.Default">Volver al valor predeterminado</String>
+
+  <!-- ==================== Slider readouts ==================== -->
+
+  <String key="Unit.Percent">{0}%</String>
+  <String key="Unit.Metres">{0} m</String>
+  <String key="Unit.MetresPerSecond">{0} m/s</String>
+  <String key="Unit.Pixels">{0} px</String>
+  <String key="Unit.FacesPerFrame">{0} por fotograma</String>
+
+  <!-- ==================== The settings file (RealGlass.xml) ==================== -->
+  <!-- Comments the mod writes into the player's settings file. The names of the settings in
+       that file are not translated. -->
+
+  <!-- One line of the file per \n: a bullet wrapped here stays one line there. -->
+  <String key="File.Header">
+    Ajustes de Real Glass &amp; Water.\n
+    \n
+    Puedes editar este archivo con el juego en marcha: el mod vuelve a leerlo en el segundo
+    posterior a guardarlo y los paneles se actualizan.\n
+    \n
+    - Los números usan punto decimal: 0.5, nunca 0,5.\n
+    - Un porcentaje se escribe como lo muestra su control: 47 significa 47%.\n
+    - Un valor fuera de rango se ajusta al límite. Un valor ilegible o un nombre que el mod no
+    conoce se ignoran. RealGlass.log indica cuál.\n
+    - Un ajuste cuya línea falta conserva su valor actual (al iniciar, el predeterminado).\n
+    - Si el archivo no se puede leer, el mod no lo modifica y lo indica en el registro.\n
+    - El mod reescribe este archivo, incluidos estos comentarios, cada vez que cambia un ajuste
+    en el juego: tus notas no se conservarán.\n
+    - Borra el archivo con el juego cerrado para volver a todos los valores predeterminados.
+  </String>
+  <String key="File.Section.Panel">Panel del juego: pestaña {0}</String>
+  <String key="File.Section.Options">Página de opciones del juego</String>
+  <String key="File.Section.None">No se muestra en ninguna página</String>
+  <String key="File.Percent">{0}, en %. De {1} a {2}, predeterminado {3}.</String>
+  <String key="File.Number">{0}. De {1} a {2}{3}, predeterminado {4}.</String>
+  <String key="File.AnyNumber">{0}. Predeterminado {1}.</String>
+  <String key="File.Readout">(control: {0} a {1})</String>
+  <String key="File.Toggle">{0}. true o false, predeterminado {1}.</String>
+  <String key="File.Choice">{0}. Uno de {1}; predeterminado {2}.</String>
+  <String key="File.Key">{0}. Una tecla como F8 o Ctrl+Shift+G, o None; predeterminado {1}.</String>
+  <String key="File.Colour">{0}. Un color, #RRGGBB (también se acepta 42, 92, 120); predeterminado {1}.</String>
+  <String key="File.Text">{0}.</String>
+  <String key="File.Confirm">Activarlo aquí se salta la pregunta que el juego hace antes.</String>
+
+  <!-- ==================== The assets file (RealGlassAssets.xml) ==================== -->
+
+  <!-- One line of the file per \n. -->
+  <String key="AssetFile.Header">
+    Real Glass &amp; Water: el vidrio propio de cada elemento de edificio, en todas sus copias y en
+    todas las ciudades. Nada de esto se guarda en tus partidas.\n
+    \n
+    Una entrada Asset por elemento, con solo lo que no toma de RealGlass.xml, con los mismos
+    nombres y en las mismas unidades:\n
+    - un porcentaje como lo muestra su control: 47 significa 47%; GlassThreshold va de 10 a 95
+    (menos que en RealGlass.xml: es solo de este elemento);\n
+    - GlassColor como #RRGGBB; GlassNightWindows, InteriorsEnabled y LodGlassFromModel como true
+    o false (LodGlassFromModel: su LOD muestra el vidrio del modelo, o conserva el suyo);\n
+    - GlassPreset como el número de un tipo de vidrio (0 Personalizado, 1 a 10, como en
+    RealGlass.xml); un tipo de vidrio por sí solo da su color, reflectividad y claridad.\n
+    \n
+    La ventana del edificio escribe este archivo (pulsa la tecla del selector de edificios y haz
+    clic en un edificio). También puedes editarlo con el juego en marcha: el mod vuelve a leerlo
+    en un segundo. Quita la entrada de un elemento, o borra el archivo con el juego cerrado, y
+    vuelve a tener el vidrio global.
+  </String>
+
+  <!-- ==================== The creators' file (RealGlassDefinition.xml) ==================== -->
+
+  <!-- Shipped with assets, beside their .crp. One line of the file per \n. -->
+  <String key="CreatorFile.Header">
+    Real Glass &amp; Water (Steam Workshop 3823419476): el vidrio de los elementos de edificio de
+    esta carpeta, tal como lo definió su creador, para todos los jugadores que tienen el mod. Los
+    ajustes propios de un jugador para un elemento (Alt+G) tienen prioridad.\n
+    \n
+    Una entrada Asset por elemento, con el nombre propio del elemento (el que se escribió al
+    guardarlo) y solo lo que definió su creador: todo lo demás sigue los ajustes de cada
+    jugador. Los mismos nombres y unidades que RealGlassAssets.xml:\n
+    - un porcentaje como lo muestra su control: 47 significa 47%; GlassThreshold va de 10 a 95;\n
+    - GlassColor como #RRGGBB; GlassNightWindows, InteriorsEnabled y LodGlassFromModel como true
+    o false;\n
+    - GlassPreset como el número de un tipo de vidrio (0 Personalizado, 1 a 10).\n
+    \n
+    El Editor de elementos escribe este archivo al guardar el elemento (su vidrio se define en la
+    ventana del creador: la tecla o el botón del mod allí) y lo incluye en la subida cuando el
+    elemento se comparte desde el Gestor de contenidos. Si lo subes de otra forma, pon este
+    archivo junto al .crp.
+  </String>
+
+</Language>

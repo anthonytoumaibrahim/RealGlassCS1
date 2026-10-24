@@ -15,7 +15,8 @@
 #     rows whose name leaves a question about what they do have one (the author, 2026-10-24: "remove
 #     redundant tooltips ... all that are obvious what they do"; 2026-10-21: "add tooltips where
 #     needed"; 2026-10-04 he had taken out every row's: "the labels are already pretty descriptive");
-#   - a translation has no key English lacks, and says which English keys it has not done yet;
+#   - a translation has no key English lacks, keeps English's {n} and \n in every text, and says
+#     which English keys it has not done yet;
 #   - wrapped texts come out as one line, \n as a real break.
 # The same key check runs in the game at startup (SettingsCatalog.LogLayout), from the real rows.
 
@@ -156,6 +157,17 @@ foreach ($file in Get-ChildItem (Join-Path $root "Localization") -Filter *.xml |
     Check "$($file.Name): no key twice" ($t.Duplicates -join ", ") ""
     $extra = @($t.Table.Keys | Where-Object { -not $en.Table.ContainsKey($_) } | Sort-Object)
     Check "$($file.Name): no key English lacks" ($extra -join ", ") ""
+    # A {n} left out formats without an error (the number just goes missing); a \n left out runs
+    # two lines of the settings file's header into one.
+    $differ = @()
+    $holes = { param($s) (@([regex]::Matches($s, '\{\d+\}') | ForEach-Object { $_.Value }) | Sort-Object) -join "," }
+    foreach ($key in @($t.Table.Keys | Where-Object { $en.Table.ContainsKey($_) } | Sort-Object)) {
+        $mine = $t.Table[$key]; $english = $en.Table[$key]
+        if ((& $holes $mine) -ne (& $holes $english)) { $differ += "$key ({n})" }
+        if ($mine.Split("`n").Count -ne $english.Split("`n").Count) { $differ += "$key (\n)" }
+        try { [void][string]::Format($mine, $dummy) } catch { $differ += "$key (bad {n})" }
+    }
+    Check "$($file.Name): the same {n} and \n as English" ($differ -join ", ") ""
     $todo = @($en.Table.Keys | Where-Object { -not $t.Table.ContainsKey($_) }).Count
     Write-Host "      $($file.Name): $($t.Table.Count) texts, $todo still in English"
 }

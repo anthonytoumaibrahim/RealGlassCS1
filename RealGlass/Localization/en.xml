@@ -392,9 +392,9 @@
   <String key="Asset.Lod.Failed">Its LOD could not be compared with the model (see the log).</String>
 
   <!-- The status line's third line: the rooms fitted to the asset's own windows ({0} its storey in metres). -->
-  <String key="Asset.Rooms.Fitted">Its rooms follow its windows: storeys of {0} m.</String>
-  <String key="Asset.Rooms.FittedNarrow">Its rooms follow its windows: storeys of {0} m, none on narrow sides.</String>
-  <String key="Asset.Rooms.Grid">No row of windows found: its rooms are on the storey grid.</String>
+  <String key="Asset.Rooms.Fitted">Its rooms follow its windows: stories of {0} m.</String>
+  <String key="Asset.Rooms.FittedNarrow">Its rooms follow its windows: stories of {0} m, none on narrow sides.</String>
+  <String key="Asset.Rooms.Grid">No row of windows found: its rooms are on the story grid.</String>
   <String key="Asset.Rooms.None">No rooms: its windows are thin strips.</String>
   <String key="Asset.Rooms.Failed">Its windows could not be measured for rooms (see the log).</String>
 
@@ -436,7 +436,6 @@
 
   <!-- ==================== The game's options page ==================== -->
 
-  <!-- "(more languages...)" can go on this heading when the first translation lands. -->
   <String key="Group.Language">Language</String>
 
   <String key="Language.Label">Show this mod in</String>

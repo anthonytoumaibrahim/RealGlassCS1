@@ -1,0 +1,559 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Real Glass & Water: every text a player reads, in Simplified Chinese, translated from en.xml (the
+  source for every translation). Made with AI: corrections from native speakers are welcome.
+
+  To translate: copy en.xml, name it with the game's code for your language (de.xml, es.xml,
+  fr.xml, ko.xml, pl.xml, pt.xml, ru.xml, zh.xml), set code and name below, and translate the
+  text between the tags. Leave the keys alone.
+
+  - {0}, {1}... are filled in by the mod (a number, a name). Keep every one of them.
+  - A long text can be wrapped over several lines here: the break reads as one space. So in
+    Chinese, a text is wrapped only right after a \n (the spaces around a \n are dropped).
+  - \n is a real line break (used in the dialogs).
+  - A key missing from a translation shows in English, so a partial translation works.
+
+  The game's own words: asset = 资产, Asset Editor = 资产编辑工具, Content Manager = 内容管理器,
+  Snapshot tool = 快照工具, info view = 信息视图, mod = 模组. Glass = 玻璃, a pane = 玻璃板,
+  a storey = 楼层. LOD stays LOD. The mod's name stays in English.
+-->
+<Language code="zh" name="简体中文">
+
+  <!-- ==================== The mod ==================== -->
+
+  <!-- One line in the game's mods list: about 30 characters fit before it wraps. -->
+  <String key="Mod.Description">逼真的玻璃与水面</String>
+  <String key="Mod.Unsupported">
+    Real Glass &amp; Water 无法在此电脑上绘制玻璃，因此已自动关闭：本城市不会受到任何影响。\n\n
+    此模组需要 Metal 或 OpenGL 3.3，但游戏当前未使用其中任何一种。如果游戏通过启动选项更改了图形模式（Steam：右键游戏 → 属性 → 启动选项），请移除该选项并重启游戏。
+  </String>
+  <String key="Mod.UnsupportedLinux">
+    Real Glass &amp; Water 无法在此电脑上绘制玻璃，因此已自动关闭：本城市不会受到任何影响。\n\n
+    此模组需要 OpenGL 3.3，但游戏当前未使用它。如果游戏通过启动选项更改了图形模式（Steam：右键游戏 → 属性 → 启动选项），请移除该选项并重启游戏。\n\n
+    Windows 版游戏可通过 Proton 运行此模组：Steam 中右键游戏 → 属性 → 兼容性，勾选“强制使用特定 Steam Play 兼容性工具”，然后选择一个 Proton 版本。
+  </String>
+  <String key="Mod.UnsupportedWindows">
+    Real Glass &amp; Water 无法在此电脑上绘制玻璃，因此已自动关闭：本城市不会受到任何影响。\n\n
+    常见原因：\n
+    - 游戏使用了 -force-d3d9 等启动选项，或显卡的 OpenGL 版本低于 3.3 时使用了 -force-glcore（Steam：右键游戏 → 属性 → 启动选项）。请移除该选项并重启游戏。\n
+    - 显卡早于 DirectX 10。\n\n
+    如果以上都不适用，请在模组的 Workshop 页面报告，并附上此文件：\n
+    {0}
+  </String>
+
+  <!-- A second copy of the mod (the Workshop item and a copy in Addons\Mods, both enabled): the
+       copy enabled second stays off. The window, at its first city: {0} the folder of the copy
+       that runs, {1} the folder of the one that is off. The options page's one line: -->
+  <String key="Mod.SecondCopy">
+    Real Glass &amp; Water 安装了两份，但只能运行一份。位于\n
+    {0}\n
+    的副本正在运行；位于\n
+    {1}\n
+    的副本已自动关闭。\n\n
+    请只保留一份：在 Workshop 取消订阅，或删除 Addons\Mods 中的文件夹，然后重启游戏。
+  </String>
+  <String key="Mod.SecondCopyShort">此副本已关闭：Real Glass &amp; Water 安装了两份。</String>
+
+  <!-- The window when a part of the mod stops after an error: once a launch, then the part stays
+       off until the next city. One sentence per part, then Error.Report ({0} the log file). -->
+  <String key="Error.Glass">建筑上的玻璃因出错而停止，在加载下一座城市之前保持关闭。Real Glass &amp; Water 的其他部分照常运行。</String>
+  <String key="Error.Vehicles">车辆上的玻璃因出错而停止，在加载下一座城市之前保持关闭。Real Glass &amp; Water 的其他部分照常运行。</String>
+  <String key="Error.Water">逼真水面因出错而停止：在加载下一座城市之前，水面恢复为游戏原版。Real Glass &amp; Water 的其他部分照常运行。</String>
+  <String key="Error.Report">如果再次发生，请在模组的 Workshop 页面报告，并附上此文件：\n{0}</String>
+
+  <String key="Tab.Glass">玻璃</String>
+  <String key="Tab.Reflections">反射</String>
+  <String key="Tab.Panes">玻璃板</String>
+  <String key="Tab.Interiors">室内</String>
+  <String key="Tab.Water">水面</String>
+  <String key="Tab.Vehicles">车辆</String>
+
+  <String key="Key.Press">按下一个键</String>
+
+  <!-- ==================== F8 panel: Glass ==================== -->
+
+  <!-- The status line at the top of the Glass tab. {0} {1} {2}: buildings drawn with glass
+       last frame, near / middle distance / far blocks. -->
+  <String key="Status.Off">玻璃已关闭。</String>
+  <String key="Status.Waiting">正在等待城市的摄像机。</String>
+  <String key="Status.InfoView">信息视图打开时暂停。</String>
+  <String key="Status.Failed">玻璃因出错而停止，将在下一座城市恢复。原因见 RealGlass.log。</String>
+  <String key="Status.Snapshot">使用快照工具时暂停：图片中的资产保持游戏原本的样子。</String>
+
+  <String key="GlassEnabled.Label">逼真玻璃</String>
+
+  <String key="Group.TheGlass">玻璃</String>
+
+  <String key="GlassPreset.Label">玻璃类型</String>
+  <String key="GlassPreset.ReflectiveBlue">反光蓝</String>
+  <String key="GlassPreset.ClearLowE">透明低辐射</String>
+  <String key="GlassPreset.AquaBlue">水蓝</String>
+  <String key="GlassPreset.OceanBlue">海洋蓝</String>
+  <String key="GlassPreset.SkyBlue">天蓝</String>
+  <String key="GlassPreset.Green">绿色</String>
+  <String key="GlassPreset.Bronze">古铜色</String>
+  <String key="GlassPreset.Grey">灰色</String>
+  <String key="GlassPreset.SilverReflective">银色反光</String>
+  <String key="GlassPreset.GoldReflective">金色反光</String>
+  <String key="GlassPreset.Custom">自定义</String>
+
+  <String key="GlassColor.Label">玻璃颜色</String>
+
+  <String key="GlassReflectivity.Label">反射率（正对时）</String>
+
+  <String key="GlassGlancing.Label">反射率（倾斜时）</String>
+
+  <String key="GlassEdgeSilver.Label">掠视时呈银色</String>
+  <String key="GlassEdgeSilver.Tooltip">从几乎贴着立面的角度看，镀膜玻璃会失去颜色，变成银色。</String>
+
+  <String key="GlassClarity.Label">透明度</String>
+  <String key="GlassClarity.Tooltip">透过的光有多少。越低：玻璃越暗。</String>
+
+  <String key="GlassStrength.Label">强度</String>
+
+  <String key="Group.BuildingsOwnLook">建筑原有外观</String>
+
+  <String key="GlassOwnColour.Label">保留建筑的颜色</String>
+
+  <String key="GlassPaintedDetail.Label">保留贴图上的细节</String>
+
+  <String key="Group.WhatIsGlass">哪些部分算作玻璃</String>
+
+  <String key="GlassThreshold.Label">所需光泽度</String>
+  <String key="GlassThreshold.Tooltip">越低：建筑越多部分算作玻璃，墙面也会算进去。</String>
+
+  <String key="GlassNightWindows.Label">夜间亮灯的窗户算作玻璃</String>
+
+  <!-- An asset's LOD (its low-detail model, drawn from the middle distance on) whose glass is not
+       its full model's (none, or in other places): it shows the model's glass instead. -->
+  <String key="LodGlassFromModel.Label">LOD 显示模型的玻璃</String>
+
+  <String key="GlassShowMask.Label">显示哪些部分算作玻璃</String>
+
+  <!-- ==================== F8 panel: Reflections ==================== -->
+
+  <String key="Group.TheReflections">反射</String>
+
+  <String key="ReflectionBrightness.Label">反射亮度</String>
+
+  <String key="GlassSmoothness.Label">光滑度</String>
+
+  <String key="SunGlint.Label">阳光闪耀</String>
+
+  <String key="SteadyGlints.Label">稳定的高光</String>
+
+  <String key="Group.CityInGlass">玻璃中的城市</String>
+
+  <String key="SsrEnabled.Label">反射屏幕上的内容</String>
+
+  <String key="ReflectFinished.Label">反射雾、云和灯光</String>
+
+  <String key="ReflectNeighbours.Label">反射周围的建筑</String>
+
+  <String key="SsrQuality.Label">反射质量</String>
+  <String key="SsrQuality.Low">低</String>
+  <String key="SsrQuality.Medium">中</String>
+  <String key="SsrQuality.High">高</String>
+  <String key="SsrQuality.Ultra">极高</String>
+
+  <String key="SsrEdgeFade.Label">在屏幕边缘淡出</String>
+
+  <String key="OffscreenFill.Label">地平线以下</String>
+  <String key="OffscreenFill.Tooltip">屏幕上没有可反射的内容时，玻璃显示什么。</String>
+  <String key="OffscreenFill.Mirror">镜像屏幕</String>
+  <String key="OffscreenFill.City">城市颜色</String>
+  <String key="OffscreenFill.Sky">仅天空</String>
+
+  <String key="Group.SkyInGlass">玻璃中的天空</String>
+
+  <String key="SkyReflection.Label">玻璃中的天空</String>
+  <String key="SkyReflection.Tooltip">实时天空：随一天中的时间和天气变化。</String>
+  <String key="SkyReflection.Live">实时天空</String>
+  <String key="SkyReflection.Game">游戏原版</String>
+
+  <String key="SkyClouds.Label">实时天空中的云</String>
+  <String key="SkyClouds.Tooltip">Volumetric Weather 的云也会出现在玻璃中。</String>
+
+  <String key="SkyDusk.Label">黄昏时天空变暗</String>
+
+  <!-- ==================== F8 panel: Panes ==================== -->
+
+  <String key="Group.ThePanes">玻璃板</String>
+
+  <String key="PaneWidth.Label">玻璃板宽度</String>
+
+  <String key="FloorHeight.Label">层高</String>
+  <String key="FloorHeight.Tooltip">一块玻璃板高一层楼；被反射的建筑的楼层也是这个高度。</String>
+
+  <String key="PanesFollowWindows.Label">玻璃板贴合窗户</String>
+
+  <String key="Group.Distortion">玻璃板如何扭曲反射</String>
+
+  <String key="PanePillow.Label">玻璃板鼓起</String>
+
+  <String key="PaneTilt.Label">玻璃板倾斜</String>
+
+  <String key="RollerWave.Label">波纹</String>
+  <String key="RollerWave.Tooltip">钢化玻璃上微弱的波纹。</String>
+
+  <String key="PaneWeather.Label">玻璃板随天气变化</String>
+  <String key="PaneWeather.Tooltip">天热时玻璃板向外鼓，天冷时向内凹。</String>
+
+  <!-- ==================== F8 panel: Interiors ==================== -->
+  <!-- Rooms behind every building's windows: pictures of real rooms, each with its own lamp and
+       curtain. On by default; at night only unless "Show the rooms by day" is ticked. -->
+
+  <String key="InteriorsEnabled.Label">视差室内</String>
+
+  <String key="Group.TheRooms">房间</String>
+
+  <String key="InteriorsByDay.Label">白天也显示房间</String>
+
+  <String key="InteriorsDayOpacity.Label">白天的不透明度</String>
+
+  <String key="InteriorsDepth.Label">房间深度</String>
+
+  <String key="InteriorsMatchLods.Label">近处与 LOD 上的房间一致</String>
+
+  <String key="InteriorsCurtains.Label">有窗帘或百叶窗的窗户</String>
+
+  <String key="Group.RoomLights">夜间灯光</String>
+
+  <String key="InteriorsLit.Label">亮灯的房间</String>
+
+  <String key="InteriorsLateNight.Label">深夜灯光减少</String>
+
+  <String key="InteriorsSwitching.Label">灯光时开时关</String>
+
+  <String key="InteriorsBrightness.Label">房间灯光亮度</String>
+
+  <String key="InteriorsColoured.Label">彩色灯光（LED、RGB）</String>
+
+  <!-- ==================== F8 panel: Water ==================== -->
+  <!-- The map's water: its color and brightness, the sky in it, the city in it. On by default. -->
+
+  <String key="WaterEnabled.Label">逼真水面</String>
+
+  <String key="Group.WaterColour">水的颜色</String>
+
+  <String key="WaterThemeColor.Label">使用地图主题的水颜色</String>
+  <String key="WaterColor.Label">水的颜色</String>
+  <String key="WaterBrightness.Label">水的亮度</String>
+
+  <String key="Group.WaterRipples">波纹</String>
+
+  <String key="WaterRipples.Label">流动的波纹</String>
+
+  <String key="WaterRippleStrength.Label">波纹强度</String>
+
+  <String key="WaterOceanWaves.Label">海浪</String>
+
+  <String key="WaterDynamicWaves.Label">动态海浪</String>
+  <String key="WaterDynamicWaves.Tooltip">海浪随游戏中的雨和风暴增大，之后逐渐平息。</String>
+
+  <String key="WaterWind.Label">风速</String>
+  <String key="WaterWind.Tooltip">关闭动态海浪时：风越强，浪越长（而不是越汹涌）。</String>
+
+  <String key="WaterChop.Label">波涛起伏</String>
+
+  <String key="WaterRippleSize.Label">波纹大小</String>
+  <String key="WaterRippleSize.Tooltip">关闭海浪时：波纹更长或更短。</String>
+
+  <String key="WaterWaveSize.Label">海浪大小</String>
+  <String key="WaterWaveSize.Tooltip">关闭海浪时生效。越低：水面越平静，只剩短波纹。</String>
+
+  <String key="Group.WaterFoam">泡沫</String>
+
+  <String key="WaterFoam.Label">泡沫</String>
+
+  <String key="WaterFoamAmount.Label">泡沫量</String>
+
+  <String key="WaterFoamShore.Label">岸边的泡沫</String>
+
+  <String key="WaterFoamRapids.Label">急流上的泡沫</String>
+
+  <String key="WaterFoamFronts.Label">浪锋上的泡沫</String>
+
+  <String key="Group.WaterSky">水中的天空</String>
+
+  <String key="WaterRealSky.Label">像真实水面一样反射天空</String>
+
+  <String key="WaterSky.Label">天空反射</String>
+
+  <String key="Group.WaterGlitter">日光与月光的波光</String>
+
+  <String key="WaterGlitter.Label">日光波光</String>
+
+  <String key="WaterGlitterSize.Label">日光波光大小</String>
+
+  <String key="WaterMoonGlitter.Label">月光波光</String>
+
+  <String key="WaterMoonGlitterSize.Label">月光波光大小</String>
+
+  <String key="Group.WaterCity">水中的城市</String>
+
+  <String key="WaterCity.Label">水面倒映城市</String>
+
+  <String key="WaterCityDay.Label">白天的城市倒影</String>
+
+  <String key="WaterCityNight.Label">夜晚的城市倒影</String>
+
+  <String key="WaterCityWaves.Label">城市倒影的波动</String>
+
+  <String key="WaterCityStreaks.Label">城市倒影的拉长光带</String>
+
+  <String key="WaterCityLength.Label">城市倒影的长度</String>
+
+  <!-- ==================== F8 panel: Vehicles ==================== -->
+  <!-- Glass on the vehicles near the camera: their windows, and the lenses of their lamps. -->
+
+  <!-- The status line at the top of the Vehicles tab, only after an error stopped the vehicles' glass. -->
+  <String key="Status.VehiclesFailed">车辆上的玻璃因出错而停止，将在下一座城市恢复。原因见 RealGlass.log。</String>
+
+  <String key="VehicleGlass.Label">车辆玻璃</String>
+
+  <!-- The share of vehicles whose windows are tinted (each car its own shade of tint film); the
+       others have clear glass. -->
+  <String key="VehicleTinted.Label">贴膜车窗 %</String>
+
+  <!-- How strongly the glass and the paint's clear coat mirror the sky and the street. -->
+  <String key="VehicleReflections.Label">反射</String>
+
+  <!-- The clear lacquer over a car's paint, which mirrors the sky and the street. Only the paint the
+       game recolours gets it, not tyres, trim or lights. -->
+  <String key="VehicleCoat.Label">车漆上的清漆层</String>
+
+
+  <!-- ==================== The building window ==================== -->
+  <!-- One building asset's own glass: every copy of it, in every city. Opened by clicking a
+       building with the building picker. Its title is the asset's name. -->
+
+  <!-- The status line with nothing picked. {0}: the key that turns the building picker on. -->
+  <String key="Asset.None">按 {0} 并点击一座建筑，即可自定义它的玻璃。</String>
+  <!-- {0}: how many of the asset stand in this city. -->
+  <String key="Asset.Own">本城市中有 {0} 座</String>
+  <String key="Asset.Global">本城市中有 {0} 座。跟随玻璃选项卡。</String>
+  <!-- Its creator shipped glass settings with it (RealGlassDefinition.xml); the player's come first. -->
+  <String key="Asset.Creator">本城市中有 {0} 座。它的作者设置了它的玻璃。</String>
+
+  <String key="Asset.Pick">选择另一座建筑</String>
+  <String key="Asset.UseGlobal">恢复设置</String>
+
+  <String key="Group.AssetGlass">此资产将使用自己的设置</String>
+
+  <String key="AssetGlassStrength.Label">强度</String>
+
+  <String key="AssetGlassPaintedDetail.Label">保留贴图上的细节</String>
+
+  <String key="AssetGlassPreset.Label">玻璃类型</String>
+
+  <String key="AssetGlassColor.Label">玻璃颜色</String>
+
+  <String key="AssetGlassReflectivity.Label">反射率（正对时）</String>
+
+  <String key="AssetGlassClarity.Label">透明度</String>
+  <String key="AssetGlassClarity.Tooltip">透过的光有多少。越低：玻璃越暗。</String>
+
+  <String key="AssetGlassOwnColour.Label">保留建筑的颜色</String>
+
+  <String key="AssetGlassThreshold.Label">所需光泽度</String>
+  <String key="AssetGlassThreshold.Tooltip">越低：此资产越多部分算作玻璃，墙面也会算进去。</String>
+
+  <String key="AssetGlassNightWindows.Label">夜间亮灯的窗户算作玻璃</String>
+
+  <!-- The glass of the asset's LOD (its low-detail model, drawn from the middle distance on). -->
+  <String key="AssetLodGlass.Label">LOD 上的玻璃</String>
+  <String key="AssetLodGlass.Tooltip">自动：LOD 的玻璃与模型不同时，使用完整模型的玻璃。</String>
+  <String key="Asset.LodGlass.Auto">自动</String>
+  <String key="Asset.LodGlass.Model">模型的</String>
+  <String key="Asset.LodGlass.Own">LOD 自己的</String>
+
+  <!-- The status line's second line: what the asset's LOD shows. -->
+  <String key="Asset.Lod.Agrees">它的 LOD 的玻璃与模型一致。</String>
+  <String key="Asset.Lod.NoGlass">模型和 LOD 都没有玻璃。</String>
+  <String key="Asset.Lod.Borrowed">它的 LOD 的玻璃不同：显示模型的玻璃。</String>
+  <String key="Asset.Lod.ShapeDiffers">它的 LOD 形状与模型差别太大：保持原样。</String>
+  <String key="Asset.Lod.Forced">它的 LOD 显示模型的玻璃。</String>
+  <String key="Asset.Lod.KeptOwn">它的 LOD 保留自己的玻璃。</String>
+  <String key="Asset.Lod.Off">它的 LOD 的玻璃不同；按玻璃选项卡的设置保持原样。</String>
+  <String key="Asset.Lod.Failed">无法将它的 LOD 与模型比较（见日志）。</String>
+
+  <!-- The status line's third line: the rooms fitted to the asset's own windows ({0} its storey in metres). -->
+  <String key="Asset.Rooms.Fitted">房间贴合它的窗户：层高 {0} 米。</String>
+  <String key="Asset.Rooms.FittedNarrow">房间贴合它的窗户：层高 {0} 米，窄面没有房间。</String>
+  <String key="Asset.Rooms.Grid">未找到成排的窗户：房间按楼层网格排列。</String>
+  <String key="Asset.Rooms.None">没有房间：它的窗户是细长的条带。</String>
+  <String key="Asset.Rooms.Failed">无法测量它的窗户来放置房间（见日志）。</String>
+
+  <String key="Group.AssetInteriors">室内</String>
+
+  <String key="AssetInteriorsEnabled.Label">视差室内</String>
+
+  <!-- On hover over a row's reset icon here (an icon has no label of its own). -->
+  <String key="Asset.Global.Hint">恢复为全局设置（或其作者的设置）</String>
+
+  <!-- By the cursor while the building picker is on. {0}: the building's asset, as the game names it. -->
+  <String key="Picker.Building">{0}\n点击：设置它的玻璃。右键：退出。</String>
+
+  <!-- ==================== The creator window ==================== -->
+  <!-- The asset editor's own window, opened there by the mod's key and button instead of the F8
+       panel: the glass of the building being made, for every player who has the mod. Saved with the
+       asset in RealGlassDefinition.xml and shared with it. Its rows are the building window's. -->
+  <String key="Creator.Title">Real Glass &amp; Water - 资产编辑工具</String>
+
+  <!-- The status line: its glass is saved with the asset. -->
+  <String key="Creator.NoAsset">未打开资产。</String>
+  <String key="Creator.NotBuilding">仅限建筑。</String>
+  <String key="Creator.New">尚未保存。</String>
+  <!-- {0}: the asset's name, as typed when saving it. -->
+  <String key="Creator.Saved">已随“{0}”保存。</String>
+  <String key="Creator.Changed">有未保存的更改。</String>
+
+  <String key="Creator.OpenFolder">打开文件夹</String>
+
+  <String key="Group.CreatorPreview">预览</String>
+
+  <!-- The mod's glass on the asset, at the mod's default settings. Off (the default): the game's own look. -->
+  <String key="CreatorShowGlass.Label">Real Glass</String>
+  <String key="CreatorShowGlass.Tooltip">关闭：没有此模组的订阅者看到的样子。</String>
+
+  <String key="CreatorShowMask.Label">显示哪些部分算作玻璃</String>
+
+  <String key="CreatorRoomsByDay.Label">白天显示房间</String>
+
+  <!-- ==================== The game's options page ==================== -->
+
+  <String key="Group.Language">语言</String>
+
+  <String key="Language.Label">模组显示语言</String>
+  <String key="Language.Game">与游戏相同</String>
+
+  <String key="Group.Panel">游戏内面板</String>
+
+  <String key="PanelKey.Label">打开此面板</String>
+
+  <String key="PickerKey.Label">选择建筑：设置其资产自己的玻璃</String>
+
+  <!-- The F8 panel's and the building window's look. Vanilla is the game's own look. -->
+  <String key="PanelSkin.Label">面板外观</String>
+  <String key="PanelSkin.Frosted">磨砂玻璃</String>
+  <String key="PanelSkin.SeeThrough">半透明</String>
+  <String key="PanelSkin.GameBlue">蓝色</String>
+  <String key="PanelSkin.Vanilla">原版</String>
+
+  <String key="UseUnifiedUI.Label">在 Unified UI 中显示图标</String>
+
+  <String key="Group.Rendering">渲染</String>
+
+  <String key="GlassDistance.Label">玻璃显示范围</String>
+  <String key="GlassDistance.Near">近处的建筑</String>
+  <String key="GlassDistance.Middle">近处和中距离</String>
+  <String key="GlassDistance.City">整座城市</String>
+
+  <String key="Group.LiveSky">玻璃中的实时天空</String>
+
+  <String key="SkyCubeSize.Label">天空细节</String>
+
+  <String key="SkyCubeRate.Label">天空更新</String>
+  <String key="SkyCubeRate.Tooltip">每帧重绘的实时天空面数。6：全部。</String>
+
+  <String key="Group.Diagnostics">诊断</String>
+
+  <String key="DetailedLogging.Label">详细日志</String>
+  <String key="DetailedLogging.Tooltip">用于错误报告。平时请保持关闭。</String>
+
+  <String key="Group.StartingOver">重置</String>
+
+  <String key="ResetAll.Label">将所有设置恢复默认</String>
+  <String key="ResetAll.Confirm">
+    将每项设置恢复为模组的初始状态吗？\n\n
+    这会丢弃你调整过的所有内容，包括玻璃颜色和游戏内面板中的更改。
+  </String>
+
+  <!-- ==================== No row in either UI ==================== -->
+
+  <String key="HudButtonX.Label">模组按钮（不使用 Unified UI）：距左边缘</String>
+  <String key="HudButtonY.Label">模组按钮（不使用 Unified UI）：距上边缘</String>
+
+  <String key="WaterFoamView.Label">泡沫诊断视图：0 关闭，1 显示来源，2 或 3 显示绘制位置</String>
+
+  <String key="PanelOpenGroups.Label">游戏内面板中展开的标题，以逗号分隔</String>
+
+  <!-- ==================== The color row ==================== -->
+
+  <String key="Colour.Copy">复制</String>
+  <String key="Colour.Copied">已复制</String>
+  <String key="Colour.Paste">粘贴</String>
+
+  <!-- On hover over a row's reset icon in the F8 panel (an icon has no label of its own). -->
+  <String key="Reset.Default">恢复默认值</String>
+
+  <!-- ==================== Slider readouts ==================== -->
+
+  <String key="Unit.Percent">{0}%</String>
+  <String key="Unit.Metres">{0} 米</String>
+  <String key="Unit.MetresPerSecond">{0} 米/秒</String>
+  <String key="Unit.Pixels">{0} 像素</String>
+  <String key="Unit.FacesPerFrame">每帧 {0} 面</String>
+
+  <!-- ==================== The settings file (RealGlass.xml) ==================== -->
+  <!-- Comments the mod writes into the player's settings file. The names of the settings in
+       that file are not translated. -->
+
+  <!-- One line of the file per \n: a bullet wrapped here stays one line there. -->
+  <String key="File.Header">
+    Real Glass &amp; Water 设置。\n
+    \n
+    游戏运行时可编辑此文件：保存后，模组会在一秒内重新读取，面板也会同步更新。\n
+    \n
+    - 小数使用点：0.5，不要写 0,5。\n
+    - 百分比按滑块显示方式填写：47 表示 47%。\n
+    - 超出范围的值会被拉回范围内。无法读取的值以及模组不认识的名称会被忽略；RealGlass.log 会说明具体项目。\n
+    - 缺少某项设置行时，会保留当前值（启动时则为默认值）。\n
+    - 如果整个文件都无法读取，模组不会修改它，并会在日志中说明。\n
+    - 每当游戏内设置改变时，模组都会重写此文件（包括这些注释），因此你自行添加的注释不会保留。\n
+    - 关闭游戏后删除此文件，可从全部默认设置重新开始。
+  </String>
+  <String key="File.Section.Panel">游戏内面板：{0} 选项卡</String>
+  <String key="File.Section.Options">游戏选项页面</String>
+  <String key="File.Section.None">两个页面都不显示</String>
+  <String key="File.Percent">{0}，单位 %。{1} 到 {2}，默认 {3}。</String>
+  <String key="File.Number">{0}。{1} 到 {2}{3}，默认 {4}。</String>
+  <String key="File.AnyNumber">{0}。默认 {1}。</String>
+  <String key="File.Readout">（滑块：{0} 到 {1}）</String>
+  <String key="File.Toggle">{0}。true 或 false，默认 {1}。</String>
+  <String key="File.Choice">{0}。可选 {1}；默认 {2}。</String>
+  <String key="File.Key">{0}。按键如 F8、Ctrl+Shift+G 或 None；默认 {1}。</String>
+  <String key="File.Colour">{0}。颜色格式 #RRGGBB（也可读取 42, 92, 120）；默认 {1}。</String>
+  <String key="File.Text">{0}。</String>
+  <String key="File.Confirm">在此处开启会跳过游戏先弹出的确认。</String>
+
+  <!-- ==================== The assets file (RealGlassAssets.xml) ==================== -->
+
+  <!-- One line of the file per \n. -->
+  <String key="AssetFile.Header">
+    Real Glass &amp; Water：每个建筑资产自己的玻璃，适用于它在每座城市中的每个副本。这些内容都不会保存在你的存档中。\n
+    \n
+    每个资产一个 Asset 元素，只包含它不从 RealGlass.xml 获取的内容，名称和单位与之相同：\n
+    - 百分比按滑块显示方式填写：47 表示 47%；GlassThreshold 范围为 10 到 95（比 RealGlass.xml 中更低：它只属于此资产）；\n
+    - GlassColor 写作 #RRGGBB；GlassNightWindows、InteriorsEnabled 和 LodGlassFromModel 写作 true 或 false（LodGlassFromModel：它的 LOD 显示模型的玻璃，或保留自己的玻璃）；\n
+    - GlassPreset 写作玻璃类型的编号（0 自定义，1 到 10，与 RealGlass.xml 相同）；只写玻璃类型即可得到它的颜色、反射率和透明度。\n
+    \n
+    建筑窗口会写入此文件（按建筑选择器的按键并点击一座建筑）。游戏运行时也可编辑此文件：模组会在一秒内重新读取。删除某个资产的元素，或在关闭游戏后删除此文件，该资产就会恢复全局玻璃设置。
+  </String>
+
+  <!-- ==================== The creators' file (RealGlassDefinition.xml) ==================== -->
+
+  <!-- Shipped with assets, beside their .crp. One line of the file per \n. -->
+  <String key="CreatorFile.Header">
+    Real Glass &amp; Water（Steam Workshop 3823419476）：此文件夹中建筑资产的玻璃，由作者设置，适用于每位安装了此模组的玩家。玩家自己对某个资产的设置（Alt+G）优先。\n
+    \n
+    每个资产一个 Asset 元素，以资产自己的名称命名（即保存时输入的名称），只包含作者设置的内容：其余部分跟随每位玩家的设置。名称和单位与 RealGlassAssets.xml 相同：\n
+    - 百分比按滑块显示方式填写：47 表示 47%；GlassThreshold 范围为 10 到 95；\n
+    - GlassColor 写作 #RRGGBB；GlassNightWindows、InteriorsEnabled 和 LodGlassFromModel 写作 true 或 false；\n
+    - GlassPreset 写作玻璃类型的编号（0 自定义，1 到 10）。\n
+    \n
+    保存资产时，资产编辑工具会写入此文件（在作者窗口中设置它的玻璃：在编辑工具中按模组的按键或按钮打开），并在从内容管理器分享资产时把它放入上传内容。如果用其他方式上传，请把此文件放在 .crp 旁边。
+  </String>
+
+</Language>
