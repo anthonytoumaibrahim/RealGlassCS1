@@ -219,6 +219,9 @@
 
   <String key="Group.RoomLights">夜间灯光</String>
 
+  <String key="InteriorsFollowIllumination.Label">遵循每个资产的照明贴图</String>
+  <String key="InteriorsFollowIllumination.Tooltip">房间在游戏点亮各资产窗户的位置和时间亮灯。</String>
+
   <String key="InteriorsLit.Label">亮灯的房间</String>
 
   <String key="InteriorsLateNight.Label">深夜灯光减少</String>
@@ -391,6 +394,8 @@
 
   <String key="AssetInteriorsCurtains.Label">窗帘或百叶窗</String>
 
+  <String key="AssetInteriorsFollowIllumination.Label">遵循它的照明贴图</String>
+
   <!-- On hover over a row's reset icon here (an icon has no label of its own). -->
   <String key="Asset.Global.Hint">恢复为全局设置（或作者的设置）</String>
 
@@ -538,7 +543,7 @@
     \n
     每个资产一个 Asset 元素，只包含它不从 RealGlass.xml 获取的内容，名称和单位与之相同：\n
     - 百分比按滑块显示方式填写：47 表示 47%；GlassThreshold 范围为 10 到 95（比 RealGlass.xml 中更低：它只属于此资产）；\n
-    - GlassColor 写作 #RRGGBB；GlassNightWindows、InteriorsEnabled、InteriorsCurtainsEnabled 和 LodGlassFromModel 写作 true 或 false（InteriorsCurtainsEnabled：它的房间里有窗帘或百叶窗，数量按 InteriorsCurtains 而定，或者一个也没有；LodGlassFromModel：它的 LOD 显示模型的玻璃，或保留自己的玻璃）；\n
+    - GlassColor 写作 #RRGGBB；GlassNightWindows、InteriorsEnabled、InteriorsCurtainsEnabled、InteriorsFollowIllumination 和 LodGlassFromModel 写作 true 或 false（InteriorsCurtainsEnabled：它的房间里有窗帘或百叶窗，数量按 InteriorsCurtains 而定，或者一个也没有；InteriorsFollowIllumination：它的房间在游戏点亮它窗户的位置和时间亮灯，或按室内选项卡的设置；LodGlassFromModel：它的 LOD 显示模型的玻璃，或保留自己的玻璃）；\n
     - GlassPreset 写作玻璃类型的编号（0 自定义，1 到 10，与 RealGlass.xml 相同）；只写玻璃类型即可得到它的颜色、反射率和透明度。\n
     \n
     建筑窗口会写入此文件（按建筑选择器的按键并点击一座建筑）。游戏运行时也可编辑此文件：模组会在一秒内重新读取。删除某个资产的元素，或在关闭游戏后删除此文件，该资产就会恢复全局玻璃设置。
@@ -552,7 +557,7 @@
     \n
     每个资产一个 Asset 元素，以资产自己的名称命名（即保存时输入的名称），只包含作者设置的内容：其余部分跟随每位玩家的设置。名称和单位与 RealGlassAssets.xml 相同：\n
     - 百分比按滑块显示方式填写：47 表示 47%；GlassThreshold 范围为 10 到 95；\n
-    - GlassColor 写作 #RRGGBB；GlassNightWindows、InteriorsEnabled、InteriorsCurtainsEnabled 和 LodGlassFromModel 写作 true 或 false；\n
+    - GlassColor 写作 #RRGGBB；GlassNightWindows、InteriorsEnabled、InteriorsCurtainsEnabled、InteriorsFollowIllumination 和 LodGlassFromModel 写作 true 或 false（InteriorsFollowIllumination：它的房间在游戏点亮它窗户的位置和时间亮灯，按它的照明贴图）；\n
     - GlassPreset 写作玻璃类型的编号（0 自定义，1 到 10）。\n
     \n
     保存资产时，资产编辑工具会写入此文件（在作者窗口中设置它的玻璃：在编辑工具中按模组的按键或按钮打开），并在从内容管理器分享资产时把它放入上传内容。如果用其他方式上传，请把此文件放在 .crp 旁边。

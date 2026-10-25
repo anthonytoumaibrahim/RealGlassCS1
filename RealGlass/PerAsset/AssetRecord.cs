@@ -57,6 +57,12 @@ namespace RealGlass.PerAsset
         public bool? Curtains;
 
         /// <summary>
+        /// Its rooms lit where and when the game lights its windows (InteriorsFollowIllumination: its
+        /// illumination map, the game's timing): true so, false ours (the Interiors tab's shares).
+        /// </summary>
+        public bool? FollowIllumination;
+
+        /// <summary>
         /// Its LODs' glass (LodGlassFromModel, Glass/LodGlass.cs): true the model's, whatever the LOD has;
         /// false the LOD's own, always. Null: the switch, and the comparison.
         /// </summary>
@@ -73,7 +79,7 @@ namespace RealGlass.PerAsset
             get
             {
                 return !Strength.HasValue && !PaintedDetail.HasValue && !HasGlass && !Interiors.HasValue && !Curtains.HasValue &&
-                       !LodGlass.HasValue;
+                       !FollowIllumination.HasValue && !LodGlass.HasValue;
             }
         }
 
@@ -125,6 +131,7 @@ namespace RealGlass.PerAsset
                 NightWindows = t.NightWindows ?? u.NightWindows,
                 Interiors = t.Interiors ?? u.Interiors,
                 Curtains = t.Curtains ?? u.Curtains,
+                FollowIllumination = t.FollowIllumination ?? u.FollowIllumination,
                 LodGlass = t.LodGlass ?? u.LodGlass,
             };
 
@@ -161,7 +168,8 @@ namespace RealGlass.PerAsset
             return Strength == other.Strength && PaintedDetail == other.PaintedDetail && Preset == other.Preset &&
                    SameColour(Colour, other.Colour) && Reflectivity == other.Reflectivity && Clarity == other.Clarity &&
                    OwnColour == other.OwnColour && Threshold == other.Threshold && NightWindows == other.NightWindows &&
-                   Interiors == other.Interiors && Curtains == other.Curtains && LodGlass == other.LodGlass;
+                   Interiors == other.Interiors && Curtains == other.Curtains && FollowIllumination == other.FollowIllumination &&
+                   LodGlass == other.LodGlass;
         }
 
         private static bool SameColour(Color32? a, Color32? b)

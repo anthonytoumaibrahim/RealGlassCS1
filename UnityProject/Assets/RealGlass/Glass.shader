@@ -50,6 +50,7 @@ Shader "RealGlass/Glass"
             float4 _MainTex_ST;
             sampler2D _XYSMap;
             sampler2D _ACIMap;
+            float4 _ACIMap_TexelSize;   // Unity's, with the texture: zw its size (0 if not given)
 
 #if defined(RG_LOD)
             float4x4 _BuildingLocations[8];
@@ -361,6 +362,17 @@ Shader "RealGlass/Glass"
 #endif
                 float spec = ShineAt(uv);
                 float4 aci = tex2D(_ACIMap, uv);
+                // The illumination map, for rooms lit where the game lights the window (Interiors.cginc,
+                // GameWindowLit). Further out as the game's building shader reads it (one level
+                // sharper); up close, where a texel spans a pixel or more, the very texel: a blend
+                // of a window's value with its frame's 0 passes through the always-lit values below
+                // 0.48 -- a lit sliver of room down the edge of every dark window (preview,
+                // 2026-10-25). x the texel, y the game's read, z how much of y.
+                float2 aciSize = _ACIMap_TexelSize.zw;
+                float illumGame = tex2Dbias(_ACIMap, float4(uv, 0.0, -1.0)).b;
+                float illumTexel = tex2Dlod(_ACIMap, float4((floor(uv * aciSize) + 0.5) / max(aciSize, 1.0), 0.0, 0.0)).b;
+                float texelsPerPixel = max(length(uvDx * aciSize), length(uvDy * aciSize));
+                float3 illumination = float3(illumTexel, illumGame, aciSize.x > 0.5 ? saturate(texelsPerPixel * 2.0 - 1.0) : 1.0);
 
                 // This building's own settings: its asset's, where the player gave it some
                 // (AssetTextures.cs, at the colour index every tier carries); 255 in a channel is
@@ -630,7 +642,7 @@ Shader "RealGlass/Glass"
                 float3 nightFilter = lerp(float3(1.0, 1.0, 1.0), filter, 0.3);
                 nightFilter /= max(Luma(nightFilter), 0.05);
                 float3 roomNight, roomDay;
-                float rooms = RoomsBehind(P, n, t, V, baseY, footprint, painted, IdOf(i.building), i.building, asset.a,
+                float rooms = RoomsBehind(P, n, t, V, baseY, footprint, painted, IdOf(i.building), i.building, asset.a, illumination,
                                           inside, through, nightFilter * (1.0 - Fs), roomNight, roomDay);
                 float3 behind = lerp(gamePixel, inside, daylight);
                 float roomCover = 0.0, roomCoverNight = 0.0;

@@ -27,7 +27,13 @@
 
 float4 _RGRooms;          // x rooms on every building (1), y by day too (1), z the clock (game hours), w game hours a room keeps its light (0: for good)
 float4 _RGRooms2;         // x a lit room's average light (brightness x Interiors.LitRoomLuminance), y the coloured lights' share, z the curtains' share, w pictures loaded (1)
-float4 _RGRooms3;         // x room depth: 0 a flat picture on the glass .. 1 a box room behind it; y 1: up close the storey grid too (the LODs' rooms)
+float4 _RGRooms3;         // x room depth: 0 a flat picture on the glass .. 1 a box room behind it; y 1: up close the storey grid too (the LODs' rooms); z 1: rooms lit by the assets' illumination maps
+// The game's own, read as its building shader reads them (GameWindowLit): the simulation's clock,
+// x seconds wrapping at 3600, w the same in radians (SimulationManager.Update); and its buildings'
+// lights level, the hours from 6:00 or 18:00, whichever is nearer -- negative at night
+// (LightSystem.SetDaylightIntensity, from DayNightProperties.Refresh).
+float4 _SimulationTime2;
+float _GiantMarshmallow;
 float4 _RGRoomShare;      // the share of rooms lit now: x homes, y offices and industry, z shops, w hotels, leisure, public
 float4 _RGRoomAtlasInfo;  // x tiles a row, y a night tile's pixels, z a day tile's pixels, w the back wall's share of a picture
 float4 _RGRoomPools[8];   // per kind of room (Interiors.Pool*): x its first tile, y how many, z its box's aspect, w its depth (half-heights)
@@ -64,19 +70,43 @@ float RoomRand(float seed, float k)
     return Hash12(float2(seed * 4096.0, k));
 }
 
-// The building's kind, its asset's own switch and its asset's own curtains from its _RGAssets texel's
-// a channel (Interiors.cs): kind + 16 x switch + 48 x curtains (each 0 the global one, 1 off, 2 on);
-// 255 not looked at yet (a home, the global switches).
-void RoomKind(float a, out float kind, out float assetSwitch, out float curtains)
+// The building's kind and its asset's own switches -- rooms, curtains, illumination map -- from its
+// _RGAssets texel's a channel (Interiors.cs): kind + 8 x switch + 24 x curtains + 72 x illumination
+// (each 0 the global one, 1 off, 2 on); 255 not looked at yet (a home, the global switches).
+void RoomKind(float a, out float kind, out float assetSwitch, out float curtains, out float illumination)
 {
     float a8 = floor(a * 255.0 + 0.5);
     bool unseen = a8 > 254.5;
-    kind = unseen ? 0.0 : fmod(a8, 16.0);
-    float switches = floor(a8 / 16.0);
+    kind = unseen ? 0.0 : fmod(a8, 8.0);
+    float switches = floor(a8 / 8.0);
     // Halfway between two multiples of 3: a division a little off on the GPU still floors right.
-    float c = floor((switches + 0.5) / 3.0);
-    assetSwitch = unseen ? 0.0 : switches - 3.0 * c;
-    curtains = unseen ? 0.0 : c;
+    float upper = floor((switches + 0.5) / 3.0);
+    float top = floor((upper + 0.5) / 3.0);
+    assetSwitch = unseen ? 0.0 : switches - 3.0 * upper;
+    curtains = unseen ? 0.0 : upper - 3.0 * top;
+    illumination = unseen ? 0.0 : top;
+}
+
+// How much the game lights this pixel of a building's window now: its building shader's rule
+// (Custom/Buildings/Building/Default, read 2026-10-25; docs/NIGHT-MAP-PLAN.md), from the asset's
+// illumination map at the pixel. Up to 0.48 the window glows day and night, 20 x b (0 none); above,
+// two bands light as thresholds swing with the simulation's clock -- 0.49..0.74 eleven times an hour
+// of it, 0.76..1.01 seven times, each building at its own phase -- so 0.75 never lights. The game
+// switches a whole building on in the hour before 18:00 and off after 6:00, each at its palette
+// texel's alpha; that palette would be a seventeenth texture (Metal: one sampler each, sixteen at
+// most), so the building's own number stands in for it. b: x the map's texel at the pixel, y the
+// map as the game reads it, z how much of y (Glass.shader: y further out, x up close).
+float GameWindowLit(float3 b, float2 colourIndex, float buildingId)
+{
+    float2 threshold = sin(colourIndex * 31.3 + _SimulationTime2.w * float2(11.0, 7.0)) * 0.125 + float2(0.615, 0.885);
+    float alpha = Hash12(float2(fmod(buildingId, 997.0) + 0.5, floor(buildingId / 997.0) + 0.71));
+    float on = saturate((alpha + 0.01 - _GiantMarshmallow) * 50.0);
+    on = on * on * (3.0 - 2.0 * on);
+    float4 band = saturate(float4(threshold.x - b.x, b.x - threshold.y, threshold.x - b.y, b.y - threshold.y) * 5.0);
+    band = band * band * (3.0 - 2.0 * band);
+    float texelLit = b.x > 0.48 ? (band.x + band.y) * on : saturate(b.x * 20.0);
+    float gameLit = b.y > 0.48 ? (band.z + band.w) * on : saturate(b.y * 20.0);
+    return lerp(texelLit, gameLit, b.z);
 }
 
 // Which pictures a room of this kind on this storey takes (Interiors.Pool*), and which share of the
@@ -236,9 +266,11 @@ float RoomCurtain(float seed, float pool, float2 xy, float2 size, float footprin
 }
 
 // A room's light (its lamp, its television, or none) by night: the room's place in the grid, its
-// building's kind of rooms, its building's seed. seed: the room's own number; lit, tv: 0..1. The
-// same room gives the same answer whichever pixel asks: every tier, near or far, agrees.
-float3 RoomLight(float2 cellId, float pool, float4 group, float buildingSeed, out float seed, out float lit, out float tv)
+// building's kind of rooms, its building's seed; gameLit, how much the game lights the window here
+// (GameWindowLit) where the building follows its asset's illumination map, else below 0. seed: the
+// room's own number; lit, tv: 0..1. The same room gives the same answer whichever pixel asks: every
+// tier, near or far, agrees (following the map, as the game's own window does).
+float3 RoomLight(float2 cellId, float pool, float4 group, float buildingSeed, float gameLit, out float seed, out float lit, out float tv)
 {
     seed = Hash12(cellId + buildingSeed * 4096.0);
 
@@ -259,6 +291,7 @@ float3 RoomLight(float2 cellId, float pool, float4 group, float buildingSeed, ou
     float litNow = step(RoomRand(lightSeed, ei + 11.0), share);
     float litBefore = step(RoomRand(lightSeed, ei + 10.0), share);
     lit = lerp(litBefore, litNow, saturate((e - ei) * 200.0));
+    lit = gameLit >= 0.0 ? gameLit : lit;
     // Some lit homes are only a television.
     bool homeLike = pool < 0.5 || pool > 2.5 && pool < 3.5;
     tv = homeLike ? step(RoomRand(lightSeed, ei + 23.0), 0.07) : 0.0;
@@ -447,14 +480,16 @@ float2 RoomPictureUV(float aspect, float depth, float2 q, float3 V, float3 n, fl
 // glass (nightGlass, dayGlass: what the glass lets through of each). Returns how much of the
 // window is the room's: 0 where there are no rooms (switched off, not loaded, an asset of its own
 // says no, glass that is not a facade or holds none), else 1 (less on a slanted pane). colourIndex:
-// the building's (its texel in the object colour map: where its frame is, RoomFrameAt).
+// the building's (its texel in the object colour map: where its frame is, RoomFrameAt); illumination:
+// the asset's illumination map at the pixel (GameWindowLit's b).
 float RoomsBehind(float3 P, float3 n, float3 t, float3 V, float baseY, float footprint, float4 painted, float buildingId,
-                  float2 colourIndex, float assetA, float3 inside, float3 dayGlass, float3 nightGlass, out float3 night, out float3 day)
+                  float2 colourIndex, float assetA, float3 illumination, float3 inside, float3 dayGlass, float3 nightGlass,
+                  out float3 night, out float3 day)
 {
     night = float3(0.0, 0.0, 0.0);
     day = inside;
-    float kind, assetSwitch, assetCurtains;
-    RoomKind(assetA, kind, assetSwitch, assetCurtains);
+    float kind, assetSwitch, assetCurtains, assetIllumination;
+    RoomKind(assetA, kind, assetSwitch, assetCurtains, assetIllumination);
     bool on = _RGRooms2.w > 0.5 && (assetSwitch > 1.5 || (assetSwitch < 0.5 && _RGRooms.x > 0.5));
     float facade = saturate((1.0 - abs(n.y)) * 3.0);
 #if defined(UNITY_COMPILER_HLSLCC)
@@ -503,9 +538,13 @@ float RoomsBehind(float3 P, float3 n, float3 t, float3 V, float baseY, float foo
     float pool = RoomPool(kind, cellId.y, group);
     float fid = FacadeId(n);
     float buildingSeed = Hash12(float2(fmod(buildingId, 997.0) + 0.5, floor(buildingId / 997.0) + fid * 0.37));
+    // Which rooms are lit: where and when the game lights this window (its asset's illumination
+    // map: the Interiors tab's switch, or the asset's own, Alt+G), else ours (below 0).
+    bool follow = assetIllumination > 1.5 || assetIllumination < 0.5 && _RGRooms3.z > 0.5;
+    float gameLit = follow ? GameWindowLit(illumination, colourIndex, buildingId) : -1.0;
     float seed, lit, tv;
-    float3 roomLight = RoomLight(cellId, pool, group, buildingSeed, seed, lit, tv);
-    float share = dot(group, _RGRoomShare);
+    float3 roomLight = RoomLight(cellId, pool, group, buildingSeed, gameLit, seed, lit, tv);
+    float share = gameLit >= 0.0 ? gameLit : dot(group, _RGRoomShare);
     float3 dark = _RGAmbSky.rgb * 0.03;
     float3 dayDark = _RGAmbSky.rgb * _RGLight.y;
 
@@ -541,7 +580,7 @@ float RoomsBehind(float3 P, float3 n, float3 t, float3 V, float baseY, float foo
             float4 tapGroup;
             float tapPool = RoomPool(kind, tapId.y, tapGroup);
             float tapSeed, tapLit, tapTv;
-            sum += RoomLight(tapId, tapPool, tapGroup, buildingSeed, tapSeed, tapLit, tapTv);
+            sum += RoomLight(tapId, tapPool, tapGroup, buildingSeed, gameLit, tapSeed, tapLit, tapTv);
         }
         float3 average = share * AverageLamp(pool) * _RGRooms2.x;
         farNight = lerp(average, sum * 0.25, pattern) * (1.0 - slabShare) * fabric + dark;

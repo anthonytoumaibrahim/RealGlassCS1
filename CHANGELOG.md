@@ -36,6 +36,15 @@ the mod's name in the game.
   Editor have a *Curtains or blinds* switch under Interiors. Off, that asset's rooms have no curtains
   or blinds -- for glass that is no room's window, such as a fire station's doors; on, as many as the
   Interiors tab gives. A creator's choice ships with the asset, like the rest of its glass.
+- **Rooms lit by the asset's illumination map** (the Interiors tab, under "Lights at night"; off by
+  default). On, a building's rooms light where and when the game would light its windows: the
+  windows its asset's illumination map marks, on the game's own timing, every building switching on
+  at dusk and off at dawn. The rooms themselves stay the mod's: their pictures, lamps and curtains.
+  Off, the mod picks which rooms are lit (*Lit rooms* and the rows under it). The building window
+  (Alt+G) and the creator window in the Asset Editor have the same switch per asset, *Follow its
+  illumination map*: a creator who painted the asset's lit windows can ship it on, like the rest of
+  its glass. On a Mac, each building's light color and the moment it switches on at dusk are the
+  mod's own (the game's would take one texture more than a Mac's shader can hold).
 - **Spanish, French and Simplified Chinese.** The panel, the building and creator windows, the
   options page and the messages are now in Spanish, French and Simplified Chinese as well as
   English, as in Volumetric Weather. A game set to one of them shows it automatically; *Show this

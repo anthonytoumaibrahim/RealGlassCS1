@@ -54,6 +54,7 @@ namespace RealGlass.Glass
         public float InteriorsDayOpacity;   // 0..1: by day, the dark inside (0) .. the rooms in full (1)
         public float InteriorsDepth;        // 0..1: a room with depth behind the glass (1) .. a flat picture on it (0)
         public bool InteriorsMatchLods;     // up close, the rooms laid out as on the LOD models (the storey grid); off: the asset's painted windows
+        public bool InteriorsFollowIllumination;   // rooms lit where and when the game lights each asset's windows (an asset can say otherwise)
         public float InteriorsLit;          // 0.05..0.9: the share of rooms lit at the busiest hour
         public bool InteriorsLateNight;     // the share follows the hour (homes empty out after midnight)
         public float InteriorsSwitching;    // 0..3: how often a room's light changes (1 = every Interiors.HoursPerChange game hours)
@@ -109,6 +110,7 @@ namespace RealGlass.Glass
             p.InteriorsDayOpacity = 0.5f;
             p.InteriorsDepth = 1f;
             p.InteriorsMatchLods = true;
+            p.InteriorsFollowIllumination = false;
             p.InteriorsLit = 0.45f;
             p.InteriorsLateNight = true;
             p.InteriorsSwitching = 1f;

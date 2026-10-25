@@ -49,6 +49,7 @@ namespace RealGlass.PerAsset
         public const string ThresholdName = "GlassThreshold";
         public const string NightWindowsName = "GlassNightWindows";
         public const string InteriorsName = "InteriorsEnabled";
+        public const string FollowIlluminationName = "InteriorsFollowIllumination";
         public const string LodGlassName = "LodGlassFromModel";
 
         /// <summary>
@@ -125,6 +126,8 @@ namespace RealGlass.PerAsset
                     Element(text, InteriorsName, SettingsXmlFormat.FormatBool(record.Interiors.Value));
                 if (record.Curtains.HasValue)
                     Element(text, CurtainsName, SettingsXmlFormat.FormatBool(record.Curtains.Value));
+                if (record.FollowIllumination.HasValue)
+                    Element(text, FollowIlluminationName, SettingsXmlFormat.FormatBool(record.FollowIllumination.Value));
                 if (record.LodGlass.HasValue)
                     Element(text, LodGlassName, SettingsXmlFormat.FormatBool(record.LodGlass.Value));
 
@@ -350,6 +353,14 @@ namespace RealGlass.PerAsset
                 else
                     Problem(problems, where + "ignored: not true or false");
             }
+            else if (Is(name, FollowIlluminationName))
+            {
+                bool on;
+                if (SettingsXmlFormat.TryParseBool(value, out on))
+                    record.FollowIllumination = on;
+                else
+                    Problem(problems, where + "ignored: not true or false");
+            }
             else if (Is(name, LodGlassName))
             {
                 bool on;
@@ -379,7 +390,7 @@ namespace RealGlass.PerAsset
                 Problem(problems, record.Name + ": <" + name + "> ignored: an asset can have " + StrengthName + ", " + DetailName +
                                   ", " + PresetName + ", " + ColourName + ", " + ReflectivityName + ", " + ClarityName + ", " +
                                   OwnColourName + ", " + ThresholdName + ", " + NightWindowsName + ", " + InteriorsName + ", " +
-                                  CurtainsName + " and " + LodGlassName);
+                                  CurtainsName + ", " + FollowIlluminationName + " and " + LodGlassName);
             }
         }
 

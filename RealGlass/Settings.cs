@@ -250,6 +250,12 @@ namespace RealGlass
         /// <summary>Up close, the rooms laid out as on the LOD models (the storey grid), so nothing switches when a building changes model; off, they follow the asset's painted windows.</summary>
         public static BoolSetting InteriorsMatchLods { get; private set; }
 
+        /// <summary>
+        /// Rooms lit where and when the game lights each asset's windows (its illumination map, the
+        /// game's timing); off, ours (the three rows below). An asset can say otherwise, Alt+G.
+        /// </summary>
+        public static BoolSetting InteriorsFollowIllumination { get; private set; }
+
         /// <summary>0.05..0.9: the share of rooms lit at the busiest hour.</summary>
         public static FloatSetting InteriorsLit { get; private set; }
 
@@ -469,6 +475,9 @@ namespace RealGlass
             /// <summary>On (the author, 2026-10-14: in a big city the rooms "switch" where buildings change to their LODs; an option, some "would prefer accurate position on LODs").</summary>
             public const bool InteriorsMatchLods = true;
 
+            /// <summary>Off (2026-10-25): most assets paint their glass "never lit" (58% of the room glass surveyed).</summary>
+            public const bool InteriorsFollowIllumination = false;
+
             /// <summary>Under half at the busiest hour: "you'll likely never find ALL interiors lit up".</summary>
             public const float InteriorsLit = 0.45f;
             public const bool InteriorsLateNight = true;
@@ -650,6 +659,7 @@ namespace RealGlass
                 InteriorsDayOpacity = new FloatSetting("InteriorsDayOpacity", Defaults.InteriorsDayOpacity);
                 InteriorsDepth = new FloatSetting("InteriorsDepth", Defaults.InteriorsDepth);
                 InteriorsMatchLods = new BoolSetting("InteriorsMatchLods", Defaults.InteriorsMatchLods);
+                InteriorsFollowIllumination = new BoolSetting("InteriorsFollowIllumination", Defaults.InteriorsFollowIllumination);
                 InteriorsLit = new FloatSetting("InteriorsLit", Defaults.InteriorsLit);
                 InteriorsLateNight = new BoolSetting("InteriorsLateNight", Defaults.InteriorsLateNight);
                 InteriorsSwitching = new FloatSetting("InteriorsSwitching", Defaults.InteriorsSwitching);

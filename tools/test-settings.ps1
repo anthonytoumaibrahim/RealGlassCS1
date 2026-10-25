@@ -481,6 +481,29 @@ Check "  an asset with only that is not empty, needs no glass slot, and differs 
 $r = ParseAssets "<RealGlassAssets><Asset name=`"Q`"><InteriorsCurtainsEnabled>few</InteriorsCurtainsEnabled></Asset></RealGlassAssets>"
 Check "  nonsense refused and said" ("" + ($r.Records[0].Curtains -eq $null) + " " + $r.Problems.Count) "True 1"
 
+# Its rooms lit by its illumination map (the Interiors tab's switch, per asset): yes and no both
+# kept under the global row's name, in the players' file AND the creators' (RealGlassDefinition.xml).
+$mapOn = NewRecord "Map on"
+$mapOn.FollowIllumination = $true
+$mapOff = NewRecord "Map off"
+$mapOff.FollowIllumination = $false
+$mapList = [Activator]::CreateInstance($recList)
+$mapList.Add($mapOn); $mapList.Add($mapOff); $mapList.Add((NewRecord "Map follow"))
+$mapText = $assetFmt::Write($mapList, "")
+$r = ParseAssets $mapText
+Check "illumination map per asset: written as true or false under the global row's name" ($mapText -match "<InteriorsFollowIllumination>true</InteriorsFollowIllumination>" -and $mapText -match "<InteriorsFollowIllumination>false</InteriorsFollowIllumination>") "True"
+Check "  both read back, the following one not written (sorted by name)" ("" + $r.Records.Count + " " + $r.Records[0].Name + "=" + $r.Records[0].FollowIllumination + " " + $r.Records[1].Name + "=" + $r.Records[1].FollowIllumination) "2 Map off=False Map on=True"
+Check "  an asset with only that is not empty, needs no glass slot, and differs from one without" ("" + $mapOn.IsEmpty + " " + $mapOn.HasGlass + " " + $mapOn.SameSettings((NewRecord "Map on"))) "False False False"
+# The creators' file as the asset editor writes it on Save (MergeDefinition) and a city reads it.
+$defProblems = New-Object 'System.Collections.Generic.List[string]'
+$defError = $null
+$defText = $assetFmt::MergeDefinition($null, "Map Tower", $mapOn, "", $defProblems, [ref]$defError)
+$defVersion = 0
+$defRead = $assetFmt::Parse($defText, $assetFmt::DefinitionRoot, [ref]$defVersion, $defProblems, [ref]$defError)
+Check "  the creators' file (Save in the asset editor): written under its root, read back" ("" + ($defText -match ("<" + $assetFmt::DefinitionRoot + " ")) + " " + ($defText -match "<InteriorsFollowIllumination>true</InteriorsFollowIllumination>") + " " + $defRead.Count + " " + $defRead[0].FollowIllumination + " " + $defProblems.Count) "True True 1 True 0"
+$r = ParseAssets "<RealGlassAssets><Asset name=`"Q`"><InteriorsFollowIllumination>maybe</InteriorsFollowIllumination></Asset></RealGlassAssets>"
+Check "  nonsense refused and said" ("" + ($r.Records[0].FollowIllumination -eq $null) + " " + $r.Problems.Count) "True 1"
+
 # Its LODs' glass (the Glass tab's "LODs show the model's glass", per asset): the model's (true)
 # and the LOD's own (false) both kept; unset is automatic and not written.
 $lodModel = NewRecord "LOD model"
@@ -665,6 +688,12 @@ $o = $recType::Over($top, $under)
 $top.Curtains = $null
 $o2 = $recType::Over($top, $under)
 Check "  curtains: the player's yes over the creator's no; the creator's no where the player says nothing" ("" + $o.Curtains + " " + $o2.Curtains) "True False"
+$under.FollowIllumination = $true
+$top.FollowIllumination = $false
+$o = $recType::Over($top, $under)
+$top.FollowIllumination = $null
+$o2 = $recType::Over($top, $under)
+Check "  illumination map: the player's no over the creator's yes; the creator's yes where the player says nothing" ("" + $o.FollowIllumination + " " + $o2.FollowIllumination) "False True"
 $top = NewRecord "T"
 $top.Reflectivity = [TestHelp]::Div(10, 100)
 $under = NewRecord "T"
@@ -689,7 +718,8 @@ $pairs = @(
     @('FloorHeight', 'FloorHeight'), @('Pillow', 'PanePillow'), @('Tilt', 'PaneTilt'), @('RollerWave', 'RollerWave'),
     @('PaneWeather', 'PaneWeather'), @('EdgeSilver', 'GlassEdgeSilver'), @('Finished', 'ReflectFinished'), @('SkyClouds', 'SkyClouds'), @('SkyDusk', 'SkyDusk'),
     @('Neighbours', 'ReflectNeighbours'), @('SteadyGlints', 'SteadyGlints'), @('PanesFollowWindows', 'PanesFollowWindows'),
-    @('Interiors', 'InteriorsEnabled'), @('InteriorsByDay', 'InteriorsByDay'), @('InteriorsDayOpacity', 'InteriorsDayOpacity'), @('InteriorsDepth', 'InteriorsDepth'), @('InteriorsMatchLods', 'InteriorsMatchLods'),@('InteriorsLit', 'InteriorsLit'),
+    @('Interiors', 'InteriorsEnabled'), @('InteriorsByDay', 'InteriorsByDay'), @('InteriorsDayOpacity', 'InteriorsDayOpacity'), @('InteriorsDepth', 'InteriorsDepth'), @('InteriorsMatchLods', 'InteriorsMatchLods'),
+    @('InteriorsFollowIllumination', 'InteriorsFollowIllumination'), @('InteriorsLit', 'InteriorsLit'),
     @('InteriorsLateNight', 'InteriorsLateNight'), @('InteriorsSwitching', 'InteriorsSwitching'),
     @('InteriorsBrightness', 'InteriorsBrightness'), @('InteriorsColoured', 'InteriorsColoured'), @('InteriorsCurtains', 'InteriorsCurtains'))
 $mismatch = @()
@@ -731,10 +761,19 @@ Check "  the sky in the glass only darkens as the sun goes down (100%, 50%, 25%)
 # ---- the rooms behind the glass (Glass\Interiors.cs) ----------------------------------------
 # Which rooms are lit at an hour, how long a room keeps its light, and a building's texel.
 $interiors = $asm.GetType('RealGlass.Glass.Interiors', $true)
-Check "rooms: a texel is kind + 16 x the asset's switch (an office, off: 17)" ($interiors::Texel($interiors::KindOffice, $interiors::AssetOff)) 17
+Check "rooms: a texel is kind + 8 x the asset's switch (an office, off: 9)" ($interiors::Texel($interiors::KindOffice, $interiors::AssetOff)) 9
 Check "  following the global switch: the kind alone" ($interiors::Texel($interiors::KindShopHigh, $interiors::FollowGlobal)) 7
-Check "  + 48 x the asset's curtains (an office, rooms on, no curtains: 81)" ($interiors::Texel($interiors::KindOffice, $interiors::AssetOn, $interiors::AssetOff)) 81
-Check "  the most it holds stays under 255 (not looked at yet)" ($interiors::Texel(15, $interiors::AssetOn, $interiors::AssetOn)) 143
+Check "  + 24 x the asset's curtains (an office, rooms on, no curtains: 41)" ($interiors::Texel($interiors::KindOffice, $interiors::AssetOn, $interiors::AssetOff)) 41
+Check "  + 72 x its illumination map (an office, rooms following, curtains following, the map on: 145)" ($interiors::Texel($interiors::KindOffice, $interiors::FollowGlobal, $interiors::FollowGlobal, $interiors::AssetOn)) 145
+Check "  the most it holds stays under 255 (not looked at yet); a kind past the last is the last" ("" + $interiors::Texel(15, $interiors::AssetOn, $interiors::AssetOn, $interiors::AssetOn) + " " + $interiors::Texel($interiors::KindShopHigh, $interiors::AssetOn, $interiors::AssetOn, $interiors::AssetOn)) "215 215"
+# What Interiors.cginc's RoomKind does with a texel, in the same arithmetic (floor from halfway).
+$decode = { param($a8) $s = [Math]::Floor($a8 / 8); $u = [Math]::Floor(($s + 0.5) / 3); $t = [Math]::Floor(($u + 0.5) / 3); "" + ($a8 % 8) + " " + ($s - 3 * $u) + " " + ($u - 3 * $t) + " " + $t }
+$every = @()
+foreach ($k in 0..7) { foreach ($r in 0..2) { foreach ($c in 0..2) { foreach ($m in 0..2) {
+    $got = & $decode ([int]$interiors::Texel($k, $r, $c, $m))
+    if ($got -ne "$k $r $c $m") { $every += "$k $r $c $m -> $got" }
+} } } }
+Check "  every kind and switches decode back as written (the shader's arithmetic)" ($every -join "; ") ""
 Check "  a room keeps its light 4 game hours at 100%, 2 at 200%, for good at 0%" ("" + $interiors::HoursPerState(1.0) + " " + $interiors::HoursPerState(2.0) + " " + $interiors::HoursPerState(0.0)) "4 2 0"
 $gpRooms = $paramsType.GetMethod('Default').Invoke($null, @())
 $boxedRooms = [object]$gpRooms

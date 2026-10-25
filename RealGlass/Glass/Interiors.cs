@@ -18,9 +18,9 @@ namespace RealGlass.Glass
     /// </remarks>
     public static class Interiors
     {
-        // A building's kind, in the a channel of its _RGAssets texel (+ 16 x its asset's own switch,
-        // + 48 x its asset's own curtains switch: each 0 follows the global one, 1 off, 2 on; 255 not
-        // looked at yet). Interiors.cginc decodes it.
+        // A building's kind, in the a channel of its _RGAssets texel (+ 8 x its asset's own switch,
+        // + 24 x its asset's own curtains switch, + 72 x its asset's own illumination-map switch: each
+        // 0 follows the global one, 1 off, 2 on; 255 not looked at yet). Interiors.cginc decodes it.
         public const int KindHome = 0;
         public const int KindOffice = 1;
         public const int KindShopLow = 2;     // ground floor a shop, homes above
@@ -141,7 +141,8 @@ namespace RealGlass.Glass
             Shader.SetGlobalVector(_rooms2, new Vector4(Mathf.Max(p.InteriorsBrightness, 0f) * LitRoomLuminance,
                                                         Mathf.Clamp(p.InteriorsColoured, 0f, 1f), Mathf.Clamp01(p.InteriorsCurtains),
                                                         show && loaded ? 1f : 0f));
-            Shader.SetGlobalVector(_rooms3, new Vector4(Mathf.Clamp01(p.InteriorsDepth), p.InteriorsMatchLods ? 1f : 0f, 0f, 0f));
+            Shader.SetGlobalVector(_rooms3, new Vector4(Mathf.Clamp01(p.InteriorsDepth), p.InteriorsMatchLods ? 1f : 0f,
+                                                        p.InteriorsFollowIllumination ? 1f : 0f, 0f));
             Shader.SetGlobalVector(_share, Shares(p, f.Hour));
             if (!loaded)
                 return;
@@ -167,13 +168,23 @@ namespace RealGlass.Glass
         /// <summary>A building texel's a channel: its kind and its asset's own switch, its curtains following the global share.</summary>
         public static byte Texel(int kind, int assetSwitch)
         {
-            return Texel(kind, assetSwitch, FollowGlobal);
+            return Texel(kind, assetSwitch, FollowGlobal, FollowGlobal);
         }
 
-        /// <summary>A building texel's a channel: its kind, its asset's own switch and its asset's own curtains switch (at most 143).</summary>
+        /// <summary>A building texel's a channel: its kind, its asset's own switch and its asset's own curtains switch.</summary>
         public static byte Texel(int kind, int assetSwitch, int curtains)
         {
-            return (byte)(Mathf.Clamp(kind, 0, 15) + 16 * Mathf.Clamp(assetSwitch, 0, 2) + 48 * Mathf.Clamp(curtains, 0, 2));
+            return Texel(kind, assetSwitch, curtains, FollowGlobal);
+        }
+
+        /// <summary>
+        /// A building texel's a channel: its kind (0..7), its asset's own switch, curtains switch and
+        /// illumination-map switch (at most 215).
+        /// </summary>
+        public static byte Texel(int kind, int assetSwitch, int curtains, int illumination)
+        {
+            return (byte)(Mathf.Clamp(kind, 0, KindShopHigh) + 8 * Mathf.Clamp(assetSwitch, 0, 2) + 24 * Mathf.Clamp(curtains, 0, 2) +
+                          72 * Mathf.Clamp(illumination, 0, 2));
         }
     }
 }

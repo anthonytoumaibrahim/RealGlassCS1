@@ -90,6 +90,16 @@ public static class GlassPreview
     /// <summary>The variant's "Lit=x": the share of the stand-ins' windows the game lights at night (0.25; 0 = every building's lights off).</summary>
     private static float _litShare = 0.25f;
 
+    /// <summary>
+    /// RG_GAMELIGHTS=1 (the whole run, vanilla too): the stand-ins light their windows by the game's own
+    /// rule (PreviewBuilding.shader) and paint every kind of illumination value; RG_SIMTIME (seconds,
+    /// the game's _SimulationTime2.x) and RG_NIGHTLEVEL (its _GiantMarshmallow; -3 at 21:00) step it.
+    /// </summary>
+    private static bool GameLights
+    {
+        get { return Env("RG_GAMELIGHTS", "0") == "1"; }
+    }
+
     /// <summary>The variant's "Guards=0": the rooms drawn as before RoomShape kept them off sloped, curved and smooth-shaded glass.</summary>
     private static bool _guardsOff;
 
@@ -200,7 +210,7 @@ public static class GlassPreview
     private sealed class AssetOverride
     {
         public float? Strength, Detail, Reflectivity, Clarity, Own, Threshold;
-        public bool? Night, Curtains;
+        public bool? Night, Curtains, IllumMap;
         public Color? Tint;
 
         public bool HasGlass
@@ -1223,6 +1233,13 @@ public static class GlassPreview
                 float inCol = um / colW - column;
                 float cell = Hash(column * 7.13f + panelSeed, floorIndex * 3.17f);
                 float illum = 0.5f + 0.48f * Hash(column * 1.7f + 31f, floorIndex * 9.1f + panelSeed);
+                if (GameLights)
+                {
+                    // Every kind of value an asset's illumination map holds: none, a constant glow,
+                    // never lit (192), and the game's two bands.
+                    float pick = Hash(column * 1.7f + 31f, floorIndex * 9.1f + panelSeed);
+                    illum = pick < 0.12f ? 0f : (pick < 0.22f ? 0.2f : (pick < 0.4f ? 0.75f : 0.5f + 0.48f * (pick - 0.4f) / 0.6f));
+                }
 
                 Color c;
                 float spec;
@@ -1527,10 +1544,12 @@ public static class GlassPreview
                 s.Assets.Set(i + 1, new Color32(AssetTextures.Global, AssetTextures.Global, AssetTextures.Global, a));
             }
         }
-        if (_asset.Strength.HasValue || _asset.Detail.HasValue || _asset.HasGlass || _asset.Curtains.HasValue)
+        if (_asset.Strength.HasValue || _asset.Detail.HasValue || _asset.HasGlass || _asset.Curtains.HasValue || _asset.IllumMap.HasValue)
         {
             int curtains = !_asset.Curtains.HasValue ? Interiors.FollowGlobal
                 : (_asset.Curtains.Value ? Interiors.AssetOn : Interiors.AssetOff);
+            int illumMap = !_asset.IllumMap.HasValue ? Interiors.FollowGlobal
+                : (_asset.IllumMap.Value ? Interiors.AssetOn : Interiors.AssetOff);
             byte slot = AssetTextures.Global;
             if (_asset.HasGlass)
             {
@@ -1543,7 +1562,7 @@ public static class GlassPreview
             s.Assets.Set(s.FullGlassId, new Color32(
                 _asset.Strength.HasValue ? AssetTextures.Encode(_asset.Strength.Value) : AssetTextures.Global,
                 _asset.Detail.HasValue ? AssetTextures.Encode(_asset.Detail.Value) : AssetTextures.Global,
-                slot, p.Interiors ? Interiors.Texel(Interiors.KindOffice, Interiors.FollowGlobal, curtains) : AssetTextures.Global));
+                slot, p.Interiors ? Interiors.Texel(Interiors.KindOffice, Interiors.FollowGlobal, curtains, illumMap) : AssetTextures.Global));
         }
         s.Assets.Upload();
         s.Assets.Bind();
@@ -1575,6 +1594,13 @@ public static class GlassPreview
         Shader.SetGlobalVector("_PreviewCloudLight", new Vector4(cloudLight.r, cloudLight.g, cloudLight.b, 0f));
         Shader.SetGlobalFloat("_PreviewOvercast", _overcast);
         Shader.SetGlobalFloat("_PreviewLitShare", _litShare);
+        // The game's clock and its buildings' lights level, as SimulationManager.Update and
+        // LightSystem.SetDaylightIntensity set them (Interiors.cginc reads both).
+        float simTime = ParseFloat(Env("RG_SIMTIME", "0"));
+        Shader.SetGlobalVector("_SimulationTime2", new Vector4(simTime, simTime / 3600f, simTime * 2f * Mathf.PI,
+                                                               simTime * 2f * Mathf.PI / 3600f));
+        Shader.SetGlobalFloat("_GiantMarshmallow", ParseFloat(Env("RG_NIGHTLEVEL", night ? "-3" : "6")));
+        Shader.SetGlobalFloat("_PreviewGameLights", GameLights ? 1f : 0f);
 
         // No game map here: its stand-in is the live sky WITHOUT clouds (the game's map is a
         // static picture); the live sky proper carries them.
@@ -1862,12 +1888,18 @@ public static class GlassPreview
             {
                 // The full-glass tower's own settings (its asset's): A.Strength, A.Detail,
                 // A.Reflectivity, A.Clarity, A.Own, A.Threshold (0..1), A.Night (0/1), A.Tint (#RRGGBB),
-                // A.Curtains (0/1: its rooms' curtains, with Interiors=1).
+                // A.Curtains (0/1: its rooms' curtains, with Interiors=1), A.IllumMap (0/1: its rooms lit
+                // by its illumination map, with Interiors=1).
                 string key = kv[0].Trim().Substring(2).ToLowerInvariant();
                 string text = kv[1].Trim();
                 if (key == "curtains")
                 {
                     _asset.Curtains = text == "1" || text.Equals("true", StringComparison.OrdinalIgnoreCase);
+                    continue;
+                }
+                if (key == "illummap")
+                {
+                    _asset.IllumMap = text == "1" || text.Equals("true", StringComparison.OrdinalIgnoreCase);
                     continue;
                 }
                 if (key == "tint")

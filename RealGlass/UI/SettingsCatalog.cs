@@ -1385,11 +1385,23 @@ namespace RealGlass.UI
                 AfterChange = Changed,
             });
 
+            // Which rooms are lit: where and when the game lights each asset's windows, else ours (the
+            // three rows after it, which still light every building whose asset says no, Alt+G).
+            Add(new Row
+            {
+                Kind = RowKind.Toggle,
+                Panel = PanelPage.Interiors,
+                Group = "RoomLights",
+                Bool = Settings.InteriorsFollowIllumination,
+                DefaultBool = Settings.Defaults.InteriorsFollowIllumination,
+                Enabled = InteriorsOn,
+                AfterChange = State("rooms lit by the assets' illumination maps", OnOff(Settings.InteriorsFollowIllumination)),
+            });
+
             Add(new Row
             {
                 Kind = RowKind.Percent,
                 Panel = PanelPage.Interiors,
-                Group = "RoomLights",
                 Float = Settings.InteriorsLit,
                 DefaultFloat = Settings.Defaults.InteriorsLit,
                 Min = 5f, Max = 90f, Step = 1f,

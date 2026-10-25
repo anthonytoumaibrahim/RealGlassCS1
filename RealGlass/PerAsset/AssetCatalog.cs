@@ -37,7 +37,7 @@ namespace RealGlass.PerAsset
         private FloatSetting _strength, _detail, _reflectivity, _clarity, _own, _threshold;
         private IntSetting _preset, _lodGlass;
         private ColorSetting _colour;
-        private BoolSetting _nightWindows, _interiors, _curtains;
+        private BoolSetting _nightWindows, _interiors, _curtains, _illumination;
 
         // The Interiors tab's curtains share is above 0: in a city, with none there is nothing to switch.
         private bool _curtainsShare;
@@ -95,6 +95,7 @@ namespace RealGlass.PerAsset
             _nightWindows = new BoolSetting("AssetGlassNightWindows", Settings.Defaults.GlassNightWindows, false);
             _interiors = new BoolSetting("AssetInteriorsEnabled", Settings.Defaults.InteriorsEnabled, false);
             _curtains = new BoolSetting("AssetInteriorsCurtains", Settings.Defaults.InteriorsCurtains > 0f, false);
+            _illumination = new BoolSetting("AssetInteriorsFollowIllumination", Settings.Defaults.InteriorsFollowIllumination, false);
             _lodGlass = new IntSetting("AssetLodGlass", Glass.LodGlass.ModeAuto, false);
 
             var rows = new List<Row>();
@@ -249,6 +250,23 @@ namespace RealGlass.PerAsset
                     "curtains or blinds in its rooms: " + (_curtains.value ? "yes" : "no")),
             });
 
+            // Which of its rooms are lit (the Interiors tab's switch, for this asset): where and when the
+            // game lights its windows -- its illumination map, a creator's own -- or ours. Grey while it
+            // shows no rooms.
+            rows.Add(new Row
+            {
+                Kind = RowKind.Toggle,
+                Bool = _illumination,
+                DefaultBool = Settings.Defaults.InteriorsFollowIllumination,
+                Enabled = () => Editable() && _interiors.value,
+                ResetHintKey = _source.ResetHintKey,
+                Overridden = () => Has(r => r.FollowIllumination.HasValue),
+                ClearOverride = () => Change(r => r.FollowIllumination = null, "lit rooms back to the Interiors tab's switch"),
+                AfterChange = () => Change(r => r.FollowIllumination = OwnOrNone(_illumination.value,
+                        Followed(b => b.FollowIllumination, _source.Global.InteriorsFollowIllumination)),
+                    "rooms lit by its illumination map: " + (_illumination.value ? "yes" : "no")),
+            });
+
             _rows = rows;
             Sync();
         }
@@ -386,6 +404,7 @@ namespace RealGlass.PerAsset
             _interiors.value = r != null && r.Interiors.HasValue ? r.Interiors.Value : g.Interiors;
             _curtainsShare = g.InteriorsCurtains > 0f;
             _curtains.value = r != null && r.Curtains.HasValue ? r.Curtains.Value : _curtainsShare;
+            _illumination.value = r != null && r.FollowIllumination.HasValue ? r.FollowIllumination.Value : g.InteriorsFollowIllumination;
             _lodGlass.value = r == null || !r.LodGlass.HasValue ? Glass.LodGlass.ModeAuto
                 : (r.LodGlass.Value ? Glass.LodGlass.ModeModel : Glass.LodGlass.ModeOwn);
 
