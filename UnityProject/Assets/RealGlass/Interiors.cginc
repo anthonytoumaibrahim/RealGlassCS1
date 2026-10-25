@@ -64,14 +64,19 @@ float RoomRand(float seed, float k)
     return Hash12(float2(seed * 4096.0, k));
 }
 
-// The building's kind and its asset's own switch from its _RGAssets texel's a channel (Interiors.cs):
-// kind + 16 x switch (0 the global one, 1 off, 2 on); 255 not looked at yet (a home, the global switch).
-void RoomKind(float a, out float kind, out float assetSwitch)
+// The building's kind, its asset's own switch and its asset's own curtains from its _RGAssets texel's
+// a channel (Interiors.cs): kind + 16 x switch + 48 x curtains (each 0 the global one, 1 off, 2 on);
+// 255 not looked at yet (a home, the global switches).
+void RoomKind(float a, out float kind, out float assetSwitch, out float curtains)
 {
     float a8 = floor(a * 255.0 + 0.5);
     bool unseen = a8 > 254.5;
     kind = unseen ? 0.0 : fmod(a8, 16.0);
-    assetSwitch = unseen ? 0.0 : floor(a8 / 16.0);
+    float switches = floor(a8 / 16.0);
+    // Halfway between two multiples of 3: a division a little off on the GPU still floors right.
+    float c = floor((switches + 0.5) / 3.0);
+    assetSwitch = unseen ? 0.0 : switches - 3.0 * c;
+    curtains = unseen ? 0.0 : c;
 }
 
 // Which pictures a room of this kind on this storey takes (Interiors.Pool*), and which share of the
@@ -140,13 +145,13 @@ float Fine(float period, float footprint)
 }
 
 // The room's curtain or blind, hanging just behind the glass. xy: 0..1 across the window (from its
-// bottom left); size: the window in metres. Returns how much of it covers the point; albedo, its
-// colour; trans, the share of the room's light it lets through at night.
-float RoomCurtain(float seed, float pool, float2 xy, float2 size, float footprint, out float3 albedo, out float trans)
+// bottom left); size: the window in metres; share: the building's share of windows with one. Returns
+// how much of it covers the point; albedo, its colour; trans, the share of the room's light it lets
+// through at night.
+float RoomCurtain(float seed, float pool, float2 xy, float2 size, float footprint, float share, out float3 albedo, out float trans)
 {
     albedo = float3(0.8, 0.8, 0.8);
     trans = 0.0;
-    float share = _RGRooms2.z;
     bool work = pool > 0.5 && pool < 1.5 || pool > 4.5;
     bool shop = pool > 1.5 && pool < 2.5 || pool > 3.5 && pool < 4.5;
     if (shop)
@@ -448,8 +453,8 @@ float RoomsBehind(float3 P, float3 n, float3 t, float3 V, float baseY, float foo
 {
     night = float3(0.0, 0.0, 0.0);
     day = inside;
-    float kind, assetSwitch;
-    RoomKind(assetA, kind, assetSwitch);
+    float kind, assetSwitch, assetCurtains;
+    RoomKind(assetA, kind, assetSwitch, assetCurtains);
     bool on = _RGRooms2.w > 0.5 && (assetSwitch > 1.5 || (assetSwitch < 0.5 && _RGRooms.x > 0.5));
     float facade = saturate((1.0 - abs(n.y)) * 3.0);
 #if defined(UNITY_COMPILER_HLSLCC)
@@ -521,7 +526,9 @@ float RoomsBehind(float3 P, float3 n, float3 t, float3 V, float baseY, float foo
     float roomPx = min(cellSize.x, cellSize.y) / max(footprint, 1e-4);
     float detail = saturate((roomPx - 3.0) / 2.0);
     float pattern = saturate((roomPx - 0.4) / 0.6);
-    float fabric = 1.0 - 0.3 * _RGRooms2.z;
+    // Curtains: the Interiors tab's share, none where the asset says so (its building window).
+    float curtainShare = assetCurtains > 0.5 && assetCurtains < 1.5 ? 0.0 : _RGRooms2.z;
+    float fabric = 1.0 - 0.3 * curtainShare;
     float3 farNight = dark;
     if (detail < 1.0)
     {
@@ -573,7 +580,7 @@ float RoomsBehind(float3 P, float3 n, float3 t, float3 V, float baseY, float foo
 
         // The curtain, at the glass: no slide. Lit from behind at night, by the sky by day.
         float trans;
-        cover = RoomCurtain(seed, pool, xy, bandSize, footprint, albedo, trans);
+        cover = RoomCurtain(seed, pool, xy, bandSize, footprint, curtainShare, albedo, trans);
         nearNight = lerp(nearNight, roomLight * trans * albedo * 1.2 + dark * albedo, cover);
         nearDay = lerp(nearDay, _RGAmbSky.rgb * albedo * 0.55, cover);
 

@@ -401,6 +401,8 @@
 
   <String key="AssetInteriorsEnabled.Label">Intérieurs en parallaxe</String>
 
+  <String key="AssetInteriorsCurtains.Label">Rideaux ou stores</String>
+
   <!-- On hover over a row's reset icon here (an icon has no label of its own). -->
   <String key="Asset.Global.Hint">Revenir au réglage global (ou à celui de son créateur)</String>
 
@@ -557,8 +559,10 @@
     les mêmes noms et dans les mêmes unités :\n
     - un pourcentage comme sur son curseur : 47 signifie 47 % ; GlassThreshold va de 10 à 95
     (plus bas que dans RealGlass.xml : il ne vaut que pour cette ressource) ;\n
-    - GlassColor en #RRGGBB ; GlassNightWindows, InteriorsEnabled et LodGlassFromModel en true
-    ou false (LodGlassFromModel : son LOD montre le verre du modèle, ou garde le sien) ;\n
+    - GlassColor en #RRGGBB ; GlassNightWindows, InteriorsEnabled, InteriorsCurtainsEnabled et
+    LodGlassFromModel en true ou false (InteriorsCurtainsEnabled : des rideaux ou des stores
+    dans ses pièces, autant qu’en donne InteriorsCurtains, ou aucun ; LodGlassFromModel : son
+    LOD montre le verre du modèle, ou garde le sien) ;\n
     - GlassPreset en numéro de type de verre (0 Personnalisé, 1 à 10, comme dans RealGlass.xml) ;
     un type de verre seul donne sa couleur, sa réflectivité et sa clarté.\n
     \n
@@ -580,8 +584,8 @@
     l’enregistrement), avec seulement ce que son créateur a réglé : tout le reste suit les
     réglages de chaque joueur. Les mêmes noms et unités que RealGlassAssets.xml :\n
     - un pourcentage comme sur son curseur : 47 signifie 47 % ; GlassThreshold va de 10 à 95 ;\n
-    - GlassColor en #RRGGBB ; GlassNightWindows, InteriorsEnabled et LodGlassFromModel en true
-    ou false ;\n
+    - GlassColor en #RRGGBB ; GlassNightWindows, InteriorsEnabled, InteriorsCurtainsEnabled et
+    LodGlassFromModel en true ou false ;\n
     - GlassPreset en numéro de type de verre (0 Personnalisé, 1 à 10).\n
     \n
     L’éditeur de ressources écrit ce fichier à l’enregistrement de la ressource (son verre se

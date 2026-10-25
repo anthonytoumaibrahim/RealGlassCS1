@@ -402,6 +402,8 @@
 
   <String key="AssetInteriorsEnabled.Label">Parallax interiors</String>
 
+  <String key="AssetInteriorsCurtains.Label">Curtains or blinds</String>
+
   <!-- On hover over a row's reset icon here (an icon has no label of its own). -->
   <String key="Asset.Global.Hint">Back to the global setting (or its creator's)</String>
 
@@ -556,8 +558,10 @@
     the same names and in the same units:\n
     - a percentage the way its slider shows it: 47 means 47%; GlassThreshold goes from 10 to 95
     (lower than in RealGlass.xml: it is this asset's alone);\n
-    - GlassColor as #RRGGBB; GlassNightWindows, InteriorsEnabled and LodGlassFromModel as true
-    or false (LodGlassFromModel: its LOD shows the model's glass, or keeps its own);\n
+    - GlassColor as #RRGGBB; GlassNightWindows, InteriorsEnabled, InteriorsCurtainsEnabled and
+    LodGlassFromModel as true or false (InteriorsCurtainsEnabled: curtains or blinds in its
+    rooms, as many as InteriorsCurtains gives, or none; LodGlassFromModel: its LOD shows the
+    model's glass, or keeps its own);\n
     - GlassPreset as the number of a kind of glass (0 Custom, 1 to 10, as in RealGlass.xml);
     a kind of glass alone gives its color, reflectivity and clarity.\n
     \n
@@ -579,8 +583,8 @@
     only what its creator set: everything else follows each player's settings. The same names and
     units as RealGlassAssets.xml:\n
     - a percentage the way its slider shows it: 47 means 47%; GlassThreshold goes from 10 to 95;\n
-    - GlassColor as #RRGGBB; GlassNightWindows, InteriorsEnabled and LodGlassFromModel as true
-    or false;\n
+    - GlassColor as #RRGGBB; GlassNightWindows, InteriorsEnabled, InteriorsCurtainsEnabled and
+    LodGlassFromModel as true or false;\n
     - GlassPreset as the number of a kind of glass (0 Custom, 1 to 10).\n
     \n
     The asset editor writes this file when the asset is saved (set its glass in the creator

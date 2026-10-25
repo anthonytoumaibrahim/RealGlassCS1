@@ -35,7 +35,10 @@ namespace RealGlass.PerAsset
         private FloatSetting _strength, _detail, _reflectivity, _clarity, _own, _threshold;
         private IntSetting _preset, _lodGlass;
         private ColorSetting _colour;
-        private BoolSetting _nightWindows, _interiors;
+        private BoolSetting _nightWindows, _interiors, _curtains;
+
+        // The Interiors tab's curtains share is above 0: in a city, with none there is nothing to switch.
+        private bool _curtainsShare;
 
         /// <summary>The building window's rows: the building picked in a city.</summary>
         public static AssetCatalog Picked
@@ -89,6 +92,7 @@ namespace RealGlass.PerAsset
             _threshold = new FloatSetting("AssetGlassThreshold", Settings.Defaults.GlassThreshold, false);
             _nightWindows = new BoolSetting("AssetGlassNightWindows", Settings.Defaults.GlassNightWindows, false);
             _interiors = new BoolSetting("AssetInteriorsEnabled", Settings.Defaults.InteriorsEnabled, false);
+            _curtains = new BoolSetting("AssetInteriorsCurtains", Settings.Defaults.InteriorsCurtains > 0f, false);
             _lodGlass = new IntSetting("AssetLodGlass", Glass.LodGlass.ModeAuto, false);
 
             var rows = new List<Row>();
@@ -215,6 +219,22 @@ namespace RealGlass.PerAsset
                     "rooms behind the windows: " + (_interiors.value ? "yes" : "no")),
             });
 
+            // Curtains or blinds in those rooms (the Interiors tab's share, for this asset): off for an
+            // asset whose glass is no window of a room, a fire station's doors. Grey while it shows no
+            // rooms; in a city also while that share is 0 (the editor's switch is for every player).
+            rows.Add(new Row
+            {
+                Kind = RowKind.Toggle,
+                Bool = _curtains,
+                DefaultBool = Settings.Defaults.InteriorsCurtains > 0f,
+                Enabled = () => Editable() && _interiors.value && (_creator || _curtainsShare),
+                ResetHintKey = _source.ResetHintKey,
+                Overridden = () => Has(r => r.Curtains.HasValue),
+                ClearOverride = () => Change(r => r.Curtains = null, "curtains back to the Interiors tab's share"),
+                AfterChange = () => Change(r => r.Curtains = _curtains.value,
+                    "curtains or blinds in its rooms: " + (_curtains.value ? "yes" : "no")),
+            });
+
             _rows = rows;
             Sync();
         }
@@ -315,6 +335,8 @@ namespace RealGlass.PerAsset
             _threshold.value = r != null && r.Threshold.HasValue ? r.Threshold.Value : g.Threshold;
             _nightWindows.value = r != null && r.NightWindows.HasValue ? r.NightWindows.Value : g.NightWindows;
             _interiors.value = r != null && r.Interiors.HasValue ? r.Interiors.Value : g.Interiors;
+            _curtainsShare = g.InteriorsCurtains > 0f;
+            _curtains.value = r != null && r.Curtains.HasValue ? r.Curtains.Value : _curtainsShare;
             _lodGlass.value = r == null || !r.LodGlass.HasValue ? Glass.LodGlass.ModeAuto
                 : (r.LodGlass.Value ? Glass.LodGlass.ModeModel : Glass.LodGlass.ModeOwn);
 

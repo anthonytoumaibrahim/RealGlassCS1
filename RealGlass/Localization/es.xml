@@ -401,6 +401,8 @@
 
   <String key="AssetInteriorsEnabled.Label">Interiores con paralaje</String>
 
+  <String key="AssetInteriorsCurtains.Label">Cortinas o persianas</String>
+
   <!-- On hover over a row's reset icon here (an icon has no label of its own). -->
   <String key="Asset.Global.Hint">Volver al ajuste global (o al de su creador)</String>
 
@@ -555,8 +557,10 @@
     nombres y en las mismas unidades:\n
     - un porcentaje como lo muestra su control: 47 significa 47%; GlassThreshold va de 10 a 95
     (menos que en RealGlass.xml: es solo de este elemento);\n
-    - GlassColor como #RRGGBB; GlassNightWindows, InteriorsEnabled y LodGlassFromModel como true
-    o false (LodGlassFromModel: su LOD muestra el vidrio del modelo, o conserva el suyo);\n
+    - GlassColor como #RRGGBB; GlassNightWindows, InteriorsEnabled, InteriorsCurtainsEnabled y
+    LodGlassFromModel como true o false (InteriorsCurtainsEnabled: cortinas o persianas en sus
+    habitaciones, tantas como da InteriorsCurtains, o ninguna; LodGlassFromModel: su LOD
+    muestra el vidrio del modelo, o conserva el suyo);\n
     - GlassPreset como el número de un tipo de vidrio (0 Personalizado, 1 a 10, como en
     RealGlass.xml); un tipo de vidrio por sí solo da su color, reflectividad y claridad.\n
     \n
@@ -578,8 +582,8 @@
     guardarlo) y solo lo que definió su creador: todo lo demás sigue los ajustes de cada
     jugador. Los mismos nombres y unidades que RealGlassAssets.xml:\n
     - un porcentaje como lo muestra su control: 47 significa 47%; GlassThreshold va de 10 a 95;\n
-    - GlassColor como #RRGGBB; GlassNightWindows, InteriorsEnabled y LodGlassFromModel como true
-    o false;\n
+    - GlassColor como #RRGGBB; GlassNightWindows, InteriorsEnabled, InteriorsCurtainsEnabled y
+    LodGlassFromModel como true o false;\n
     - GlassPreset como el número de un tipo de vidrio (0 Personalizado, 1 a 10).\n
     \n
     El Editor de elementos escribe este archivo al guardar el elemento (su vidrio se define en la

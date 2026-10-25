@@ -51,6 +51,12 @@ namespace RealGlass.PerAsset
         public const string InteriorsName = "InteriorsEnabled";
         public const string LodGlassName = "LodGlassFromModel";
 
+        /// <summary>
+        /// Curtains or blinds in its rooms (true or false). No global setting has this name:
+        /// RealGlass.xml's InteriorsCurtains is the share of windows, which an asset only takes or not.
+        /// </summary>
+        public const string CurtainsName = "InteriorsCurtainsEnabled";
+
         /// <summary>The sliders' ranges, as the file writes them: the global rows' (UI/SettingsCatalog.cs).</summary>
         public const float StrengthMax = 100f, DetailMax = 100f, ReflectivityMax = 60f, ClarityMax = 100f, OwnColourMax = 100f;
 
@@ -117,6 +123,8 @@ namespace RealGlass.PerAsset
                     Element(text, NightWindowsName, SettingsXmlFormat.FormatBool(record.NightWindows.Value));
                 if (record.Interiors.HasValue)
                     Element(text, InteriorsName, SettingsXmlFormat.FormatBool(record.Interiors.Value));
+                if (record.Curtains.HasValue)
+                    Element(text, CurtainsName, SettingsXmlFormat.FormatBool(record.Curtains.Value));
                 if (record.LodGlass.HasValue)
                     Element(text, LodGlassName, SettingsXmlFormat.FormatBool(record.LodGlass.Value));
 
@@ -334,6 +342,14 @@ namespace RealGlass.PerAsset
                 else
                     Problem(problems, where + "ignored: not true or false");
             }
+            else if (Is(name, CurtainsName))
+            {
+                bool on;
+                if (SettingsXmlFormat.TryParseBool(value, out on))
+                    record.Curtains = on;
+                else
+                    Problem(problems, where + "ignored: not true or false");
+            }
             else if (Is(name, LodGlassName))
             {
                 bool on;
@@ -362,8 +378,8 @@ namespace RealGlass.PerAsset
             {
                 Problem(problems, record.Name + ": <" + name + "> ignored: an asset can have " + StrengthName + ", " + DetailName +
                                   ", " + PresetName + ", " + ColourName + ", " + ReflectivityName + ", " + ClarityName + ", " +
-                                  OwnColourName + ", " + ThresholdName + ", " + NightWindowsName + ", " + InteriorsName + " and " +
-                                  LodGlassName);
+                                  OwnColourName + ", " + ThresholdName + ", " + NightWindowsName + ", " + InteriorsName + ", " +
+                                  CurtainsName + " and " + LodGlassName);
             }
         }
 

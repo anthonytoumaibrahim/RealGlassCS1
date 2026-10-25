@@ -200,7 +200,7 @@ public static class GlassPreview
     private sealed class AssetOverride
     {
         public float? Strength, Detail, Reflectivity, Clarity, Own, Threshold;
-        public bool? Night;
+        public bool? Night, Curtains;
         public Color? Tint;
 
         public bool HasGlass
@@ -1525,8 +1525,10 @@ public static class GlassPreview
                 s.Assets.Set(i + 1, new Color32(AssetTextures.Global, AssetTextures.Global, AssetTextures.Global, a));
             }
         }
-        if (_asset.Strength.HasValue || _asset.Detail.HasValue || _asset.HasGlass)
+        if (_asset.Strength.HasValue || _asset.Detail.HasValue || _asset.HasGlass || _asset.Curtains.HasValue)
         {
+            int curtains = !_asset.Curtains.HasValue ? Interiors.FollowGlobal
+                : (_asset.Curtains.Value ? Interiors.AssetOn : Interiors.AssetOff);
             byte slot = AssetTextures.Global;
             if (_asset.HasGlass)
             {
@@ -1539,7 +1541,7 @@ public static class GlassPreview
             s.Assets.Set(s.FullGlassId, new Color32(
                 _asset.Strength.HasValue ? AssetTextures.Encode(_asset.Strength.Value) : AssetTextures.Global,
                 _asset.Detail.HasValue ? AssetTextures.Encode(_asset.Detail.Value) : AssetTextures.Global,
-                slot, p.Interiors ? Interiors.Texel(Interiors.KindOffice, Interiors.FollowGlobal) : AssetTextures.Global));
+                slot, p.Interiors ? Interiors.Texel(Interiors.KindOffice, Interiors.FollowGlobal, curtains) : AssetTextures.Global));
         }
         s.Assets.Upload();
         s.Assets.Bind();
@@ -1857,9 +1859,15 @@ public static class GlassPreview
             if (kv[0].Trim().StartsWith("A.", StringComparison.OrdinalIgnoreCase))
             {
                 // The full-glass tower's own settings (its asset's): A.Strength, A.Detail,
-                // A.Reflectivity, A.Clarity, A.Own, A.Threshold (0..1), A.Night (0/1), A.Tint (#RRGGBB).
+                // A.Reflectivity, A.Clarity, A.Own, A.Threshold (0..1), A.Night (0/1), A.Tint (#RRGGBB),
+                // A.Curtains (0/1: its rooms' curtains, with Interiors=1).
                 string key = kv[0].Trim().Substring(2).ToLowerInvariant();
                 string text = kv[1].Trim();
+                if (key == "curtains")
+                {
+                    _asset.Curtains = text == "1" || text.Equals("true", StringComparison.OrdinalIgnoreCase);
+                    continue;
+                }
                 if (key == "tint")
                 {
                     Color tint;

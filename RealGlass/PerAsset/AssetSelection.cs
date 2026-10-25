@@ -228,6 +228,7 @@ namespace RealGlass.PerAsset
             if (r.Threshold.HasValue) s += "glass above " + Pct(r.Threshold.Value) + ", ";
             if (r.NightWindows.HasValue) s += "lit windows " + (r.NightWindows.Value ? "are glass" : "are not glass") + ", ";
             if (r.Interiors.HasValue) s += (r.Interiors.Value ? "rooms" : "no rooms") + " behind the windows, ";
+            if (r.Curtains.HasValue) s += (r.Curtains.Value ? "curtains or blinds" : "no curtains or blinds") + " in its rooms, ";
             if (r.LodGlass.HasValue) s += "its LODs " + (r.LodGlass.Value ? "show the model's glass" : "keep their own glass") + ", ";
             return s.Length > 0 ? s.Substring(0, s.Length - 2) : "nothing of its own";
         }

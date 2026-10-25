@@ -32,6 +32,10 @@ the mod's name in the game.
 - **Opacity by day** for the rooms (the Interiors tab, under "Show the rooms by day"): how much
   of the rooms shows behind the glass in daylight, from none (the plain dark inside) to the rooms in
   full. 50% by default.
+- **Curtains per building asset.** The building window (Alt+G) and the creator window in the Asset
+  Editor have a *Curtains or blinds* switch under Interiors. Off, that asset's rooms have no curtains
+  or blinds -- for glass that is no room's window, such as a fire station's doors; on, as many as the
+  Interiors tab gives. A creator's choice ships with the asset, like the rest of its glass.
 - **Spanish, French and Simplified Chinese.** The panel, the building and creator windows, the
   options page and the messages are now in Spanish, French and Simplified Chinese as well as
   English, as in Volumetric Weather. A game set to one of them shows it automatically; *Show this

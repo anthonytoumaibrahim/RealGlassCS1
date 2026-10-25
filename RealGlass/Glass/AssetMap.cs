@@ -217,7 +217,9 @@ namespace RealGlass.Glass
                 AssetRecord record = AssetRecords.Of(info);
                 int assetSwitch = record == null || !record.Interiors.HasValue ? Interiors.FollowGlobal
                     : (record.Interiors.Value ? Interiors.AssetOn : Interiors.AssetOff);
-                texel.a = Interiors.Texel(KindOf(info), assetSwitch);
+                int curtains = record == null || !record.Curtains.HasValue ? Interiors.FollowGlobal
+                    : (record.Curtains.Value ? Interiors.AssetOn : Interiors.AssetOff);
+                texel.a = Interiors.Texel(KindOf(info), assetSwitch, curtains);
             }
             _fullTexelOf[info] = texel;
             return texel;

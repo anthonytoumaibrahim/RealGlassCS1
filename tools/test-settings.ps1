@@ -465,6 +465,22 @@ Check "rooms per asset: written under the global switch's name" ($roomsText -mat
 Check "  both read back, off and on (sorted by name)" ("" + $r.Records.Count + " " + $r.Records[0].Interiors + " " + $r.Records[1].Interiors) "2 False True"
 Check "  an asset with only that is not empty, and has no glass of its own" ("" + $rooms.IsEmpty + " " + $rooms.HasGlass) "False False"
 
+# The curtains in an asset's rooms (the Interiors tab's share, per asset: yes or no): off and on
+# both kept, under a name of their own (InteriorsCurtains is the share, a percentage).
+$noCurtains = NewRecord "Curtains off"
+$noCurtains.Curtains = $false
+$curtainsOn = NewRecord "Curtains on"
+$curtainsOn.Curtains = $true
+$curtainsList = [Activator]::CreateInstance($recList)
+$curtainsList.Add($noCurtains); $curtainsList.Add($curtainsOn); $curtainsList.Add((NewRecord "Curtains follow"))
+$curtainsText = $assetFmt::Write($curtainsList, "")
+$r = ParseAssets $curtainsText
+Check "curtains per asset: written as true or false, never under the share's name" ($curtainsText -match "<InteriorsCurtainsEnabled>false</InteriorsCurtainsEnabled>" -and $curtainsText -match "<InteriorsCurtainsEnabled>true</InteriorsCurtainsEnabled>" -and $curtainsText -notmatch "<InteriorsCurtains>") "True"
+Check "  both read back, the following one not written (sorted by name)" ("" + $r.Records.Count + " " + $r.Records[0].Name + "=" + $r.Records[0].Curtains + " " + $r.Records[1].Name + "=" + $r.Records[1].Curtains) "2 Curtains off=False Curtains on=True"
+Check "  an asset with only that is not empty, needs no glass slot, and differs from one without" ("" + $noCurtains.IsEmpty + " " + $noCurtains.HasGlass + " " + $noCurtains.SameSettings((NewRecord "Curtains off"))) "False False False"
+$r = ParseAssets "<RealGlassAssets><Asset name=`"Q`"><InteriorsCurtainsEnabled>few</InteriorsCurtainsEnabled></Asset></RealGlassAssets>"
+Check "  nonsense refused and said" ("" + ($r.Records[0].Curtains -eq $null) + " " + $r.Problems.Count) "True 1"
+
 # Its LODs' glass (the Glass tab's "LODs show the model's glass", per asset): the model's (true)
 # and the LOD's own (false) both kept; unset is automatic and not written.
 $lodModel = NewRecord "LOD model"
@@ -643,6 +659,12 @@ $under.Interiors = $false
 $o = $recType::Over($top, $under)
 Check "player over creator: the player's kind of glass brings its own color, not the creator's" ("" + ($colorText::Format($o.Colour) -ne "#6E9C7C") + " " + $o.Preset) "True 8"
 Check "  the creator's other settings stay beneath" ("" + $o.Strength + " " + $o.Interiors) "0.6 False"
+$under.Curtains = $false
+$top.Curtains = $true
+$o = $recType::Over($top, $under)
+$top.Curtains = $null
+$o2 = $recType::Over($top, $under)
+Check "  curtains: the player's yes over the creator's no; the creator's no where the player says nothing" ("" + $o.Curtains + " " + $o2.Curtains) "True False"
 $top = NewRecord "T"
 $top.Reflectivity = [TestHelp]::Div(10, 100)
 $under = NewRecord "T"
@@ -711,6 +733,8 @@ Check "  the sky in the glass only darkens as the sun goes down (100%, 50%, 25%)
 $interiors = $asm.GetType('RealGlass.Glass.Interiors', $true)
 Check "rooms: a texel is kind + 16 x the asset's switch (an office, off: 17)" ($interiors::Texel($interiors::KindOffice, $interiors::AssetOff)) 17
 Check "  following the global switch: the kind alone" ($interiors::Texel($interiors::KindShopHigh, $interiors::FollowGlobal)) 7
+Check "  + 48 x the asset's curtains (an office, rooms on, no curtains: 81)" ($interiors::Texel($interiors::KindOffice, $interiors::AssetOn, $interiors::AssetOff)) 81
+Check "  the most it holds stays under 255 (not looked at yet)" ($interiors::Texel(15, $interiors::AssetOn, $interiors::AssetOn)) 143
 Check "  a room keeps its light 4 game hours at 100%, 2 at 200%, for good at 0%" ("" + $interiors::HoursPerState(1.0) + " " + $interiors::HoursPerState(2.0) + " " + $interiors::HoursPerState(0.0)) "4 2 0"
 $gpRooms = $paramsType.GetMethod('Default').Invoke($null, @())
 $boxedRooms = [object]$gpRooms

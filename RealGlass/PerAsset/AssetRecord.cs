@@ -51,6 +51,12 @@ namespace RealGlass.PerAsset
         public bool? Interiors;
 
         /// <summary>
+        /// Curtains or blinds in its rooms' windows: true at the Interiors tab's share (InteriorsCurtains),
+        /// false none on any copy of it (a fire station's doors).
+        /// </summary>
+        public bool? Curtains;
+
+        /// <summary>
         /// Its LODs' glass (LodGlassFromModel, Glass/LodGlass.cs): true the model's, whatever the LOD has;
         /// false the LOD's own, always. Null: the switch, and the comparison.
         /// </summary>
@@ -64,7 +70,11 @@ namespace RealGlass.PerAsset
         /// <summary>Nothing of its own: the asset follows every global setting.</summary>
         public bool IsEmpty
         {
-            get { return !Strength.HasValue && !PaintedDetail.HasValue && !HasGlass && !Interiors.HasValue && !LodGlass.HasValue; }
+            get
+            {
+                return !Strength.HasValue && !PaintedDetail.HasValue && !HasGlass && !Interiors.HasValue && !Curtains.HasValue &&
+                       !LodGlass.HasValue;
+            }
         }
 
 
@@ -114,6 +124,7 @@ namespace RealGlass.PerAsset
                 Threshold = t.Threshold ?? u.Threshold,
                 NightWindows = t.NightWindows ?? u.NightWindows,
                 Interiors = t.Interiors ?? u.Interiors,
+                Curtains = t.Curtains ?? u.Curtains,
                 LodGlass = t.LodGlass ?? u.LodGlass,
             };
 
@@ -150,7 +161,7 @@ namespace RealGlass.PerAsset
             return Strength == other.Strength && PaintedDetail == other.PaintedDetail && Preset == other.Preset &&
                    SameColour(Colour, other.Colour) && Reflectivity == other.Reflectivity && Clarity == other.Clarity &&
                    OwnColour == other.OwnColour && Threshold == other.Threshold && NightWindows == other.NightWindows &&
-                   Interiors == other.Interiors && LodGlass == other.LodGlass;
+                   Interiors == other.Interiors && Curtains == other.Curtains && LodGlass == other.LodGlass;
         }
 
         private static bool SameColour(Color32? a, Color32? b)
