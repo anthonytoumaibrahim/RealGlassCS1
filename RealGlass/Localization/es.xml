@@ -346,7 +346,7 @@
   <String key="Asset.Own">{0} en esta ciudad</String>
   <String key="Asset.Global">{0} en esta ciudad. Sigue la pestaña Vidrio.</String>
   <!-- Its creator shipped glass settings with it (RealGlassDefinition.xml); the player's come first. -->
-  <String key="Asset.Creator">{0} en esta ciudad. Su creador definió su vidrio.</String>
+  <String key="Asset.Creator">{0} en esta ciudad. Vidrio definido por el creador.</String>
 
   <String key="Asset.Pick">Elegir otro edificio</String>
   <String key="Asset.UseGlobal">Restablecer ajustes</String>
@@ -374,28 +374,28 @@
   <String key="AssetGlassNightWindows.Label">Las ventanas iluminadas de noche son vidrio</String>
 
   <!-- The glass of the asset's LOD (its low-detail model, drawn from the middle distance on). -->
-  <String key="AssetLodGlass.Label">Vidrio en su LOD</String>
+  <String key="AssetLodGlass.Label">Vidrio en el LOD</String>
   <String key="AssetLodGlass.Tooltip">Automático: el vidrio del modelo completo donde el del LOD difiere.</String>
   <String key="Asset.LodGlass.Auto">Automático</String>
   <String key="Asset.LodGlass.Model">El del modelo</String>
   <String key="Asset.LodGlass.Own">El propio del LOD</String>
 
   <!-- The status line's second line: what the asset's LOD shows. -->
-  <String key="Asset.Lod.Agrees">El vidrio de su LOD coincide con el del modelo.</String>
-  <String key="Asset.Lod.NoGlass">Ni el modelo ni su LOD tienen vidrio.</String>
-  <String key="Asset.Lod.Borrowed">El vidrio de su LOD difiere: muestra el del modelo.</String>
-  <String key="Asset.Lod.ShapeDiffers">Su LOD no tiene la forma del modelo: se deja como está.</String>
-  <String key="Asset.Lod.Forced">Su LOD muestra el vidrio del modelo.</String>
-  <String key="Asset.Lod.KeptOwn">Su LOD conserva su propio vidrio.</String>
-  <String key="Asset.Lod.Off">El vidrio de su LOD difiere; la pestaña Vidrio lo deja como está.</String>
-  <String key="Asset.Lod.Failed">No se pudo comparar su LOD con el modelo (mira el registro).</String>
+  <String key="Asset.Lod.Agrees">El vidrio del LOD coincide con el modelo.</String>
+  <String key="Asset.Lod.NoGlass">Sin vidrio en el modelo ni en el LOD.</String>
+  <String key="Asset.Lod.Borrowed">El vidrio del LOD difiere: se muestra el del modelo.</String>
+  <String key="Asset.Lod.ShapeDiffers">La forma del LOD difiere del modelo: se deja como está.</String>
+  <String key="Asset.Lod.Forced">El LOD muestra el vidrio del modelo.</String>
+  <String key="Asset.Lod.KeptOwn">El LOD conserva su propio vidrio.</String>
+  <String key="Asset.Lod.Off">El vidrio del LOD difiere; la pestaña Vidrio lo deja como está.</String>
+  <String key="Asset.Lod.Failed">No se pudo comparar el LOD con el modelo (mira el registro).</String>
 
   <!-- The status line's third line: the rooms fitted to the asset's own windows ({0} its storey in metres). -->
-  <String key="Asset.Rooms.Fitted">Sus habitaciones siguen sus ventanas: plantas de {0} m.</String>
-  <String key="Asset.Rooms.FittedNarrow">Sus habitaciones siguen sus ventanas: plantas de {0} m, ninguna en los lados estrechos.</String>
-  <String key="Asset.Rooms.Grid">No hay ninguna fila de ventanas: sus habitaciones siguen la cuadrícula de plantas.</String>
-  <String key="Asset.Rooms.None">Sin habitaciones: sus ventanas son franjas finas.</String>
-  <String key="Asset.Rooms.Failed">No se pudieron medir sus ventanas para las habitaciones (mira el registro).</String>
+  <String key="Asset.Rooms.Fitted">Las habitaciones siguen sus ventanas: plantas de {0} m.</String>
+  <String key="Asset.Rooms.FittedNarrow">Las habitaciones siguen sus ventanas: plantas de {0} m, ninguna en los lados estrechos.</String>
+  <String key="Asset.Rooms.Grid">No hay ninguna fila de ventanas: habitaciones en la cuadrícula de plantas.</String>
+  <String key="Asset.Rooms.None">Sin habitaciones: las ventanas son franjas finas.</String>
+  <String key="Asset.Rooms.Failed">No se pudieron medir las ventanas para las habitaciones (mira el registro).</String>
 
   <String key="Group.AssetInteriors">Interiores</String>
 
@@ -404,10 +404,10 @@
   <String key="AssetInteriorsCurtains.Label">Cortinas o persianas</String>
 
   <!-- On hover over a row's reset icon here (an icon has no label of its own). -->
-  <String key="Asset.Global.Hint">Volver al ajuste global (o al de su creador)</String>
+  <String key="Asset.Global.Hint">Volver al ajuste global (o al del creador)</String>
 
   <!-- By the cursor while the building picker is on. {0}: the building's asset, as the game names it. -->
-  <String key="Picker.Building">{0}\nClic: su vidrio. Clic derecho: salir.</String>
+  <String key="Picker.Building">{0}\nClic: editar el vidrio. Clic derecho: salir.</String>
 
   <!-- ==================== The creator window ==================== -->
   <!-- The asset editor's own window, opened there by the mod's key and button instead of the F8
@@ -446,7 +446,7 @@
 
   <String key="PanelKey.Label">Abrir este panel</String>
 
-  <String key="PickerKey.Label">Elegir un edificio: el vidrio propio de su elemento</String>
+  <String key="PickerKey.Label">Elegir un edificio (vidrio por elemento)</String>
 
   <!-- The F8 panel's and the building window's look. Vanilla is the game's own look. -->
   <String key="PanelSkin.Label">Aspecto del panel</String>
@@ -490,7 +490,7 @@
   <String key="HudButtonX.Label">Botón del mod (sin Unified UI): distancia desde la izquierda</String>
   <String key="HudButtonY.Label">Botón del mod (sin Unified UI): distancia desde arriba</String>
 
-  <String key="WaterFoamView.Label">Vista de diagnóstico de la espuma: 0 desactivada, 1 sus fuentes, 2 o 3 dónde se dibuja, 4 sus capas</String>
+  <String key="WaterFoamView.Label">Vista de diagnóstico de la espuma: 0 desactivada, 1 fuentes, 2 o 3 dónde se dibuja, 4 capas</String>
 
   <String key="PanelOpenGroups.Label">Encabezados abiertos del panel del juego, separados por comas</String>
 

@@ -14,7 +14,9 @@ namespace RealGlass.PerAsset
     /// RealGlassAssets.xml) and the creator window in the asset editor (<see cref="Edited"/>: the
     /// building being made, for every player, RealGlassDefinition.xml), which has the preview's
     /// switches above them. A row's reset puts it back to what the asset follows: the global
-    /// setting (or its creator's) in a city, each player's own setting in the editor.
+    /// setting (or its creator's) in a city, each player's own setting in the editor. A switch or a
+    /// slider moved back onto what it follows does the same (no value of its own: its name is not
+    /// coloured); the kind of glass and its numbers stay the asset's once chosen.
     /// </summary>
     /// <remarks>
     /// The rows are the panel's ordinary rows over settings that are NOT saved (Setting's saved =
@@ -100,8 +102,10 @@ namespace RealGlass.PerAsset
             if (_creator)
                 AddPreview(rows);
 
-            rows.Add(Percent(_strength, "AssetGlass", 100f, r => r.Strength.HasValue, (r, v) => r.Strength = v, r => r.Strength = null, "strength"));
-            rows.Add(Percent(_detail, null, 100f, r => r.PaintedDetail.HasValue, (r, v) => r.PaintedDetail = v, r => r.PaintedDetail = null, "painted detail"));
+            rows.Add(Percent(_strength, "AssetGlass", 100f, r => r.Strength.HasValue, (r, v) => r.Strength = v, r => r.Strength = null,
+                () => Followed(b => b.Strength, _source.Global.Strength), "strength"));
+            rows.Add(Percent(_detail, null, 100f, r => r.PaintedDetail.HasValue, (r, v) => r.PaintedDetail = v, r => r.PaintedDetail = null,
+                () => Followed(b => b.PaintedDetail, _source.Global.PaintedDetail), "painted detail"));
 
             rows.Add(new Row
             {
@@ -153,25 +157,28 @@ namespace RealGlass.PerAsset
                 }, "colour " + ColorText.Format(_colour.value)),
             });
 
+            // Part of the kind of glass (moving one makes it Custom): always the asset's own.
             rows.Add(Percent(_reflectivity, null, 60f, r => r.Reflectivity.HasValue, (r, v) =>
             {
                 r.Reflectivity = v;
                 r.Preset = GlassPresets.Custom;
-            }, r => r.Reflectivity = null, "reflectivity"));
+            }, r => r.Reflectivity = null, null, "reflectivity"));
 
             rows.Add(Percent(_clarity, null, 100f, r => r.Clarity.HasValue, (r, v) =>
             {
                 r.Clarity = v;
                 r.Preset = GlassPresets.Custom;
-            }, r => r.Clarity = null, "clarity"));
+            }, r => r.Clarity = null, null, "clarity"));
 
-            rows.Add(Percent(_own, null, 100f, r => r.OwnColour.HasValue, (r, v) => r.OwnColour = v, r => r.OwnColour = null, "own colour"));
+            rows.Add(Percent(_own, null, 100f, r => r.OwnColour.HasValue, (r, v) => r.OwnColour = v, r => r.OwnColour = null,
+                () => Followed(b => b.OwnColour, _source.Global.OwnColour), "own colour"));
 
             // What counts as this asset's glass: further down than the global row (40%), for glass
             // painted dull; the walls a low value pulls in are this asset's alone. The mask view
             // ("Show what counts as glass") shows it per asset.
             rows.Add(Percent(_threshold, "WhatIsGlass", AssetFileFormat.ThresholdMin, AssetFileFormat.ThresholdMax,
-                r => r.Threshold.HasValue, (r, v) => r.Threshold = v, r => r.Threshold = null, "shininess needed"));
+                r => r.Threshold.HasValue, (r, v) => r.Threshold = v, r => r.Threshold = null,
+                () => Followed(b => b.Threshold, _source.Global.Threshold), "shininess needed"));
 
             rows.Add(new Row
             {
@@ -181,7 +188,8 @@ namespace RealGlass.PerAsset
                 ResetHintKey = _source.ResetHintKey,
                 Overridden = () => Has(r => r.NightWindows.HasValue),
                 ClearOverride = () => Change(r => r.NightWindows = null, "lit windows back to the setting it follows"),
-                AfterChange = () => Change(r => r.NightWindows = _nightWindows.value,
+                AfterChange = () => Change(r => r.NightWindows = OwnOrNone(_nightWindows.value,
+                        Followed(b => b.NightWindows, _source.Global.NightWindows)),
                     "lit-at-night windows count as glass: " + (_nightWindows.value ? "yes" : "no")),
             });
 
@@ -199,7 +207,11 @@ namespace RealGlass.PerAsset
                 ResetHintKey = _source.ResetHintKey,
                 Overridden = () => Has(r => r.LodGlass.HasValue),
                 ClearOverride = () => Change(r => r.LodGlass = null, "LOD glass back to automatic"),
-                AfterChange = () => Change(r => r.LodGlass = _lodGlass.value == Glass.LodGlass.ModeAuto ? (bool?)null : _lodGlass.value == Glass.LodGlass.ModeModel,
+                AfterChange = () => Change(r =>
+                    {
+                        bool? chosen = _lodGlass.value == Glass.LodGlass.ModeAuto ? (bool?)null : _lodGlass.value == Glass.LodGlass.ModeModel;
+                        r.LodGlass = chosen == FollowedLodGlass() ? null : chosen;
+                    },
                     "LOD glass: " + (_lodGlass.value == Glass.LodGlass.ModeModel ? "the model's" : (_lodGlass.value == Glass.LodGlass.ModeOwn ? "its own" : "automatic"))),
             });
 
@@ -215,7 +227,8 @@ namespace RealGlass.PerAsset
                 ResetHintKey = _source.ResetHintKey,
                 Overridden = () => Has(r => r.Interiors.HasValue),
                 ClearOverride = () => Change(r => r.Interiors = null, "rooms back to the Interiors tab's switch"),
-                AfterChange = () => Change(r => r.Interiors = _interiors.value,
+                AfterChange = () => Change(r => r.Interiors = OwnOrNone(_interiors.value,
+                        Followed(b => b.Interiors, _source.Global.Interiors)),
                     "rooms behind the windows: " + (_interiors.value ? "yes" : "no")),
             });
 
@@ -231,7 +244,8 @@ namespace RealGlass.PerAsset
                 ResetHintKey = _source.ResetHintKey,
                 Overridden = () => Has(r => r.Curtains.HasValue),
                 ClearOverride = () => Change(r => r.Curtains = null, "curtains back to the Interiors tab's share"),
-                AfterChange = () => Change(r => r.Curtains = _curtains.value,
+                AfterChange = () => Change(r => r.Curtains = OwnOrNone(_curtains.value,
+                        Followed(b => b.Curtains, _source.Global.InteriorsCurtains > 0f)),
                     "curtains or blinds in its rooms: " + (_curtains.value ? "yes" : "no")),
             });
 
@@ -275,13 +289,14 @@ namespace RealGlass.PerAsset
         }
 
         private Row Percent(FloatSetting setting, string group, float max, Func<AssetRecord, bool> has,
-                            Action<AssetRecord, float> set, Action<AssetRecord> clear, string what)
+                            Action<AssetRecord, float> set, Action<AssetRecord> clear, Func<float> followed, string what)
         {
-            return Percent(setting, group, 0f, max, has, set, clear, what);
+            return Percent(setting, group, 0f, max, has, set, clear, followed, what);
         }
 
+        /// <param name="followed">What the row shows with no value of its own; null: every value moved to is the asset's own.</param>
         private Row Percent(FloatSetting setting, string group, float min, float max, Func<AssetRecord, bool> has,
-                            Action<AssetRecord, float> set, Action<AssetRecord> clear, string what)
+                            Action<AssetRecord, float> set, Action<AssetRecord> clear, Func<float> followed, string what)
         {
             return new Row
             {
@@ -292,8 +307,42 @@ namespace RealGlass.PerAsset
                 ResetHintKey = _source.ResetHintKey,
                 Overridden = () => Has(has),
                 ClearOverride = () => Change(clear, what + " back to the one it follows"),
-                AfterChange = () => Change(r => set(r, setting.value), what + " " + Mathf.RoundToInt(setting.value * 100f) + "%"),
+                AfterChange = () => Change(r =>
+                {
+                    // On the slider's step it follows: the same percent shown, so nothing of its own.
+                    if (followed != null && Mathf.Abs(setting.value - followed()) < SameStep)
+                        clear(r);
+                    else
+                        set(r, setting.value);
+                }, what + " " + Mathf.RoundToInt(setting.value * 100f) + "%"),
             };
+        }
+
+        /// <summary>Half the percent rows' 1% step: two values closer than this show the same.</summary>
+        private const float SameStep = 0.005f;
+
+        /// <summary>
+        /// What a row shows where the asset has no value of its own: its creator's (in a city), else
+        /// the global setting -- what <see cref="Sync"/> falls back to.
+        /// </summary>
+        private T Followed<T>(Func<AssetRecord, T?> field, T global) where T : struct
+        {
+            AssetRecord beneath = _source.HasSelection ? _source.Beneath : null;
+            T? value = beneath != null ? field(beneath) : null;
+            return value ?? global;
+        }
+
+        /// <summary>The LOD choice the asset follows: its creator's, else Automatic (null).</summary>
+        private bool? FollowedLodGlass()
+        {
+            AssetRecord beneath = _source.HasSelection ? _source.Beneath : null;
+            return beneath != null ? beneath.LodGlass : null;
+        }
+
+        /// <summary>A switch's value of the asset's own, or none where it is what the asset follows anyway.</summary>
+        private static bool? OwnOrNone(bool value, bool followed)
+        {
+            return value == followed ? (bool?)null : value;
         }
 
         private bool Has(Func<AssetRecord, bool> test)

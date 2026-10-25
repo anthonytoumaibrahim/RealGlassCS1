@@ -347,7 +347,7 @@
   <String key="Asset.Own">{0} in this city</String>
   <String key="Asset.Global">{0} in this city. It follows the Glass tab.</String>
   <!-- Its creator shipped glass settings with it (RealGlassDefinition.xml); the player's come first. -->
-  <String key="Asset.Creator">{0} in this city. Its creator set its glass.</String>
+  <String key="Asset.Creator">{0} in this city. Glass set by the creator.</String>
 
   <String key="Asset.Pick">Pick another building</String>
   <String key="Asset.UseGlobal">Restore settings</String>
@@ -375,28 +375,28 @@
   <String key="AssetGlassNightWindows.Label">Windows lit at night are glass</String>
 
   <!-- The glass of the asset's LOD (its low-detail model, drawn from the middle distance on). -->
-  <String key="AssetLodGlass.Label">Glass on its LOD</String>
+  <String key="AssetLodGlass.Label">Glass on LOD</String>
   <String key="AssetLodGlass.Tooltip">Automatic: the full model's glass where the LOD's differs.</String>
   <String key="Asset.LodGlass.Auto">Automatic</String>
   <String key="Asset.LodGlass.Model">The model's</String>
   <String key="Asset.LodGlass.Own">The LOD's own</String>
 
   <!-- The status line's second line: what the asset's LOD shows. -->
-  <String key="Asset.Lod.Agrees">Its LOD's glass matches the model's.</String>
-  <String key="Asset.Lod.NoGlass">Neither the model nor its LOD has glass.</String>
-  <String key="Asset.Lod.Borrowed">Its LOD's glass differs: it shows the model's.</String>
-  <String key="Asset.Lod.ShapeDiffers">Its LOD is shaped unlike the model: left as it is.</String>
-  <String key="Asset.Lod.Forced">Its LOD shows the model's glass.</String>
-  <String key="Asset.Lod.KeptOwn">Its LOD keeps its own glass.</String>
-  <String key="Asset.Lod.Off">Its LOD's glass differs; the Glass tab leaves it as it is.</String>
-  <String key="Asset.Lod.Failed">Its LOD could not be compared with the model (see the log).</String>
+  <String key="Asset.Lod.Agrees">LOD glass matches the model.</String>
+  <String key="Asset.Lod.NoGlass">No glass on the model or the LOD.</String>
+  <String key="Asset.Lod.Borrowed">LOD glass differs: showing the model's.</String>
+  <String key="Asset.Lod.ShapeDiffers">LOD shape differs from the model: left as is.</String>
+  <String key="Asset.Lod.Forced">LOD shows the model's glass.</String>
+  <String key="Asset.Lod.KeptOwn">LOD keeps its own glass.</String>
+  <String key="Asset.Lod.Off">LOD glass differs; the Glass tab leaves it as is.</String>
+  <String key="Asset.Lod.Failed">LOD could not be compared with the model (see the log).</String>
 
   <!-- The status line's third line: the rooms fitted to the asset's own windows ({0} its storey in metres). -->
-  <String key="Asset.Rooms.Fitted">Its rooms follow its windows: stories of {0} m.</String>
-  <String key="Asset.Rooms.FittedNarrow">Its rooms follow its windows: stories of {0} m, none on narrow sides.</String>
-  <String key="Asset.Rooms.Grid">No row of windows found: its rooms are on the story grid.</String>
-  <String key="Asset.Rooms.None">No rooms: its windows are thin strips.</String>
-  <String key="Asset.Rooms.Failed">Its windows could not be measured for rooms (see the log).</String>
+  <String key="Asset.Rooms.Fitted">Rooms follow its windows: stories of {0} m.</String>
+  <String key="Asset.Rooms.FittedNarrow">Rooms follow its windows: stories of {0} m, none on narrow sides.</String>
+  <String key="Asset.Rooms.Grid">No row of windows found: rooms on the story grid.</String>
+  <String key="Asset.Rooms.None">No rooms: windows are thin strips.</String>
+  <String key="Asset.Rooms.Failed">Windows could not be measured for rooms (see the log).</String>
 
   <String key="Group.AssetInteriors">Interiors</String>
 
@@ -405,10 +405,10 @@
   <String key="AssetInteriorsCurtains.Label">Curtains or blinds</String>
 
   <!-- On hover over a row's reset icon here (an icon has no label of its own). -->
-  <String key="Asset.Global.Hint">Back to the global setting (or its creator's)</String>
+  <String key="Asset.Global.Hint">Back to the global setting (or the creator's)</String>
 
   <!-- By the cursor while the building picker is on. {0}: the building's asset, as the game names it. -->
-  <String key="Picker.Building">{0}\nClick: its glass. Right-click: stop.</String>
+  <String key="Picker.Building">{0}\nClick: edit glass. Right-click: stop.</String>
 
   <!-- ==================== The creator window ==================== -->
   <!-- The asset editor's own window, opened there by the mod's key and button instead of the F8
@@ -447,7 +447,7 @@
 
   <String key="PanelKey.Label">Open this panel</String>
 
-  <String key="PickerKey.Label">Pick a building: its asset's own glass</String>
+  <String key="PickerKey.Label">Pick a building (per-asset glass)</String>
 
   <!-- The F8 panel's and the building window's look. Vanilla is the game's own look. -->
   <String key="PanelSkin.Label">Panel look</String>
@@ -491,7 +491,7 @@
   <String key="HudButtonX.Label">The mod's button (without Unified UI): distance from the left edge</String>
   <String key="HudButtonY.Label">The mod's button (without Unified UI): distance from the top edge</String>
 
-  <String key="WaterFoamView.Label">Foam diagnostic view: 0 off, 1 its sources, 2 or 3 where it draws, 4 its layers</String>
+  <String key="WaterFoamView.Label">Foam diagnostic view: 0 off, 1 sources, 2 or 3 where it draws, 4 layers</String>
 
   <String key="PanelOpenGroups.Label">The in-game panel's open headings, comma separated</String>
 

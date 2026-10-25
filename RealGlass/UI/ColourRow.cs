@@ -15,7 +15,9 @@ namespace RealGlass.UI
     /// <remarks>
     /// The swatch is the game's OWN colour field, cloned from the transport-line template
     /// (PublicTransportLineInfo's "LineColor" in "LineTemplate"), so clicking it opens the game's
-    /// own picker. If that template cannot be found the row still works -- field, buttons and
+    /// own picker. The asset editor has no such template: there it is cloned from the editor's
+    /// properties panel's ("Value" in DecorationPropertiesPanel's "PropertyColorSet", the material
+    /// colours' field). If neither can be found the row still works -- field, buttons and
     /// reset -- and the probe line in the log says so. The field reads every spelling
     /// <see cref="ColorText"/> does; the game's text fields already do Ctrl+C / Ctrl+V (IL of
     /// UITextField.OnKeyDown), and Copy / Paste use the same clipboard (ColossalFramework.Clipboard).
@@ -32,12 +34,18 @@ namespace RealGlass.UI
 
         private const string LineTemplate = "LineTemplate";
         private const string LineColour = "LineColor";
+        private const string EditorTemplate = "PropertyColorSet";
+        private const string EditorColour = "Value";
 
         /// <summary>How long a colour the row could not read stays on show, in red.</summary>
         private const float InvalidShownFor = 3f;
         private const float CopiedShownFor = 1.5f;
 
-        private static bool _probed;
+        /// <summary>The probe line last logged.</summary>
+        private static string _probeLogged;
+
+        /// <summary>The template the last swatch was cloned from, for the probe line.</summary>
+        private static string _swatchFrom;
 
         private readonly Builder _ui;
         private readonly Row _row;
@@ -349,13 +357,18 @@ namespace RealGlass.UI
             _invalidUntil = Time.realtimeSinceStartup + InvalidShownFor;
         }
 
-        /// <summary>The game's own colour field, cloned out of the transport-line template.</summary>
+        /// <summary>The game's own colour field, cloned out of the transport-line template (the asset editor's in the editor).</summary>
         private static UIColorField CreateSwatch(UIComponent parent, Vector3 position)
         {
             try
             {
-                UIComponent template = UITemplateManager.Peek(LineTemplate);
-                UIColorField source = template != null ? template.Find<UIColorField>(LineColour) : null;
+                _swatchFrom = LineTemplate + "/" + LineColour;
+                UIColorField source = FindField(LineTemplate, LineColour);
+                if (source == null)
+                {
+                    _swatchFrom = EditorTemplate + "/" + EditorColour;
+                    source = FindField(EditorTemplate, EditorColour);
+                }
                 if (source == null)
                     return null;
 
@@ -391,15 +404,28 @@ namespace RealGlass.UI
             }
         }
 
-        /// <summary>Once per launch: whether the game's picker was found, so a plain-looking row explains itself.</summary>
+        /// <summary>A colour field in one of the scene's UI templates; null where the scene has no such template.</summary>
+        private static UIColorField FindField(string templateName, string fieldName)
+        {
+            UIComponent template = UITemplateManager.Peek(templateName);
+            return template != null ? template.Find<UIColorField>(fieldName) : null;
+        }
+
+        /// <summary>
+        /// Whether the game's picker was found, so a plain-looking row explains itself: logged when it
+        /// differs from the last line (a city and the asset editor clone it from different templates).
+        /// </summary>
         private void Probe()
         {
-            if (_probed)
+            string line = "colour rows: the game's colour field " +
+                          (_swatch != null
+                              ? "cloned from " + _swatchFrom + ", picker " + (_swatch.colorPicker != null ? "ok" : "MISSING")
+                              : "NOT FOUND (" + LineTemplate + "/" + LineColour + ", " + EditorTemplate + "/" + EditorColour + ") -- text field only");
+            if (line == _probeLogged)
                 return;
 
-            _probed = true;
-            Log.Msg("colour rows: the game's colour field (" + LineTemplate + "/" + LineColour + ") " +
-                    (_swatch != null ? "cloned, picker " + (_swatch.colorPicker != null ? "ok" : "MISSING") : "NOT FOUND -- text field only"));
+            _probeLogged = line;
+            Log.Msg(line);
         }
     }
 }
