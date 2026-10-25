@@ -41,6 +41,11 @@
 #                             #0E222B or -Body's). Views photo (his reference's: 14 m over the surf), beach, and
 #                             steep / steepclose / steephigh (the coast south of z = -450 drops as the game's do)
 #   ... -Times "443,445,447"  with -Layers: a column of the layers at each of these seconds instead
+#   ... -Corridors "0,1.5,1.25"   columns of the layered foam with the surf's distance held within a
+#                             corridor round the real distance from the waterline (ShoreDistance), each
+#                             its factor; 0 = no distance map (the depth over the slope alone, as before
+#                             2026-10-25). Views bay / baylow: a bay 170 m into the steep coast, its floor
+#                             a flat shelf (the author's screenshot of a ring of surf)
 # Run after build-bundle.ps1 (the shaders compile) and a DLL build.
 
 param(
@@ -73,6 +78,9 @@ param(
     [double]$DepthSkew = 0.0,
     [switch]$Layers,
     [string]$Times = "",
+    [string]$Corridors = "",
+    # The flicker runs' surf corridor (-1 the mod's, 0 no distance map; as a -Corridors column).
+    [double]$FlickerCorridor = -1.0,
     [string]$Name = "foam",
     [ValidateSet("d3d11", "glcore")]
     [string]$Api = "d3d11",
@@ -135,7 +143,16 @@ $lv = $foam::LayerVectors()
 for ($i = 0; $i -lt $lv.Length / 4; $i++) { $lines.Add("layer " + $i + " " + (N $lv[4 * $i]) + " " + (N $lv[4 * $i + 1]) + " " + (N $lv[4 * $i + 2]) + " " + (N $lv[4 * $i + 3])) }
 
 $columns = New-Object System.Collections.Generic.List[object]
-if ($Layers) {
+if ($Corridors -ne "") {
+    # The layered foam with the mod's defaults (as -Layers), one column per corridor factor.
+    $sky = @{ Mode = 1; Gain = 1.0; Body = $(if ($Body -ne "") { $Body } else { "#0E222B" }); Waves = 1; Glitter = 0.35; GlitterSize = 0.5 }
+    foreach ($s in $Corridors.Split(',')) {
+        $k = [double]::Parse($s, $inv)
+        $label = if ($k -eq 0.0) { "no distance map (as before)" } else { "corridor x{0}" -f $k }
+        $columns.Add(($sky + @{ Foam = 1; Seconds = 443.0; Corridor = $k; Label = $label }))
+    }
+}
+elseif ($Layers) {
     # The mod's defaults for everything else: the sky layer 100%, FFT waves, glitter 35% at size 50%, the
     # water #0E222B (or -Body's).
     $sky = @{ Mode = 1; Gain = 1.0; Body = $(if ($Body -ne "") { $Body } else { "#0E222B" }); Waves = 1; Glitter = 0.35; GlitterSize = 0.5 }
@@ -180,6 +197,7 @@ else {
 if ($Flicker -ne "") {
     # Render It!'s TAA (PPv1): 60 frames a second, jitter spread 1, stationary blending 0.94, sharpen 0.15.
     $lines.Add("taa " + $TaaFrames + " " + $TaaWarm + " 60 1 0.94 0.15")
+    $lines.Add("flickercorridor " + (N $FlickerCorridor))
     foreach ($view in $Flicker.Split(',')) {
         $strength = if ($view -like "night*") { $Night } else { $Day }
         $lines.Add(("seq flicker-{0} {0} 443 {1}" -f $view, (N $strength)))
@@ -191,6 +209,7 @@ foreach ($view in $rows) {
     for ($c = 0; $c -lt $columns.Count; $c++) {
         $col = $columns[$c]
         $sky = if ($col.ContainsKey("Mode")) { " {0} {1} {2} {3} {4} {5}" -f $col.Mode, (N $col.Gain), $col.Body, $col.Waves, (N $col.Glitter), (N $col.GlitterSize) } else { "" }
+        if ($col.ContainsKey("Corridor")) { $sky += " " + (N $col.Corridor) }
         $lines.Add(("shot {0}_{1} {0} {2} {3} {4}" -f $view, $c, $col.Foam, (N $col.Seconds), (N $strength)) + $sky)
     }
 }

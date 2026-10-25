@@ -25,7 +25,9 @@
 //            Thunder phases its shore waves by the distance to the shore): the distance is the depth
 //            over the seabed's slope under the point (the game's coasts drop steeply -- in the
 //            author's city under 6% of the shore's water is shallower than 2 m -- so a band of depth
-//            alone was a single thin line, 2026-10-24). Broken waves (bores) every few seconds, the
+//            alone was a single thin line, 2026-10-24) -- kept within a corridor round the real distance
+//            from the waterline (ShoreDistance's map), as on a bay's flat floor the slope nears 0 and that
+//            measure ran away, closing the band into rings (2026-10-25). Broken waves (bores) every few seconds, the
 //            bigger breaking farther out (McCowan 1894: as deep as their height allows), running in at
 //            the shallow-water speed sqrt(g d) of a gently shelving beach -- slowing and bunching
 //            toward the waterline -- in sets of strong and weak ones (wave groups). A point's age is
@@ -54,6 +56,7 @@ Shader "RealGlass/WaterFoam"
     {
         _MainTex ("", 2D) = "black" {}
         _RGFoamPattern ("", 2D) = "gray" {}
+        _RGShoreDistance ("", 2D) = "gray" {}
     }
 
     SubShader
@@ -143,8 +146,15 @@ Shader "RealGlass/WaterFoam"
             // Outside the surf. x: how far the swell's crests break (x the surf's width), y: in water no
             // deeper than (m), z: how long a streak's foam lasts (s), w: the noise's blotches (m)
             float4 _RGFoamOuter;
-            // Fronts: the surface's slope their foam starts at (x) and is full at (y); z, w: -
+            // Fronts: the surface's slope their foam starts at (x) and is full at (y); the surf's corridor
+            // round the real distance from the waterline: z its factor, w its slack (m)
             float4 _RGFoamSteep;
+            // The real distance from the sea's waterline (ShoreDistance; RealGlass/Water/ShoreMap.cs): a
+            // byte a sample, 128 at the waterline, the sea above, inland below
+            sampler2D _RGShoreDistance;
+            // x, y: the map's uv = world xz x + y; z: m a step of its byte; w: 1 once the map is up (0: the
+            // depth over the slope alone)
+            float4 _RGShoreMapping;
 
             struct v2f
             {
@@ -258,6 +268,21 @@ Shader "RealGlass/WaterFoam"
                 return length(float2(dx / run.x, dz / run.y));
             }
 
+            // The distance from the waterline x (the depth over the seabed's slope) kept within a corridor
+            // round the real one d (the map; negative inland): at sea no nearer than d / k and no farther
+            // than d k, give or take the slack s; on flooded land only no nearer than |d| / k - s (the
+            // surf does not follow a flood inland), the far bound opening fast so nothing steps at the
+            // waterline.
+            float ShoreCorridor(float x, float2 xz)
+            {
+                float2 uv = xz * _RGShoreMapping.x + _RGShoreMapping.y;
+                float d = (tex2Dlod(_RGShoreDistance, float4(uv, 0.0, 0.0)).a * 255.0 - 128.0) * _RGShoreMapping.z;
+                float k = max(_RGFoamSteep.z, 1.0), s = _RGFoamSteep.w;
+                float lo = abs(d) / k - s;
+                float hi = s + k * max(d, 0.0) + 40.0 * max(-d, 0.0);
+                return clamp(x, lo, hi);
+            }
+
             float Hash(float n)
             {
                 return frac(sin(n * 12.9898 + 4.1414) * 43758.5453);
@@ -299,12 +324,14 @@ Shader "RealGlass/WaterFoam"
                 float sea = 1.0 - smoothstep(_RGFoamShore.w, 2.0 * _RGFoamShore.w, abs(i.water.x - _RGFoamShore.z));
                 float deepest = max(_RGFoamCrest.z, 0.1);
                 float outerDeepest = max(_RGFoamOuter.y, deepest);
-                float slope = 1.0;
+                float x = max(depth, 0.0);
                 [branch]
                 if (sea > 0.001 && depth < outerDeepest)
-                    slope = SeabedSlope(uv, _RGFoamCrest.y);
-                slope = max(slope, max(_RGFoamCrest.w, 1e-4));
-                float x = max(depth, 0.0) / slope;
+                {
+                    x /= max(SeabedSlope(uv, _RGFoamCrest.y), max(_RGFoamCrest.w, 1e-4));
+                    if (_RGShoreMapping.w > 0.5)
+                        x = ShoreCorridor(x, world.xz);
+                }
                 float surf = max(_RGFoamExtra.w, 1.0);
                 float period = max(_RGFoamSurf.x, 0.5);
                 float sets = max(_RGFoamSurf.z, 1.0);

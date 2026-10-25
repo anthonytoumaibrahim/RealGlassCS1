@@ -55,6 +55,9 @@ public static class FoamPreview
         public float Glitter;
         // Its size: every facet's slope x this (1 = the waves' own).
         public float GlitterSize = 1f;
+        // The surf's corridor round the real distance from the waterline: its factor (-1 the mod's, 0 no
+        // distance map: the depth over the slope alone, as before 2026-10-25).
+        public float Corridor = -1f;
     }
 
     /// <summary>A run of frames for the flicker under temporal anti-aliasing (as WaterPreview's).</summary>
@@ -226,6 +229,8 @@ public static class FoamPreview
             var body = new Color(0.03f, 0.06f, 0.08f, 1f);
             // The FFT waves' spectrum (wind m/s, fetch m, heading degrees, seed, choppiness), if asked for.
             double[] waveSpec = null;
+            // The flicker runs' surf corridor (as a shot's Corridor: -1 the mod's, 0 no distance map).
+            float flickerCorridor = -1f;
             foreach (string raw in File.ReadAllLines(Path.Combine(dir, "foam-preview-input.txt")))
             {
                 string[] p = raw.Split(' ');
@@ -276,6 +281,7 @@ public static class FoamPreview
                         Waves = p.Length > 9 ? int.Parse(p[9], CultureInfo.InvariantCulture) : 0,
                         Glitter = p.Length > 10 ? WaterPreview.F(p[10]) : 0f,
                         GlitterSize = p.Length > 11 ? WaterPreview.F(p[11]) : 1f,
+                        Corridor = p.Length > 12 ? WaterPreview.F(p[12]) : -1f,
                     });
                 else if (p[0] == "taa")
                 {
@@ -285,6 +291,8 @@ public static class FoamPreview
                 }
                 else if (p[0] == "seq")
                     seqs.Add(new Seq { Name = p[1], View = p[2], Seconds = WaterPreview.F(p[3]), Strength = WaterPreview.F(p[4]) });
+                else if (p[0] == "flickercorridor")
+                    flickerCorridor = WaterPreview.F(p[1]);
             }
 
             Shader.SetGlobalVectorArray("_RGSeaTable", table);
@@ -322,6 +330,11 @@ public static class FoamPreview
             Shader skyShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/RealGlass/WaterSky.shader");
             log.Add("sky shader " + (skyShader != null ? skyShader.name + " supported=" + skyShader.isSupported : "MISSING"));
             var skyMaterial = new Material(skyShader);
+
+            // The real distance from the waterline, as the mod maps it (ShoreDistance, synced).
+            Vector4 shoreMapping;
+            foamMaterial.SetTexture("_RGShoreDistance", ShoreMap(out shoreMapping, log));
+            foamMaterial.SetVector("_RGShoreMapping", shoreMapping);
 
             var coast = new Coast();
             var waterRenderers = new List<Renderer>();
@@ -425,13 +438,26 @@ public static class FoamPreview
             scene.FoamToday = foamToday;
             scene.SkyFor(new Shot(), 1f);
             if (seqs.Count > 0)
+            {
+                Vector4 flickerSteep = layers[9];
+                if (flickerCorridor > 0f)
+                    flickerSteep.z = flickerCorridor;
+                foamMaterial.SetVector("_RGFoamSteep", flickerSteep);
+                foamMaterial.SetVector("_RGShoreMapping", flickerCorridor == 0f ? Vector4.zero : shoreMapping);
+                log.Add("flicker runs: surf corridor " + (flickerCorridor == 0f ? "none (no distance map)" : flickerSteep.z.ToString(CultureInfo.InvariantCulture)));
                 Flicker(seqs, scene, taa, exposureDay, exposureNight, outDir);
+            }
 
             foreach (Shot shot in shots)
             {
                 bool night = scene.Set(shot.View, shot.Strength);
                 scene.SkyFor(shot, shot.Strength);
                 scene.ShowFoam(shot.Mode);
+                Vector4 steep = layers[9];
+                if (shot.Corridor > 0f)
+                    steep.z = shot.Corridor;
+                foamMaterial.SetVector("_RGFoamSteep", steep);
+                foamMaterial.SetVector("_RGShoreMapping", shot.Corridor == 0f ? Vector4.zero : shoreMapping);
                 scene.Clock(shot.Seconds);
 
                 camera.Render();
@@ -616,14 +642,66 @@ public static class FoamPreview
     }
 
     /// <summary>
+    /// The real distance from the waterline, built by the mod's own ShoreDistance from the coast's
+    /// terrain at the game's 16 m points (the game: TerrainManager's 1081 x 1081), an Alpha8 texture as
+    /// RealGlass/Water/ShoreMap.cs holds it; and, for its cost, a map the game's size built once.
+    /// </summary>
+    private static Texture2D ShoreMap(out Vector4 mapping, List<string> log)
+    {
+        const float cell = 16f;
+        int points = (int)(2f * Half / cell) + 1;
+        var heights = new ushort[points * points];
+        for (int j = 0; j < points; j++)
+        {
+            for (int i = 0; i < points; i++)
+                heights[j * points + i] = Encode(Coast.Ground(-Half + i * cell, -Half + j * cell));
+        }
+
+        var distance = new ShoreDistance(points, cell);
+        distance.Build(heights, null, HeightScale / 65536f, SeaLevel);
+        var t = new Texture2D(distance.Side, distance.Side, TextureFormat.Alpha8, false, true)
+        {
+            wrapMode = TextureWrapMode.Clamp,
+            filterMode = FilterMode.Bilinear,
+        };
+        t.LoadRawTextureData(distance.Map);
+        t.Apply(false);
+        float scale, offset;
+        distance.Mapping(-Half, out scale, out offset);
+        mapping = new Vector4(scale, offset, ShoreDistance.Step, 1f);
+
+        // The game's size: its 1081 points a side, here the coast repeated (the cost, not the look).
+        const int gamePoints = 1081;
+        var game = new ushort[gamePoints * gamePoints];
+        for (int j = 0; j < gamePoints; j++)
+        {
+            for (int i = 0; i < gamePoints; i++)
+                game[j * gamePoints + i] = heights[(j % (points - 1)) * points + i % (points - 1)];
+        }
+        var big = new ShoreDistance(gamePoints, cell);
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        big.Build(game, game, HeightScale / 65536f, SeaLevel);
+        long ms = watch.ElapsedMilliseconds;
+        log.Add(string.Format(CultureInfo.InvariantCulture, "shore distances: {0} x {0} at {1} m, {2:F1}% sea, {3} coast samples; a game-sized map ({4} x {4}) in {5} ms",
+                              distance.Side, distance.Spacing, 100.0 * distance.SeaSamples / ((double)distance.Side * distance.Side), distance.CoastSamples, big.Side, ms));
+        return t;
+    }
+
+    /// <summary>
     /// The coast's shape and water, as functions of world x, z. The sea at <see cref="SeaLevel"/> west
     /// of a waterline that wanders round x = 0, its bed rising from 14 m deep 500 m out to the beach
     /// (south of z = -450 steeply, 12 cm a metre: the game's coasts);
     /// the land rising to a plateau 6-10 m above the sea; the river in a 64 m channel along z = 210
-    /// (meandering 40 m), its surface climbing 0.3% and 3 m at a rapid 380-440 m inland.
+    /// (meandering 40 m), its surface climbing 0.3% and 3 m at a rapid 380-440 m inland. Round
+    /// z = -1350 a bay cut 170 m into the steep coast, its floor a flat shelf 1.6 m deep sagging to
+    /// 2.4 m in its middle, the seabed dropping steeply again past its mouth (the author's screenshot,
+    /// 2026-10-25: there the surf closed into a ring).
     /// </summary>
     private sealed class Coast
     {
+        /// <summary>The bay: its middle along z, its half-width, how far it reaches inland, its shelf's depth and its sag's radius (m).</summary>
+        public const float BayZ = -1350f, BayHalf = 280f, BayIndent = 170f, BayShelf = 1.6f, BayBowl = 80f;
+
         /// <summary>The tsunami's height over the sea (m; 0 none).</summary>
         public float Tsunami;
 
@@ -644,7 +722,36 @@ public static class FoamPreview
 
         public static float ShoreX(float z)
         {
-            return 30f * Mathf.Sin(z / 140f) + 14f * Mathf.Sin(z / 53f + 1f);
+            return 30f * Mathf.Sin(z / 140f) + 14f * Mathf.Sin(z / 53f + 1f) + Bay(z);
+        }
+
+        /// <summary>How far the bay reaches inland at z (m; 0 outside it).</summary>
+        public static float Bay(float z)
+        {
+            float t = (z - BayZ) / BayHalf;
+            if (Mathf.Abs(t) >= 1f)
+                return 0f;
+            float c = Mathf.Cos(0.5f * Mathf.PI * t);
+            return BayIndent * c * c;
+        }
+
+        /// <summary>
+        /// The bay's water depth (m) at s m from its waterline (negative: the water), bay its reach there:
+        /// a beach face as steep as the coast's down to the shelf, the shelf sagging in its middle, and
+        /// past the coast's line (its mouth) the coast's own drop below the shelf.
+        /// </summary>
+        private static float BayDepth(float x, float z, float s, float bay)
+        {
+            float inside = s + bay;
+            if (inside > 0f)
+            {
+                float dx = x - (ShoreX(BayZ) - 0.5f * BayIndent), dz = z - BayZ;
+                float r2 = (dx * dx + dz * dz) / (BayBowl * BayBowl);
+                float sag = r2 < 1f ? (1f - r2) * (1f - r2) : 0f;
+                return Mathf.Min(0.12f * -s, BayShelf + 0.8f * sag);
+            }
+
+            return Mathf.Min(14f, Mathf.Min(BayShelf, 0.12f * bay) - 0.12f * inside);
         }
 
         public static float RiverZ(float x)
@@ -664,6 +771,8 @@ public static class FoamPreview
             float land;
             if (s < -500f)
                 land = SeaLevel - 14f;
+            else if (s < 0f && Bay(z) > 0f)
+                land = SeaLevel - BayDepth(x, z, s, Bay(z));
             else if (s < 0f)
             {
                 // South of z = -450 the seabed drops as the game's coasts do (the author's city,
@@ -1127,6 +1236,18 @@ public static class FoamPreview
             // The steep coast from 300 m up, the usual city view of a shoreline.
             eye = new Vector3(-520f, SeaLevel + 300f, -980f);
             at = new Vector3(20f, SeaLevel, -560f);
+        }
+        else if (view == "bay")
+        {
+            // The bay with a flat floor (the author's screenshot, 2026-10-25) from 380 m up, steeply down.
+            eye = new Vector3(-200f, SeaLevel + 380f, -1590f);
+            at = new Vector3(110f, SeaLevel, -1350f);
+        }
+        else if (view == "baylow")
+        {
+            // The bay from a lower city camera, 150 m up.
+            eye = new Vector3(-60f, SeaLevel + 150f, -1520f);
+            at = new Vector3(110f, SeaLevel, -1360f);
         }
         else if (view == "tsunamiclose")
         {

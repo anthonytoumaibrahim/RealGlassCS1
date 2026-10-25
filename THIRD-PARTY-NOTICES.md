@@ -174,7 +174,8 @@ history (Karis 2014; Pedersen 2016; with Sousa's distorted mirror, GPU Gems 2, 2
 ray-cone read, Akenine-Möller et al., Ray Tracing Gems, 2019, compiled in but switched off), and
 foam from the game's own water simulation -- along
 shores as Crest's (Bowles et al. 2017) and War Thunder's (Tcheblokov 2015) shore foam, a band
-measured from the shore as War Thunder phases its shore waves, broken waves running in at the
+measured from the shore as War Thunder phases its shore waves (that distance held near the true one,
+mapped by Felzenszwalb and Huttenlocher's distance transform, 2012), broken waves running in at the
 shallow-water speed in wave groups (McCowan 1894; Longuet-Higgins 1984), the swell beyond them
 spilling here and there (Galvin 1968), on rising, steep fronts by Chentanez and Mueller's breaking
 test (2010) -- in the layers of a whitecap's life (Monahan and Lu 1990; Potter et al. 2015; Callaghan et al. 2012), the bubbles under
@@ -389,7 +390,10 @@ Every technique here has shipped in a game or is published:
     foam bubbles and foam lighting are ([documentation](https://crest.readthedocs.io/en/stable/user/water-appearance.html)).
     The surf: a band along the shore measured in distance from it, as War Thunder phases its shore
     waves by the distance to the shore (Tcheblokov, above) -- the distance here the depth over the
-    seabed's slope -- broken waves running in at the shallow-water speed, the bigger breaking
+    seabed's slope, held within a corridor round the true distance from the waterline, mapped over
+    the whole map by the exact Euclidean distance transform of Pedro Felzenszwalb and Daniel
+    Huttenlocher, **Distance Transforms of Sampled Functions**, Theory of Computing 8, 2012
+    ([paper](https://theoryofcomputing.org/articles/v008a019/)) -- broken waves running in at the shallow-water speed, the bigger breaking
     farther out, as deep as their height allows (James McCowan, **On the highest wave of permanent
     type**, Philosophical Magazine 38, 1894), in sets (Michael Longuet-Higgins, **Statistical
     properties of wave groups in a random sea state**, Philosophical Transactions of the Royal Society

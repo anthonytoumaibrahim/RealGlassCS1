@@ -22,7 +22,8 @@ namespace RealGlass.Water
     ///   mod), as the city reflection.
     /// - IN LAYERS (2026-10-24, the author: "In real life, the foam is often layered"): fresh foam,
     ///   the residual sheet and the bubbles under them, by age (the shader's header); the surf as broken
-    ///   waves running in, in a band measured from the waterline.
+    ///   waves running in, in a band measured from the waterline -- kept near the real distance from it
+    ///   (<see cref="ShoreMap"/>), so a bay's flat floor does not close the band into rings.
     /// - With Detailed logging, every 5 s: the foam's draws a frame, and the simulation's numbers round
     ///   the camera the thresholds are set against (the rise a water frame, the flow's speed) -- the
     ///   front thresholds wait on a real tsunami's.
@@ -50,6 +51,9 @@ namespace RealGlass.Water
         };
         private static readonly int IdWater = Shader.PropertyToID("_RGFoamWater");
         private static readonly int IdClean = Shader.PropertyToID("_WaterColorClean");
+        // The sea's distance from the waterline (ShoreMap), the surf's corridor.
+        private static readonly int IdShore = Shader.PropertyToID("_RGShoreDistance");
+        private static readonly int IdShoreMapping = Shader.PropertyToID("_RGShoreMapping");
 
         // Read by the draw hook on every one of the game's terrain draws: kept to plain fields.
         private static Material s_material;
@@ -61,6 +65,8 @@ namespace RealGlass.Water
 
         private readonly Material _material;
         private readonly Texture2D _pattern;
+        private readonly ShoreMap _shore = new ShoreMap();
+        private Texture _shoreBound;
         private bool _shown;
         private float _statsAt = -1f;
         private int _framesSinceStats;
@@ -178,6 +184,15 @@ namespace RealGlass.Water
             Color clean = water != null && water.HasProperty(IdClean) ? water.GetColor(IdClean).linear : ((Color)Settings.Defaults.WaterColor).linear;
             _material.SetVector(IdWater, new Vector4(clean.r, clean.g, clean.b, 0f));
 
+            // The surf's distance from the waterline kept near the real one (the bays' rings).
+            _shore.Update(terrain, seaLevel);
+            if ((object)_shore.Texture != (object)_shoreBound && _shore.Texture != null)
+            {
+                _material.SetTexture(IdShore, _shore.Texture);
+                _shoreBound = _shore.Texture;
+            }
+            _material.SetVector(IdShoreMapping, _shoreBound != null ? _shore.Mapping : Vector4.zero);
+
             s_material = _material;
             s_gameWater = water;
             s_active = water != null;
@@ -206,6 +221,8 @@ namespace RealGlass.Water
             s_gameWater = null;
             UnityEngine.Object.Destroy(_material);
             UnityEngine.Object.Destroy(_pattern);
+            _shore.Destroy();
+            _shoreBound = null;
         }
 
         /// <summary>The pattern texture (FoamPattern: r lace, g patches, b bubbles' holes, a bubble clouds), mipmapped and tiling.</summary>

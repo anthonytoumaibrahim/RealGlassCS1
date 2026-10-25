@@ -915,6 +915,112 @@ Check "  the surf: 70 m from the waterline, to 8 m deep, the seabed's slope over
 $cross = 2.0 * [Math]::Sqrt($lv[23]) / [Math]::Sqrt(9.80665 * $lv[13])
 Check "  about four bores in the surf at once" ([Math]::Round($cross / $lv[12])) 4
 Check "  pure water absorbs red most, blue least (Pope & Fry 1997)" (($lv[28] -gt $lv[29]) -and ($lv[29] -gt $lv[30])) "True"
+Check "  the surf's corridor round the real distance: x 1.5, give or take 12 m" ("{0} {1}" -f $lv[38], $lv[39]) "1.5 12"
+
+# ---- the shore's distances (Water/ShoreDistance.cs: Felzenszwalb & Huttenlocher's transform) ----
+# Against the definition, sample by sample: the land/sea mask as the class takes it (the lower of two
+# height sets, bilinear between the points), the features the land next to the sea, each sample's
+# nearest feature found by trying them all.
+Add-Type -TypeDefinition @"
+using System;
+public static class ShoreTest
+{
+    public static byte[] Brute(ushort[] h, ushort[] h2, int n, float cell, float unit, float seaLevel, int factor, float step, int zero)
+    {
+        int side = (n - 1) * factor + 1;
+        float sea = seaLevel / unit, spacing = cell / factor;
+        var land = new bool[side * side];
+        for (int j = 0; j < side; j++)
+            for (int i = 0; i < side; i++)
+            {
+                int cx = Math.Min(i / factor, n - 2), cz = Math.Min(j / factor, n - 2);
+                float fx = (i - cx * factor) / (float)factor, fz = (j - cz * factor) / (float)factor;
+                float v = Bi(h, cz * n + cx, n, fx, fz);
+                if (h2 != null) v = Math.Min(v, Bi(h2, cz * n + cx, n, fx, fz));
+                land[j * side + i] = v >= sea;
+            }
+        var fi = new System.Collections.Generic.List<int>();
+        for (int j = 0; j < side; j++)
+            for (int i = 0; i < side; i++)
+            {
+                int k = j * side + i;
+                if (land[k] && ((i > 0 && !land[k - 1]) || (i < side - 1 && !land[k + 1]) || (j > 0 && !land[k - side]) || (j < side - 1 && !land[k + side])))
+                    fi.Add(k);
+            }
+        var map = new byte[side * side];
+        for (int j = 0; j < side; j++)
+            for (int i = 0; i < side; i++)
+            {
+                int k = j * side + i;
+                int best = int.MaxValue;
+                foreach (int f in fi) { int dx = f % side - i, dz = f / side - j; best = Math.Min(best, dx * dx + dz * dz); }
+                // Single precision, as the class rounds (a half-step tie must fall the same way).
+                float r = best == int.MaxValue ? 1e9f : (float)Math.Sqrt(best);
+                float metres = land[k] ? -(r + 0.5f) * spacing : (r - 0.5f) * spacing;
+                map[k] = (byte)Math.Max(0, Math.Min(255, (double)zero + Math.Round(metres / step)));
+            }
+        return map;
+    }
+    static float Bi(ushort[] h, int at, int n, float fx, float fz)
+    {
+        float a = h[at] + fx * (h[at + 1] - h[at]), b = h[at + n] + fx * (h[at + n + 1] - h[at + n]);
+        return a + fz * (b - a);
+    }
+    // A coast of blobs: heights in 1/64 m round a sea at 40 m, land up to 10 m above it, sea 14 m below.
+    public static ushort[] Coast(int n, int seed, double landShare)
+    {
+        var rnd = new Random(seed);
+        var cx = new double[6]; var cz = new double[6]; var cr = new double[6];
+        for (int b = 0; b < 6; b++) { cx[b] = rnd.NextDouble() * n; cz[b] = rnd.NextDouble() * n; cr[b] = (0.1 + 0.25 * rnd.NextDouble()) * n * landShare * 2; }
+        var h = new ushort[n * n];
+        for (int j = 0; j < n; j++)
+            for (int i = 0; i < n; i++)
+            {
+                double m = -1;
+                for (int b = 0; b < 6; b++) m = Math.Max(m, 1 - Math.Sqrt((i - cx[b]) * (i - cx[b]) + (j - cz[b]) * (j - cz[b])) / cr[b]);
+                double metres = 40 + (m > 0 ? 10 * m + 0.3 : -14 * Math.Min(1, -m * 3) - 0.3) + 0.4 * (rnd.NextDouble() - 0.5);
+                h[j * n + i] = (ushort)Math.Round(metres * 64);
+            }
+        return h;
+    }
+}
+"@
+$shore = $asm.GetType('RealGlass.Water.ShoreDistance', $true)
+$worst = 0; $off = 0; $total = 0
+foreach ($seed in 1, 2, 3) {
+    $n = 41
+    $h = [ShoreTest]::Coast($n, $seed, 0.5)
+    $h2 = if ($seed -eq 2) { [ShoreTest]::Coast($n, 9, 0.4) } else { $null }
+    $sd = [Activator]::CreateInstance($shore, @([int]$n, [single]16))
+    $sd.Build($h, $h2, [single](1.0 / 64.0), [single]40)
+    $want = [ShoreTest]::Brute($h, $h2, $n, 16, (1.0 / 64.0), 40, $shore::Factor, $shore::Step, $shore::Zero)
+    for ($k = 0; $k -lt $want.Length; $k++) {
+        $d = [Math]::Abs([int]$sd.Map[$k] - [int]$want[$k])
+        if ($d -gt $worst) { $worst = $d }
+        if ($d -ne 0) { $off++ }
+        $total++
+    }
+}
+Check "the shore's distances: every sample as the definition's, on three coasts (one with two height sets)" ("{0} {1}" -f $off, $worst) "0 0"
+$sea = 0; $land = 0; foreach ($b in $sd.Map) { if ($b -gt $shore::Zero) { $sea++ } elseif ($b -lt $shore::Zero) { $land++ } }
+Check "  the coasts have both sea and land, the map both signs" (($sea -gt 500) -and ($land -gt 500) -and ($sd.SeaSamples -gt 0) -and ($sd.CoastSamples -gt 0)) "True"
+# An island in a wide sea: far out the byte ends at 255 (past 254 m), far inland at 0.
+$n = 81; $h = New-Object 'uint16[]' ($n * $n)
+for ($j = 0; $j -lt $n; $j++) { for ($i = 0; $i -lt $n; $i++) { $h[$j * $n + $i] = if ($i -lt 50 -and $j -lt 50) { 50 * 64 } else { 26 * 64 } } }
+$sd = [Activator]::CreateInstance($shore, @([int]$n, [single]16))
+$sd.Build($h, $null, [single](1.0 / 64.0), [single]40)
+$side = $sd.Side
+Check "  a map of 81 points a side: 161 samples, 8 m apart" ("{0} {1}" -f $side, $sd.Spacing) "161 8"
+Check "  far out at sea 255, deep inland 0" ("{0} {1}" -f $sd.Map[($side - 1) * $side + $side - 1], $sd.Map[0]) "255 0"
+# Along a row across the coast (the land's last point at x = 49 cells: sample 98): the waterline between
+# samples 98 and 99, the sea's samples 4, 12, 20 m out, the land's 4, 12 m in.
+$row = 40 * $side
+$a = @(); foreach ($i in 97, 98, 99, 100, 101) { $a += $shore::Metres($sd.Map[$row + $i]) }
+Check "  across the coast: 12 m and 4 m in, 4, 12, 20 m out (steps of 2 m)" ($a -join " ") "-12 -4 4 12 20"
+$scale = 0.0; $offset = 0.0
+$game = [Activator]::CreateInstance($shore, @([int]1081, [single]16))
+$game.Mapping([single]-8640, [ref]$scale, [ref]$offset)
+Check "  the game's map: 2161 samples a side; the world's middle at uv 0.5, the first point at its texel's centre" ("{0} {1:F6} {2:F6}" -f $game.Side, ($scale * 0 + $offset), (-8640 * $scale + $offset)) ("2161 0.500000 {0:F6}" -f (0.5 / 2161))
 
 # ---- the FFT waves (WaterSpectrum; the GPU against it: UnityProject\Assets\Editor\WaterWavesTest.cs) --
 $spectrumType = $asm.GetType('RealGlass.Water.WaterSpectrum', $true)

@@ -191,8 +191,24 @@ namespace RealGlass.Water
         public const double FrontSteepFull = 0.15;
 
         /// <summary>
+        /// The surf's distance from the waterline, kept within a corridor round the real one (the
+        /// author's screenshot, 2026-10-25: in a bay the foam closed into a ring). The depth over the
+        /// seabed's slope runs away where a bay's floor flattens (1.5 m over a slope of 1%: 150 m), so
+        /// the band's edge and the bores' crests closed round the flattest spot. At sea it is held no
+        /// nearer than the real distance (ShoreDistance's map) / <see cref="ShoreCorridor"/> and no
+        /// farther than x it, give or take <see cref="ShoreSlack"/> m (the map's 8 m samples, the
+        /// water's edge wandering with the swell); inland, on flooded land, only no nearer. A mild hold
+        /// (the author: "the foam should bend/arc a bit anyway"): the seabed still bends the lines; on a
+        /// plane beach the two agree and nothing changes.
+        /// </summary>
+        public const double ShoreCorridor = 1.5;
+
+        public const double ShoreSlack = 12.0;
+
+        /// <summary>
         /// The layers' ten vectors (_RGFoamLayers, _RGFoamSheet, _RGFoamBubbles, _RGFoamSurf,
-        /// _RGFoamScale2, _RGFoamExtra, _RGFoamCrest, _RGFoamAbsorb, _RGFoamOuter, _RGFoamSteep).
+        /// _RGFoamScale2, _RGFoamExtra, _RGFoamCrest, _RGFoamAbsorb, _RGFoamOuter, _RGFoamSteep -- the
+        /// last also the surf's corridor).
         /// </summary>
         public static double[] LayerVectors()
         {
@@ -207,7 +223,7 @@ namespace RealGlass.Water
                 CrestLife, SlopeSpan, SurfDepth, MinSlope,
                 AbsorptionRed, AbsorptionGreen, AbsorptionBlue, 0.0,
                 OuterReach, OuterDepth, OuterLife, OuterScale,
-                FrontSteepStart, FrontSteepFull, 0.0, 0.0,
+                FrontSteepStart, FrontSteepFull, ShoreCorridor, ShoreSlack,
             };
         }
     }

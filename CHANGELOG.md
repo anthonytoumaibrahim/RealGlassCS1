@@ -43,7 +43,8 @@ the mod's name in the game.
   wording may be off -- corrections are welcome. Any text not yet translated shows in English.
 - **Foam in layers along the shores.** The surf is now a band some 70 m wide along the sea's shores,
   however steeply the seabed drops (before, on the game's steep coasts, the shore foam was one thin
-  line). Waves break in it one after another and run in, in sets of bigger and smaller ones, each
+  line), following the shore's shape in bays with a flat floor too, where it would otherwise close
+  into rings. Waves break in it one after another and run in, in sets of bigger and smaller ones, each
   with a bright, churning crest, leaving a sheet of lace that thins and tears into streaks over the
   next seconds, the older waves' foam still under the newer; under the foam a cloud of bubbles turns
   the water paler, in the water's own color. Out beyond the surf the swell coming in breaks here
