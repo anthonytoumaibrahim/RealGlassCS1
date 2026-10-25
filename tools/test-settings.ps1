@@ -1516,5 +1516,40 @@ $threw = $false
 try { foreach ($junk in @("", "RealGlassRoomFits", "RealGlassRoomFits 1`n`t`t`t`t", "RealGlassRoomFits 1`nx`ty`t`t1 2 3`t", [string]::new([char]0, 50))) { [void]$rc::Parse($junk, [ref]$skipped, [ref]$reason) } } catch { $threw = $true }
 Check "  junk of every kind: nothing thrown" $threw "False"
 
+# ---- the vehicles' glass (Glass\VehicleGlassLook.cs) ---------------------------------------
+# Each vehicle's own number (Seed) from its id as the game gives it (InstanceID.RawData, IL: a moving
+# vehicle 0x02000000 + its index, a parked one 0x07000000 + its own): the share of them with tinted
+# windows the slider asks for, and each tinted car its own shade -- VehicleGlass.shader's
+# frac(seed x 97.13) between the lightest and the darkest film. (A float hash of these ids gave
+# every moving car one of four numbers: 25% tinted at 5%, every one the same shade.)
+$look = $asm.GetType('RealGlass.Glass.VehicleGlassLook', $true)
+$vehicleSeeds = @{}
+$outside = 0
+foreach ($kind in @(@{ Name = 'moving'; Base = [uint32]0x02000000; Count = 16383 }, @{ Name = 'parked'; Base = [uint32]0x07000000; Count = 32767 })) {
+    $list = New-Object 'System.Collections.Generic.List[single]'
+    for ($k = 1; $k -le $kind.Count; $k++) {
+        $s = $look::Seed([uint32]($kind.Base -bor [uint32]$k))
+        if ($s -lt 0 -or $s -ge 1) { $outside++ }
+        $list.Add($s)
+    }
+    $vehicleSeeds[$kind.Name] = $list
+}
+$distinct = New-Object 'System.Collections.Generic.HashSet[single]'
+$all = 0
+foreach ($list in $vehicleSeeds.Values) { foreach ($s in $list) { [void]$distinct.Add($s); $all++ } }
+Check "vehicles: each its own number, 0..1 (16383 moving, 32767 parked: over 99% different)" ("{0} {1}" -f $outside, ($distinct.Count -gt 0.99 * $all)) "0 True"
+foreach ($name in @('moving', 'parked')) {
+    $list = $vehicleSeeds[$name]
+    $at5 = 0; $at30 = 0; $tenths = New-Object int[] 10
+    foreach ($s in $list) {
+        if ($s -lt 0.3) { $at30++ }
+        if ($s -lt 0.05) { $at5++; $tenths[[int][Math]::Floor((($s * 97.13) % 1.0) * 10.0)]++ }
+    }
+    $p5 = 100.0 * $at5 / $list.Count; $p30 = 100.0 * $at30 / $list.Count
+    $fewest = ($tenths | Measure-Object -Minimum).Minimum
+    Check "  $name`: tinted at 5% and 30% as asked (to half a point, to a point)" ("{0} {1}" -f ([Math]::Abs($p5 - 5) -le 0.5), ([Math]::Abs($p30 - 30) -le 1)) "True True"
+    Check "  $name`: the tinted cars' shades spread over the film's range (every tenth of it at least half its share)" ($fewest -ge $at5 / 20) "True"
+}
+
 Write-Host ""
 if ($failed -eq 0) { Write-Host "all passed" } else { Write-Host "$failed FAILED"; exit 1 }

@@ -111,14 +111,23 @@ namespace RealGlass.Glass
             Shader.SetGlobalVector("_RGVehicleFilm", new Vector4(film.r / filmMax, film.g / filmMax, film.b / filmMax, 0f));
         }
 
-        /// <summary>A vehicle's own random number, 0..1, from its id: whether its windows are tinted, and how dark -- the same every frame (Hoskins' hash without sine).</summary>
-        public static float Seed(int id)
+        /// <summary>
+        /// A vehicle's own random number, 0..1, from its id -- the game's InstanceID.RawData of it,
+        /// moving or parked: whether its windows are tinted, and how dark -- the same every frame.
+        /// An integer hash (Jarzynski and Olano 2020's PCG hash), every bit of the id stirring every
+        /// bit of the number: a float hash of the id lost its low bits (a moving vehicle's id is
+        /// 0x02000000 + its index, past a float's 24 bits), and every car took one of four numbers.
+        /// </summary>
+        public static float Seed(uint id)
         {
-            float p = id * 0.1031f;
-            p -= Mathf.Floor(p);
-            p *= p + 33.33f;
-            p *= p + p;
-            return p - Mathf.Floor(p);
+            unchecked
+            {
+                uint state = id * 747796405u + 2891336453u;
+                uint word = ((state >> (int)((state >> 28) + 4u)) ^ state) * 277803737u;
+                uint hash = (word >> 22) ^ word;
+                // The top 24 bits: each held exactly by a float, 0 .. just under 1.
+                return (hash >> 8) * (1f / 16777216f);
+            }
         }
     }
 }

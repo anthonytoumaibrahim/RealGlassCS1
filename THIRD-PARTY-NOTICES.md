@@ -201,7 +201,7 @@ period of its rows and columns of windows by autocorrelation as Rabiner found th
 (1977), refined by epoch folding (Leahy et al. 1983) -- and for vehicles, automotive glass as a
 slab of soda-lime with the light transmittance UN Regulation No. 43 asks of a windscreen, and the
 paint's clear coat as Filament's clear-coat layer (Guy and Agopian) with Autodesk Standard
-Surface's coat roughness --
+Surface's coat roughness, each vehicle's own random number by Jarzynski and Olano's PCG hash --
 listed with links under *References* below. Apart from the ray tracer above, the implementations
 were written for this mod.
 
@@ -458,7 +458,10 @@ Every technique here has shipped in a game or is published:
     beneath dimmed by the coat's Fresnel reflectance (Romain Guy and Mathias Agopian, **Physically
     Based Rendering in Filament**, [documentation](https://google.github.io/filament/Filament.html))
     -- at the default coat roughness of **Autodesk Standard Surface**
-    ([specification](https://autodesk.github.io/standard-surface/)).
+    ([specification](https://autodesk.github.io/standard-surface/)); each vehicle's own random
+    number (whether its windows are tinted, and how dark) from its id by the PCG hash (Mark
+    Jarzynski and Marc Olano, **Hash Functions for GPU Rendering**, Journal of Computer Graphics
+    Techniques 9(3), 2020, [paper](https://jcgt.org/published/0009/03/02/)).
 
 ## Trademarks
 

@@ -449,12 +449,14 @@ public static class GlassPreview
         };
         for (int k = 0; k < spots.GetLength(0); k++)
         {
-            PreviewVehicleAsset a = s.VehicleAssets[k % s.VehicleAssets.Count];
-            var v = new Vehicle { Asset = a, Paint = paints[(k * 3) % paints.Length], Seed = VehicleGlassLook.Seed(k + 1) };
-            v.Matrix = Matrix4x4.TRS(new Vector3(spots[k, 0], 0f, StreetZ + spots[k, 1]), Quaternion.Euler(0f, spots[k, 2], 0f), Vector3.one);
             // In traffic (the first eight): every third braking, the hero car (0) signalling left; parked
             // cars dark. At night the moving ones with their headlights and tail lights on.
             bool moving = k < 8;
+            // Its id as the game's (InstanceID.RawData): a moving vehicle's 0x02000000 + its index, a parked one's 0x07000000 + its own.
+            uint id = (moving ? 0x02000000u : 0x07000000u) | (uint)(k + 1);
+            PreviewVehicleAsset a = s.VehicleAssets[k % s.VehicleAssets.Count];
+            var v = new Vehicle { Asset = a, Paint = paints[(k * 3) % paints.Length], Seed = VehicleGlassLook.Seed(id) };
+            v.Matrix = Matrix4x4.TRS(new Vector3(spots[k, 0], 0f, StreetZ + spots[k, 1]), Quaternion.Euler(0f, spots[k, 2], 0f), Vector3.one);
             float brake = moving && k % 3 == 0 ? 1f : 0f;
             v.DayLights = new Vector4(0f, brake, k == 0 ? 1f : 0f, 0f);
             v.NightLights = moving ? new Vector4(1f, Mathf.Max(0.5f, brake), k == 0 ? 1f : 0f, 0f) : Vector4.zero;

@@ -155,22 +155,23 @@ namespace RealGlass.Vehicles
         {
             if (!Active)
                 return;
-            Note(mesh, matrix, material, layer, (int)(id.RawData & 0x7FFFFFFF));
+            Note(mesh, matrix, material, layer, id.RawData);
         }
 
-        /// <summary>A parked vehicle the game just drew (VehicleParked.RenderInstance): its id offset past every moving one's.</summary>
+        /// <summary>A parked vehicle the game just drew (VehicleParked.RenderInstance): its id as the game's InstanceID of a parked vehicle.</summary>
         public static void NoteParked(Mesh mesh, Matrix4x4 matrix, Material material, int layer, ushort parkedId)
         {
             if (!Active)
                 return;
-            Note(mesh, matrix, material, layer, 0x1000000 + parkedId);
+            Note(mesh, matrix, material, layer, new InstanceID { ParkedVehicle = parkedId }.RawData);
         }
 
         /// <summary>
-        /// A vehicle as the game drew it, with its id: the id gives it its own random number (whether
-        /// its windows are tinted, and how dark), the same every frame, so a car keeps its glass as it drives.
+        /// A vehicle as the game drew it, with its id (InstanceID.RawData): the id gives it its own random
+        /// number (whether its windows are tinted, and how dark), the same every frame, so a car keeps its
+        /// glass as it drives.
         /// </summary>
-        private static void Note(Mesh mesh, Matrix4x4 matrix, Material material, int layer, int id)
+        private static void Note(Mesh mesh, Matrix4x4 matrix, Material material, int layer, uint id)
         {
             try
             {
