@@ -1,5 +1,5 @@
-[h1]Version 1.1.4[/h1]
-Asset Editor support, better water foam, reflective glass on vehicles, and more. See everything in the [url=https://steamcommunity.com/sharedfiles/filedetails/changelog/3823419476]change notes[/url].
+[h1]Version 1.1.5[/h1]
+Asset Editor support, better water foam, reflective glass on vehicles, fix reflections not showing on Mac, and more. See everything in the [url=https://steamcommunity.com/sharedfiles/filedetails/changelog/3823419476]change notes[/url].
 If something stopped working after the update, please let me know.
 
 [hr][/hr]
