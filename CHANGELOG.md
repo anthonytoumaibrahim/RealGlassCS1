@@ -3,6 +3,18 @@
 All notable changes to Real Glass & Water. The version is `Mod.Version` in `RealGlass/Mod.cs`, shown after
 the mod's name in the game.
 
+## 1.1.6 — unreleased
+
+### Changed
+
+- **Glass on vehicles keeps less memory.** Every vehicle model that came near used to reserve room
+  for 500 copies at once (about 34 KB) for the rest of the session, whether one or a hundred of it
+  were ever in view. The room now grows with the copies actually in view, and the number of models
+  remembered at once is capped, so a long session with many vehicle models costs a few megabytes at
+  most. Nothing changes in how the glass looks. (Measured before the change on a highway with
+  thousands of vehicles a second: memory did not grow with the glass on; this takes out the fixed
+  reservation per model.)
+
 ## 1.1.5 — 2026-10-26
 
 ### Fixed

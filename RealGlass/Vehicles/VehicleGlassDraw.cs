@@ -16,6 +16,12 @@ namespace RealGlass.Vehicles
     /// shader's array: 500 on Direct3D 11, 125 on OpenGL and Metal). Where instancing is missing, one
     /// DrawMesh a vehicle. Only the near tier: a vehicle's LOD is a few pixels, its glass fewer.
     ///
+    /// Memory follows the models, not the vehicles: a model's arrays start at a few copies and double as
+    /// its copies in view need, up to the shader's array (a model with more is drawn at every 500 and
+    /// goes on); how many models are remembered is capped (<see cref="MaxModels"/>). Measured in the game
+    /// (2026-10-26, a highway, ~4,000 vehicle meshes a second through the hook, the glass switched off and
+    /// on in turns): the process's memory did not grow with the glass on.
+    ///
     /// Only ever called on the main thread, from inside the game's rendering. Every entry point is in a
     /// try: an exception here would come back for every vehicle every frame, so one is logged and the
     /// vehicles' glass stays off for the rest of the city (<see cref="Fail"/>); the game draws on.
@@ -37,6 +43,18 @@ namespace RealGlass.Vehicles
         /// <summary>The most instances one DrawMeshInstanced is given: Direct3D 11's array (UNITY_MAX_INSTANCE_COUNT, Unity 5.6).</summary>
         private const int MaxInstances = 500;
 
+        /// <summary>A model's arrays start this long and double as its copies in view need, up to <see cref="MaxInstances"/>.</summary>
+        private const int FirstInstances = 8;
+
+        /// <summary>
+        /// The most models (mesh + material) and materials remembered at once. The game's own vehicle
+        /// assets, a heavy Workshop collection included, stay far below it (one material per prefab, plus
+        /// its sub-meshes' and the underground one the game makes); it is reached only by a mod handing the
+        /// game a NEW material or mesh per vehicle per draw -- then the ones not in view are forgotten and
+        /// read again when they come back (<see cref="Forget"/>), and memory stays bounded.
+        /// </summary>
+        private const int MaxModels = 8192;
+
         /// <summary>What a vehicle material gives its glass: the game's shader kind, its maps, or nothing.</summary>
         private sealed class Source
         {
@@ -49,12 +67,14 @@ namespace RealGlass.Vehicles
         /// <summary>One model's vehicles this frame.</summary>
         private sealed class Batch
         {
+            public long Key;
             public Mesh Mesh;
             public Material Material;
             public Source Source;
             public int Layer;
-            public readonly Matrix4x4[] Matrices = new Matrix4x4[MaxInstances];
-            public readonly float[] Seeds = new float[MaxInstances];
+            // As long as this model has had copies in view at once (FirstInstances .. MaxInstances).
+            public Matrix4x4[] Matrices = new Matrix4x4[FirstInstances];
+            public float[] Seeds = new float[FirstInstances];
             public int Count;
         }
 
@@ -63,9 +83,12 @@ namespace RealGlass.Vehicles
         private static readonly List<Batch> Pending = new List<Batch>();
         private static readonly MaterialPropertyBlock Block = new MaterialPropertyBlock();
         private static readonly Dictionary<string, int> ShaderCounts = new Dictionary<string, int>();
+        /// <summary>The seeds handed to the block, always the shader's full array (see <see cref="DrawBatch"/>).</summary>
+        private static readonly float[] SeedsFull = new float[MaxInstances];
         private static int _frame = -1;
         private static bool _instanced;
         private static bool _loggedMode;
+        private static bool _loggedForget;
 
         private static int _idMain, _idXys, _idAci, _idFloor, _idShader, _idSt, _idSeed;
         private static bool _ids;
@@ -95,7 +118,38 @@ namespace RealGlass.Vehicles
             ShaderCounts.Clear();
             _frame = -1;
             _loggedMode = false;
+            _loggedForget = false;
             Vehicles = Draws = 0;
+        }
+
+        /// <summary>
+        /// More models or materials than <see cref="MaxModels"/>: the ones not in view this frame are
+        /// forgotten (their arrays with them); a model coming back is read again from its material. The
+        /// models in view this frame (pending, each with a copy noted) stay. Once per city in the log.
+        /// </summary>
+        private static void Forget()
+        {
+            Sources.Clear();
+            Batches.Clear();
+            for (int i = 0; i < Pending.Count; i++)
+                Batches[Pending[i].Key] = Pending[i];
+            if (_loggedForget)
+                return;
+            _loggedForget = true;
+            Log.Msg("vehicles: over " + MaxModels + " vehicle models or materials seen in this city: the ones not in view are forgotten and read " +
+                    "again when they come back (a mod may be making a material per vehicle)");
+        }
+
+        /// <summary>This model has more copies in view at once than its arrays hold: twice as long, up to the shader's array.</summary>
+        private static void Grow(Batch b)
+        {
+            int size = Math.Min(b.Matrices.Length * 2, MaxInstances);
+            var matrices = new Matrix4x4[size];
+            Array.Copy(b.Matrices, matrices, b.Count);
+            b.Matrices = matrices;
+            var seeds = new float[size];
+            Array.Copy(b.Seeds, seeds, b.Count);
+            b.Seeds = seeds;
         }
 
         /// <summary>
@@ -146,6 +200,8 @@ namespace RealGlass.Vehicles
                 s.Ok = s.Xys != null && s.Aci != null;
             }
 
+            if (Sources.Count >= MaxModels)
+                Forget();
             Sources[material] = s;
             return s;
         }
@@ -197,7 +253,9 @@ namespace RealGlass.Vehicles
                 Batch b;
                 if (!Batches.TryGetValue(key, out b) || b.Mesh != mesh || b.Material != material)
                 {
-                    b = new Batch { Mesh = mesh, Material = material, Source = source };
+                    if (Batches.Count >= MaxModels)
+                        Forget();
+                    b = new Batch { Key = key, Mesh = mesh, Material = material, Source = source };
                     Batches[key] = b;
                 }
                 if (b.Count == 0)
@@ -208,6 +266,10 @@ namespace RealGlass.Vehicles
                 else if (b.Count == MaxInstances)
                 {
                     DrawBatch(b);   // a full array drawn now; the model stays pending for the rest
+                }
+                else if (b.Count == b.Matrices.Length)
+                {
+                    Grow(b);
                 }
 
                 b.Matrices[b.Count] = matrix;
@@ -267,8 +329,10 @@ namespace RealGlass.Vehicles
             Block.SetVector(_idSt, b.Source.St);
             if (_instanced)
             {
-                // The seeds' array keeps the length it is first given in a block: always the full one.
-                Block.SetFloatArray(_idSeed, b.Seeds);
+                // The seeds' array keeps the length it is first given in a block: always the full one,
+                // this model's seeds copied in (what lies past its count is never read).
+                Array.Copy(b.Seeds, SeedsFull, b.Count);
+                Block.SetFloatArray(_idSeed, SeedsFull);
                 Graphics.DrawMeshInstanced(b.Mesh, 0, Glass, b.Matrices, b.Count, Block, ShadowCastingMode.Off, false, b.Layer, null);
                 Draws++;
             }
