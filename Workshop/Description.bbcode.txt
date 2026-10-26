@@ -41,7 +41,7 @@ For LOD textures, make sure to include specular for it too ([i]_lod_s[/i]), othe
 [h1]Source code[/h1]
 Open source (MIT). Includes UnifiedUILib by kianzarrin and CitiesHarmony.API by boformer, thanks to both.
 This mod was made with substantial help from AI. I set the goals, made the design decisions, and did all of the in-game testing and tuning.
-[h3][url=https://github.com/anthonytoumaibrahim/RealGlassCS1]Open on GitHub[/url][/h3]
+[h3][url=https://github.com/atianthony12/RealGlassCS1]Open on GitHub[/url][/h3]
 
 [hr][/hr]
 [h1]Reporting a bug[/h1]
