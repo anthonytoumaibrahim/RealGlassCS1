@@ -54,3 +54,4 @@ On a Mac it is in [i]~/Library/Application Support/Colossal Order/Cities_Skyline
 [*][b]What happened[/b]: what you did and expected, screenshots, your graphics card and your other mods.
 [/olist]
 Both logs start fresh at every launch, so copy them before restarting, upload them (Google Drive, Pastebin...) and post the link in the comments.
+Or [url=https://github.com/atianthony12/RealGlassCS1/issues]open an issue on GitHub[/url] instead, where you can attach the log files directly.
