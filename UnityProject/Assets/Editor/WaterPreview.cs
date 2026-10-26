@@ -70,6 +70,9 @@ public static class WaterPreview
             var seqs = new List<Seq>();
             string outDir = dir;
             int width = 960, height = 540;
+            // The camera's viewport (the game's own with its toolbar shown: CameraController.
+            // kFullScreenWithoutMenuBarRect); the buffers then sized from the camera, as the mod sizes them.
+            Rect viewport = new Rect(0f, 0f, 1f, 1f);
             float streak = 0f, length = 1f, exposureDay = 1f, exposureNight = 1f, rippleRms = 0.3f, cityGain = 0f;
             // frames, warm-up, frames a second, jitter, blending, sharpen, raw frames written at the end
             var taa = new float[] { 64f, 32f, 60f, 1f, 0.94f, 0.15f, 0f };
@@ -83,6 +86,8 @@ public static class WaterPreview
                     width = int.Parse(p[1], CultureInfo.InvariantCulture);
                     height = int.Parse(p[2], CultureInfo.InvariantCulture);
                 }
+                else if (p[0] == "rect")
+                    viewport = new Rect(F(p[1]), F(p[2]), F(p[3]), F(p[4]));
                 else if (p[0] == "table")
                     table[int.Parse(p[1], CultureInfo.InvariantCulture)] = new Vector4(F(p[2]), 0f, 0f, 0f);
                 else if (p[0] == "ripple")
@@ -162,12 +167,19 @@ public static class WaterPreview
             camera.fieldOfView = 45f;
             camera.nearClipPlane = 1f;
             camera.farClipPlane = 20000f;
-            var target = new RenderTexture(width, height, 24, RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
+            // With a viewport, an LDR target as the game's screen: Unity then renders the HDR picture
+            // into a buffer of its own the camera's size and copies it into the viewport at the end, as
+            // in the game (rendering straight into a part of an HDR target, legacy deferred's light
+            // pass reads the wrong place: black buildings).
+            bool part = viewport.x != 0f || viewport.y != 0f || viewport.width != 1f || viewport.height != 1f;
+            var target = new RenderTexture(width, height, 24, part ? RenderTextureFormat.ARGB32 : RenderTextureFormat.ARGBHalf, RenderTextureReadWrite.Linear);
             camera.targetTexture = target;
+            camera.rect = viewport;
+            log.Add("camera " + camera.pixelWidth + " x " + camera.pixelHeight + " at " + camera.pixelRect + " of " + width + " x " + height);
 
             // As WaterCityReflection.Record.
             var mesh = UnitCube();
-            int w = Mathf.Max(1, width / 2), h = Mathf.Max(1, height / 2);
+            int w = Mathf.Max(1, camera.pixelWidth / 2), h = Mathf.Max(1, camera.pixelHeight / 2);
             RenderTexture frame = Target(w, h, true), trace = Target(w, h, false), streaked = Target(w, h, true);
             RenderTexture accum = Target(w, h, true), history = Target(w, h, false);
             material.SetTexture("_RGWaterFrame", frame);
@@ -175,7 +187,7 @@ public static class WaterPreview
             material.SetTexture("_RGWaterTraced", trace);
             material.SetTexture("_RGWaterHistory", history);
             var buffer = new CommandBuffer { name = "RealGlass water reflection (preview)" };
-            PreviewWaterSurface.Record(buffer, material, GameObject.Find("preview water surface"), width, height);
+            PreviewWaterSurface.Record(buffer, material, GameObject.Find("preview water surface"), camera.pixelWidth, camera.pixelHeight);
             buffer.Blit(BuiltinRenderTextureType.CameraTarget, frame);
             buffer.SetRenderTarget(trace);
             buffer.ClearRenderTarget(false, true, Color.clear);
@@ -233,7 +245,8 @@ public static class WaterPreview
                 png.SetPixels(o);
                 png.Apply(false);
                 File.WriteAllBytes(Path.Combine(outDir, shot.Name + ".png"), png.EncodeToPNG());
-                log.Add("shot " + shot.Name + " ok");
+                log.Add("shot " + shot.Name + " ok; the frame's copy " + Coverage(frame, 1) + ", the trace " + Coverage(trace, 3) +
+                        " (coloured " + Coverage(trace, 1) + "), the streaks " + Coverage(streaked, 3));
             }
         }
         catch (Exception e)
@@ -519,6 +532,32 @@ public static class WaterPreview
             for (int x = 0; x < width; x++)
                 mask[y * width + x] = px[Mathf.Min(h - 1, y / 2) * w + Mathf.Min(w - 1, x / 2)].a > 0.5f;
         return mask;
+    }
+
+    /// <summary>The share of a buffer's texels whose channel is above 0, and the rows they span (0 = bottom).</summary>
+    private static string Coverage(RenderTexture rt, int channel)
+    {
+        if (rt == null)
+            return "(none)";
+        var read = new Texture2D(rt.width, rt.height, TextureFormat.RGBAFloat, false, true);
+        RenderTexture.active = rt;
+        read.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0);
+        RenderTexture.active = null;
+        Color[] px = read.GetPixels();
+        int count = 0, low = -1, high = -1;
+        for (int i = 0; i < px.Length; i++)
+        {
+            if (px[i][channel] <= 0f)
+                continue;
+            count++;
+            int row = i / rt.width;
+            if (low < 0)
+                low = row;
+            high = row;
+        }
+        UnityEngine.Object.DestroyImmediate(read);
+        return (100.0 * count / px.Length).ToString("F1", CultureInfo.InvariantCulture) + "% of " + rt.width + " x " + rt.height +
+               (count > 0 ? " (rows " + low + ".." + high + ")" : "");
     }
 
     private static RenderTexture RippleTarget(int size, bool autoMips)

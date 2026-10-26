@@ -15,6 +15,9 @@
 #                             the game; the default is the mod's fallback)
 #   ... -Day 1 -Night 2.05 -Streaks 0.036 -Length 1.65 -Width 960 -Height 540 -Name water
 #   ... -Api glcore           the OpenGL Core shaders instead of Direct3D 11
+#   ... -Rect "0,0.105,1,0.895"  the camera's viewport x,y,w,h: the game's own with its toolbar shown
+#                             (CameraController.kFullScreenWithoutMenuBarRect; toolbar mods give it the
+#                             whole screen)
 # Run after build-bundle.ps1 (the shader compiles) and a DLL build.
 
 param(
@@ -34,6 +37,7 @@ param(
     # glcore: the OpenGL Core shaders (Linux's, and the Mac's fallback) on this GPU instead of Direct3D 11.
     [ValidateSet("d3d11", "glcore")]
     [string]$Api = "d3d11",
+    [string]$Rect = "",
     [string]$Dll = (Join-Path $PSScriptRoot "..\..\RealGlass\bin\Debug\RealGlass.dll"),
     [string]$Unity = "C:\Program Files\Unity\Editor\Unity.exe"
 )
@@ -58,6 +62,7 @@ function N([double]$v) { return $v.ToString("R", $inv) }
 $lines = New-Object System.Collections.Generic.List[string]
 $lines.Add("out " + $shotDir)
 $lines.Add("size " + $Width + " " + $Height)
+if ($Rect -ne "") { $lines.Add("rect " + ($Rect.Split(',') -join ' ')) }
 $tbl = $optics::BuildTable($optics::SlopeVariance($optics::SkyWind))
 foreach ($i in 0..32) { $lines.Add("table " + $i + " " + (N $tbl[$i])) }
 $w = $optics::Ripples()
