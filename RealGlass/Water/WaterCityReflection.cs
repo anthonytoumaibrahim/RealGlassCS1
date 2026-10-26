@@ -15,7 +15,8 @@ namespace RealGlass.Water
     /// <remarks>
     /// - WHERE: the game's visible water meshes, recorded with their simulation heights in a separate
     ///   depth buffer. The seabed in the scene depth never supplies the reflection's surface position.
-    /// - THE RAY: followed through the camera's depth texture (McGuire &amp; Mara 2014), 96 steps
+    /// - THE RAY: followed through the camera's depth texture as it stood before the forward water
+    ///   (<see cref="WaterSurfaceMask.SceneDepth"/>; McGuire &amp; Mara 2014), 96 steps
     ///   growing geometrically to the camera's far plane x 0.9 (at most <see cref="WaterOptics.MaxDistance"/>),
     ///   the crossing refined by bisection; only what stands above the level counts as a hit.
     /// - HOW MUCH: rho at the view's angle (<see cref="WaterOptics.BuildTable"/>) x the strength, by
@@ -45,6 +46,7 @@ namespace RealGlass.Water
         private static readonly int IdRipples = Shader.PropertyToID("_RGRipples");
         private static readonly int IdTheme = Shader.PropertyToID("_RGWaterTheme");
         private static readonly int IdLight = Shader.PropertyToID("_RGWaterLight");
+        private static readonly int IdDepth = Shader.PropertyToID("_CameraDepthTexture");
 
         private readonly Material _material;
         private readonly Mesh _cube;
@@ -247,6 +249,9 @@ namespace RealGlass.Water
         {
             _surface.Attach(camera);
             _material.SetTexture("_RGWaterSurfaceDepth", _surface.Texture);
+            // The scene as it stood before the forward water, in place of the camera's depth texture
+            // (on Metal that holds the water itself by now: WaterSurfaceMask).
+            _material.SetTexture(IdDepth, _surface.SceneDepth);
             _gameWater = Singleton<TerrainManager>.exists ? Singleton<TerrainManager>.instance.m_waterMaterial : null;
             _surface.SetMapping(_gameWater);
         }

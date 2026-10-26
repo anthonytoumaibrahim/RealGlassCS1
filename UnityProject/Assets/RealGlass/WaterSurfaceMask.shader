@@ -1,5 +1,10 @@
 // A separate depth record of visible, simulated water. Scene depth may contain a sloping seabed;
 // it is used only for occlusion, never as the reflection's surface position.
+//   0 the water's eye depth, drawn on the game's water meshes.
+//   1 SCENE DEPTH (a Blit at AfterFinalPass, before the forward water): the camera's depth texture
+//     copied raw, read by pass 0 and the city reflection in its place (WaterSurfaceMask.cs). On Metal
+//     the depth texture read later in the frame holds the game's water itself, pulled toward the
+//     camera by its Offset: every water pixel failed pass 0's test (the author's M1, 2026-10-26).
 Shader "RealGlass/WaterSurfaceMask"
 {
     Properties { _MainTex ("", 2D) = "black" {} }
@@ -48,6 +53,28 @@ Shader "RealGlass/WaterSurfaceMask"
                 // A small depth tolerance, bounded so a distant bank never becomes water.
                 clip(scene + min(0.5, 0.0001 * i.screen.w) - i.screen.w);
                 return float4(i.screen.w, 0.0, 0.0, 1.0);
+            }
+            ENDCG
+        }
+
+        Pass
+        {
+            ZWrite Off
+            ZTest Always
+            Cull Off
+            Blend Off
+            CGPROGRAM
+            #pragma target 3.5
+            #pragma vertex vert_full
+            #pragma fragment frag
+            #include "UnityCG.cginc"
+            #include "FullScreen.cginc"
+            UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
+
+            float4 frag(v2f_full i) : SV_Target
+            {
+                float raw = SAMPLE_DEPTH_TEXTURE_LOD(_CameraDepthTexture, float4(i.uv, 0.0, 0.0));
+                return float4(raw, 0.0, 0.0, 1.0);
             }
             ENDCG
         }

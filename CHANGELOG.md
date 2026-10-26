@@ -3,6 +3,16 @@
 All notable changes to Real Glass & Water. The version is `Mod.Version` in `RealGlass/Mod.cs`, shown after
 the mod's name in the game.
 
+## 1.1.5 — unreleased
+
+### Fixed
+
+- **The water reflects the city on the Mac again.** On the Mac (Metal) the water showed the sky but
+  never the city, boats or anything else above it, in every version since 1.0.0: the step that finds
+  where the water is on screen read the scene's depth after the game's water was already in it, and
+  took every water pixel for something hidden behind the water itself. It now reads the scene's depth
+  as it stood before the water is drawn. Every other shader is byte for byte that of 1.1.4.
+
 ## 1.1.4 — 2026-10-25
 
 ### New

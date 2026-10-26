@@ -8,22 +8,42 @@ namespace RealGlass.Water
     /// seabed). Recorded with each patch's property block, before the game reuses that block.
     /// Clear before recording the next render so missing patches never leave old water behind.
     /// </summary>
+    /// <remarks>
+    /// The scene depth it tests against -- and the city reflection traces through -- is its own copy of
+    /// the camera's depth texture, taken at AfterFinalPass, before the forward water is drawn, and
+    /// bound in place of _CameraDepthTexture. On Metal the depth texture read later in the frame holds
+    /// the game's water itself, pulled toward the camera by its Offset, and every water pixel failed
+    /// the test (the author's M1, 2026-10-26: no city in the water); on Direct3D 11 the depth texture is
+    /// made once, so the copy holds exactly what it holds.
+    /// </remarks>
     public sealed class WaterSurfaceMask
     {
+        private const int PassSceneDepth = 1;
+        private static readonly int IdDepth = Shader.PropertyToID("_CameraDepthTexture");
+
         private readonly Material _material;
+        private readonly Material _copy;
         private readonly CommandBuffer _buffer;
+        private readonly CommandBuffer _sceneBuffer;
         private Camera _camera;
         private RenderTexture _texture;
+        private RenderTexture _scene;
         private bool _consumed;
         private int _frame = -1;
 
         public WaterSurfaceMask(Shader shader)
         {
             _material = new Material(shader) { name = "RealGlass water surface depth", hideFlags = HideFlags.HideAndDontSave };
+            // The copy reads the camera's own depth texture: a material of its own, not given the copy.
+            _copy = new Material(shader) { name = "RealGlass scene depth before the water", hideFlags = HideFlags.HideAndDontSave };
             _buffer = new CommandBuffer { name = "RealGlass water surface depth" };
+            _sceneBuffer = new CommandBuffer { name = "RealGlass scene depth before the water" };
         }
 
         public RenderTexture Texture { get { return _texture; } }
+
+        /// <summary>The camera's raw depth before the forward water; bind it in place of _CameraDepthTexture.</summary>
+        public RenderTexture SceneDepth { get { return _scene; } }
 
         // Attach before the reflection buffer at the same event: the scene depth is ready and the
         // surface depth is produced before tracing. Its own depth attachment selects the nearest
@@ -34,6 +54,7 @@ namespace RealGlass.Water
             {
                 Detach();
                 _camera = camera;
+                _camera.AddCommandBuffer(CameraEvent.AfterFinalPass, _sceneBuffer);
                 _camera.AddCommandBuffer(CameraEvent.AfterImageEffectsOpaque, _buffer);
                 Camera.onPreCull += BeforeRender;
                 Camera.onPostRender += AfterRender;
@@ -42,18 +63,27 @@ namespace RealGlass.Water
                 return;
 
             _buffer.Clear();
+            _sceneBuffer.Clear();
             Free();
-            _texture = new RenderTexture(Mathf.Max(1, camera.pixelWidth), Mathf.Max(1, camera.pixelHeight), 24,
-                                         RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear)
+            int width = Mathf.Max(1, camera.pixelWidth), height = Mathf.Max(1, camera.pixelHeight);
+            _texture = Target("RealGlassWaterSurfaceDepth", width, height, 24);
+            _scene = Target("RealGlassWaterSceneDepth", width, height, 0);
+            if (!_texture.Create() || !_scene.Create())
+                throw new System.InvalidOperationException("Could not allocate the water surface depth textures.");
+            _sceneBuffer.Blit(BuiltinRenderTextureType.CameraTarget, _scene, _copy, PassSceneDepth);
+            _material.SetTexture(IdDepth, _scene);
+            Clear();
+        }
+
+        private static RenderTexture Target(string name, int width, int height, int depth)
+        {
+            return new RenderTexture(width, height, depth, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear)
             {
-                name = "RealGlassWaterSurfaceDepth",
+                name = name,
                 hideFlags = HideFlags.HideAndDontSave,
                 filterMode = FilterMode.Point,
                 wrapMode = TextureWrapMode.Clamp,
             };
-            if (!_texture.Create())
-                throw new System.InvalidOperationException("Could not allocate the water surface depth texture.");
-            Clear();
         }
 
         public void Draw(Mesh mesh, Matrix4x4 matrix, int layer, Camera camera, int submesh, MaterialPropertyBlock properties)
@@ -101,26 +131,38 @@ namespace RealGlass.Water
             Camera.onPostRender -= AfterRender;
             Camera.onPreCull -= BeforeRender;
             if (_camera != null)
+            {
                 _camera.RemoveCommandBuffer(CameraEvent.AfterImageEffectsOpaque, _buffer);
+                _camera.RemoveCommandBuffer(CameraEvent.AfterFinalPass, _sceneBuffer);
+            }
             _camera = null;
             Clear();
         }
 
         private void Free()
         {
-            if (_texture == null)
-                return;
-            _texture.Release();
-            Dispose(_texture);
-            _texture = null;
+            if (_texture != null)
+            {
+                _texture.Release();
+                Dispose(_texture);
+                _texture = null;
+            }
+            if (_scene != null)
+            {
+                _scene.Release();
+                Dispose(_scene);
+                _scene = null;
+            }
         }
 
         public void Destroy()
         {
             Detach();
             _buffer.Release();
+            _sceneBuffer.Release();
             Free();
             Dispose(_material);
+            Dispose(_copy);
         }
 
         private static void Dispose(Object value)

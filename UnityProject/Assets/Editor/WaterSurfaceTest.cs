@@ -98,6 +98,20 @@ public static class WaterSurfaceTest
             Check("resize follows camera", mask.Texture.width == 377 && mask.Texture.height == 239);
             Height(camera, Read(mask.Texture), new Vector3(-55f, 40f, 15f), 40f, "resized sea surface");
 
+            // On Metal the depth texture holds the game's water by the time of the capture, nearer than
+            // the surface (the author's M1, 2026-10-26: no water captured, no city in it): a depth
+            // texture changed after the final pass must not reach the capture.
+            var spoil = new CommandBuffer { name = "the depth texture nearer than everything after the final pass" };
+            spoil.SetGlobalTexture("_CameraDepthTexture", SystemInfo.usesReversedZBuffer ? Texture2D.whiteTexture : Texture2D.blackTexture);
+            mask.Detach();
+            camera.AddCommandBuffer(CameraEvent.AfterImageEffectsOpaque, spoil);
+            mask.Attach(camera);
+            Record(mask, mesh, left, right, block);
+            camera.Render();
+            Height(camera, Read(mask.Texture), new Vector3(-55f, 40f, 15f), 40f, "sea surface with the depth texture changed after the final pass");
+            camera.RemoveCommandBuffer(CameraEvent.AfterImageEffectsOpaque, spoil);
+            spoil.Release();
+
             // A camera that does not draw this layer must not acquire that layer's water.
             camera.cullingMask = 0;
             Record(mask, mesh, left, right, block);

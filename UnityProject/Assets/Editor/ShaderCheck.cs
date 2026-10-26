@@ -28,7 +28,7 @@ public static class ShaderCheck
         "Assets/RealGlass/VehicleGlass.shader",
     };
 
-    private static readonly int[] Passes = { 1, 7, 1, 4, 1, 1, 1, 1, 3, 1 };
+    private static readonly int[] Passes = { 1, 7, 1, 4, 1, 1, 2, 1, 3, 1 };
 
     public static void Run()
     {
