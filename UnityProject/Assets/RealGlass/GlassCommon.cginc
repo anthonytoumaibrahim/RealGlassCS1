@@ -165,10 +165,14 @@ float GlassMask(float shine, float spec, float4 aci, float threshold, float nigh
 // The window a room behind the glass fills at night: the glass, and a lit window that counts only
 // partly (NightWindowShare) taken whole from half way. The game lights a building's windows all at
 // once, whole: a room over only a share of one let the rest of the lit window shine through it, and
-// the rooms vanished when the building's lights came on (2026-10-21).
+// the rooms vanished when the building's lights came on (2026-10-21). Which windows the game can light
+// is its own rule here (Interiors.cginc, GameWindowLit: 20 x b up to 0.48, its bands above), not
+// NightWindowShare's ramp from 0.46 to 0.56: a window painted at 0.50 (128, a common value) took a
+// room over three quarters of it and the game's light under the rest (2026-10-28).
 float RoomWindow(float shine, float spec, float4 aci, float threshold, float nightWindows)
 {
-    float m = max(shine, saturate(2.0 * NightWindowShare(spec, aci, threshold, nightWindows)));
+    float lightable = saturate(aci.b * 20.0) * nightWindows;
+    float m = max(shine, saturate(2.0 * lightable * smoothstep(threshold - 0.35, threshold - 0.1, spec)));
     return m * step(aci.r, 0.5);
 }
 

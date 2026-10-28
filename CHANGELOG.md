@@ -5,6 +5,13 @@ the mod's name in the game.
 
 ## 1.1.6 — unreleased
 
+### Fixed
+
+- **No lit window under the rooms at night.** On buildings whose illumination map marks its lit
+  windows with a low value (around 50%, a common one), the room behind the glass covered only part
+  of each window when the game lit it, and the game's own light showed through under the room. The
+  room now covers every window the game can light, by the game's own rule.
+
 ### Changed
 
 - **Glass on vehicles keeps less memory.** Every vehicle model that came near used to reserve room
