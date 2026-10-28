@@ -14,6 +14,10 @@ the mod's name in the game.
   windows with a low value (around 50%, a common one), the room behind the glass covered only part
   of each window when the game lit it, and the game's own light showed through under the room. The
   room now covers every window the game can light, by the game's own rule.
+- **The city in the water with two dynamic-resolution mods.** With Lumina's dynamic resolution and
+  the older Dynamic Resolution mod both on, the game draws the city twice a frame, and the second
+  picture, the one on screen, had no city reflected in the water. Both pictures now have it. (Lumina
+  already includes dynamic resolution, so the older mod is not needed beside it.)
 
 ### Changed
 

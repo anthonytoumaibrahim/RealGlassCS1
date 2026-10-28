@@ -6,7 +6,8 @@ namespace RealGlass.Water
     /// <summary>
     /// Eye depth of the actual water meshes, independently of the scene depth (which contains the
     /// seabed). Recorded with each patch's property block, before the game reuses that block.
-    /// Clear before recording the next render so missing patches never leave old water behind.
+    /// Cleared before a frame's first draw so missing patches never leave old water behind; every
+    /// render of the camera in that frame keeps the frame's draws, as the game's own draws do.
     /// </summary>
     /// <remarks>
     /// The scene depth it tests against -- and the city reflection traces through -- is its own copy of
@@ -111,7 +112,10 @@ namespace RealGlass.Water
 
         private void BeforeRender(Camera camera)
         {
-            if (camera == _camera && (_consumed || _frame != Time.frameCount))
+            // Not after a render earlier this frame: a mod that renders the game's camera by hand can
+            // render it twice a frame (Lumina's dynamic resolution beside the old Dynamic Resolution
+            // mod), and the game's water, drawn for every camera, is in both renders.
+            if (camera == _camera && _frame != Time.frameCount)
                 Clear();
         }
 
