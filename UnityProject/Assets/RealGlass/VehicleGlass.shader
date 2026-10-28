@@ -3,8 +3,9 @@
 // The game already knows which of a vehicle's pixels are windows: its vehicle shaders (Default,
 // Train, Aircraft, Ship; their disassembly, 2026-10-23) take spec = 1 - _XYSMap.z over 0.8..0.9 as
 // glass -- flattening the normal map there and showing a floor texture through it (_FloorParams,
-// _VehicleFloorDiffuse) -- except in the top 0.2 m of each deck. This draw takes exactly that as its
-// mask, so nothing becomes glass that the game does not already show as a window. Its LAMPS get a
+// _VehicleFloorDiffuse) -- except in the top 0.2 m of each deck. This draw takes that as its mask (in
+// full from 0.82, so none of the floor is left: GameVehicleGlass), so nothing becomes glass that the
+// game does not already show as a window. Its LAMPS get a
 // lens too: the game marks them in the illumination channel (_ACIMap.b away from 0.5; the vehicle
 // shaders light them by the vehicle's _LightState), and a lens is glass over the game's own lamp.
 //
@@ -129,16 +130,21 @@ Shader "RealGlass/VehicleGlass"
                 return q >= 0.0 ? frac(abs(q)) : -frac(abs(q));
             }
 
-            // The game's own vehicle glass (its final pass): the shine over 0.8..0.9, smoothstepped, in
-            // every deck but its top 0.2 m.
+            // The game's own vehicle glass (its final pass): the shine over 0.8, in every deck but its top
+            // 0.2 m -- ours in full from 0.82. The game calls it a window by a smoothstep over 0.8..0.9 and
+            // shows its floor there at that share: _VehicleFloorDiffuse met by the view ray on the deck's
+            // floor, cut off at a hard-edged rectangle (_FloorParams.zw) and added unlit. Taking only that
+            // share, as the game does, left w (1 - w) of the floor under the glass: on a vehicle whose
+            // windows are painted at 0.8..0.9 (a quarter of the surveyed cars), a square of floor and seats
+            // showing through every window, glowing at night (2026-10-28). Full from 0.82, where the game's
+            // share is still a tenth, nothing of it is left; under 0.82 the glass's edge, a texel at most.
             float GameVehicleGlass(float spec, float y)
             {
                 float period;
                 float part = DeckPart(y, period);
                 float h = part * period;
                 float inDeck = period - 0.2 >= h ? 1.0 : 0.0;
-                float s = saturate((spec - 0.8) * 10.0);
-                return s * s * (3.0 - 2.0 * s) * inDeck;
+                return saturate((spec - 0.8) * 50.0) * inDeck;
             }
 
             // The game's lamps (its final passes): _ACIMap.b over ~0.545 the head and tail lights on both

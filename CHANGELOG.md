@@ -7,6 +7,9 @@ the mod's name in the game.
 
 ### Fixed
 
+- **No square of floor and seats through car windows.** On vehicles whose windows are painted only
+  partly shiny, the game's floor texture behind the window, a hard-edged square, still showed through
+  the glass, glowing at night. The glass now covers those windows fully.
 - **No lit window under the rooms at night.** On buildings whose illumination map marks its lit
   windows with a low value (around 50%, a common one), the room behind the glass covered only part
   of each window when the game lit it, and the game's own light showed through under the room. The
