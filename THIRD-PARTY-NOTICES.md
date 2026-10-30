@@ -209,7 +209,9 @@ scattering (Morel 1974), dissolved organic matter (Bricaud, Morel and Prieur 198
 backscattering as Petzold measured (1972) -- and its colour from those (Morel and Prieur 1977;
 Gordon et al. 1975), the daylight fading with depth after Kirk (1984), the light under the surface
 after Tyler's measured light fields (1960) and Mobley (1994), its glow toward the sun by Henyey and
-Greenstein's phase function (1941), Snell's window with Fresnel's equations, caustics as the area a
+Greenstein's phase function (1941), Snell's window with Fresnel's equations and the n-squared law,
+the surface seen from below as rough as the sun's glitter sees it from above (LEAN mapping) and the
+sun through its waves by Walter et al.'s microfacet transmission (2007), caustics as the area a
 beam of sunlight lands on (Watt 1990), and light shafts as single scattering with volumetric
 shadows (Tóth and Umenhoffer 2009) from the game's own shadow map of the sun, grabbed after the
 light renders it as SlightlyMad's Volumetric Lights for Unity does, its steps jittered by Jimenez's
@@ -501,7 +503,11 @@ Every technique here has shipped in a game or is published:
     depth in an underwater environment**, Bulletin of the Scripps Institution of Oceanography 7,
     1960; the glow toward the sun: Louis G. Henyey and Jesse L. Greenstein, **Diffuse radiation in
     the Galaxy**, Astrophysical Journal 93, 1941
-    ([ADS](https://ui.adsabs.harvard.edu/abs/1941ApJ....93...70H)); the caustics, the area a beam of
+    ([ADS](https://ui.adsabs.harvard.edu/abs/1941ApJ....93...70H)); the surface seen from below,
+    Snell's window and its rim softened by the waves' averaged-away slopes, as the sun's glitter
+    sees them from above (Olano and Baker's LEAN mapping, item 15), the sun through the waves by
+    the transmission half of Walter et al.'s microfacet model (item 15), radiance gaining n^2 into
+    the water (Mobley 1994, above); the caustics, the area a beam of
     sunlight through the waves lands on: Mark Watt, **Light-water interaction using backward beam
     tracing**, SIGGRAPH 1990 ([SIGGRAPH archive](https://history.siggraph.org/?p=122082)). The light
     shafts: single scattering with volumetric shadows, Balázs Tóth and Tamás Umenhoffer, **Real-time

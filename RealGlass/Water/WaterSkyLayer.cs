@@ -150,6 +150,31 @@ namespace RealGlass.Water
             get { return _sky.Cube; }
         }
 
+        /// <summary>The live cube's last mip.</summary>
+        public int CubeLastMip
+        {
+            get { return Mathf.Max(0, _sky.Mips - 1); }
+        }
+
+        /// <summary>
+        /// The ripples' averaging as this layer has it this frame -- the mips the ripples are averaged
+        /// away over, the ocean's table and tail (the same names) -- onto another material that reads them:
+        /// the view from under the water sees the same surface from below.
+        /// </summary>
+        public void ShareRipples(Material other)
+        {
+            other.SetVector(IdRipples, _material.GetVector(IdRipples));
+            other.SetVectorArray(IdWaves, _table);
+            other.SetVector(IdTail, _material.GetVector(IdTail));
+        }
+
+        /// <summary>No averaging on another material (the layer not drawn): its surface from below as sharp as the texture.</summary>
+        public static void ClearRipples(Material other)
+        {
+            other.SetVector(IdRipples, Vector4.zero);
+            other.SetVector(IdTail, Vector4.zero);
+        }
+
         /// <summary>
         /// The sky on the water this frame; false when it cannot be (the hook missing, the sky not
         /// rendered, a failed draw): the caller then keeps our cube on the water instead.

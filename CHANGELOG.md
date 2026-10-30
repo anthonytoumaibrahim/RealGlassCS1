@@ -12,10 +12,10 @@ the mod's name in the game.
   thickens with distance and takes red first, darker the deeper you go and glowing toward the sun,
   while what lies under the water stays in sight; light shafts where the sun comes in between the
   shadows of bridges and buildings (from the game's own shadows; not on a Mac yet); the surface
-  seen from below, with the world above through Snell's window and a mirror of the depths around
-  it. A camera half in the water sees the waterline. Rows for the visibility (60 m by default), the
-  light shafts, and sunlight from the waves on the seabed (off by default). Nothing is drawn while
-  the camera is above the water.
+  seen from below as moving waves, with the sky bent into Snell's window, the sun shining through
+  the waves, and a mirror of the depths around it. A camera half in the water sees the waterline.
+  Rows for the visibility (60 m by default), the light shafts, and sunlight from the waves on the
+  seabed (off by default). Nothing is drawn while the camera is above the water.
 
 ### Fixed
 

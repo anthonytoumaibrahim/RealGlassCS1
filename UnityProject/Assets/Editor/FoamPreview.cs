@@ -66,6 +66,9 @@ public static class FoamPreview
         public float Shafts;
         // The veiling light's gain in place of WaterUnderOptics.VeilGain (0: the mod's), to try values.
         public float VeilGain;
+        // The view from under the water as it stood at affebf9 (Editor/PreviewUnderToday.shader), for the
+        // surface from below redone 2026-10-30.
+        public bool UnderToday;
         // The game's fog over the sky in the water's cube (GlassUtil's SkyFog, as WaterSkyLayer since
         // 2026-10-30; false: the bare skybox, as before).
         public bool SkyFog;
@@ -93,9 +96,10 @@ public static class FoamPreview
         public GameObject CameraObject;
         public RenderTexture Target;
         public Light Sun;
-        public Material Skybox, Water, Foam, Reflection, Surface, Sky, Under;
-        public CommandBuffer UnderBuffer, ShadowGrab;
-        public bool UnderOn;
+        public Material Skybox, Water, Foam, Reflection, Surface, Sky, Under, UnderToday;
+        public CommandBuffer UnderBuffer, UnderTodayBuffer, ShadowGrab;
+        // The under buffer on the camera (null: none).
+        public CommandBuffer UnderOn;
         public GameObject Bridge;
         public Camera Capture;
         public RenderTexture SkyCube;
@@ -222,6 +226,7 @@ public static class FoamPreview
             Sky.SetTexture("_WaterNormal", Ripples);
             Reflection.SetTexture("_RGRipples", Ripples);
             Under.SetTexture("_RGRipples", Ripples);
+            UnderToday.SetTexture("_RGRipples", Ripples);
         }
 
         /// <summary>
@@ -231,19 +236,20 @@ public static class FoamPreview
         public void UnderFor(Shot shot)
         {
             bool on = shot.Under >= 0f;
-            if (on != UnderOn)
+            CommandBuffer wanted = on ? (shot.UnderToday ? UnderTodayBuffer : UnderBuffer) : null;
+            if (wanted != UnderOn)
             {
-                if (on)
-                {
-                    Camera.AddCommandBuffer(CameraEvent.BeforeImageEffects, UnderBuffer);
+                // The shadow grab stays on the sun from one under shot to the next (today's or the new
+                // pass's): taken off and put back, the next shot read the last view's cascades.
+                if (UnderOn != null)
+                    Camera.RemoveCommandBuffer(CameraEvent.BeforeImageEffects, UnderOn);
+                if (wanted != null)
+                    Camera.AddCommandBuffer(CameraEvent.BeforeImageEffects, wanted);
+                if (UnderOn == null && wanted != null)
                     Sun.AddCommandBuffer(LightEvent.AfterShadowMap, ShadowGrab);
-                }
-                else
-                {
-                    Camera.RemoveCommandBuffer(CameraEvent.BeforeImageEffects, UnderBuffer);
+                else if (UnderOn != null && wanted == null)
                     Sun.RemoveCommandBuffer(LightEvent.AfterShadowMap, ShadowGrab);
-                }
-                UnderOn = on;
+                UnderOn = wanted;
             }
             // The game's sun casts shadows (CameraController.LateUpdate); the preview's only in the under
             // views, with the bridge, in every column of them.
@@ -251,13 +257,15 @@ public static class FoamPreview
             Sun.shadows = view ? LightShadows.Soft : LightShadows.None;
             Bridge.SetActive(view);
             Under.SetFloat("_RGUnderDebug", shot.Shafts > 1.5f ? 1f : 0f);
+            UnderToday.SetFloat("_RGUnderDebug", shot.Shafts > 1.5f ? 1f : 0f);
             if (!on)
                 return;
 
             Reflection.SetVector("_RGWaterGeom", new Vector4(SeaLevel, 0f, shot.SkyGain, 1f));
             Vector3 toSun = -Sun.transform.forward;
             Color sunLight = Sun.color.linear * Sun.intensity;
-            UnderOptics(Under, Mathf.Max(shot.Under, 1f), shot.Caustics, shot.Shafts, shot.VeilGain, toSun, sunLight, RenderSettings.ambientSkyColor.linear, SeaLevel, Log);
+            UnderOptics(shot.UnderToday ? UnderToday : Under, Mathf.Max(shot.Under, 1f), shot.Caustics, shot.Shafts, shot.VeilGain, toSun, sunLight,
+                        RenderSettings.ambientSkyColor.linear, SeaLevel, Log);
         }
 
         public void ShowFoam(bool on, bool sources)
@@ -359,6 +367,7 @@ public static class FoamPreview
                         Caustics = p.Length > 14 ? WaterPreview.F(p[14]) : 0f,
                         Shafts = p.Length > 15 ? WaterPreview.F(p[15]) : 0f,
                         VeilGain = p.Length > 16 ? WaterPreview.F(p[16]) : 0f,
+                        UnderToday = p.Length > 17 && p[17] == "1",
                     });
                 else if (p[0] == "taa")
                 {
@@ -576,6 +585,18 @@ public static class FoamPreview
             underBuffer.SetRenderTarget(BuiltinRenderTextureType.CameraTarget);
             underBuffer.DrawMesh(cube, Matrix4x4.identity, under, 0, 0);
             underBuffer.ReleaseTemporaryRT(underFrame);
+            // The same as it stood at affebf9, before the surface from below was redone.
+            Shader underTodayShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/Editor/PreviewUnderToday.shader");
+            log.Add("under (today) shader " + (underTodayShader != null ? underTodayShader.name + " supported=" + underTodayShader.isSupported : "MISSING"));
+            var underToday = new Material(underTodayShader);
+            underToday.SetTexture("_CameraDepthTexture", sceneDepth);
+            underToday.SetTexture("_RGSunShadowData", shadowData);
+            var underTodayBuffer = new CommandBuffer { name = "RealGlass under the water, today (preview)" };
+            underTodayBuffer.GetTemporaryRT(underFrame, -1, -1, 0, FilterMode.Bilinear, RenderTextureFormat.ARGBHalf);
+            underTodayBuffer.Blit(BuiltinRenderTextureType.CameraTarget, underFrame);
+            underTodayBuffer.SetRenderTarget(BuiltinRenderTextureType.CameraTarget);
+            underTodayBuffer.DrawMesh(cube, Matrix4x4.identity, underToday, 0, 0);
+            underTodayBuffer.ReleaseTemporaryRT(underFrame);
             // The game's own shadow settings at their highest (the options' Very High: four cascades).
             QualitySettings.shadows = ShadowQuality.All;
             QualitySettings.shadowCascades = 4;
@@ -586,7 +607,7 @@ public static class FoamPreview
 
             var scene = new Scene
             {
-                Under = under, UnderBuffer = underBuffer, ShadowGrab = shadowGrab, Bridge = bridge,
+                Under = under, UnderBuffer = underBuffer, UnderToday = underToday, UnderTodayBuffer = underTodayBuffer, ShadowGrab = shadowGrab, Bridge = bridge,
                 Coast = coast, Camera = camera, CameraObject = cameraObject, Target = target, Sun = sun, Skybox = skybox, Water = water,
                 Foam = foamMaterial, Reflection = reflection, Surface = surface, Sky = skyMaterial, Capture = capture, SkyCube = skyCube, Towers = towers,
                 CubeFog = cubeFog,
@@ -634,6 +655,10 @@ public static class FoamPreview
                 foamMaterial.SetVector("_RGShoreMapping", shot.Corridor == 0f ? Vector4.zero : shoreMapping);
                 scene.Clock(shot.Seconds);
 
+                // Under the water, a frame first: the shadow grab fills the sun's cascades for this view
+                // (the run's first under shot read none: all sunlit, no shafts).
+                if (shot.Under >= 0f)
+                    camera.Render();
                 camera.Render();
                 RenderTexture.active = target;
                 var read = new Texture2D(width, height, TextureFormat.RGBAFloat, false, true);
@@ -810,7 +835,8 @@ public static class FoamPreview
         if (veilGain > 0f)
             for (int i = 8; i < 11; i++)
                 v[i] *= veilGain / WaterUnderOptics.VeilGain;
-        m.SetVector("_RGUnder", new Vector4(level, caustics, 0.25f, 0.015f));
+        // w: today's frozen copy still nudges the frame by 0.015 uv a unit of slope; the mod's is unused.
+        m.SetVector("_RGUnder", new Vector4(level, caustics, 0.25f, m.shader.name == "RealGlass/WaterUnder" ? 0f : 0.015f));
         m.SetVector("_RGUnderC", new Vector4((float)v[0], (float)v[1], (float)v[2], 0f));
         m.SetVector("_RGUnderK", new Vector4((float)v[4], (float)v[5], (float)v[6], 0f));
         m.SetVector("_RGUnderVeil", new Vector4((float)v[8], (float)v[9], (float)v[10], 0f));
@@ -818,6 +844,9 @@ public static class FoamPreview
         // The shafts: 24 steps over up to 6 / c at green (where the veil is 99.75% made), the light's
         // entry tested a metre over the surface.
         m.SetVector("_RGUnderShafts", new Vector4(shafts > 0f ? 1f : 0f, 24f, 6f / (float)v[1], 1f));
+        // The water's live sky cube (here 128 px, 7 mips) and the sun's light, for the surface from below.
+        m.SetVector("_RGUnderSky", new Vector4(1f, 128f, 7f, 0f));
+        m.SetVector("_RGUnderSunLight", new Vector4(sunLight.r, sunLight.g, sunLight.b, 0f));
         log.Add(string.Format(CultureInfo.InvariantCulture,
             "under: visibility {0} m -> c ({1:F3}, {2:F3}, {3:F3}) /m, K_d ({4:F3}, {5:F3}, {6:F3}) /m, veil ({7:F4}, {8:F4}, {9:F4}), sun share {10:F2}, caustics {11}, shafts {12}",
             visibility, v[0], v[1], v[2], v[4], v[5], v[6], v[8], v[9], v[10], v[15], caustics, shafts));
@@ -1509,6 +1538,24 @@ public static class FoamPreview
             // The same place looking up 65 deg toward the town: Snell's window.
             eye = new Vector3(-160f, SeaLevel - 3f, 0f);
             at = new Vector3(-140f, SeaLevel + 40f, 3f);
+        }
+        else if (view == "underlook" || view == "underzenith" || view == "underaway")
+        {
+            // The author's reference (2026-10-30, a game's diver looking up at the surface from 28 m): 8 m
+            // under the open sea (14 m deep), looking up 40 deg toward the sun's side, 80 deg up (nearly
+            // straight up), or 25 deg up away from it.
+            Vector3 sunSide = new Vector3(-0.55f, 0f, 0.7f).normalized;
+            float pitch = (view == "underlook" ? 40f : view == "underzenith" ? 80f : 25f) * Mathf.Deg2Rad;
+            Vector3 flat = view == "underaway" ? -sunSide : sunSide;
+            eye = new Vector3(-700f, SeaLevel - 8f, 0f);
+            at = eye + (flat * Mathf.Cos(pitch) + Vector3.up * Mathf.Sin(pitch)) * 100f;
+        }
+        else if (view == "undertown")
+        {
+            // The author's in-game shot (2026-10-30): 11 m under the sea 600 m out, looking toward the town
+            // ashore 8 deg up -- the skyline seen through the surface from below.
+            eye = new Vector3(-600f, SeaLevel - 11f, 0f);
+            at = eye + new Vector3(Mathf.Cos(8f * Mathf.Deg2Rad), Mathf.Sin(8f * Mathf.Deg2Rad), 0f) * 100f;
         }
         else if (view == "underdown")
         {

@@ -16,7 +16,11 @@
 #                             pass: what a camera under the water sees today) or "visibility m:caustics:shafts"
 #                             (caustics 0 none, 1 real; shafts 0 none, 1 through the sun's shadow map); the
 #                             water as the mod's defaults (the sky layer, #0E222B, FFT waves, glitter 35% at
-#                             50%, foam); the under views add a bridge over the sea and the sun's shadows
+#                             50%, foam); the under views add a bridge over the sea and the sun's shadows;
+#                             "today:60:0:1" = the pass as it stood at affebf9 (Editor/PreviewUnderToday.shader)
+#   ... -Views "underlook,underzenith,underaway" -UnderColumns "today:60:0:1,60:0:1"   the surface from below
+#                             (2026-10-30, the author's reference): 8 m under the open sea looking up 40 deg
+#                             toward the sun, 80 deg up, and 25 deg up away from it
 #   ... -Later 3              also the foam this many seconds later (the motion; 0: no such column)
 #   ... -Amount 1 -Shore 1 -Fast 1 -Front 1     the foam's amount and each source's share (1 = the model's)
 #   ... -Sources              a last column: each source's amount as a colour (red shore, green fast, blue fronts)
@@ -169,8 +173,11 @@ for ($i = 0; $i -lt $lv.Length / 4; $i++) { $lines.Add("layer " + $i + " " + (N 
 $columns = New-Object System.Collections.Generic.List[object]
 if ($UnderColumns -ne "") {
     foreach ($spec in $UnderColumns.Split(',')) {
-        $part = $spec.Split(':')
+        $part = @($spec.Split(':'))
         $vis = -1.0; $caustics = 0.0; $shafts = 0.0; $veil = 0.0
+        # "today:..." = the pass as it stood at affebf9 (Editor/PreviewUnderToday.shader).
+        $today = $part[0] -eq "today"
+        if ($today) { $part = @($part | Select-Object -Skip 1) }
         if ($part[0] -ne "off") {
             $vis = [double]::Parse($part[0], $inv)
             if ($part.Count -gt 1) { $caustics = [double]::Parse($part[1], $inv) }
@@ -181,8 +188,10 @@ if ($UnderColumns -ne "") {
             ("underwater, visibility {0} m" -f $vis) + $(if ($caustics -gt 0.0) { (", caustics {0:P0}" -f $caustics) } else { "" }) +
             $(if ($shafts -gt 1.5) { ", the shafts' lit share" } elseif ($shafts -gt 0.0) { ", sun shafts" } else { ", no shafts" }) +
             $(if ($veil -gt 0.0) { (", veil x{0}" -f $veil) } else { "" }) }
+        if ($today -and $vis -ge 0.0) { $label = "today: " + $label }
+        elseif ($vis -ge 0.0) { $label = "new surface from below: " + $label }
         $columns.Add(@{ Foam = 1; Seconds = 443.0; Mode = 1; Gain = 1.0; Body = "#0E222B"; Waves = 1; Glitter = 0.35; GlitterSize = 0.5;
-                        Corridor = -1.0; Under = $vis; Caustics = $caustics; Shafts = $shafts; VeilGain = $veil; Label = $label })
+                        Corridor = -1.0; Under = $vis; Caustics = $caustics; Shafts = $shafts; VeilGain = $veil; UnderToday = $today; Label = $label })
     }
 }
 elseif ($Corridors -ne "") {
@@ -254,7 +263,7 @@ foreach ($view in $rows) {
         $col = $columns[$c]
         $sky = if ($col.ContainsKey("Mode")) { " {0} {1} {2} {3} {4} {5}" -f $col.Mode, (N $col.Gain), $col.Body, $col.Waves, (N $col.Glitter), (N $col.GlitterSize) } else { "" }
         if ($col.ContainsKey("Corridor")) { $sky += " " + (N $col.Corridor) }
-        if ($col.ContainsKey("Under")) { $sky += " {0} {1} {2} {3}" -f (N $col.Under), (N $col.Caustics), (N $col.Shafts), (N $col.VeilGain) }
+        if ($col.ContainsKey("Under")) { $sky += " {0} {1} {2} {3} {4}" -f (N $col.Under), (N $col.Caustics), (N $col.Shafts), (N $col.VeilGain), $(if ($col.UnderToday) { "1" } else { "0" }) }
         $lines.Add(("shot {0}_{1} {0} {2} {3} {4}" -f $view, $c, $col.Foam, (N $col.Seconds), (N $strength)) + $sky)
         if ($col.SkyFog) { $lines.Add("skyfog 1") }
     }

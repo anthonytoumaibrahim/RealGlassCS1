@@ -185,7 +185,7 @@ namespace RealGlass.Water
             // The city reflection first: it may give the depth texture back, which the view from under
             // the water then asks for again.
             CityFrame(light, toSun, skyLayer, under);
-            UnderFrame(under, underCamera, underLevel);
+            UnderFrame(under, underCamera, underLevel, skyLayer);
             FollowGlobals();
         }
 
@@ -211,9 +211,11 @@ namespace RealGlass.Water
         /// <summary>
         /// The view from under the water this frame, or off: lit by the daylight that reaches the water
         /// (the sun as the water's light reads it, the sky's ambient); its colour the water's own kind's
-        /// (WaterUnderOptics), not the Water color row's: a map theme's near-black water made it grey.
+        /// (WaterUnderOptics), not the Water color row's: a map theme's near-black water made it grey. The
+        /// surface from below sees the sky on the water's live cube, its ripples as rough (skyLayer: that
+        /// layer draws this frame).
         /// </summary>
-        private void UnderFrame(bool under, Camera camera, float level)
+        private void UnderFrame(bool under, Camera camera, float level, bool skyLayer)
         {
             if (_under == null)
                 return;
@@ -232,7 +234,7 @@ namespace RealGlass.Water
                                                        new double[] { toSun.x, toSun.y, toSun.z }, new double[] { sun.r, sun.g, sun.b },
                                                        new double[] { sky.r, sky.g, sky.b });
             _under.Show(camera, level, optics, Value(Settings.WaterUnderCaustics, Settings.Defaults.WaterUnderCaustics), ShadedRipples(),
-                        On(Settings.WaterUnderShafts), sunLight, DescribeUnder());
+                        On(Settings.WaterUnderShafts), sunLight, sun, skyLayer ? _sky : null, DescribeUnder());
         }
 
         /// <summary>The glass or the city reflection still read the depth texture.</summary>

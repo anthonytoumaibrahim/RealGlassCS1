@@ -28,6 +28,11 @@ namespace RealGlass.Water
     /// - The game draws no water seen from below (Cull Back), nor the mod's layers on it (WaterSky,
     ///   WaterFoam: Cull Back): the surface from below is this pass's alone. The city reflection adds
     ///   nothing meanwhile (WaterController).
+    /// - THE SURFACE FROM BELOW (2026-10-30, the author's call: the view looking up fell short; the
+    ///   shader's header has the model): the world above through Snell's window reads the frame where it is on
+    ///   screen and the sky on the water's live cube where it is not, and the ripples are as rough as the
+    ///   sky layer averages them from above (<see cref="WaterSkyLayer.ShareRipples"/>); the sun through
+    ///   the waves takes its light from the game's.
     /// - THE SHAFTS read the game's own shadow map of the sun (CameraController.LateUpdate gives its
     ///   main light the shadows of the graphics options): right after the light renders it, the map is
     ///   bound for the frame and its cascades' constants are written into a 24 x 1 texture (the
@@ -48,15 +53,14 @@ namespace RealGlass.Water
         private static readonly int IdFrame = Shader.PropertyToID("_RGUnderFrame");
         private static readonly int IdShadow = Shader.PropertyToID("_RGSunShadow");
         private static readonly int IdShadowData = Shader.PropertyToID("_RGSunShadowData");
+        private static readonly int IdSky = Shader.PropertyToID("_RGUnderSky");
+        private static readonly int IdSunLight = Shader.PropertyToID("_RGUnderSunLight");
 
         /// <summary>The shader's pass that writes the sun's cascade constants.</summary>
         private const int PassShadowData = 1;
 
         /// <summary>The ripples' slope per decoded unit of their texture: the game shades still water at 0.5 x 0.5 (WaterGame.cginc).</summary>
         private const float RippleSlope = 0.25f;
-
-        /// <summary>How far the ripples displace the world seen up through the surface (screen uv per unit of slope).</summary>
-        private const float Displace = 0.015f;
 
         /// <summary>Less water than this over the terrain (m) is none.</summary>
         private const float LeastDepth = 0.05f;
@@ -83,6 +87,7 @@ namespace RealGlass.Water
         private bool _addedDepth;
         private bool _loggedOnce;
         private string _shaftState = "";
+        private string _skyState = "";
 
         private WaterUnder(Shader shader)
         {
@@ -163,8 +168,11 @@ namespace RealGlass.Water
         /// <param name="ripples">The ripple texture the water is shaded with (null: a flat surface, no caustics).</param>
         /// <param name="shafts">The Light shafts row: the sun's light only where its shadows let it in.</param>
         /// <param name="sun">The sun's Light (the game's main light, which casts the shadows).</param>
+        /// <param name="sunColour">The sun's light (linear: colour x intensity; black while its Light is off).</param>
+        /// <param name="sky">The sky on the water, when it draws this frame (its live cube and its ripples' averaging), else null.</param>
         /// <param name="describe">The settings, for the first line in the log.</param>
-        public void Show(Camera camera, float level, double[] vectors, float caustics, Texture ripples, bool shafts, Light sun, string describe)
+        public void Show(Camera camera, float level, double[] vectors, float caustics, Texture ripples, bool shafts, Light sun, Color sunColour,
+                         WaterSkyLayer sky, string describe)
         {
             if (camera != _camera)
             {
@@ -193,12 +201,42 @@ namespace RealGlass.Water
             bool waves = ripples != null;
             if (waves)
                 _material.SetTexture(IdRipples, ripples);
-            _material.SetVector(IdUnder, new Vector4(level, waves ? Mathf.Max(0f, caustics) : 0f, waves ? RippleSlope : 0f, waves ? Displace : 0f));
+            _material.SetVector(IdUnder, new Vector4(level, waves ? Mathf.Max(0f, caustics) : 0f, waves ? RippleSlope : 0f, 0f));
+            _material.SetVector(IdSunLight, new Vector4(Mathf.Max(0f, sunColour.r), Mathf.Max(0f, sunColour.g), Mathf.Max(0f, sunColour.b), 0f));
+            SkyAbove(sky);
             _material.SetVector(IdC, new Vector4((float)vectors[0], (float)vectors[1], (float)vectors[2], 0f));
             _material.SetVector(IdK, new Vector4((float)vectors[4], (float)vectors[5], (float)vectors[6], 0f));
             _material.SetVector(IdVeil, new Vector4((float)vectors[8], (float)vectors[9], (float)vectors[10], 0f));
             _material.SetVector(IdSun, new Vector4((float)vectors[12], (float)vectors[13], (float)vectors[14], (float)vectors[15]));
             _material.SetVector(IdShafts, new Vector4(shadowed ? 1f : 0f, ShaftSteps, ShaftReach / Mathf.Max((float)vectors[1], 1e-3f), ShaftLift));
+        }
+
+        /// <summary>
+        /// The world above the surface from below: the live sky where the frame has none (the sky on the
+        /// water's cube), the facets as rough as the sky layer averages them -- or, with that layer not
+        /// drawn (the Real sky row off, ...), the frame alone, held at the screen's edge, and a rim as
+        /// sharp as the texture. One line when that changes.
+        /// </summary>
+        private void SkyAbove(WaterSkyLayer sky)
+        {
+            bool live = sky != null && sky.Cube != null;
+            if (live)
+            {
+                sky.ShareRipples(_material);
+                _material.SetVector(IdSky, new Vector4(1f, WaterSkyLayer.CubeSize, sky.CubeLastMip, 0f));
+            }
+            else
+            {
+                WaterSkyLayer.ClearRipples(_material);
+                _material.SetVector(IdSky, Vector4.zero);
+            }
+
+            string state = live ? "the live sky above it and its ripples averaged as from above"
+                                : "only what the frame shows above it (the sky on the water is not drawn)";
+            if (state == _skyState)
+                return;
+            _skyState = state;
+            Log.Msg("water: the surface from below shows " + state);
         }
 
         /// <summary>
