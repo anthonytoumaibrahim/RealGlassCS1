@@ -29,7 +29,7 @@ public static class ShaderCheck
         "Assets/RealGlass/WaterUnder.shader",
     };
 
-    private static readonly int[] Passes = { 1, 7, 1, 4, 1, 1, 3, 1, 3, 1, 2 };
+    private static readonly int[] Passes = { 1, 8, 1, 4, 1, 1, 3, 1, 3, 1, 2 };
 
     public static void Run()
     {

@@ -28,7 +28,14 @@
 #                             ripples, "sines" (the 32 waves, default) or "fft" (WaterSpectrum's waves,
 #                             RealGlass/WaterWaves); a fifth the sun's glitter on the sky layer (1 = real
 #                             water; 0 or none: the game's own highlight kept) -- new:1:-:fft:1; a
-#                             sixth its size (every facet's slope x this, its peak kept; default 1)
+#                             sixth its size (every facet's slope x this, its peak kept; default 1); a
+#                             seventh "fog": the game's fog over the sky in the water's cube (GlassUtil's
+#                             SkyFog, the mod's since 2026-10-30; with -GameSky)
+#   ... -GameSky -Views "sunset@2,sunset@0,sunsetback@0,glitter30@1"   the game's own skybox
+#                             (Editor/PreviewGameSky.shader) and its fog's inputs, the game's fog over the
+#                             sky on screen; "view@e" puts the sunset's sun e degrees up, "...back" behind
+#                             the camera: the water red at sunset (2026-10-30) --
+#                             -SkyColumns "new:1:-:fft:0.35:0.5,new:1:-:fft:0.35:0.5:fog"
 #   ... -Spectrum "7,50000,30,1,1"   the FFT waves: wind m/s, fetch m, heading deg, seed, choppiness
 #   ... -Views "glitter30,glitter300"   web-ocean's views: 30 / 300 m over the sea, into a low sun;
 #                             "glitterday": 400 m up, 35 deg down, a sun 30 deg up ahead (a city camera's)
@@ -90,6 +97,7 @@ param(
     # stand-ins for the game's fog and Volumetric Weather's clouds, which read that texture (-Fog).
     [int]$WaterDepth = 1,
     [switch]$Fog,
+    [switch]$GameSky,
     [switch]$Layers,
     [string]$Times = "",
     [string]$Corridors = "",
@@ -213,13 +221,15 @@ elseif ($SkyColumns -ne "") {
         $waves = if ($part.Count -gt 3 -and $part[3] -eq "fft") { 1 } else { 0 }
         $glint = if ($part.Count -gt 4) { [double]::Parse($part[4], $inv) } else { 0.0 }
         $glintSize = if ($part.Count -gt 5) { [double]::Parse($part[5], $inv) } else { 1.0 }
+        $skyFog = $part.Count -gt 6 -and $part[6] -eq "fog"
         $what = if ($mode -eq 1) { "sky per pixel" } else { "cube (until now)" }
         $label = "{0}, sky {1:P0}" -f $what, $gain
         if ($colour -ne "-") { $label += ", " + $colour }
         $label += if ($waves -eq 1) { ", FFT waves" } else { ", 32 waves" }
         $label += if ($glint -gt 0.0) { (", sun glitter {0:P0}" -f $glint) } else { ", the game's sun highlight" }
         if ($glint -gt 0.0 -and $part.Count -gt 5) { $label += (", size {0:P0}" -f $glintSize) }
-        $columns.Add(@{ Foam = 1; Seconds = 443.0; Mode = $mode; Gain = $gain; Body = $colour; Waves = $waves; Glitter = $glint; GlitterSize = $glintSize; Label = $label })
+        if ($skyFog) { $label += ", the game's fog in its sky" }
+        $columns.Add(@{ Foam = 1; Seconds = 443.0; Mode = $mode; Gain = $gain; Body = $colour; Waves = $waves; Glitter = $glint; GlitterSize = $glintSize; SkyFog = $skyFog; Label = $label })
     }
 }
 else {
@@ -246,8 +256,10 @@ foreach ($view in $rows) {
         if ($col.ContainsKey("Corridor")) { $sky += " " + (N $col.Corridor) }
         if ($col.ContainsKey("Under")) { $sky += " {0} {1} {2} {3}" -f (N $col.Under), (N $col.Caustics), (N $col.Shafts), (N $col.VeilGain) }
         $lines.Add(("shot {0}_{1} {0} {2} {3} {4}" -f $view, $c, $col.Foam, (N $col.Seconds), (N $strength)) + $sky)
+        if ($col.SkyFog) { $lines.Add("skyfog 1") }
     }
 }
+if ($GameSky) { $lines.Add("gamesky 1") }
 [System.IO.File]::WriteAllLines((Join-Path $project "foam-preview-input.txt"), $lines)
 
 $output = Join-Path $project "foam-preview-output.txt"

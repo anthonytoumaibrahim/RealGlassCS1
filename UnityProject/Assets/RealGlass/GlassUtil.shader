@@ -11,6 +11,8 @@
 //   the skybox and the clouds: the sky's light at the sun's height, and alpha cleared for the clouds.
 //   Pass 6 "LodSample": not on a camera either -- while a city's LODs are compared with their
 //   models (LodGlass.cs): a model's shine map and its LOD's own, each as one tile to read back.
+//   Pass 7 "SkyFog": in the water's live sky cube (GlassSky.cs), between the skybox and the clouds:
+//   the game's own fog over the sky, as the player sees it on screen.
 //
 // Both let only finite, non-negative light through. A NaN or an infinity in the picture spreads
 // to a whole block of every coarser mip, and a blend keeps it for good: NaN x 0.9 is NaN, frame
@@ -271,6 +273,115 @@ Shader "RealGlass/GlassUtil"
                 float model = 1.0 - tex2Dlod(_RGLodModel, float4(i.uv, 0.0, FiniteIn(_RGLodInfo.y, 0.0, 14.0))).z;
                 float lod = 1.0 - tex2Dlod(_RGLodAtlasXys, float4(_RGLodRect.xy + i.uv * _RGLodRect.zw, 0.0, FiniteIn(_RGLodInfo.z, 0.0, 14.0))).z;
                 return float4(FiniteIn(model, 0.0, 1.0), FiniteIn(lod, 0.0, 1.0), 0.0, 1.0);
+            }
+            ENDCG
+        }
+
+        Pass
+        {
+            // The game's fog (Hidden/DayNight/Fog, DayNightFogEffect, [ImageEffectOpaque]) on a pixel
+            // of sky, ported line for line from its OpenGL Core program (its names kept there): every
+            // input is a global the game sets each frame (DayNightProperties' sky, FogProperties' fog,
+            // NaturalResourceManager's pollution), so this is the fog the player sees over the sky.
+            // In the water's live sky cube (GlassSky.cs), right after the skybox and before the clouds
+            // (on screen they are drawn after the fog): the water then mirrors the sky as it is on
+            // screen. Without it, the cube held the bare skybox, whose light path, 8 km / (dir.y + 0.06),
+            // saturates the lowest few degrees and every direction below the horizon to the light that
+            // crosses 133 km of air: at sunset and sunrise a deep red all round, which the fog hides on
+            // screen but rough water, reading the cube's blurred mips, spread over the sea.
+            //   A sky pixel's point P is on the far plane, depth01 = 1: here P = eye + dir x the main
+            //   camera's far plane (_RGSkyFog.x) -- a sphere where the game has a plane, the same at the
+            //   middle of the screen. Its fog: the horizon band saturate(1 - P.y / m_HorizonHeight) (all
+            //   of the sky below the horizon), or more where the distance fog's 3D noise, faded over
+            //   m_FogHeight, reaches the far plane; its colour the sky's own scattering over a path of
+            //   8 km / m_ColorDecay. Drawn at the far plane under the skybox's depth (ZTest LEqual: only
+            //   sky; in a face of the cube, everything), blended as the game's lerp.
+            Name "SkyFog"
+            ZTest LEqual
+            Blend SrcAlpha OneMinusSrcAlpha
+            ColorMask RGB
+
+            CGPROGRAM
+            #pragma target 3.5
+            #pragma vertex vert
+            #pragma fragment frag
+
+            float4 _RGSkyFog;    // x the main camera's far plane (m)
+
+            // The game's globals, as its fog declares them.
+            float2 _ColorCorrection;
+            float3 _BetaR, _BetaM, _MieConst, _MiePhase_g, _SunDir, _SkyMultiplier;
+            float4 _NightHorizonColor, _NightZenithColor;
+            float4 _FogParams0, _FogParams1, _FogPollutionColor, _FogPollutionParams, _FogSpeed;
+            float4 _FogNoiseGainConstrastStepScale, _NaturalResourceMapping;
+            sampler3D _Fog3DNoiseTex;
+            sampler2D _NaturalDestruction;
+
+            struct v2f
+            {
+                float4 pos : SV_POSITION;
+                float3 dir : TEXCOORD0;
+            };
+
+            v2f vert(float4 vertex : POSITION)
+            {
+                v2f o;
+                o.pos = mul(UNITY_MATRIX_VP, float4(_WorldSpaceCameraPos + vertex.xyz * 500.0, 1.0));
+                #if defined(UNITY_REVERSED_Z)
+                o.pos.z = 1.0e-6 * o.pos.w;
+                #else
+                o.pos.z = 0.999999 * o.pos.w;
+                #endif
+                o.dir = vertex.xyz;
+                return o;
+            }
+
+            float4 frag(v2f i) : SV_Target
+            {
+                float3 d = normalize(i.dir);
+                float far = max(_RGSkyFog.x, 1.0);
+                float3 eye = _WorldSpaceCameraPos;
+                float3 p = eye + d * far;
+
+                // How much fog: the horizon band (a sky pixel's), the distance fog to the far plane.
+                float band = saturate(1.0 - p.y * _FogPollutionParams.z);
+                float distant = 1.0 - exp(-saturate(far * _FogParams0.z - 1.0) * _FogParams0.w * _FogParams0.y);
+
+                // Its colour: the sky's scattering (as Hidden/DayNight/Skybox) over the fog's own path.
+                float mu = dot(d, _SunDir);
+                float path = max(min(band, _FogParams1.y) * (d.y + _FogParams1.y), _FogParams1.y);
+                float r1 = 8.0 / path;
+                float r2 = 1.2 / path;
+                float3 a = r1 * _NightZenithColor.xyz * (2.0 - _NightZenithColor.xyz * r1);
+                float3 t = exp(-(_BetaR * r1 + _BetaM * r2));
+                float3 s = _SkyMultiplier.x * (1.0 - t - t * a) + a * t;
+                float3 mie = r2 * s / max(s.x, 1.0e-6) * _MieConst;
+                float phase = _MiePhase_g.x * pow(max(_MiePhase_g.y - _MiePhase_g.z * mu, 1.0e-4), -1.5);
+                float forward = saturate(band - (1.0 - _FogParams1.z));
+                forward = _FogParams1.z * (1.0 - forward) + forward;
+                float3 light = (s * 0.75 + phase * mie * forward) * ((mu * mu + 1.0) * _SkyMultiplier.y) + a * _NightHorizonColor.xyz;
+                float3 colour = pow(max((1.0 - exp(-light)) * _ColorCorrection.x, 0.0), _ColorCorrection.y);
+
+                // The distance fog's noise, 30 steps from the far plane back toward the eye.
+                float3 at = p;
+                float left = far;
+                float noise = 0.0;
+                for (int k = 0; k < 30; k++)
+                {
+                    float3 q = at * _FogNoiseGainConstrastStepScale.w + _FogSpeed.xyz;
+                    noise += tex3Dlod(_Fog3DNoiseTex, float4(q, 0.0)).x * saturate(left / _FogNoiseGainConstrastStepScale.z);
+                    at -= d * _FogNoiseGainConstrastStepScale.z;
+                    left -= _FogNoiseGainConstrastStepScale.z;
+                }
+                noise = saturate(1.0 - exp2(noise * -0.0480898358) + _FogPollutionParams.w);
+
+                // Pollution: its own colour where the ground is destroyed, beyond the band.
+                float polluted = tex2Dlod(_NaturalDestruction, float4(p.xz * _NaturalResourceMapping.zz + _NaturalResourceMapping.xy, 0.0, 0.0)).x;
+                polluted *= 1.0 - band;
+                colour = lerp(colour, _FogPollutionColor.rgb, polluted);
+                float amount = saturate(max(polluted * _FogPollutionParams.x, noise * distant));
+                amount *= 1.0 - saturate(p.y * _FogParams1.x);
+                return float4(Finite(colour), FiniteIn(max(band, amount), 0.0, 1.0));
             }
             ENDCG
         }

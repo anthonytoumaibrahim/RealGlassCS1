@@ -13,7 +13,8 @@ namespace RealGlass.Glass
     /// For the glass (a util material given), between the skybox and the clouds: the sky's light at
     /// the sun's height (GlassUniforms.Dusk; the game's sky keeps noon's until the sun is 3 degrees
     /// up), and the cube's alpha cleared, so the clouds drawn over it leave their opacity there --
-    /// how much of the sun's disc they hide (CloudAlpha).
+    /// how much of the sun's disc they hide (CloudAlpha). For the water (Fog given), the game's fog
+    /// over the sky there instead, as the player sees it on screen.
     /// Engine types only: the GPU preview runs this same file.
     /// </summary>
     public sealed class GlassSky
@@ -34,6 +35,18 @@ namespace RealGlass.Glass
         /// <summary>GlassUtil's pass that sets the sky's light and clears alpha in a face (SkyBackground).</summary>
         public const int PassSkyBackground = 5;
 
+        /// <summary>GlassUtil's pass that lays the game's fog over the sky in a face (SkyFog).</summary>
+        public const int PassSkyFog = 7;
+
+        /// <summary>
+        /// GlassUtil, for the game's fog over the sky between the skybox and the clouds, as on screen
+        /// (the water's sky); null: none (the glass's). <see cref="FogFar"/> is the main camera's far
+        /// plane, where the game's fog puts a pixel of sky.
+        /// </summary>
+        public Material Fog;
+
+        public float FogFar = 10000f;
+
         private GameObject _holder;
         private Camera _camera;
         private RenderTexture _cube;
@@ -44,7 +57,9 @@ namespace RealGlass.Glass
         private CommandBuffer _buffer;
         private MaterialPropertyBlock _cloudBlock;
         private MaterialPropertyBlock _backgroundBlock;
+        private MaterialPropertyBlock _fogBlock;
         private Mesh _quad;
+        private Mesh _box;
         private MeshRenderer _cloudRenderer;
         private MeshFilter _cloudFilter;
         private float _nextCloudSearch;
@@ -165,6 +180,8 @@ namespace RealGlass.Glass
         /// <summary>
         /// What the sky camera draws right after the skybox, in each face, from one command buffer:
         /// (1) for the glass, GlassUtil's SkyBackground -- the sky's light x dusk, alpha cleared;
+        /// (1b) for the water, GlassUtil's SkyFog -- the game's fog over the sky, which on screen comes
+        /// before the clouds too (the [ImageEffectOpaque] fog, then Volumetric Weather's transparents);
         /// (2) Volumetric Weather's distant clouds and (3) its volumetric clouds, each its own mesh
         /// with its own material -- the same clouds the player sees, from the same point, in the
         /// order its queues draw them (sky layer 2507 before the clouds). Unreal's Sky Light captures
@@ -180,12 +197,13 @@ namespace RealGlass.Glass
             bool cloudsNow = Find(clouds, CloudVolumeName, ref _cloudRenderer, ref _cloudFilter, ref _nextCloudSearch);
             bool distantNow = Find(distant, DistantCloudsName, ref _distantRenderer, ref _distantFilter, ref _nextDistantSearch);
             bool background = util != null;
+            bool fog = Fog != null;
             DrawsClouds = cloudsNow;
             DrawsDistantClouds = distantNow;
             CloudAlpha = background;
             _camera.depthTextureMode = distantNow ? DepthTextureMode.Depth : DepthTextureMode.None;
 
-            if (!background && !cloudsNow && !distantNow)
+            if (!background && !fog && !cloudsNow && !distantNow)
             {
                 DropBuffer();
                 return;
@@ -197,6 +215,7 @@ namespace RealGlass.Glass
                 _buffer.name = "RealGlass sky";
                 _cloudBlock = new MaterialPropertyBlock();
                 _backgroundBlock = new MaterialPropertyBlock();
+                _fogBlock = new MaterialPropertyBlock();
                 _camera.AddCommandBuffer(CameraEvent.AfterSkybox, _buffer);
             }
 
@@ -207,6 +226,14 @@ namespace RealGlass.Glass
                     _quad = GlassScreen.ClipQuad();
                 _backgroundBlock.SetVector("_RGSkyDusk", new Vector4(Mathf.Clamp01(dusk), 0f, 0f, 0f));
                 _buffer.DrawMesh(_quad, Matrix4x4.identity, util, 0, PassSkyBackground, _backgroundBlock);
+            }
+
+            if (fog)
+            {
+                if (_box == null)
+                    _box = Box();
+                _fogBlock.SetVector("_RGSkyFog", new Vector4(Mathf.Max(1f, FogFar), 0f, 0f, 0f));
+                _buffer.DrawMesh(_box, Matrix4x4.identity, Fog, 0, PassSkyFog, _fogBlock);
             }
 
             if (distantNow)
@@ -238,6 +265,24 @@ namespace RealGlass.Glass
 
             return wanted && renderer != null && renderer.enabled && filter != null && filter.sharedMesh != null &&
                    renderer.sharedMaterial != null;
+        }
+
+        /// <summary>A unit cube round the origin, drawn round the camera (SkyFog's vertex program puts it at the far plane).</summary>
+        private static Mesh Box()
+        {
+            var mesh = new Mesh { name = "RealGlass sky box", hideFlags = HideFlags.HideAndDontSave };
+            mesh.vertices = new[]
+            {
+                new Vector3(-1, -1, -1), new Vector3(1, -1, -1), new Vector3(1, 1, -1), new Vector3(-1, 1, -1),
+                new Vector3(-1, -1, 1), new Vector3(1, -1, 1), new Vector3(1, 1, 1), new Vector3(-1, 1, 1),
+            };
+            mesh.triangles = new[]
+            {
+                0, 2, 1, 0, 3, 2, 4, 5, 6, 4, 6, 7, 0, 1, 5, 0, 5, 4,
+                3, 7, 6, 3, 6, 2, 0, 4, 7, 0, 7, 3, 1, 2, 6, 1, 6, 5,
+            };
+            mesh.bounds = new Bounds(Vector3.zero, Vector3.one * 1e6f);
+            return mesh;
         }
 
         private void DropBuffer()
@@ -279,6 +324,11 @@ namespace RealGlass.Glass
             {
                 Object.DestroyImmediate(_quad);
                 _quad = null;
+            }
+            if (_box != null)
+            {
+                Object.DestroyImmediate(_box);
+                _box = null;
             }
             if (_holder != null)
             {

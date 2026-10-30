@@ -282,7 +282,7 @@ namespace RealGlass.Water
             double slope = WaterOptics.RippleSlope(rms, ours ? Value(Settings.WaterRippleStrength, Settings.Defaults.WaterRippleStrength) * _waveGain : 1.0);
             return _sky.Show(Value(Settings.WaterSky, Settings.Defaults.WaterSky), ShadedRipples(), slope * slope,
                              ours ? Value(Settings.WaterRippleSize, Settings.Defaults.WaterRippleSize) : 1.0,
-                             ours ? Value(Settings.WaterWaveSize, Settings.Defaults.WaterWaveSize) : 1.0, camera.transform.position,
+                             ours ? Value(Settings.WaterWaveSize, Settings.Defaults.WaterWaveSize) : 1.0, camera.transform.position, camera.farClipPlane,
                              ours ? _ripples.Ocean : null, slope,
                              new WaterSkyLayer.Glints(Value(Settings.WaterGlitter, Settings.Defaults.WaterGlitter),
                                                       Value(Settings.WaterGlitterSize, Settings.Defaults.WaterGlitterSize),

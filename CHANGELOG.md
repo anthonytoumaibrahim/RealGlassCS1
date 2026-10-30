@@ -19,6 +19,11 @@ the mod's name in the game.
 
 ### Fixed
 
+- **No red sea at sunset and sunrise.** The sky the water mirrors is the game's own, and that sky
+  colours its lowest few degrees, and everything below the horizon, a deep red all round from shortly
+  before sunset until night. On screen the game's fog covers that band, but the water mirrored the
+  bare sky, so distant and choppy water turned red even away from the sun. The water now mirrors the
+  sky with the game's fog over it, as you see it.
 - **Window frames in front of the glass stay frames from afar.** On buildings whose window frames are
   their own geometry (modelled, or an alpha-mapped plane) standing a few centimetres in front of the
   glass, the glass was drawn over the frames once the camera zoomed out, so they turned faint and

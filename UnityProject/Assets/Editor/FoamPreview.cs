@@ -66,7 +66,15 @@ public static class FoamPreview
         public float Shafts;
         // The veiling light's gain in place of WaterUnderOptics.VeilGain (0: the mod's), to try values.
         public float VeilGain;
+        // The game's fog over the sky in the water's cube (GlassUtil's SkyFog, as WaterSkyLayer since
+        // 2026-10-30; false: the bare skybox, as before).
+        public bool SkyFog;
     }
+
+    // -GameSky: the game's own skybox (Editor/PreviewGameSky.shader) and its fog's inputs, set by
+    // GameSkyGlobals for each view's sun; the screen gets the game's fog over its sky (GlassUtil's
+    // SkyFog, the port of it).
+    private static bool s_gameSky;
 
     /// <summary>A run of frames for the flicker under temporal anti-aliasing (as WaterPreview's).</summary>
     private sealed class Seq
@@ -91,6 +99,20 @@ public static class FoamPreview
         public GameObject Bridge;
         public Camera Capture;
         public RenderTexture SkyCube;
+        public CommandBuffer CubeFog;
+        private bool _cubeFogOn;
+
+        /// <summary>The game's fog in the water's cube for the next view, or not (before Set: it renders the cube).</summary>
+        public void CubeFogFor(Shot shot)
+        {
+            if (shot.SkyFog == _cubeFogOn)
+                return;
+            if (shot.SkyFog)
+                Capture.AddCommandBuffer(CameraEvent.AfterSkybox, CubeFog);
+            else
+                Capture.RemoveCommandBuffer(CameraEvent.AfterSkybox, CubeFog);
+            _cubeFogOn = shot.SkyFog;
+        }
         public List<Tower> Towers;
         public List<Renderer> FoamRenderers, SkyRenderers;
         public Color BodyColour;
@@ -352,6 +374,10 @@ public static class FoamPreview
                     waterDepth = p[1] != "0";
                 else if (p[0] == "fog")
                     fogStandIn = p[1] != "0";
+                else if (p[0] == "gamesky")
+                    s_gameSky = p[1] != "0";
+                else if (p[0] == "skyfog" && shots.Count > 0)
+                    shots[shots.Count - 1].SkyFog = p[1] != "0";
             }
 
             Shader.SetGlobalVectorArray("_RGSeaTable", table);
@@ -404,8 +430,10 @@ public static class FoamPreview
             log.Add("scene: " + waterRenderers.Count + " water tiles, " + towers.Count + " towers");
 
             // Light, sky, the sky's cube for the water (as WaterPreview).
-            var skybox = new Material(Shader.Find("Skybox/Procedural"));
+            var skybox = s_gameSky ? new Material(AssetDatabase.LoadAssetAtPath<Shader>("Assets/Editor/PreviewGameSky.shader"))
+                : new Material(Shader.Find("Skybox/Procedural"));
             RenderSettings.skybox = skybox;
+            log.Add("sky: " + (s_gameSky ? "the game's (Editor/PreviewGameSky.shader), with its fog over the sky on screen" : "Unity's procedural"));
             var sunObject = new GameObject("preview sun");
             Light sun = sunObject.AddComponent<Light>();
             sun.type = LightType.Directional;
@@ -446,6 +474,21 @@ public static class FoamPreview
             // The sky the city takes the place of: the live sky, light already (the mod's with the sky layer).
             reflection.SetTexture("_RGWaterTheme", skyCube);
             var cube = WaterPreview.UnitCube();
+
+            // The game's fog over the sky (GlassUtil's SkyFog): in the water's cube for the shots that ask
+            // (as GlassSky records it, right after the skybox), and on screen with -GameSky (the game's
+            // fog runs after the opaque passes).
+            var skyFogMaterial = new Material(AssetDatabase.LoadAssetAtPath<Shader>("Assets/RealGlass/GlassUtil.shader"));
+            var skyFogBlock = new MaterialPropertyBlock();
+            skyFogBlock.SetVector("_RGSkyFog", new Vector4(camera.farClipPlane, 0f, 0f, 0f));
+            var cubeFog = new CommandBuffer { name = "the game's fog in the water's sky (GlassSky's)" };
+            cubeFog.DrawMesh(cube, Matrix4x4.identity, skyFogMaterial, 0, 7, skyFogBlock);
+            if (s_gameSky)
+            {
+                var screenFog = new CommandBuffer { name = "the game's fog over the sky (preview)" };
+                screenFog.DrawMesh(cube, Matrix4x4.identity, skyFogMaterial, 0, 7, skyFogBlock);
+                camera.AddCommandBuffer(CameraEvent.BeforeImageEffectsOpaque, screenFog);
+            }
             int w = Mathf.Max(1, width / 2), h = Mathf.Max(1, height / 2);
             RenderTexture frame = WaterPreview.Target(w, h, true), trace = WaterPreview.Target(w, h, true), streaked = WaterPreview.Target(w, h, false);
             reflection.SetTexture("_RGWaterFrame", frame);
@@ -546,6 +589,7 @@ public static class FoamPreview
                 Under = under, UnderBuffer = underBuffer, ShadowGrab = shadowGrab, Bridge = bridge,
                 Coast = coast, Camera = camera, CameraObject = cameraObject, Target = target, Sun = sun, Skybox = skybox, Water = water,
                 Foam = foamMaterial, Reflection = reflection, Surface = surface, Sky = skyMaterial, Capture = capture, SkyCube = skyCube, Towers = towers,
+                CubeFog = cubeFog,
                 FoamRenderers = foamRenderers, SkyRenderers = skyRenderers, Rows = rows, RippleRms = rippleRms, Log = log, BodyColour = body,
                 SkyInfo = new Vector4(1f, skyCube.width, 7f, 0f),
                 Generator = new Material(AssetDatabase.LoadAssetAtPath<Shader>("Assets/RealGlass/WaterRipples.shader")),
@@ -578,6 +622,7 @@ public static class FoamPreview
 
             foreach (Shot shot in shots)
             {
+                scene.CubeFogFor(shot);
                 bool night = scene.Set(shot.View, shot.Strength);
                 scene.SkyFor(shot, shot.Strength);
                 scene.UnderFor(shot);
@@ -1330,9 +1375,72 @@ public static class FoamPreview
         return towers;
     }
 
+    /// <summary>
+    /// The globals the game's skybox and fog read, as the game sets them for this sun
+    /// (DayNightProperties.UpdateSharedAtmosphericProperties, FogProperties.Update): the sky's inputs
+    /// Volumetric Weather logged from the game (2026-10-30; Rayleigh 1, 680/550/440 nm, exposure 0.71,
+    /// linear without the sky's tone mapping), the fog's a theme's as Real Light found them (density
+    /// 0.00223, start 596 m, distance 10136, height 5000 m, colour decay 0.20, scattering 1) with the
+    /// horizon band of 3000 m Volumetric Weather found (without that mod, which flattens it); the fog's
+    /// 3D noise a flat 0.5, no pollution.
+    /// </summary>
+    private static void GameSkyGlobals(Vector3 toSun, bool night)
+    {
+        if (night)
+            toSun = new Vector3(toSun.x, -0.33f, toSun.z).normalized;
+        float u = Mathf.Atan(5.35f * Mathf.Max(toSun.y, -0.1975f)) / 1.1f + 0.739f;
+        float day = Mathf.Clamp01(u), sunsetTime = Mathf.Clamp01((u - 1f) * 1.5f), nightTime = 1f - day;
+        Shader.SetGlobalVector("_SunDir", toSun);
+        Shader.SetGlobalVector("_SkyMultiplier", new Vector4(sunsetTime, 0.71f * 4f * day, nightTime, 0f));
+        Shader.SetGlobalVector("_BetaR", new Vector4(0.00581f, 0.01357f, 0.03312f, 0f));
+        Shader.SetGlobalVector("_BetaM", new Vector4(0.00166f, 0.00166f, 0.00166f, 0f));
+        Shader.SetGlobalVector("_MieConst", new Vector4(0.0017f, 0.0017f * 0.00581f / 0.01357f, 0.0017f * 0.00581f / 0.03312f, 0f));
+        Shader.SetGlobalVector("_MiePhase_g", new Vector4(0.2377f, 1.4238f, 1.3020f, 0f));
+        Shader.SetGlobalVector("_NightZenithColor", new Vector4(0.00196f, 0.00278f, 0.00388f, 0f));
+        Shader.SetGlobalVector("_NightHorizonColor", new Vector4(0.055f, 0.060f, 0.065f, 0f) * nightTime);
+        Shader.SetGlobalVector("_ColorCorrection", new Vector4(1f, 2f, 0f, 0f));
+        Shader.SetGlobalFloat("_SunSize", 32f);
+        Shader.SetGlobalVector("_FogParams0", new Vector4(0f, 0.00223f, 1f / 596f, 10136f));
+        Shader.SetGlobalVector("_FogParams1", new Vector4(1f / 5000f, 0.20f, 1f, 1278f));
+        Shader.SetGlobalVector("_FogPollutionParams", new Vector4(0f, 0f, 1f / 3000f, 0f));
+        Shader.SetGlobalVector("_FogPollutionColor", new Vector4(0.5f, 0.5f, 0.5f, 1f));
+        Shader.SetGlobalVector("_FogSpeed", Vector4.zero);
+        Shader.SetGlobalVector("_FogNoiseGainConstrastStepScale", new Vector4(1f, 1f, 200f, 0.001f));
+        Shader.SetGlobalVector("_NaturalResourceMapping", Vector4.zero);
+        Shader.SetGlobalTexture("_NaturalDestruction", Texture2D.blackTexture);
+        if (s_fogNoise == null)
+        {
+            s_fogNoise = new Texture3D(4, 4, 4, TextureFormat.RGBA32, false);
+            var grey = new Color[64];
+            for (int i = 0; i < grey.Length; i++)
+                grey[i] = new Color(0.5f, 0.5f, 0.5f, 1f);
+            s_fogNoise.SetPixels(grey);
+            s_fogNoise.Apply();
+        }
+        Shader.SetGlobalTexture("_Fog3DNoiseTex", s_fogNoise);
+    }
+
+    private static Texture3D s_fogNoise;
+
     /// <summary>The light, sky and camera of a view; true at night.</summary>
     private static bool SetView(string view, GameObject cameraObject, Light sun, Material skybox, Camera capture, RenderTexture skyCube, Material water, List<Tower> towers)
     {
+        // "view@e": the sunset's sun e degrees up (below 0: down) instead of 6; "...back": behind the
+        // camera instead of ahead (the sky away from the sun in the water). The camera is the view's.
+        float? sunUp = null;
+        bool sunBehind = false;
+        int at0 = view.IndexOf('@');
+        if (at0 >= 0)
+        {
+            sunUp = WaterPreview.F(view.Substring(at0 + 1));
+            view = view.Substring(0, at0);
+        }
+        if (view.EndsWith("back", StringComparison.Ordinal))
+        {
+            sunBehind = true;
+            view = view.Substring(0, view.Length - 4);
+        }
+
         bool night = view.StartsWith("night", StringComparison.Ordinal);
         // "glitter" views: the sunset's sun, the camera far out at sea looking into it (web-ocean's);
         // "glitterday": a sun 30 deg up the same way, under a city camera's usual pitch.
@@ -1345,8 +1453,19 @@ public static class FoamPreview
         // Day: the sun high behind the camera's left; sunset: low over the land ahead; night: a dim moon.
         Vector3 toSun = sunset ? new Vector3(0.979f, 0.105f, -0.173f).normalized : night ? new Vector3(-0.3f, 0.6f, 0.5f).normalized
             : glitterDay ? new Vector3(0.853f, 0.5f, -0.150f).normalized : new Vector3(-0.55f, 0.45f, 0.7f).normalized;
+        float sunScale = 1f;
+        if (sunUp.HasValue)
+        {
+            var flat = new Vector3(toSun.x, 0f, toSun.z).normalized * (sunBehind ? -1f : 1f);
+            float e = sunUp.Value * Mathf.Deg2Rad;
+            toSun = flat * Mathf.Cos(e) + Vector3.up * Mathf.Sin(e);
+            // The game's sun: x DayTime (0.74 at the horizon, 0 near -11 deg).
+            sunScale = Mathf.Clamp01(Mathf.Atan(5.35f * Mathf.Max(toSun.y, -0.1975f)) / 1.1f + 0.739f);
+        }
         sun.transform.rotation = Quaternion.LookRotation(-toSun);
-        sun.intensity = night ? 0.12f : sunset ? 1.6f : 1.3f;
+        sun.intensity = (night ? 0.12f : sunset ? 1.6f : 1.3f) * sunScale;
+        if (s_gameSky)
+            GameSkyGlobals(toSun, night);
         sun.color = night ? new Color(0.6f, 0.7f, 1f) : sunset ? new Color(1f, 0.62f, 0.38f) : new Color(1f, 0.95f, 0.88f);
         skybox.SetFloat("_Exposure", night ? 0.04f : 1.1f);
         skybox.SetFloat("_AtmosphereThickness", 1f);

@@ -23,6 +23,12 @@ namespace RealGlass.Water
     ///   <see cref="GlassSky"/>, a cube of our own (<see cref="CubeSize"/> px, <see cref="FacesPerFrame"/>
     ///   faces a frame), bound as the global _RGWaterSkyCube. A published real sky (RealLight's, internal)
     ///   still takes over by its weight (WaterCommon.cginc).
+    /// - THE FOG (2026-10-30, the author: the water's reflection red at sunset and sunrise): the game's
+    ///   own fog over that sky, as on screen (GlassUtil's SkyFog, a port of Hidden/DayNight/Fog on a
+    ///   pixel of sky), before the clouds. The bare skybox's lowest few degrees, and all of it below the
+    ///   horizon, are the light that crossed 133 km of air -- a deep red all round from the sun 3 degrees
+    ///   up until night; on screen the fog covers that band, but the water's blurred reads of the cube
+    ///   carried it over the sea.
     /// - Only on the OPAQUE water material: the transparent one is the info views' and the water tool's,
     ///   which keep our cube of the old kind. Off in info views and under the snapshot tool (an asset's
     ///   pictures ship to players without the mod), as the foam.
@@ -65,6 +71,7 @@ namespace RealGlass.Water
         private static bool s_failed;
 
         private readonly Material _material;
+        private readonly Material _fog;
         private readonly GlassSky _sky;
         private bool _shown;
         private string _why = "";
@@ -99,17 +106,19 @@ namespace RealGlass.Water
             }
         }
 
-        private WaterSkyLayer(Shader shader)
+        private WaterSkyLayer(Shader shader, Shader util)
         {
             _material = new Material(shader) { name = "RealGlass water sky", hideFlags = HideFlags.HideAndDontSave };
-            _sky = new GlassSky { GlobalName = CubeGlobal };
+            if (util != null && util.isSupported)
+                _fog = new Material(util) { name = "RealGlass water sky fog", hideFlags = HideFlags.HideAndDontSave };
+            _sky = new GlassSky { GlobalName = CubeGlobal, Fog = _fog };
         }
 
         /// <summary>Null when the shader is missing or unsupported here (logged by ShaderBundle): the water keeps our cube.</summary>
         public static WaterSkyLayer Create()
         {
             Shader shader = ShaderBundle.Get(ShaderBundle.WaterSky);
-            return shader != null && shader.isSupported ? new WaterSkyLayer(shader) : null;
+            return shader != null && shader.isSupported ? new WaterSkyLayer(shader, ShaderBundle.Get(ShaderBundle.GlassUtil)) : null;
         }
 
         /// <summary>
@@ -151,10 +160,11 @@ namespace RealGlass.Water
         /// <param name="rippleSize">The Ripple size slider (1 = 100%; the game's own ripples: 1).</param>
         /// <param name="waveSize">The Wave size slider (likewise).</param>
         /// <param name="eye">Where the sky's cube is rendered from (the camera).</param>
+        /// <param name="far">The camera's far plane: where the game's fog puts a pixel of sky.</param>
         /// <param name="ocean">The ocean waves' spectrum the ripples hold (null: the 32 waves or the game's).</param>
         /// <param name="slope">The ripples' root-mean-square slope (the texture's units: the ocean table's scale).</param>
         /// <param name="glints">The glitter rows, the sun's and the moon's (a strength of 0 = none, the game's own highlight kept).</param>
-        public bool Show(float skySlider, Texture ripples, double slopeVariance, double rippleSize, double waveSize, Vector3 eye,
+        public bool Show(float skySlider, Texture ripples, double slopeVariance, double rippleSize, double waveSize, Vector3 eye, float far,
                          WaterSpectrum ocean, double slope, Glints glints)
         {
             string why = null;
@@ -169,8 +179,9 @@ namespace RealGlass.Water
                 why = "no ripple texture";
             else
             {
-                // The game's sky with the volumetric clouds, as it always was: not the glass's dusk
-                // or distant clouds.
+                // The game's sky with the volumetric clouds, and the game's fog over it as on screen
+                // (THE FOG, below): not the glass's dusk or distant clouds.
+                _sky.FogFar = far;
                 _sky.Update(true, CubeSize, FacesPerFrame, null, eye, true, false, null, 1f);
                 if (_sky.Problem.Length > 0 || _sky.Cube == null)
                     why = "the live sky: " + (_sky.Problem.Length > 0 ? _sky.Problem : "no cube");
@@ -202,7 +213,8 @@ namespace RealGlass.Water
             if (!_shown)
             {
                 Log.Msg("water: the sky drawn on the water per pixel (Fresnel on each ripple; the live sky " + CubeSize + " px, " + FacesPerFrame +
-                        " faces a frame" + (_sky.DrawsClouds ? ", with Volumetric Weather's clouds" : "") + "; ripples averaged away from mip " +
+                        " faces a frame" + (_fog != null ? ", under the game's fog" : ", WITHOUT the game's fog (GlassUtil missing)") +
+                        (_sky.DrawsClouds ? ", with Volumetric Weather's clouds" : "") + "; ripples averaged away from mip " +
                         start.ToString("F2") + " over " + span.ToString("F2") + ", mean square slope " + slopeVariance.ToString("F4") +
                         "); the game's own water reflects no sky meanwhile");
             }
@@ -325,6 +337,8 @@ namespace RealGlass.Water
             s_material = null;
             s_gameWater = null;
             UnityEngine.Object.Destroy(_material);
+            if (_fog != null)
+                UnityEngine.Object.Destroy(_fog);
         }
     }
 }
