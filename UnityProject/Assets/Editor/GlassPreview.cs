@@ -39,6 +39,8 @@ using Debug = UnityEngine.Debug;
 ///   RG_STOREY     the storey the stand-ins are painted with (3.8 m)
 ///   RG_SHAPES     1: four more towers east of the city (views "shapes", "nightshapes"): round and
 ///                 shaded smooth, a box with smoothed corners, a glass pyramid, 12-sided and flat
+///   RG_FRAMED     1: five towers west of the city (views "framed", "framedmid", "framedfar"), glass
+///                 with frames as their own geometry FramedGaps in front ("Ofs=f,u", "Mark=k")
 /// Every frame logs "RG FRAME row=.. col=.. view=.. variant=.. file=.. | ..." with its mean colour.
 /// </summary>
 public static class GlassPreview
@@ -126,6 +128,10 @@ public static class GlassPreview
 
         /// <summary>Its rectangle in the LOD atlases (uv).</summary>
         public Vector4 AtlasRect;
+
+        /// <summary>"-Framed": its number (1..5, FramedGaps' order; 0 for the rest) and its colour with the frames red ("Mark=k").</summary>
+        public int Framed;
+        public Texture2D MainMarked;
     }
 
     private sealed class Scene
@@ -230,6 +236,12 @@ public static class GlassPreview
 
     /// <summary>The variant's "Budget=0..3": the GlassQuality tier (the mod runs Ultra).</summary>
     private static int _quality = GlassQuality.Ultra;
+
+    /// <summary>The variant's "Ofs=f,u": the glass pass's depth Offset factor and units (Glass.shader's 0, -1; -1, -1 before 1.1.6).</summary>
+    private static float _offsetFactor = 0f, _offsetUnits = -1f;
+
+    /// <summary>The variant's "Mark=k": the k-th framed tower's frames drawn red (0: none).</summary>
+    private static int _mark;
 
     /// <summary>The variant's "HiZ=0": the tier's budget without the hierarchical depth (the plain trace).</summary>
     private static bool _hizOff;
@@ -998,6 +1010,8 @@ public static class GlassPreview
 
         if (Env("RG_SHAPES", "0") == "1")
             AddShapes(s, rnd);
+        if (Env("RG_FRAMED", "0") == "1")
+            AddFramed(s);
 
         s.Ground = GroundMesh(4000f);
         MakeGround(out s.GroundMain, out s.GroundXys, out s.GroundAci);
@@ -1016,6 +1030,84 @@ public static class GlassPreview
         AddShape(s, rnd, "curtain", Prism(4, 25f, 100f, true), 4f * 35.4f, 100f, new Vector3(600f, 0f, -50f), colour);
         AddShape(s, rnd, "glassbox", Pyramid(50f, 35f), 50f, 35f, new Vector3(600f, 0f, 50f), colour);
         AddShape(s, rnd, "curtain", Prism(12, 20f, 90f, false), 12f * 10.35f, 90f, new Vector3(600f, 0f, 150f), colour);
+    }
+
+    /// <summary>The "-Framed" towers' gaps: how far each one's frames stand in front of its glass (m).</summary>
+    private static readonly float[] FramedGaps = { 0.02f, 0.05f, 0.1f, 0.25f, 1f };
+
+    /// <summary>
+    /// "-Framed": five towers in a row west of the city (views "framed", "framedmid", "framedfar"), glass
+    /// all over, with window frames as their own geometry (spec 0, the roof's light texels) standing
+    /// FramedGaps in front of the glass -- an asset whose frames are modelled, or an alpha-mapped plane,
+    /// in front of a shiny one.
+    /// </summary>
+    private static void AddFramed(Scene s)
+    {
+        var rnd = new System.Random(20261029);
+        var colour = new Color(0.17f, 0.20f, 0.23f);
+        for (int k = 0; k < FramedGaps.Length; k++)
+        {
+            var b = new Building();
+            b.Kind = "framed";
+            b.ObjectIndex = ColorIndex(s.Buildings.Count + 1);
+            b.Mesh = FramedMesh(30f, 60f, FramedGaps[k]);
+            b.Matrix = Matrix4x4.TRS(new Vector3(-700f, 0f, -240f + 120f * k), Quaternion.identity, Vector3.one);
+            MakeFacade("framed", 30f, 60f, colour, rnd.Next(), out b.Main, out b.Xys, out b.Aci);
+            b.Framed = k + 1;
+
+            // "Mark=k": the same with its frames pure red, to count the frame pixels the glass leaves.
+            Color[] px = b.Main.GetPixels();
+            int tw = b.Main.width, th = b.Main.height;
+            for (int y = 0; y < th; y++)
+            {
+                if ((y + 0.5f) / th < 0.995f)
+                    continue;
+                for (int x = 0; x < tw; x++)
+                    px[y * tw + x] = new Color(1f, 0f, 0f, 1f);
+            }
+            b.MainMarked = Tex(tw, th, px, false);
+            s.Buildings.Add(b);
+        }
+    }
+
+    /// <summary>A box (BoxMesh) and, gap in front of each side, a grid of flat frames: mullions 0.12 m wide every 1.5 m, transoms 0.25 m tall every storey.</summary>
+    private static Mesh FramedMesh(float w, float h, float gap)
+    {
+        Mesh box = BoxMesh(w, h, w);
+        var verts = new List<Vector3>(box.vertices);
+        var norms = new List<Vector3>(box.normals);
+        var tans = new List<Vector4>(box.tangents);
+        var uvs = new List<Vector2>(box.uv);
+        var tris = new List<int>(box.triangles);
+        float floorH = ParseFloat(Env("RG_STOREY", "3.8"));
+        float e = w * 0.5f;
+        Vector3[] normals = { new Vector3(0, 0, -1), new Vector3(1, 0, 0), new Vector3(0, 0, 1), new Vector3(-1, 0, 0) };
+        for (int side = 0; side < 4; side++)
+        {
+            Vector3 n = normals[side];
+            Vector3 along = new Vector3(-n.z, 0f, n.x);   // left to right seen from outside
+            Vector3 origin = n * (e + gap) - along * e;
+            for (float u = 0f; u <= w + 0.01f; u += 1.5f)
+                FrameQuad(verts, norms, tans, uvs, tris, origin + along * (u - 0.06f), along * 0.12f, Vector3.up * h, n);
+            for (float v = 0f; v <= h + 0.01f; v += floorH)
+                FrameQuad(verts, norms, tans, uvs, tris, origin + Vector3.up * (v - 0.125f), along * w, Vector3.up * 0.25f, n);
+        }
+        return Finish(verts, norms, tans, uvs, tris);
+    }
+
+    /// <summary>A flat frame from corner p across a (left to right) and b (up), facing n, mapped to the texels above the roof's.</summary>
+    private static void FrameQuad(List<Vector3> verts, List<Vector3> norms, List<Vector4> tans, List<Vector2> uvs, List<int> tris,
+                                  Vector3 p, Vector3 a, Vector3 b, Vector3 n)
+    {
+        int i0 = verts.Count;
+        verts.Add(p); verts.Add(p + a); verts.Add(p + a + b); verts.Add(p + b);
+        Vector3 t = a.normalized;
+        for (int i = 0; i < 4; i++) { norms.Add(n); tans.Add(new Vector4(t.x, t.y, t.z, 1f)); }
+        // One texel row above the roof's (v >= 0.995): no uv slope, so mip 0 at every distance, and
+        // "Mark=k" can paint the frames alone.
+        for (int i = 0; i < 4; i++)
+            uvs.Add(new Vector2(0.5f, 0.997f));
+        tris.AddRange(new[] { i0, i0 + 2, i0 + 1, i0, i0 + 3, i0 + 2 });
     }
 
     private static void AddShape(Scene s, System.Random rnd, string kind, Mesh mesh, float w, float h, Vector3 at, Color colour)
@@ -1220,7 +1312,9 @@ public static class GlassPreview
                 if (v >= 0.9f)
                 {
                     float n = Noise(x * 0.3f, y * 0.3f, seed);
-                    cMain[i] = concrete * (0.75f + 0.1f * n);
+                    // "framed": the roof's texels are also its frames' (light, so a frame the glass
+                    // draws over shows at once).
+                    cMain[i] = kind == "framed" ? new Color(0.85f, 0.84f, 0.80f) : concrete * (0.75f + 0.1f * n);
                     cXys[i] = new Color(0.5f, 0.5f, 0.95f, 1f);
                     cAci[i] = new Color(0f, 0f, 0f, 1f);
                     continue;
@@ -1244,7 +1338,14 @@ public static class GlassPreview
                 Color c;
                 float spec;
                 float lit = 0f;
-                if (kind == "fullglass")
+                if (kind == "framed")
+                {
+                    // Glass all over: the frames are their own mesh in front of it (FramedMesh).
+                    c = glassColour * (0.9f + 0.15f * cell + 0.12f * inFloor);
+                    spec = 0.9f;
+                    lit = illum;
+                }
+                else if (kind == "fullglass")
                 {
                     // Shiny all over (spec 0.92, a little less on the slab band: 0.84, still glass
                     // to the 70% threshold); the floors and the mullions are in the colour only.
@@ -1470,6 +1571,11 @@ public static class GlassPreview
             case "nightshapes": target = new Vector3(600f, 45f, 0f); yaw = 270f; pitch = 8f; dist = 300f; break;
             case "shapesnear":
             case "nightshapesnear": target = new Vector3(600f, 40f, -100f); yaw = 255f; pitch = 6f; dist = 130f; break;
+            // "-Framed": the five framed towers from the south-west, a city-builder's pitch: their west
+            // sides seen 45 degrees off, their south sides 66.
+            case "framed": target = new Vector3(-700f, 30f, -120f); yaw = 60f; pitch = 35f; dist = 120f; break;
+            case "framedmid": target = new Vector3(-700f, 30f, -60f); yaw = 60f; pitch = 35f; dist = 300f; break;
+            case "framedfar": target = new Vector3(-700f, 30f, 0f); yaw = 60f; pitch = 35f; dist = 700f; break;
             default: target = new Vector3(0f, 70f, 0f); yaw = 30f; pitch = 32f; dist = 650f; break;
         }
         Quaternion rot = Quaternion.Euler(pitch, yaw, 0f);
@@ -1510,6 +1616,9 @@ public static class GlassPreview
         _lodMode = LodGlass.ModeAuto;
         _quality = GlassQuality.Ultra;
         _hizOff = false;
+        _offsetFactor = 0f;
+        _offsetUnits = -1f;
+        _mark = 0;
         _budgetOverrides.Clear();
         _asset = new AssetOverride();
         _hour = null;
@@ -1532,6 +1641,11 @@ public static class GlassPreview
         VehicleGlassLook.Apply(_vehTinted, _vehStrength, _vehRefl, _vehGlint, _vehEdge, _vehRough, _vehLenses,
                                _vehCoat, _vehCoatRough, _vehLiveries, _vehCabin);
         _night = night;
+        foreach (Material m in new[] { s.Glass, s.GlassLod, s.GlassGroup })
+        {
+            m.SetFloat("_RGOffsetFactor", _offsetFactor);
+            m.SetFloat("_RGOffsetUnits", _offsetUnits);
+        }
 
         // Every building's kind of rooms, as the mod's AssetMap writes it while there are rooms;
         // then the full-glass tower's own settings, as it writes an asset's.
@@ -1662,7 +1776,7 @@ public static class GlassPreview
         foreach (Building b in s.Buildings)
         {
             s.Block.Clear();
-            s.Block.SetTexture("_MainTex", b.Main);
+            s.Block.SetTexture("_MainTex", _mark > 0 && b.Framed == _mark ? b.MainMarked : b.Main);
             s.Block.SetTexture("_XYSMap", b.Xys);
             s.Block.SetTexture("_ACIMap", b.Aci);
             s.Block.SetVector("_ObjectIndex", b.ObjectIndex);
@@ -1821,6 +1935,19 @@ public static class GlassPreview
             if (kv[0].Trim().Equals("Level", StringComparison.OrdinalIgnoreCase))
             {
                 _debugLevel = float.Parse(kv[1].Trim(), CultureInfo.InvariantCulture);
+                continue;
+            }
+            if (kv[0].Trim().Equals("Ofs", StringComparison.OrdinalIgnoreCase))
+            {
+                // Not a setting: "Ofs=factor,units", the glass pass's depth Offset (-1,-1).
+                string[] fu = kv[1].Split(',');
+                _offsetFactor = float.Parse(fu[0].Trim(), CultureInfo.InvariantCulture);
+                _offsetUnits = float.Parse(fu[1].Trim(), CultureInfo.InvariantCulture);
+                continue;
+            }
+            if (kv[0].Trim().Equals("Mark", StringComparison.OrdinalIgnoreCase))
+            {
+                _mark = int.Parse(kv[1].Trim(), CultureInfo.InvariantCulture);
                 continue;
             }
             if (kv[0].Trim().Equals("HiZ", StringComparison.OrdinalIgnoreCase))

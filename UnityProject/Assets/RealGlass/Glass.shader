@@ -6,7 +6,9 @@
 // _BuildingLocations[int(color.a * 8)]), RG_GROUP = RenderGroup/MegaRenderGroup.RenderMesh (a
 // 384 m block of the city baked into one mesh, world-space normals, atlas uvs). The vertex rules
 // below are the game's own (read from the disassembly of Custom/Buildings/Building/Default), so
-// this draw lands on the game's depth exactly; Offset -1 -1 settles the last bit.
+// this draw lands on the game's depth exactly; Offset 0, -1 settles the last bit. No slope factor: it
+// pulls the glass forward by a pixel's worth of the facade's depth slope (decimetres from afar), and a
+// window frame modelled that close in front of its glass would be drawn over.
 //
 // Which building a pixel belongs to comes from the same place on every tier: its colour index, the
 // building's texel in the game's object colour map (near: _ObjectIndex, middle: _ObjectIndices[],
@@ -24,6 +26,8 @@ Shader "RealGlass/Glass"
         _MainTex ("Diffuse", 2D) = "white" {}
         _XYSMap ("Normal XY, specular", 2D) = "gray" {}
         _ACIMap ("Alpha, colour, illumination", 2D) = "black" {}
+        _RGOffsetFactor ("Depth offset factor", Float) = 0
+        _RGOffsetUnits ("Depth offset units", Float) = -1
     }
 
     SubShader
@@ -35,7 +39,7 @@ Shader "RealGlass/Glass"
             ZWrite Off
             ZTest LEqual
             Cull Back
-            Offset -1, -1
+            Offset [_RGOffsetFactor], [_RGOffsetUnits]
             Blend SrcAlpha OneMinusSrcAlpha
 
             CGPROGRAM

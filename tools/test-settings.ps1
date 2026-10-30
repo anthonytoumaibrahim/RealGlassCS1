@@ -1061,6 +1061,33 @@ $game = [Activator]::CreateInstance($shore, @([int]1081, [single]16))
 $game.Mapping([single]-8640, [ref]$scale, [ref]$offset)
 Check "  the game's map: 2161 samples a side; the world's middle at uv 0.5, the first point at its texel's centre" ("{0} {1:F6} {2:F6}" -f $game.Side, ($scale * 0 + $offset), (-8640 * $scale + $offset)) ("2161 0.500000 {0:F6}" -f (0.5 / 2161))
 
+# ---- the view from under the water (Water/WaterUnderOptics.cs) ----
+$under = $asm.GetType('RealGlass.Water.WaterUnderOptics', $true)
+Check "Under the water's defaults: on, 60 m, light shafts on, sunlight on the seabed 0%" ("{0} {1} {2} {3}" -f (Default 'WaterUnder'), (Default 'WaterUnderVisibility'), (Default 'WaterUnderShafts'), (Default 'WaterUnderCaustics')) "True 60 True 0"
+$noon = [double[]]@(0.0, 1.0, 0.0); $white = [double[]]@(1.0, 1.0, 1.0); $grey = [double[]]@(0.2, 0.2, 0.2)
+$u = $under::Vectors(25.0, $noon, $white, $grey)
+$u60 = $under::Vectors(60.0, $noon, $white, $grey)
+Check "  c at green = 4.8 / the visibility (Zaneveld & Pegau): 25 m, 60 m" ("{0:F4} {1:F4}" -f $u[1], $u60[1]) ("{0:F4} {1:F4}" -f (4.8 / 25.0), (4.8 / 60.0))
+Check "  red lost first, then blue (the water's yellow), green carries furthest" (($u[0] -gt $u[2]) -and ($u[2] -gt $u[1])) "True"
+Check "  the daylight fades slower than a beam (K_d < c), faster for red" (($u[4] -lt $u[0]) -and ($u[5] -lt $u[1]) -and ($u[6] -lt $u[2]) -and ($u[4] -gt $u[5])) "True"
+Check "  never clearer than pure water: red's c at 60 m held at its absorption + scattering" ("{0:F4}" -f $u60[0]) ("{0:F4}" -f (0.264 + 0.00288 * [Math]::Pow(610.0 / 500.0, -4.32)))
+Check "  the veil teal: red under green under blue, green 60..100% of blue" (($u[8] -lt $u[9]) -and ($u[9] -lt $u[10]) -and ($u[9] / $u[10] -gt 0.6)) "True"
+Check "  the water's colour its kind's at every visibility (25 m, 60 m)" ("{0:F6} {1:F6}" -f ($u[8] / $u[9]), ($u[10] / $u[9])) ("{0:F6} {1:F6}" -f ($u60[8] / $u60[9]), ($u60[10] / $u60[9]))
+$u2 = $under::Vectors(25.0, $noon, [double[]]@(2.0, 2.0, 2.0), [double[]]@(0.4, 0.4, 0.4))
+Check "  the veil follows the daylight: twice the sun and sky, twice the veil" ("{0:F6}" -f ($u2[9] / $u[9])) "2.000000"
+$f = 0.02
+Check "  the noon sun straight down, its share of the daylight" ("{0:F3} {1:F3} {2:F3} {3:F3}" -f $u[12], $u[13], $u[14], $u[15]) ("0.000 1.000 0.000 {0:F3}" -f ((1.0 - $f) / (1.0 - $f + 0.2)))
+$low = [double[]]@(0.866, 0.5, 0.0)
+$ul = $under::Vectors(25.0, $low, $white, $grey)
+Check "  a sun 30 deg up refracted toward the vertical (sin 60 / 1.333)" ("{0:F4} {1:F4}" -f $ul[12], $ul[13]) ("{0:F4} {1:F4}" -f (0.866 / 1.333), [Math]::Sqrt(1.0 - [Math]::Pow(0.866 / 1.333, 2)))
+$night = $under::Vectors(25.0, [double[]]@(0.0, -0.5, 0.866), $white, $grey)
+Check "  at night: no sun share, the sky's light only" ("{0} {1:F6}" -f $night[15], $night[9]) ("0 {0:F6}" -f ($u[9] * 0.2 / (1.0 - $f + 0.2)))
+$wild = $under::Vectors([double]::NaN, [double[]]@([double]::NaN, [double]::PositiveInfinity, 0.0), $white, $grey)
+$finite = $true; foreach ($x in $wild) { if ([double]::IsNaN($x) -or [double]::IsInfinity($x)) { $finite = $false } }
+Check "  NaN and infinity in: every number finite" $finite "True"
+$clear = $under::Vectors(1000.0, $noon, $white, $grey)
+Check "  the visibility held to 3..80 m" ("{0:F4}" -f $clear[1]) ("{0:F4}" -f (4.8 / 80.0))
+
 # ---- the FFT waves (WaterSpectrum; the GPU against it: UnityProject\Assets\Editor\WaterWavesTest.cs) --
 $spectrumType = $asm.GetType('RealGlass.Water.WaterSpectrum', $true)
 # The GPU's steps (Stockham, radix 2) against the inverse DFT's definition, on a random line of 64.

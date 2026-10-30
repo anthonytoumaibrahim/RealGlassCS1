@@ -202,6 +202,18 @@ period of its rows and columns of windows by autocorrelation as Rabiner found th
 slab of soda-lime with the light transmittance UN Regulation No. 43 asks of a windscreen, and the
 paint's clear coat as Filament's clear-coat layer (Guy and Agopian) with Autodesk Standard
 Surface's coat roughness, each vehicle's own random number by Jarzynski and Olano's PCG hash --
+and, under the water, the underwater image formation of McGlamery (1975) and Jaffe (1990) as
+Akkaynak and Treibitz revised it (2018), the water's clearness from its visibility (Zaneveld and
+Pegau 2003), what coastal water holds -- pure water's absorption (Pope and Fry 1997) and
+scattering (Morel 1974), dissolved organic matter (Bricaud, Morel and Prieur 1981), particles
+backscattering as Petzold measured (1972) -- and its colour from those (Morel and Prieur 1977;
+Gordon et al. 1975), the daylight fading with depth after Kirk (1984), the light under the surface
+after Tyler's measured light fields (1960) and Mobley (1994), its glow toward the sun by Henyey and
+Greenstein's phase function (1941), Snell's window with Fresnel's equations, caustics as the area a
+beam of sunlight lands on (Watt 1990), and light shafts as single scattering with volumetric
+shadows (Tóth and Umenhoffer 2009) from the game's own shadow map of the sun, grabbed after the
+light renders it as SlightlyMad's Volumetric Lights for Unity does, its steps jittered by Jimenez's
+interleaved gradient noise (2014) --
 listed with links under *References* below. Apart from the ray tracer above, the implementations
 were written for this mod.
 
@@ -462,6 +474,44 @@ Every technique here has shipped in a game or is published:
     number (whether its windows are tinted, and how dark) from its id by the PCG hash (Mark
     Jarzynski and Marc Olano, **Hash Functions for GPU Rendering**, Journal of Computer Graphics
     Techniques 9(3), 2020, [paper](https://jcgt.org/published/0009/03/02/)).
+23. Under the water: what the camera sees as the light from what it looks at, dimmed along the
+    way, plus the light the water scatters toward it -- the model of B. L. McGlamery (**Computer
+    analysis and simulation of underwater camera system performance**, Scripps Institution of
+    Oceanography, 1975) and Jules S. Jaffe (**Computer modeling and the design of optimal underwater
+    imaging systems**, IEEE Journal of Oceanic Engineering 15(2), 1990), as revised by Derya Akkaynak
+    and Tali Treibitz, **A Revised Underwater Image Formation Model**, CVPR 2018
+    ([paper](https://openaccess.thecvf.com/content_cvpr_2018/html/Akkaynak_A_Revised_Underwater_CVPR_2018_paper.html)).
+    How far one sees: J. Ronald V. Zaneveld and W. Scott Pegau, **Robust underwater visibility
+    parameter**, Optics Express 11(23), 2003 ([doi](https://doi.org/10.1364/OE.11.002997)). What the
+    water holds: pure water's absorption (Pope and Fry 1997, item 16 above) and scattering (André
+    Morel, **Optical properties of pure water and pure sea water**, in *Optical Aspects of
+    Oceanography*, Academic Press, 1974); dissolved organic matter, Annick Bricaud, André Morel and
+    Louis Prieur, **Absorption by dissolved organic matter of the sea (yellow substance) in the UV
+    and visible domains**, Limnology and Oceanography 26(1), 1981
+    ([doi](https://doi.org/10.4319/lo.1981.26.1.0043)); particles backscattering as Theodore J.
+    Petzold measured (**Volume Scattering Functions for Selected Ocean Waters**, Scripps Institution
+    of Oceanography, 1972) -- Morel's and Petzold's numbers as Curtis D. Mobley tabulates them in
+    **Light and Water: Radiative Transfer in Natural Waters**, 1994, and his
+    [Ocean Optics Web Book](https://www.oceanopticsbook.info/); the colour they give, Gordon et al.
+    1975 and Morel and Prieur 1977 (item 16 above). The daylight fading with depth: John T. O. Kirk,
+    **Dependence of relationship between inherent and apparent optical properties of water on solar
+    altitude**, Limnology and Oceanography 29(2), 1984
+    ([doi](https://doi.org/10.4319/lo.1984.29.2.0350)); the light under the surface brighter toward
+    the horizon than toward the depths: John E. Tyler, **Radiance distribution as a function of
+    depth in an underwater environment**, Bulletin of the Scripps Institution of Oceanography 7,
+    1960; the glow toward the sun: Louis G. Henyey and Jesse L. Greenstein, **Diffuse radiation in
+    the Galaxy**, Astrophysical Journal 93, 1941
+    ([ADS](https://ui.adsabs.harvard.edu/abs/1941ApJ....93...70H)); the caustics, the area a beam of
+    sunlight through the waves lands on: Mark Watt, **Light-water interaction using backward beam
+    tracing**, SIGGRAPH 1990 ([SIGGRAPH archive](https://history.siggraph.org/?p=122082)). The light
+    shafts: single scattering with volumetric shadows, Balázs Tóth and Tamás Umenhoffer, **Real-time
+    Volumetric Lighting in Participating Media**, Eurographics 2009 short papers
+    ([doi](https://doi.org/10.2312/egs.20091048)); the light's shadow map taken right after it is
+    rendered (LightEvent.AfterShadowMap) as **Volumetric Lights** for Unity does (SlightlyMad, BSD-3,
+    [repository](https://github.com/SlightlyMad/VolumetricLights); read, nothing copied); the steps'
+    starts spread by interleaved gradient noise, Jorge Jimenez, **Next Generation Post Processing in
+    Call of Duty: Advanced Warfare**, SIGGRAPH 2014 Advances in Real-Time Rendering course
+    ([slides](http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare)).
 
 ## Trademarks
 

@@ -11,10 +11,13 @@ public static class WaterSurfaceTest
 {
     private static readonly List<string> Results = new List<string>();
     private static int _failed;
+    // The game's frames, counted here: in the editor every render falls in one Time.frameCount.
+    private static int _frame;
 
     public static void Run()
     {
         WaterSurfaceMask mask = null;
+        WaterSurfaceMask.Frame = () => _frame;
         try
         {
             PlayerSettings.colorSpace = ColorSpace.Linear;
@@ -57,6 +60,38 @@ public static class WaterSurfaceTest
             Check("dry channel below sea level has no water", Pixel(camera, flat, new Vector3(0f, 40f, 20f)).r == 0f);
             Check("foreground building hides water", Pixel(camera, flat, blocker.transform.position).r == 0f);
 
+            // The passes after the water (the game's fog, the clouds) read its surface in the depth
+            // texture; the next render's copy before the water reads the camera's own again.
+            if (WaterSurfaceMask.MergesDepth)
+            {
+                var readGlobal = new Material(AssetDatabase.LoadAssetAtPath<Shader>("Assets/RealGlass/WaterSurfaceMask.shader"));
+                var after = new RenderTexture(camera.pixelWidth, camera.pixelHeight, 0, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear) { filterMode = FilterMode.Point };
+                after.Create();
+                var probe = new CommandBuffer { name = "the depth texture as the passes after the water read it" };
+                probe.Blit(BuiltinRenderTextureType.CameraTarget, after, readGlobal, 1);
+                camera.AddCommandBuffer(CameraEvent.AfterImageEffectsOpaque, probe);
+                Vector3 sea = new Vector3(-55f, 40f, 15f);
+                for (int render = 1; render <= 2; render++)
+                {
+                    Record(mask, mesh, left, right, block);
+                    camera.Render();
+                    Color[] surface = Read(mask.Texture), merged = Read(after), scene = Read(mask.SceneDepth);
+                    float seaEye = Pixel(camera, surface, sea).r, mergedEye = Eye(camera, Pixel(camera, merged, sea).r);
+                    Check("render " + render + ": the water's surface in the depth texture after it", seaEye > 0f && Mathf.Abs(mergedEye - seaEye) < 0.001f * seaEye,
+                          mergedEye.ToString("F3") + " m, the surface " + seaEye.ToString("F3") + " m");
+                    float blockerEye = Eye(camera, Pixel(camera, scene, blocker.transform.position).r);
+                    float mergedBlocker = Eye(camera, Pixel(camera, merged, blocker.transform.position).r);
+                    Check("render " + render + ": no water in front: the scene's depth", Mathf.Abs(mergedBlocker - blockerEye) < 0.001f * blockerEye,
+                          mergedBlocker.ToString("F3") + " m, the scene " + blockerEye.ToString("F3") + " m");
+                    float bed = Eye(camera, Pixel(camera, scene, sea).r);
+                    Check("render " + render + ": the scene depth before the water has no water in it", bed > seaEye + 10f,
+                          "the bed " + bed.ToString("F1") + " m, the surface " + seaEye.ToString("F1") + " m");
+                }
+                camera.RemoveCommandBuffer(CameraEvent.AfterImageEffectsOpaque, probe);
+                probe.Release();
+                after.Release();
+            }
+
             ground.transform.rotation = Quaternion.Euler(9f, 0f, -5f);
             Record(mask, mesh, left, right, block);
             camera.Render();
@@ -66,6 +101,7 @@ public static class WaterSurfaceTest
                 difference = Mathf.Max(difference, Mathf.Abs(flat[i].r - sloped[i].r));
             Check("sloping seabed leaves water depth unchanged", difference < 0.001f, difference.ToString("G6"));
 
+            _frame++;
             Bind(block, 120f, true);
             mask.Draw(mesh, right, 0, null, 0, block);
             Bind(block, 40f, true);
@@ -74,14 +110,19 @@ public static class WaterSurfaceTest
             Height(camera, Read(mask.Texture), new Vector3(55f, 120f, 15f), 120f, "nearest overlapping surface wins");
 
             // No simulation depth despite a height map below the eye: must not infer a lake.
+            _frame++;
             Bind(block, 40f, false);
             mask.Draw(mesh, left, 0, null, 0, block);
             camera.Render();
             Check("dry simulation cells are rejected", Maximum(Read(mask.Texture)) == 0f);
 
-            // A completed frame's draws are cleared before the next capture/render.
+            // Every render of a frame keeps the frame's draws (a camera rendered twice a frame by
+            // hand); the next frame's render, with none, has no water.
             Record(mask, mesh, left, right, block);
             camera.Render();
+            camera.Render();
+            Height(camera, Read(mask.Texture), new Vector3(55f, 120f, 15f), 120f, "a second render of the same frame keeps its water");
+            _frame++;
             camera.Render();
             Check("no stale water after an empty frame", Maximum(Read(mask.Texture)) == 0f);
 
@@ -100,17 +141,27 @@ public static class WaterSurfaceTest
 
             // On Metal the depth texture holds the game's water by the time of the capture, nearer than
             // the surface (the author's M1, 2026-10-26: no water captured, no city in it): a depth
-            // texture changed after the final pass must not reach the capture.
+            // texture changed after the final pass must not reach the capture. Run before the capture,
+            // at its own event.
             var spoil = new CommandBuffer { name = "the depth texture nearer than everything after the final pass" };
             spoil.SetGlobalTexture("_CameraDepthTexture", SystemInfo.usesReversedZBuffer ? Texture2D.whiteTexture : Texture2D.blackTexture);
+            CameraEvent spoiled = WaterSurfaceMask.MergesDepth ? CameraEvent.BeforeImageEffectsOpaque : CameraEvent.AfterImageEffectsOpaque;
             mask.Detach();
-            camera.AddCommandBuffer(CameraEvent.AfterImageEffectsOpaque, spoil);
+            camera.AddCommandBuffer(spoiled, spoil);
             mask.Attach(camera);
             Record(mask, mesh, left, right, block);
             camera.Render();
             Height(camera, Read(mask.Texture), new Vector3(-55f, 40f, 15f), 40f, "sea surface with the depth texture changed after the final pass");
-            camera.RemoveCommandBuffer(CameraEvent.AfterImageEffectsOpaque, spoil);
+            camera.RemoveCommandBuffer(spoiled, spoil);
             spoil.Release();
+
+            // From under the surface the game draws no water (it culls the underside): nothing recorded,
+            // so nothing of it reaches the depth texture either.
+            camera.transform.position = new Vector3(-55f, 20f, -60f);
+            camera.transform.LookAt(new Vector3(-55f, 60f, 60f));
+            Record(mask, mesh, left, right, block);
+            camera.Render();
+            Check("no surface recorded from under it", Maximum(Read(mask.Texture)) == 0f);
 
             // A camera that does not draw this layer must not acquire that layer's water.
             camera.cullingMask = 0;
@@ -127,14 +178,17 @@ public static class WaterSurfaceTest
         {
             if (mask != null)
                 mask.Destroy();
+            WaterSurfaceMask.Frame = () => Time.frameCount;
         }
         Results.Add(_failed == 0 ? "WATER SURFACE TEST OK" : "WATER SURFACE TEST FAILED: " + _failed);
         File.WriteAllLines("water-surface-test-output.txt", Results.ToArray());
         EditorApplication.Exit(_failed == 0 ? 0 : 1);
     }
 
+    // A new frame's draws.
     private static void Record(WaterSurfaceMask mask, Mesh mesh, Matrix4x4 left, Matrix4x4 right, MaterialPropertyBlock block)
     {
+        _frame++;
         Bind(block, 40f, true);
         mask.Draw(mesh, left, 0, null, 0, block);
         Bind(block, 120f, true);
@@ -222,6 +276,15 @@ public static class WaterSurfaceTest
         float eye = Pixel(camera, pixels, world).r;
         float height = (camera.transform.position + ray * (eye / Vector3.Dot(ray, camera.transform.forward))).y;
         Check(label, eye > 0f && Mathf.Abs(height - expected) < 1f, height.ToString("F3") + " m");
+    }
+
+    // A raw depth as LinearEyeDepth reads it (_ZBufferParams as Unity sets them, either convention).
+    private static float Eye(Camera camera, float raw)
+    {
+        float n = camera.nearClipPlane, f = camera.farClipPlane;
+        float x = SystemInfo.usesReversedZBuffer ? -1f + f / n : 1f - f / n;
+        float y = SystemInfo.usesReversedZBuffer ? 1f : f / n;
+        return 1f / (x / f * raw + y / f);
     }
 
     private static float Maximum(Color[] pixels)

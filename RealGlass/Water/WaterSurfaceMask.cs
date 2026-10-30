@@ -16,19 +16,40 @@ namespace RealGlass.Water
     /// the game's water itself, pulled toward the camera by its Offset, and every water pixel failed
     /// the test (the author's M1, 2026-10-26: no city in the water); on Direct3D 11 the depth texture is
     /// made once, so the copy holds exactly what it holds.
+    ///
+    /// THE WATER IN THE DEPTH TEXTURE (2026-10-28): the game's water writes the depth buffer, never the
+    /// depth texture, so every pass after it took a water pixel for whatever lies behind the water --
+    /// the game's fog filled a wave standing against the sky with its colour, and Volumetric Weather's
+    /// clouds drew over it; the fog over the water followed the hidden seabed and piers. Right after the
+    /// forward water (BeforeImageEffectsOpaque) the surface is recorded and merged into a copy of the
+    /// scene depth, and that copy is bound as _CameraDepthTexture for the rest of the frame: the fog,
+    /// the transparents, the image effects. Unity binds its own again at the camera's next render
+    /// (probed in the 5.6 editor, Direct3D 11 and OpenGL Core: the replacement reached an
+    /// [ImageEffectOpaque] OnRenderImage and every later event; the next frame's AfterFinalPass, and
+    /// another camera, read their own). Not on Metal, whose depth texture holds the water already.
     /// </remarks>
     public sealed class WaterSurfaceMask
     {
-        private const int PassSceneDepth = 1;
+        private const int PassSceneDepth = 1, PassMerged = 2;
         private static readonly int IdDepth = Shader.PropertyToID("_CameraDepthTexture");
+        private static readonly int IdSurface = Shader.PropertyToID("_RGWaterSurfaceDepth");
+
+        /// <summary>The water's surface goes into the depth texture the later passes read (not on Metal: there it is in it).</summary>
+        public static readonly bool MergesDepth = SystemInfo.graphicsDeviceType != GraphicsDeviceType.Metal;
+
+        /// <summary>When the surface is recorded: right after the forward water where it is merged, else before the reflection.</summary>
+        private static readonly CameraEvent SurfaceWhen = MergesDepth ? CameraEvent.BeforeImageEffectsOpaque : CameraEvent.AfterImageEffectsOpaque;
 
         private readonly Material _material;
         private readonly Material _copy;
+        private readonly Material _merge;
         private readonly CommandBuffer _buffer;
         private readonly CommandBuffer _sceneBuffer;
+        private readonly CommandBuffer _mergeBuffer;
         private Camera _camera;
         private RenderTexture _texture;
         private RenderTexture _scene;
+        private RenderTexture _merged;
         private bool _consumed;
         private int _frame = -1;
 
@@ -37,8 +58,10 @@ namespace RealGlass.Water
             _material = new Material(shader) { name = "RealGlass water surface depth", hideFlags = HideFlags.HideAndDontSave };
             // The copy reads the camera's own depth texture: a material of its own, not given the copy.
             _copy = new Material(shader) { name = "RealGlass scene depth before the water", hideFlags = HideFlags.HideAndDontSave };
+            _merge = new Material(shader) { name = "RealGlass scene depth with the water", hideFlags = HideFlags.HideAndDontSave };
             _buffer = new CommandBuffer { name = "RealGlass water surface depth" };
             _sceneBuffer = new CommandBuffer { name = "RealGlass scene depth before the water" };
+            _mergeBuffer = new CommandBuffer { name = "RealGlass water surface in the depth texture" };
         }
 
         public RenderTexture Texture { get { return _texture; } }
@@ -46,9 +69,13 @@ namespace RealGlass.Water
         /// <summary>The camera's raw depth before the forward water; bind it in place of _CameraDepthTexture.</summary>
         public RenderTexture SceneDepth { get { return _scene; } }
 
-        // Attach before the reflection buffer at the same event: the scene depth is ready and the
-        // surface depth is produced before tracing. Its own depth attachment selects the nearest
-        // water patch without writing into the camera's depth buffer.
+        /// <summary>The scene depth with the water's surface in it, bound as _CameraDepthTexture after the water (null on Metal).</summary>
+        public RenderTexture MergedDepth { get { return _merged; } }
+
+        // Attach before the reflection buffer: the scene depth is ready and the surface depth is
+        // produced before tracing. Its own depth attachment selects the nearest water patch without
+        // writing into the camera's depth buffer. The merge is added after the surface, at the same
+        // event: buffers run in the order added.
         public void Attach(Camera camera)
         {
             if (_camera != camera)
@@ -56,7 +83,9 @@ namespace RealGlass.Water
                 Detach();
                 _camera = camera;
                 _camera.AddCommandBuffer(CameraEvent.AfterFinalPass, _sceneBuffer);
-                _camera.AddCommandBuffer(CameraEvent.AfterImageEffectsOpaque, _buffer);
+                _camera.AddCommandBuffer(SurfaceWhen, _buffer);
+                if (MergesDepth)
+                    _camera.AddCommandBuffer(SurfaceWhen, _mergeBuffer);
                 Camera.onPreCull += BeforeRender;
                 Camera.onPostRender += AfterRender;
             }
@@ -65,14 +94,24 @@ namespace RealGlass.Water
 
             _buffer.Clear();
             _sceneBuffer.Clear();
+            _mergeBuffer.Clear();
             Free();
             int width = Mathf.Max(1, camera.pixelWidth), height = Mathf.Max(1, camera.pixelHeight);
             _texture = Target("RealGlassWaterSurfaceDepth", width, height, 24);
             _scene = Target("RealGlassWaterSceneDepth", width, height, 0);
-            if (!_texture.Create() || !_scene.Create())
+            _merged = MergesDepth ? Target("RealGlassWaterMergedDepth", width, height, 0) : null;
+            if (!_texture.Create() || !_scene.Create() || (_merged != null && !_merged.Create()))
                 throw new System.InvalidOperationException("Could not allocate the water surface depth textures.");
             _sceneBuffer.Blit(BuiltinRenderTextureType.CameraTarget, _scene, _copy, PassSceneDepth);
             _material.SetTexture(IdDepth, _scene);
+            if (_merged != null)
+            {
+                _merge.SetTexture(IdDepth, _scene);
+                _merge.SetTexture(IdSurface, _texture);
+                _mergeBuffer.Blit(BuiltinRenderTextureType.CameraTarget, _merged, _merge, PassMerged);
+                _mergeBuffer.SetGlobalTexture(IdDepth, _merged);
+                _mergeBuffer.SetRenderTarget(BuiltinRenderTextureType.CameraTarget);
+            }
             Clear();
         }
 
@@ -91,10 +130,13 @@ namespace RealGlass.Water
         {
             if (_camera == null || (camera != null && camera != _camera) || (_camera.cullingMask & (1 << layer)) == 0)
                 return;
-            if (_consumed || _frame != Time.frameCount)
+            if (_consumed || _frame != Frame())
                 Clear();
             _buffer.DrawMesh(mesh, matrix, _material, submesh, 0, properties);
         }
+
+        /// <summary>The frame's number: Time.frameCount (the editor's tests count their own: there every render is one frame).</summary>
+        public static System.Func<int> Frame = () => Time.frameCount;
 
         public void SetMapping(Material water)
         {
@@ -115,7 +157,7 @@ namespace RealGlass.Water
             // Not after a render earlier this frame: a mod that renders the game's camera by hand can
             // render it twice a frame (Lumina's dynamic resolution beside the old Dynamic Resolution
             // mod), and the game's water, drawn for every camera, is in both renders.
-            if (camera == _camera && _frame != Time.frameCount)
+            if (camera == _camera && _frame != Frame())
                 Clear();
         }
 
@@ -123,7 +165,7 @@ namespace RealGlass.Water
         {
             _buffer.Clear();
             _consumed = false;
-            _frame = Time.frameCount;
+            _frame = Frame();
             if (_texture == null)
                 return;
             _buffer.SetRenderTarget(_texture);
@@ -136,7 +178,9 @@ namespace RealGlass.Water
             Camera.onPreCull -= BeforeRender;
             if (_camera != null)
             {
-                _camera.RemoveCommandBuffer(CameraEvent.AfterImageEffectsOpaque, _buffer);
+                _camera.RemoveCommandBuffer(SurfaceWhen, _buffer);
+                if (MergesDepth)
+                    _camera.RemoveCommandBuffer(SurfaceWhen, _mergeBuffer);
                 _camera.RemoveCommandBuffer(CameraEvent.AfterFinalPass, _sceneBuffer);
             }
             _camera = null;
@@ -157,6 +201,12 @@ namespace RealGlass.Water
                 Dispose(_scene);
                 _scene = null;
             }
+            if (_merged != null)
+            {
+                _merged.Release();
+                Dispose(_merged);
+                _merged = null;
+            }
         }
 
         public void Destroy()
@@ -164,9 +214,11 @@ namespace RealGlass.Water
             Detach();
             _buffer.Release();
             _sceneBuffer.Release();
+            _mergeBuffer.Release();
             Free();
             Dispose(_material);
             Dispose(_copy);
+            Dispose(_merge);
         }
 
         private static void Dispose(Object value)

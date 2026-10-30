@@ -319,6 +319,18 @@
 
   <String key="WaterCityLength.Label">Longueur du reflet de la ville</String>
 
+  <String key="Group.WaterUnder">Sous l’eau</String>
+
+  <String key="WaterUnder.Label">Vue sous l’eau</String>
+  <String key="WaterUnder.Tooltip">Pour les mods de caméra qui passent sous la surface.</String>
+
+  <String key="WaterUnderVisibility.Label">Visibilité</String>
+
+  <String key="WaterUnderShafts.Label">Rayons de lumière</String>
+
+  <String key="WaterUnderCaustics.Label">Soleil sur le fond</String>
+  <String key="WaterUnderCaustics.Tooltip">Le réseau de lumière mouvant que projettent les vagues.</String>
+
   <!-- ==================== F8 panel: Vehicles ==================== -->
   <!-- Glass on the vehicles near the camera: their windows, and the lenses of their lamps. -->
 

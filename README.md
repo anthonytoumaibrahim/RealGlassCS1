@@ -19,6 +19,7 @@ their windows at night, and the water mirrors it all back with ocean waves, glit
   at night (by day too, if you like).
 - **Water**: the sky and the city in it, ocean waves that follow the weather, sun and moon glitter,
   and foam on the shores, rapids and wave fronts.
+- **Under the water** (with a camera mod that goes there): the water's haze and light shafts.
 - **Vehicles**: real glass on every vehicle's windows, and a clear coat on its paint.
 - **Each asset its own glass**: press **Alt+G** and click a building.
 - **For asset creators**: set an asset's glass in the Asset Editor and it ships with the asset.

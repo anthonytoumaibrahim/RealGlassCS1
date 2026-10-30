@@ -58,6 +58,14 @@ public static class FoamPreview
         // The surf's corridor round the real distance from the waterline: its factor (-1 the mod's, 0 no
         // distance map: the depth over the slope alone, as before 2026-10-25).
         public float Corridor = -1f;
+        // The view from under the water (RealGlass/WaterUnder): the water's visibility (m; below 0: no
+        // such pass, what a camera under the water sees today), the caustics' strength (0 none) and the
+        // sun's shafts (0 none: the sun's light everywhere in the water; 1 through the shadow map).
+        public float Under = -1f;
+        public float Caustics;
+        public float Shafts;
+        // The veiling light's gain in place of WaterUnderOptics.VeilGain (0: the mod's), to try values.
+        public float VeilGain;
     }
 
     /// <summary>A run of frames for the flicker under temporal anti-aliasing (as WaterPreview's).</summary>
@@ -77,7 +85,10 @@ public static class FoamPreview
         public GameObject CameraObject;
         public RenderTexture Target;
         public Light Sun;
-        public Material Skybox, Water, Foam, Reflection, Surface, Sky;
+        public Material Skybox, Water, Foam, Reflection, Surface, Sky, Under;
+        public CommandBuffer UnderBuffer, ShadowGrab;
+        public bool UnderOn;
+        public GameObject Bridge;
         public Camera Capture;
         public RenderTexture SkyCube;
         public List<Tower> Towers;
@@ -188,6 +199,43 @@ public static class FoamPreview
             Water.SetTexture("_WaterNormal", Ripples);
             Sky.SetTexture("_WaterNormal", Ripples);
             Reflection.SetTexture("_RGRipples", Ripples);
+            Under.SetTexture("_RGRipples", Ripples);
+        }
+
+        /// <summary>
+        /// The view from under the water for a shot (RealGlass/WaterUnder at BeforeImageEffects), or
+        /// none; the city reflection off under it, the bridge and the sun's shadows there for it.
+        /// </summary>
+        public void UnderFor(Shot shot)
+        {
+            bool on = shot.Under >= 0f;
+            if (on != UnderOn)
+            {
+                if (on)
+                {
+                    Camera.AddCommandBuffer(CameraEvent.BeforeImageEffects, UnderBuffer);
+                    Sun.AddCommandBuffer(LightEvent.AfterShadowMap, ShadowGrab);
+                }
+                else
+                {
+                    Camera.RemoveCommandBuffer(CameraEvent.BeforeImageEffects, UnderBuffer);
+                    Sun.RemoveCommandBuffer(LightEvent.AfterShadowMap, ShadowGrab);
+                }
+                UnderOn = on;
+            }
+            // The game's sun casts shadows (CameraController.LateUpdate); the preview's only in the under
+            // views, with the bridge, in every column of them.
+            bool view = shot.View != null && shot.View.StartsWith("under", StringComparison.Ordinal);
+            Sun.shadows = view ? LightShadows.Soft : LightShadows.None;
+            Bridge.SetActive(view);
+            Under.SetFloat("_RGUnderDebug", shot.Shafts > 1.5f ? 1f : 0f);
+            if (!on)
+                return;
+
+            Reflection.SetVector("_RGWaterGeom", new Vector4(SeaLevel, 0f, shot.SkyGain, 1f));
+            Vector3 toSun = -Sun.transform.forward;
+            Color sunLight = Sun.color.linear * Sun.intensity;
+            UnderOptics(Under, Mathf.Max(shot.Under, 1f), shot.Caustics, shot.Shafts, shot.VeilGain, toSun, sunLight, RenderSettings.ambientSkyColor.linear, SeaLevel, Log);
         }
 
         public void ShowFoam(bool on, bool sources)
@@ -231,6 +279,9 @@ public static class FoamPreview
             double[] waveSpec = null;
             // The flicker runs' surf corridor (as a shot's Corridor: -1 the mod's, 0 no distance map).
             float flickerCorridor = -1f;
+            // The water's surface in the depth texture after it (WaterSurfaceMask's merge, 2026-10-28;
+            // false: as before), and the stand-ins for the fog and the clouds that read that texture.
+            bool waterDepth = true, fogStandIn = false;
             foreach (string raw in File.ReadAllLines(Path.Combine(dir, "foam-preview-input.txt")))
             {
                 string[] p = raw.Split(' ');
@@ -282,6 +333,10 @@ public static class FoamPreview
                         Glitter = p.Length > 10 ? WaterPreview.F(p[10]) : 0f,
                         GlitterSize = p.Length > 11 ? WaterPreview.F(p[11]) : 1f,
                         Corridor = p.Length > 12 ? WaterPreview.F(p[12]) : -1f,
+                        Under = p.Length > 13 ? WaterPreview.F(p[13]) : -1f,
+                        Caustics = p.Length > 14 ? WaterPreview.F(p[14]) : 0f,
+                        Shafts = p.Length > 15 ? WaterPreview.F(p[15]) : 0f,
+                        VeilGain = p.Length > 16 ? WaterPreview.F(p[16]) : 0f,
                     });
                 else if (p[0] == "taa")
                 {
@@ -293,6 +348,10 @@ public static class FoamPreview
                     seqs.Add(new Seq { Name = p[1], View = p[2], Seconds = WaterPreview.F(p[3]), Strength = WaterPreview.F(p[4]) });
                 else if (p[0] == "flickercorridor")
                     flickerCorridor = WaterPreview.F(p[1]);
+                else if (p[0] == "waterdepth")
+                    waterDepth = p[1] != "0";
+                else if (p[0] == "fog")
+                    fogStandIn = p[1] != "0";
             }
 
             Shader.SetGlobalVectorArray("_RGSeaTable", table);
@@ -391,16 +450,55 @@ public static class FoamPreview
             RenderTexture frame = WaterPreview.Target(w, h, true), trace = WaterPreview.Target(w, h, true), streaked = WaterPreview.Target(w, h, false);
             reflection.SetTexture("_RGWaterFrame", frame);
             var buffer = new CommandBuffer { name = "RealGlass water reflection (preview)" };
-            var surface = new Material(AssetDatabase.LoadAssetAtPath<Shader>("Assets/RealGlass/WaterSurfaceMask.shader"));
+            // The water's surface, as WaterSurfaceMask records it: right after the forward water, against
+            // the scene depth copied at the final pass (which the reflection traces through too); then,
+            // merged into that copy, bound as the depth texture of every pass after (the fog, the clouds).
+            Shader maskShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/RealGlass/WaterSurfaceMask.shader");
+            var surface = new Material(maskShader);
             var surfaceDepth = new RenderTexture(width, height, 24, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
             surfaceDepth.filterMode = FilterMode.Point;
             surfaceDepth.Create();
+            var sceneDepth = new RenderTexture(width, height, 0, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear) { filterMode = FilterMode.Point };
+            var mergedDepth = new RenderTexture(width, height, 0, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear) { filterMode = FilterMode.Point };
+            sceneDepth.Create();
+            mergedDepth.Create();
+            var sceneCopy = new CommandBuffer { name = "RealGlass scene depth before the water (preview)" };
+            sceneCopy.Blit(BuiltinRenderTextureType.CameraTarget, sceneDepth, new Material(maskShader), 1);
+            camera.AddCommandBuffer(CameraEvent.AfterFinalPass, sceneCopy);
+            surface.SetTexture("_CameraDepthTexture", sceneDepth);
+            reflection.SetTexture("_CameraDepthTexture", sceneDepth);
             reflection.SetTexture("_RGWaterSurfaceDepth", surfaceDepth);
-            buffer.SetRenderTarget(surfaceDepth);
-            buffer.ClearRenderTarget(true, true, Color.clear);
+            var surfaceBuffer = new CommandBuffer { name = "RealGlass water surface depth (preview)" };
+            surfaceBuffer.SetRenderTarget(surfaceDepth);
+            surfaceBuffer.ClearRenderTarget(true, true, Color.clear);
             foreach (Renderer renderer in waterRenderers)
-                buffer.DrawMesh(renderer.GetComponent<MeshFilter>().sharedMesh, renderer.transform.localToWorldMatrix, surface, 0, 0);
-            buffer.SetRenderTarget(BuiltinRenderTextureType.CameraTarget);
+                surfaceBuffer.DrawMesh(renderer.GetComponent<MeshFilter>().sharedMesh, renderer.transform.localToWorldMatrix, surface, 0, 0);
+            if (waterDepth)
+            {
+                var merge = new Material(maskShader);
+                merge.SetTexture("_CameraDepthTexture", sceneDepth);
+                merge.SetTexture("_RGWaterSurfaceDepth", surfaceDepth);
+                surfaceBuffer.Blit(BuiltinRenderTextureType.CameraTarget, mergedDepth, merge, 2);
+                surfaceBuffer.SetGlobalTexture("_CameraDepthTexture", mergedDepth);
+            }
+            surfaceBuffer.SetRenderTarget(BuiltinRenderTextureType.CameraTarget);
+            camera.AddCommandBuffer(CameraEvent.BeforeImageEffectsOpaque, surfaceBuffer);
+            log.Add("the water's surface in the depth texture after it: " + (waterDepth ? "yes" : "no (as before)") +
+                    "; the fog and clouds stand-ins: " + (fogStandIn ? "yes" : "no"));
+            if (fogStandIn)
+            {
+                // The game's fog after the opaque passes (after the surface: buffers run as added), the
+                // clouds with the transparents (before the image effects).
+                var fogSky = new Material(AssetDatabase.LoadAssetAtPath<Shader>("Assets/Editor/PreviewFogSky.shader"));
+                fogSky.SetColor("_PreviewFogColour", new Color(0.55f, 0.58f, 0.62f, 1f));
+                fogSky.SetColor("_PreviewCloudColour", new Color(0.42f, 0.36f, 0.33f, 1f));
+                var fog = new CommandBuffer { name = "the game's fog (preview stand-in)" };
+                fog.DrawMesh(cube, Matrix4x4.identity, fogSky, 0, 0);
+                camera.AddCommandBuffer(CameraEvent.BeforeImageEffectsOpaque, fog);
+                var clouds = new CommandBuffer { name = "Volumetric Weather's clouds (preview stand-in)" };
+                clouds.DrawMesh(cube, Matrix4x4.identity, fogSky, 0, 1);
+                camera.AddCommandBuffer(CameraEvent.BeforeImageEffects, clouds);
+            }
             buffer.Blit(BuiltinRenderTextureType.CameraTarget, frame);
             buffer.SetRenderTarget(trace);
             buffer.ClearRenderTarget(false, true, Color.clear);
@@ -415,8 +513,37 @@ public static class FoamPreview
             reflection.SetVector("_RGWaterWave", new Vector4(cityGain * 2f, 3f, 1f, 0f));
             reflection.SetVector("_RGWaterLight", new Vector4(1f, 1f, 1f, 0f));
 
+            // The view from under the water, as the mod would draw it: a copy of the frame, then the pass
+            // on a cube round the camera, on the scene depth from before the water; the sun's shadow map
+            // and its cascades grabbed after the light renders it (WaterUnder.shader's pass 1).
+            Shader underShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/RealGlass/WaterUnder.shader");
+            log.Add("under shader " + (underShader != null ? underShader.name + " supported=" + underShader.isSupported : "MISSING"));
+            var under = new Material(underShader);
+            under.SetTexture("_CameraDepthTexture", sceneDepth);
+            var shadowData = new RenderTexture(24, 1, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear) { filterMode = FilterMode.Point };
+            shadowData.Create();
+            under.SetTexture("_RGSunShadowData", shadowData);
+            var shadowGrab = new CommandBuffer { name = "RealGlass the sun's shadow map (preview)" };
+            shadowGrab.SetGlobalTexture("_RGSunShadow", new RenderTargetIdentifier(BuiltinRenderTextureType.CurrentActive));
+            shadowGrab.Blit(BuiltinRenderTextureType.CurrentActive, shadowData, new Material(underShader), 1);
+            var underBuffer = new CommandBuffer { name = "RealGlass under the water (preview)" };
+            int underFrame = Shader.PropertyToID("_RGUnderFrame");
+            underBuffer.GetTemporaryRT(underFrame, -1, -1, 0, FilterMode.Bilinear, RenderTextureFormat.ARGBHalf);
+            underBuffer.Blit(BuiltinRenderTextureType.CameraTarget, underFrame);
+            underBuffer.SetRenderTarget(BuiltinRenderTextureType.CameraTarget);
+            underBuffer.DrawMesh(cube, Matrix4x4.identity, under, 0, 0);
+            underBuffer.ReleaseTemporaryRT(underFrame);
+            // The game's own shadow settings at their highest (the options' Very High: four cascades).
+            QualitySettings.shadows = ShadowQuality.All;
+            QualitySettings.shadowCascades = 4;
+            QualitySettings.shadowDistance = 400f;
+            QualitySettings.shadowProjection = ShadowProjection.StableFit;
+            QualitySettings.shadowResolution = ShadowResolution.VeryHigh;
+            GameObject bridge = BuildBridge();
+
             var scene = new Scene
             {
+                Under = under, UnderBuffer = underBuffer, ShadowGrab = shadowGrab, Bridge = bridge,
                 Coast = coast, Camera = camera, CameraObject = cameraObject, Target = target, Sun = sun, Skybox = skybox, Water = water,
                 Foam = foamMaterial, Reflection = reflection, Surface = surface, Sky = skyMaterial, Capture = capture, SkyCube = skyCube, Towers = towers,
                 FoamRenderers = foamRenderers, SkyRenderers = skyRenderers, Rows = rows, RippleRms = rippleRms, Log = log, BodyColour = body,
@@ -437,6 +564,7 @@ public static class FoamPreview
             }
             scene.FoamToday = foamToday;
             scene.SkyFor(new Shot(), 1f);
+            scene.UnderFor(new Shot());
             if (seqs.Count > 0)
             {
                 Vector4 flickerSteep = layers[9];
@@ -452,6 +580,7 @@ public static class FoamPreview
             {
                 bool night = scene.Set(shot.View, shot.Strength);
                 scene.SkyFor(shot, shot.Strength);
+                scene.UnderFor(shot);
                 scene.ShowFoam(shot.Mode);
                 Vector4 steep = layers[9];
                 if (shot.Corridor > 0f)
@@ -621,6 +750,63 @@ public static class FoamPreview
                 WaterPreview.WritePng(Path.Combine(outDir, s.Name + "-flicker.png"), map, width, height);
             }
         }
+    }
+
+    /// <summary>
+    /// The view from under the water's uniforms, as Water/WaterUnder.cs sets them: the mod's own optics
+    /// (Water/WaterUnderOptics.cs, compiled here from the mod's source by sync-sim.ps1), the ripples'
+    /// slope and the world's displacement through the surface, the shafts' steps at the mod's numbers.
+    /// </summary>
+    private static void UnderOptics(Material m, float visibility, float caustics, float shafts, float veilGain, Vector3 toSun, Color sunLight, Color skyAmbient,
+                                    float level, List<string> log)
+    {
+        double[] v = WaterUnderOptics.Vectors(visibility, new double[] { toSun.x, toSun.y, toSun.z }, new double[] { sunLight.r, sunLight.g, sunLight.b },
+                                              new double[] { skyAmbient.r, skyAmbient.g, skyAmbient.b });
+        if (veilGain > 0f)
+            for (int i = 8; i < 11; i++)
+                v[i] *= veilGain / WaterUnderOptics.VeilGain;
+        m.SetVector("_RGUnder", new Vector4(level, caustics, 0.25f, 0.015f));
+        m.SetVector("_RGUnderC", new Vector4((float)v[0], (float)v[1], (float)v[2], 0f));
+        m.SetVector("_RGUnderK", new Vector4((float)v[4], (float)v[5], (float)v[6], 0f));
+        m.SetVector("_RGUnderVeil", new Vector4((float)v[8], (float)v[9], (float)v[10], 0f));
+        m.SetVector("_RGUnderSun", new Vector4((float)v[12], (float)v[13], (float)v[14], (float)v[15]));
+        // The shafts: 24 steps over up to 6 / c at green (where the veil is 99.75% made), the light's
+        // entry tested a metre over the surface.
+        m.SetVector("_RGUnderShafts", new Vector4(shafts > 0f ? 1f : 0f, 24f, 6f / (float)v[1], 1f));
+        log.Add(string.Format(CultureInfo.InvariantCulture,
+            "under: visibility {0} m -> c ({1:F3}, {2:F3}, {3:F3}) /m, K_d ({4:F3}, {5:F3}, {6:F3}) /m, veil ({7:F4}, {8:F4}, {9:F4}), sun share {10:F2}, caustics {11}, shafts {12}",
+            visibility, v[0], v[1], v[2], v[4], v[5], v[6], v[8], v[9], v[10], v[15], caustics, shafts));
+    }
+
+    /// <summary>
+    /// A bridge over the sea for the views from under the water (a player's picture of the look had
+    /// one): a deck 9 m over the water across the view, three piers, and hangers over the deck whose
+    /// shadows stripe the water -- what the sun's shafts are seen between.
+    /// </summary>
+    private static GameObject BuildBridge()
+    {
+        var root = new GameObject("preview bridge");
+        var concrete = new Material(Shader.Find("Legacy Shaders/Diffuse")) { color = new Color(0.42f, 0.41f, 0.39f) };
+        Action<Vector3, Vector3> box = (centre, size) =>
+        {
+            GameObject b = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            b.transform.position = centre;
+            b.transform.localScale = size;
+            b.GetComponent<Renderer>().sharedMaterial = concrete;
+            b.transform.parent = root.transform;
+        };
+        const float x = -200f;
+        box(new Vector3(x, SeaLevel + 9.75f, 0f), new Vector3(12f, 1.5f, 260f));
+        foreach (float z in new[] { -40f, 20f, 80f })
+            box(new Vector3(x, SeaLevel - 10f, z), new Vector3(4f, 39.5f, 4f));
+        for (float z = -119f; z <= 120f; z += 7f)
+        {
+            box(new Vector3(x - 5.5f, SeaLevel + 15f, z), new Vector3(1.2f, 9f, 1.2f));
+            box(new Vector3(x + 5.5f, SeaLevel + 15f, z), new Vector3(1.2f, 9f, 1.2f));
+        }
+        box(new Vector3(x - 5.5f, SeaLevel + 19.75f, 0f), new Vector3(0.8f, 0.8f, 260f));
+        box(new Vector3(x + 5.5f, SeaLevel + 19.75f, 0f), new Vector3(0.8f, 0.8f, 260f));
+        return root;
     }
 
     /// <summary>The foam's pattern texture, from the mod's own generator (FoamPattern.cs, synced).</summary>
@@ -1185,6 +1371,57 @@ public static class FoamPreview
             float pitch = (glitterDay ? 35f : high ? 11f : 2.5f) * Mathf.Deg2Rad, yaw = -10f * Mathf.Deg2Rad;
             eye = new Vector3(-1950f, SeaLevel + (glitterDay ? 400f : high ? 300f : 30f), 150f);
             at = eye + new Vector3(Mathf.Cos(pitch) * Mathf.Cos(yaw), -Mathf.Sin(pitch), Mathf.Cos(pitch) * Mathf.Sin(yaw)) * 1000f;
+        }
+        else if (view == "under")
+        {
+            // 3 m under the sea over 7 m of water, 170 m out, looking toward the beach 12 deg down:
+            // the bed rising ahead, the surface's underside above.
+            eye = new Vector3(-160f, SeaLevel - 3f, 0f);
+            at = new Vector3(-100f, SeaLevel - 15.8f, 8f);
+        }
+        else if (view == "undersun")
+        {
+            // The same place looking toward the sun's side, 10 deg up: the water's glow toward it.
+            eye = new Vector3(-160f, SeaLevel - 3f, 0f);
+            at = new Vector3(-160f - 62f, SeaLevel - 3f + 17.6f, 79f);
+        }
+        else if (view == "underup")
+        {
+            // The same place looking up 65 deg toward the town: Snell's window.
+            eye = new Vector3(-160f, SeaLevel - 3f, 0f);
+            at = new Vector3(-140f, SeaLevel + 40f, 3f);
+        }
+        else if (view == "underdown")
+        {
+            // 1.5 m under, over 5 m of water near the beach, looking 40 deg down at the bed (the caustics).
+            eye = new Vector3(-110f, SeaLevel - 1.5f, 0f);
+            at = new Vector3(-100f, SeaLevel - 9.9f, 2f);
+        }
+        else if (view == "underhalf")
+        {
+            // The camera at the waterline (15 cm under), looking at the beach 6 deg down: half in the water.
+            eye = new Vector3(-160f, SeaLevel - 0.15f, 0f);
+            at = new Vector3(100f, SeaLevel - 27.5f, 40f);
+        }
+        else if (view == "underbridge")
+        {
+            // The player's picture: at the waterline (5 cm under: the near plane's rays split there), 22 m
+            // before the bridge, a pier ahead, looking along the water 2 deg down.
+            eye = new Vector3(-222f, SeaLevel - 0.05f, 22f);
+            at = eye + new Vector3(1f, -0.035f, -0.02f) * 100f;
+        }
+        else if (view == "undershafts")
+        {
+            // 4 m under, just past the deck's shadow (the sun throws it toward +x, -z), looking toward the
+            // sun's side 19 deg up, back through the shadow and the hangers' stripes.
+            eye = new Vector3(-176f, SeaLevel - 4f, -10f);
+            at = eye + new Vector3(-0.62f, 0.35f, 0.79f) * 100f;
+        }
+        else if (view == "underbridgedeep")
+        {
+            // 3 m under, 15 m before the bridge, looking 9 deg up toward the deck's shadow and past it.
+            eye = new Vector3(-215f, SeaLevel - 3f, 20f);
+            at = eye + new Vector3(1f, 0.15f, -0.3f) * 100f;
         }
         else if (view == "tsunamiwall")
         {

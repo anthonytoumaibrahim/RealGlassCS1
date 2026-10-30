@@ -115,8 +115,8 @@ namespace RealGlass.Water
             get { return _camera != null; }
         }
 
-        /// <summary>A unit cube round the origin, drawn round the camera (the vertex shader puts it at the far plane).</summary>
-        private static Mesh Cube(string name)
+        /// <summary>A unit cube round the origin, drawn round the camera (the vertex shader puts it at the far plane; WaterUnder's too).</summary>
+        internal static Mesh Cube(string name)
         {
             var mesh = new Mesh { name = name, hideFlags = HideFlags.HideAndDontSave };
             mesh.vertices = new[]
@@ -240,6 +240,9 @@ namespace RealGlass.Water
             Log.Msg("water: the city is reflected on the captured water surface on '" + camera.name + "' after the opaque image effects (" +
                     _frame.width + " x " + _frame.height + ": traced at half size off the waves, streaked, then onto the water" +
                     (_addedDepth ? "; depth texture asked for" : "") + ")");
+            Log.Msg(WaterSurfaceMask.MergesDepth
+                ? "water: its surface put into the depth texture right after it is drawn: the fog, the clouds and the effects after them see the water, not what lies behind it"
+                : "water: the depth texture holds the water by itself here (" + SystemInfo.graphicsDeviceType + "): nothing merged");
             LogWater();
             if (!WaterFoam.Hooked)
                 Log.Warn("water: surface capture requires both water draw hooks; found " + WaterFoam.Hooks());

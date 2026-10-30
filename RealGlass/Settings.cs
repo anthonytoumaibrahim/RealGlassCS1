@@ -374,6 +374,18 @@ namespace RealGlass
         /// <summary>1..3: the city's reflection drawn this many times as long as the city is tall (1 = a mirror).</summary>
         public static FloatSetting WaterCityLength { get; private set; }
 
+        /// <summary>The view from under the water while the camera is below its level (Water/WaterUnder.cs; camera mods only).</summary>
+        public static BoolSetting WaterUnder { get; private set; }
+
+        /// <summary>5..80 m: how far one sees under the water (a black target's visibility: Water/WaterUnderOptics.cs).</summary>
+        public static FloatSetting WaterUnderVisibility { get; private set; }
+
+        /// <summary>0..2: the caustics, sunlight focused by the waves onto what lies under the water (1 = real water's).</summary>
+        public static FloatSetting WaterUnderCaustics { get; private set; }
+
+        /// <summary>The sun's light in the water only where its shadows let it in: shafts (the game's own shadow map of the sun).</summary>
+        public static BoolSetting WaterUnderShafts { get; private set; }
+
         /// <summary>Glass on vehicles (Vehicles/VehicleGlassDraw.cs): the windows the game's own vehicle shaders show as windows, and the lamps' lenses.</summary>
         public static BoolSetting VehicleGlass { get; private set; }
 
@@ -588,6 +600,18 @@ namespace RealGlass
             public const float WaterFoamShore = 1f;
             public const float WaterFoamRapids = 0.05f;
             public const float WaterFoamFronts = 0.1f;
+
+            /// <summary>On (the author's ask, 2026-10-24: the seabed looked empty from under the water); it only shows there.</summary>
+            public const bool WaterUnder = true;
+
+            /// <summary>60 m: the author's own setting, 2026-10-24; the look of a player's picture he chose (2026-10-28).</summary>
+            public const float WaterUnderVisibility = 60f;
+
+            /// <summary>None: that picture has none (2026-10-28).</summary>
+            public const float WaterUnderCaustics = 0f;
+
+            /// <summary>On: the author's pick of the picture's shafts, from the sun's real shadows (2026-10-28).</summary>
+            public const bool WaterUnderShafts = true;
         }
 
         private static bool _initialised;
@@ -696,6 +720,10 @@ namespace RealGlass
                 WaterCityWaves = new FloatSetting("WaterCityWaves", Defaults.WaterCityWaves);
                 WaterCityStreaks = new FloatSetting("WaterCityStreaks", Defaults.WaterCityStreaks);
                 WaterCityLength = new FloatSetting("WaterCityLength", Defaults.WaterCityLength);
+                WaterUnder = new BoolSetting("WaterUnder", Defaults.WaterUnder);
+                WaterUnderVisibility = new FloatSetting("WaterUnderVisibility", Defaults.WaterUnderVisibility);
+                WaterUnderCaustics = new FloatSetting("WaterUnderCaustics", Defaults.WaterUnderCaustics);
+                WaterUnderShafts = new BoolSetting("WaterUnderShafts", Defaults.WaterUnderShafts);
                 VehicleGlass = new BoolSetting("VehicleGlass", Defaults.VehicleGlass);
                 VehicleTinted = new FloatSetting("VehicleTinted", Defaults.VehicleTinted);
                 VehicleReflections = new FloatSetting("VehicleReflections", Defaults.VehicleReflections);

@@ -11,6 +11,12 @@
 #   ... -Views "coast,close,high,river,tsunami,sunset,night"
 #   ... -Views "tsunamiwall,tsunamiwallcity"   a 20 m tsunami wall from 9 m up (below its crest) and from
 #                             a city camera: nothing behind its face may show through it
+#   ... -Views "under,undersun,underup,underdown,underhalf,underbridge,underbridgedeep" -UnderColumns "off,30:0:0,30:0:1"
+#                             the view from under the water (RealGlass/WaterUnder): each column "off" (no such
+#                             pass: what a camera under the water sees today) or "visibility m:caustics:shafts"
+#                             (caustics 0 none, 1 real; shafts 0 none, 1 through the sun's shadow map); the
+#                             water as the mod's defaults (the sky layer, #0E222B, FFT waves, glitter 35% at
+#                             50%, foam); the under views add a bridge over the sea and the sun's shadows
 #   ... -Later 3              also the foam this many seconds later (the motion; 0: no such column)
 #   ... -Amount 1 -Shore 1 -Fast 1 -Front 1     the foam's amount and each source's share (1 = the model's)
 #   ... -Sources              a last column: each source's amount as a colour (red shore, green fast, blue fronts)
@@ -34,7 +40,10 @@
 #   ... -DepthSkew 0.001      the stand-in's vertices each moved up to this (m) along their eye ray, at random:
 #                             the rounding the game's own water program and ours differ by in the game (the
 #                             driver compiles them apart); 0 = none, the two land on the same depth
-#   ... -Layers               the layered foam (2026-10-24): columns today's foam (Editor/PreviewFoamToday,
+#   ... -Fog -WaterDepth 0    stand-ins for the game's fog and Volumetric Weather's clouds (both tell the sky by
+#                             the depth texture), with the water's surface left out of that texture as before
+#                             2026-10-28 (1, the default: in it, as the mod does): the see-through tsunami
+#   ... -Layers              the layered foam (2026-10-24): columns today's foam (Editor/PreviewFoamToday,
 #                             frozen at 2b509fc), the layers, the layers -Later s on, and the layers' view
 #                             (red fresh, green residual, blue the bubbles under); every column with the mod's
 #                             defaults for the rest (the sky layer at 100%, FFT waves, glitter 35% at size 50%,
@@ -71,11 +80,16 @@ param(
     [double]$ExposureDay = 1.6,
     [double]$ExposureNight = 2.5,
     [string]$SkyColumns = "",
+    [string]$UnderColumns = "",
     [string]$Body = "",
     [string]$Spectrum = "7,50000,30,1,1",
     [double]$RippleRms = -1.0,
     [double]$Strength = 1.0,
     [double]$DepthSkew = 0.0,
+    # The water's surface in the depth texture after it (1, the mod's since 2026-10-28; 0 as before), and
+    # stand-ins for the game's fog and Volumetric Weather's clouds, which read that texture (-Fog).
+    [int]$WaterDepth = 1,
+    [switch]$Fog,
     [switch]$Layers,
     [string]$Times = "",
     [string]$Corridors = "",
@@ -131,6 +145,8 @@ $lines.Add("skyripples " + (N $start) + " " + (N $span) + " " + $optics::RippleT
 if ($Body -ne "") { $lines.Add("body " + $Body) }
 if ($Spectrum -ne "") { $lines.Add("spectrum " + ($Spectrum.Split(',') -join " ")) }
 $lines.Add("depthskew " + (N $DepthSkew))
+$lines.Add("waterdepth " + $WaterDepth)
+$lines.Add("fog " + $(if ($Fog) { 1 } else { 0 }))
 $lines.Add("citygain " + (N ($optics::CityRippleGain(1.0, $rms))))
 $spread = $optics::Spread($optics::SlopeVariance($optics::CityWind))
 $lines.Add("streak " + (N ($optics::StreakSigma($Streaks, $spread, 45.0))))
@@ -143,7 +159,25 @@ $lv = $foam::LayerVectors()
 for ($i = 0; $i -lt $lv.Length / 4; $i++) { $lines.Add("layer " + $i + " " + (N $lv[4 * $i]) + " " + (N $lv[4 * $i + 1]) + " " + (N $lv[4 * $i + 2]) + " " + (N $lv[4 * $i + 3])) }
 
 $columns = New-Object System.Collections.Generic.List[object]
-if ($Corridors -ne "") {
+if ($UnderColumns -ne "") {
+    foreach ($spec in $UnderColumns.Split(',')) {
+        $part = $spec.Split(':')
+        $vis = -1.0; $caustics = 0.0; $shafts = 0.0; $veil = 0.0
+        if ($part[0] -ne "off") {
+            $vis = [double]::Parse($part[0], $inv)
+            if ($part.Count -gt 1) { $caustics = [double]::Parse($part[1], $inv) }
+            if ($part.Count -gt 2) { $shafts = [double]::Parse($part[2], $inv) }
+            if ($part.Count -gt 3) { $veil = [double]::Parse($part[3], $inv) }
+        }
+        $label = if ($vis -lt 0.0) { "today: no underwater view" } else {
+            ("underwater, visibility {0} m" -f $vis) + $(if ($caustics -gt 0.0) { (", caustics {0:P0}" -f $caustics) } else { "" }) +
+            $(if ($shafts -gt 1.5) { ", the shafts' lit share" } elseif ($shafts -gt 0.0) { ", sun shafts" } else { ", no shafts" }) +
+            $(if ($veil -gt 0.0) { (", veil x{0}" -f $veil) } else { "" }) }
+        $columns.Add(@{ Foam = 1; Seconds = 443.0; Mode = 1; Gain = 1.0; Body = "#0E222B"; Waves = 1; Glitter = 0.35; GlitterSize = 0.5;
+                        Corridor = -1.0; Under = $vis; Caustics = $caustics; Shafts = $shafts; VeilGain = $veil; Label = $label })
+    }
+}
+elseif ($Corridors -ne "") {
     # The layered foam with the mod's defaults (as -Layers), one column per corridor factor.
     $sky = @{ Mode = 1; Gain = 1.0; Body = $(if ($Body -ne "") { $Body } else { "#0E222B" }); Waves = 1; Glitter = 0.35; GlitterSize = 0.5 }
     foreach ($s in $Corridors.Split(',')) {
@@ -210,6 +244,7 @@ foreach ($view in $rows) {
         $col = $columns[$c]
         $sky = if ($col.ContainsKey("Mode")) { " {0} {1} {2} {3} {4} {5}" -f $col.Mode, (N $col.Gain), $col.Body, $col.Waves, (N $col.Glitter), (N $col.GlitterSize) } else { "" }
         if ($col.ContainsKey("Corridor")) { $sky += " " + (N $col.Corridor) }
+        if ($col.ContainsKey("Under")) { $sky += " {0} {1} {2} {3}" -f (N $col.Under), (N $col.Caustics), (N $col.Shafts), (N $col.VeilGain) }
         $lines.Add(("shot {0}_{1} {0} {2} {3} {4}" -f $view, $c, $col.Foam, (N $col.Seconds), (N $strength)) + $sky)
     }
 }

@@ -5,8 +5,24 @@ the mod's name in the game.
 
 ## 1.1.6 — unreleased
 
+### New
+
+- **Under the water** (the Water tab, on by default): with a camera mod that takes the camera below
+  the surface (ACME, First Person Camera), the water is water from inside -- a teal haze that
+  thickens with distance and takes red first, darker the deeper you go and glowing toward the sun,
+  while what lies under the water stays in sight; light shafts where the sun comes in between the
+  shadows of bridges and buildings (from the game's own shadows; not on a Mac yet); the surface
+  seen from below, with the world above through Snell's window and a mirror of the depths around
+  it. A camera half in the water sees the waterline. Rows for the visibility (60 m by default), the
+  light shafts, and sunlight from the waves on the seabed (off by default). Nothing is drawn while
+  the camera is above the water.
+
 ### Fixed
 
+- **Window frames in front of the glass stay frames from afar.** On buildings whose window frames are
+  their own geometry (modelled, or an alpha-mapped plane) standing a few centimetres in front of the
+  glass, the glass was drawn over the frames once the camera zoomed out, so they turned faint and
+  glass-colored. The glass no longer reaches in front of its own surface.
 - **No square of floor and seats through car windows.** On vehicles whose windows are painted only
   partly shiny, the game's floor texture behind the window, a hard-edged square, still showed through
   the glass, glowing at night. The glass now covers those windows fully.
@@ -18,6 +34,12 @@ the mod's name in the game.
   the older Dynamic Resolution mod both on, the game draws the city twice a frame, and the second
   picture, the one on screen, had no city reflected in the water. Both pictures now have it. (Lumina
   already includes dynamic resolution, so the older mod is not needed beside it.)
+- **Tall waves no longer see-through.** The game draws its water without telling the effects that
+  come after it (the fog, Volumetric Weather's clouds) where the water is, so they took each water
+  pixel for whatever lies behind it: a tsunami wave standing against the sky was filled with fog and
+  covered with clouds, as if it were not there, with a hard line at the horizon, and the fog over the
+  water showed the outlines of piers and turbine bases hidden under it. The water's surface is now
+  handed to those effects right after it is drawn (Windows and Linux; on a Mac the game already does).
 
 ### Changed
 

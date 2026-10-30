@@ -724,6 +724,11 @@ namespace RealGlass.UI
             return Localization.Get("Unit.Metres", value.ToString("F1"));
         }
 
+        private static string WholeMetres(float value)
+        {
+            return Localization.Get("Unit.Metres", value.ToString("F0"));
+        }
+
         private static string MetresPerSecond(float value)
         {
             return Localization.Get("Unit.MetresPerSecond", value.ToString("F1"));
@@ -831,6 +836,11 @@ namespace RealGlass.UI
         private static bool WaterCityOn()
         {
             return WaterOn() && (Settings.WaterCity == null || Settings.WaterCity.value);
+        }
+
+        private static bool WaterUnderOn()
+        {
+            return WaterOn() && (Settings.WaterUnder == null || Settings.WaterUnder.value);
         }
 
         /// <summary>A water row's hook: the water controller reads the settings every frame, so only the log needs telling.</summary>
@@ -1897,6 +1907,51 @@ namespace RealGlass.UI
                 DefaultFloat = Settings.Defaults.WaterCityLength,
                 Min = 100f, Max = 300f, Step = 5f,
                 Enabled = WaterCityOn,
+            });
+
+            // The view from under the water (Water/WaterUnder.cs): only camera mods take the camera there.
+            Add(new Row
+            {
+                Kind = RowKind.Toggle,
+                Panel = PanelPage.Water,
+                Group = "WaterUnder",
+                Bool = Settings.WaterUnder,
+                DefaultBool = Settings.Defaults.WaterUnder,
+                Enabled = WaterOn,
+                AfterChange = WaterState("the view from under the water", OnOff(Settings.WaterUnder)),
+            });
+
+            // A black target's visibility (Zaneveld & Pegau 2003): how far one sees, red going first.
+            Add(new Row
+            {
+                Kind = RowKind.Value,
+                Panel = PanelPage.Water,
+                Float = Settings.WaterUnderVisibility,
+                DefaultFloat = Settings.Defaults.WaterUnderVisibility,
+                Min = 5f, Max = 80f, Step = 1f,
+                Format = WholeMetres,
+                Enabled = WaterUnderOn,
+            });
+
+            // The sun's light in the water only where its shadows let it in (the game's shadow map).
+            Add(new Row
+            {
+                Kind = RowKind.Toggle,
+                Panel = PanelPage.Water,
+                Bool = Settings.WaterUnderShafts,
+                DefaultBool = Settings.Defaults.WaterUnderShafts,
+                Enabled = WaterUnderOn,
+                AfterChange = WaterState("light shafts under the water", OnOff(Settings.WaterUnderShafts)),
+            });
+
+            Add(new Row
+            {
+                Kind = RowKind.Percent,
+                Panel = PanelPage.Water,
+                Float = Settings.WaterUnderCaustics,
+                DefaultFloat = Settings.Defaults.WaterUnderCaustics,
+                Min = 0f, Max = 200f, Step = 5f,
+                Enabled = WaterUnderOn,
             });
         }
 

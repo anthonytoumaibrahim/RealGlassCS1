@@ -29,6 +29,10 @@ param(
     [string]$Api = "d3d11",
     [double]$Storey = 3.8,
     [switch]$Shapes,
+    # Five towers west of the city (views framed, framedmid, framedfar), glass all over with frames as
+    # their own geometry 0.02 / 0.05 / 0.1 / 0.25 / 1 m in front of it ("glass:Ofs=f,u" sets the
+    # glass pass's depth Offset).
+    [switch]$Framed,
     # Real vehicle assets for the street south of the middle block (views car, carback, cars,
     # carsabove, carsfar, night...): Workshop .crp files on this machine, ";"-separated, read by the
     # editor (Assets\Editor\PreviewVehicles.cs) -- preview pictures only, nothing of them is copied.
@@ -61,6 +65,7 @@ $env:RG_SUN = $Sun.ToString($inv)
 $env:RG_EXPOSURE = $Exposure.ToString($inv)
 $env:RG_STOREY = $Storey.ToString($inv)
 $env:RG_SHAPES = $(if ($Shapes) { "1" } else { "0" })
+$env:RG_FRAMED = $(if ($Framed) { "1" } else { "0" })
 $env:RG_VEHICLES = $Vehicles
 
 if (Test-Path $log) { Remove-Item $log -Force }

@@ -1,10 +1,15 @@
 // A separate depth record of visible, simulated water. Scene depth may contain a sloping seabed;
 // it is used only for occlusion, never as the reflection's surface position.
-//   0 the water's eye depth, drawn on the game's water meshes.
+//   0 the water's eye depth, drawn on the game's water meshes, culled as the game culls them (Cull
+//     Back: the game draws no underside, so from under the surface nothing is recorded).
 //   1 SCENE DEPTH (a Blit at AfterFinalPass, before the forward water): the camera's depth texture
 //     copied raw, read by pass 0 and the city reflection in its place (WaterSurfaceMask.cs). On Metal
 //     the depth texture read later in the frame holds the game's water itself, pulled toward the
 //     camera by its Offset: every water pixel failed pass 0's test (the author's M1, 2026-10-26).
+//   2 MERGED DEPTH (a Blit right after the forward water): the scene depth with the water's surface
+//     in it, nearest wins, raw as the camera's depth texture; handed to the fog and every later
+//     pass in its place. The game's water writes the depth BUFFER, never the depth texture: a wave
+//     standing in front of the sky read as sky, and the fog and the clouds painted over it.
 Shader "RealGlass/WaterSurfaceMask"
 {
     Properties { _MainTex ("", 2D) = "black" {} }
@@ -14,7 +19,7 @@ Shader "RealGlass/WaterSurfaceMask"
         {
             ZWrite On
             ZTest LEqual
-            Cull Off
+            Cull Back
             Blend Off
             CGPROGRAM
             #pragma target 3.5
@@ -74,6 +79,33 @@ Shader "RealGlass/WaterSurfaceMask"
             float4 frag(v2f_full i) : SV_Target
             {
                 float raw = SAMPLE_DEPTH_TEXTURE_LOD(_CameraDepthTexture, float4(i.uv, 0.0, 0.0));
+                return float4(raw, 0.0, 0.0, 1.0);
+            }
+            ENDCG
+        }
+
+        Pass
+        {
+            ZWrite Off
+            ZTest Always
+            Cull Off
+            Blend Off
+            CGPROGRAM
+            #pragma target 3.5
+            #pragma vertex vert_full
+            #pragma fragment frag
+            #include "UnityCG.cginc"
+            #include "FullScreen.cginc"
+            UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
+            sampler2D _RGWaterSurfaceDepth;
+
+            float4 frag(v2f_full i) : SV_Target
+            {
+                float raw = SAMPLE_DEPTH_TEXTURE_LOD(_CameraDepthTexture, float4(i.uv, 0.0, 0.0));
+                float water = tex2Dlod(_RGWaterSurfaceDepth, float4(i.uv, 0.0, 0.0)).r;
+                // LinearEyeDepth inverted: the raw value of the water's eye depth (either convention).
+                if (water > 0.0 && water < LinearEyeDepth(raw))
+                    raw = (1.0 / water - _ZBufferParams.w) / _ZBufferParams.z;
                 return float4(raw, 0.0, 0.0, 1.0);
             }
             ENDCG

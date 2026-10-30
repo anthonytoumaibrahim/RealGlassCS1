@@ -8,7 +8,8 @@ namespace RealGlass.Water
     /// The F8 panel's Water tab, for one city (on ModController's GameObject, beside the glass;
     /// independent of the glass's switch): the map's water's colour and brightness (<see cref="WaterSurface"/>),
     /// its sky with real water's reflectance per ripple (<see cref="WaterSkyLayer"/>; our cube where it
-    /// cannot draw), the ripples, the foam and the city in it (<see cref="WaterCityReflection"/>).
+    /// cannot draw), the ripples, the foam, the city in it (<see cref="WaterCityReflection"/>) and the
+    /// view from under it (<see cref="WaterUnder"/>).
     /// On by default since 2026-10-11 (off from 2026-10-03). Off means nothing is held: the theme's water, and
     /// _RGWaterHeld = 0 so RealLight's copy of these controls may take it.
     /// </summary>
@@ -23,6 +24,7 @@ namespace RealGlass.Water
         private WaterCityReflection _city;
         private WaterRipples _ripples;
         private WaterFoam _foam;
+        private WaterUnder _under;
         private Vector4[] _table;
         private readonly double _spread = WaterOptics.Spread(WaterOptics.SlopeVariance(WaterOptics.CityWind));
         private bool _failed;
@@ -63,9 +65,11 @@ namespace RealGlass.Water
                 _city = WaterCityReflection.Create();
                 _ripples = WaterRipples.Create();
                 _foam = WaterFoam.Create();
+                _under = WaterUnder.Create();
                 Log.Msg("water: ready (cube " + (_surface != null ? "yes" : "NO SHADER") + ", sky layer " + (_sky != null ? "yes" : "NO SHADER") +
                         ", city reflection " + (_city != null ? "yes" : "NO SHADER") +
                         ", ripples " + (_ripples != null ? "yes" : "NO SHADER") + ", foam " + (_foam != null ? "yes" : "NO SHADER") +
+                        ", under the water " + (_under != null ? "yes" : "NO SHADER") +
                         "; reflectance " + (rho[WaterOptics.TableSize - 1] * 100.0).ToString("F1") + "% looking down, " + (rho[4] * 100.0).ToString("F0") +
                         "% at 1 deg); the ocean waves run with " + wind + "; " + Describe());
             }
@@ -94,7 +98,15 @@ namespace RealGlass.Water
                    ", real sky " + (On(Settings.WaterRealSky) ? Pct(Settings.WaterSky) + ", sun glitter " + Pct(Settings.WaterGlitter) + " (size " + Pct(Settings.WaterGlitterSize) +
                     "), moon glitter " + Pct(Settings.WaterMoonGlitter) + " (size " + Pct(Settings.WaterMoonGlitterSize) + ")" : "off") +
                    ", city " + (On(Settings.WaterCity) ? Pct(Settings.WaterCityDay) + " day / " + Pct(Settings.WaterCityNight) + " night, waves " +
-                   Pct(Settings.WaterCityWaves) + ", streaks " + Pct(Settings.WaterCityStreaks) + ", length " + Pct(Settings.WaterCityLength) : "off");
+                   Pct(Settings.WaterCityWaves) + ", streaks " + Pct(Settings.WaterCityStreaks) + ", length " + Pct(Settings.WaterCityLength) : "off") +
+                   ", " + DescribeUnder();
+        }
+
+        /// <summary>The Under the water rows, for the log.</summary>
+        private static string DescribeUnder()
+        {
+            return "underwater view " + (On(Settings.WaterUnder) ? "on: visibility " + Value(Settings.WaterUnderVisibility, Settings.Defaults.WaterUnderVisibility).ToString("F0") +
+                   " m, light shafts " + (On(Settings.WaterUnderShafts) ? "on" : "off") + ", sunlight on the seabed " + Pct(Settings.WaterUnderCaustics) : "off");
         }
 
         private static bool On(BoolSetting s)
@@ -167,8 +179,67 @@ namespace RealGlass.Water
             }
 
             FoamFrame();
-            CityFrame(light, toSun, skyLayer);
+            float underLevel;
+            Camera underCamera;
+            bool under = UnderWanted(out underCamera, out underLevel);
+            // The city reflection first: it may give the depth texture back, which the view from under
+            // the water then asks for again.
+            CityFrame(light, toSun, skyLayer, under);
+            UnderFrame(under, underCamera, underLevel);
             FollowGlobals();
+        }
+
+        /// <summary>
+        /// Whether the view from under the water draws this frame: switched on, the camera in the water
+        /// (or its near plane dipping in: <see cref="WaterUnder.Below"/>), no info view, not the snapshot
+        /// tool. <paramref name="level"/>: the water's level at the camera.
+        /// </summary>
+        private bool UnderWanted(out Camera camera, out float level)
+        {
+            camera = null;
+            level = float.NaN;
+            if (_under == null || !On(Settings.WaterUnder))
+                return false;
+            if (Singleton<InfoManager>.exists && Singleton<InfoManager>.instance.CurrentMode != InfoManager.InfoMode.None)
+                return false;
+            if (ToolsModifierControl.toolController != null && ToolsModifierControl.toolController.CurrentTool is SnapshotTool)
+                return false;
+            camera = GameCamera.Get();
+            return WaterUnder.Below(camera, out level);
+        }
+
+        /// <summary>
+        /// The view from under the water this frame, or off: lit by the daylight that reaches the water
+        /// (the sun as the water's light reads it, the sky's ambient); its colour the water's own kind's
+        /// (WaterUnderOptics), not the Water color row's: a map theme's near-black water made it grey.
+        /// </summary>
+        private void UnderFrame(bool under, Camera camera, float level)
+        {
+            if (_under == null)
+                return;
+            if (!under)
+            {
+                if (_under.Attached)
+                    _under.Detach(OthersWantDepth());
+                return;
+            }
+
+            Vector3 toSun;
+            Color sun, sky;
+            Light sunLight;
+            SunAndSky(out toSun, out sun, out sky, out sunLight);
+            double[] optics = WaterUnderOptics.Vectors(Value(Settings.WaterUnderVisibility, Settings.Defaults.WaterUnderVisibility),
+                                                       new double[] { toSun.x, toSun.y, toSun.z }, new double[] { sun.r, sun.g, sun.b },
+                                                       new double[] { sky.r, sky.g, sky.b });
+            _under.Show(camera, level, optics, Value(Settings.WaterUnderCaustics, Settings.Defaults.WaterUnderCaustics), ShadedRipples(),
+                        On(Settings.WaterUnderShafts), sunLight, DescribeUnder());
+        }
+
+        /// <summary>The glass or the city reflection still read the depth texture.</summary>
+        private bool OthersWantDepth()
+        {
+            return (_city != null && _city.Attached) ||
+                   (Glass.GlassController.Instance != null && Glass.GlassController.Instance.enabled && On(Settings.GlassEnabled));
         }
 
         /// <summary>
@@ -334,24 +405,40 @@ namespace RealGlass.Water
         /// </summary>
         private static Color WaterLight(out Vector3 toSun)
         {
-            toSun = Vector3.down;
-            Color sun = Color.black;
-            DayNightProperties dn = DayNightProperties.instance;
-            if (dn != null && dn.m_SunLight != null)
-            {
-                toSun = -dn.m_SunLight.forward;
-                Light light = dn.m_SunLight.GetComponent<Light>();
-                if (light != null && light.enabled)
-                    sun = light.color.linear * light.intensity;
-            }
-
-            Color lit = sun * Mathf.Max(0f, toSun.y) + RenderSettings.ambientSkyColor.linear;
+            Color sun, sky;
+            Light sunLight;
+            SunAndSky(out toSun, out sun, out sky, out sunLight);
+            Color lit = sun * Mathf.Max(0f, toSun.y) + sky;
             double r = lit.r, g = lit.g, b = lit.b;
             WaterOptics.FloorLight(ref r, ref g, ref b);
             return new Color((float)r, (float)g, (float)b, 1f);
         }
 
-        private void CityFrame(Color lit, Vector3 toSun, bool skyLayer)
+        /// <summary>
+        /// The sun as the glass reads it (GlassController.ReadFrame): toward it, its light (linear: colour
+        /// x intensity; black while its Light is off -- at night), its Light (null if none), and the sky's
+        /// ambient (linear).
+        /// </summary>
+        private static void SunAndSky(out Vector3 toSun, out Color sun, out Color sky, out Light sunLight)
+        {
+            toSun = Vector3.down;
+            sun = Color.black;
+            sunLight = null;
+            DayNightProperties dn = DayNightProperties.instance;
+            if (dn != null && dn.m_SunLight != null)
+            {
+                toSun = -dn.m_SunLight.forward;
+                sunLight = dn.m_SunLight.GetComponent<Light>();
+                if (sunLight != null && sunLight.enabled)
+                    sun = sunLight.color.linear * sunLight.intensity;
+            }
+
+            sky = RenderSettings.ambientSkyColor.linear;
+        }
+
+        /// <param name="under">The view from under the water draws: the city reflection adds nothing, but
+        /// stays on -- a camera bobbing at the surface would switch it on and off every frame.</param>
+        private void CityFrame(Color lit, Vector3 toSun, bool skyLayer, bool under)
         {
             if (_city == null)
                 return;
@@ -387,7 +474,7 @@ namespace RealGlass.Water
             float day = (float)WaterOptics.Daylight(toSun.y);
             float dayStrength = Value(Settings.WaterCityDay, Settings.Defaults.WaterCityDay);
             float nightStrength = Value(Settings.WaterCityNight, Settings.Defaults.WaterCityNight);
-            float strength = nightStrength + (dayStrength - nightStrength) * day;
+            float strength = under ? 0f : nightStrength + (dayStrength - nightStrength) * day;
             float skyShare = _surface != null && _surface.CubeHeld ? Value(Settings.WaterSky, Settings.Defaults.WaterSky) : 0f;
             // The sky the city takes the place of: the live sky the sky layer draws (light already), or
             // the theme's under our cube (lit by the water's light).
@@ -419,6 +506,8 @@ namespace RealGlass.Water
         {
             if (_city != null && _city.Attached)
                 _city.Detach();
+            if (_under != null && _under.Attached)
+                _under.Detach(OthersWantDepth());
             if (_ripples != null)
                 _ripples.Release();
             if (_foam != null)
@@ -442,6 +531,8 @@ namespace RealGlass.Water
                     _ripples.Destroy();
                 if (_foam != null)
                     _foam.Destroy();
+                if (_under != null)
+                    _under.Destroy();
                 if (_sky != null)
                     _sky.Destroy();
                 if (_surface != null)
@@ -456,6 +547,7 @@ namespace RealGlass.Water
             _city = null;
             _ripples = null;
             _foam = null;
+            _under = null;
             _sky = null;
             _surface = null;
         }
