@@ -97,7 +97,7 @@ public static class FoamPreview
         public RenderTexture Target;
         public Light Sun;
         public Material Skybox, Water, Foam, Reflection, Surface, Sky, Under, UnderToday;
-        public CommandBuffer UnderBuffer, UnderTodayBuffer, ShadowGrab;
+        public CommandBuffer UnderBuffer, UnderDepthBuffer, UnderTodayBuffer, ShadowGrab;
         // The under buffer on the camera (null: none).
         public CommandBuffer UnderOn;
         public GameObject Bridge;
@@ -243,6 +243,10 @@ public static class FoamPreview
                 // pass's): taken off and put back, the next shot read the last view's cascades.
                 if (UnderOn != null)
                     Camera.RemoveCommandBuffer(CameraEvent.BeforeImageEffects, UnderOn);
+                if (UnderOn == UnderBuffer && UnderOn != null)
+                    Camera.RemoveCommandBuffer(CameraEvent.AfterFinalPass, UnderDepthBuffer);
+                if (wanted == UnderBuffer)
+                    Camera.AddCommandBuffer(CameraEvent.AfterFinalPass, UnderDepthBuffer);
                 if (wanted != null)
                     Camera.AddCommandBuffer(CameraEvent.BeforeImageEffects, wanted);
                 if (UnderOn == null && wanted != null)
@@ -312,6 +316,9 @@ public static class FoamPreview
             // The water's surface in the depth texture after it (WaterSurfaceMask's merge, 2026-10-28;
             // false: as before), and the stand-ins for the fog and the clouds that read that texture.
             bool waterDepth = true, fogStandIn = false;
+            // The "today" under pass reads a depth at the near plane everywhere (white): what the author's
+            // game showed on 2026-10-30, when the pass read the global depth texture late in the frame.
+            bool underTodayNear = false;
             foreach (string raw in File.ReadAllLines(Path.Combine(dir, "foam-preview-input.txt")))
             {
                 string[] p = raw.Split(' ');
@@ -349,6 +356,8 @@ public static class FoamPreview
                     body = Hex(p[1]) ?? body;
                 else if (p[0] == "spectrum")
                     waveSpec = new double[] { WaterPreview.F(p[1]), WaterPreview.F(p[2]), WaterPreview.F(p[3]), WaterPreview.F(p[4]), WaterPreview.F(p[5]) };
+                else if (p[0] == "undertodaynear")
+                    underTodayNear = p[1] != "0";
                 else if (p[0] == "depthskew")
                     Shader.SetGlobalFloat("_PreviewDepthSkew", WaterPreview.F(p[1]));
                 else if (p[0] == "shot")
@@ -571,7 +580,12 @@ public static class FoamPreview
             Shader underShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/RealGlass/WaterUnder.shader");
             log.Add("under shader " + (underShader != null ? underShader.name + " supported=" + underShader.isSupported : "MISSING"));
             var under = new Material(underShader);
-            under.SetTexture("_CameraDepthTexture", sceneDepth);
+            // Its own copy of the scene's depth after the final pass (pass 2), held as a temporary texture
+            // to the pass, as WaterUnder.cs does.
+            int underDepth = Shader.PropertyToID("_RGUnderDepth");
+            var underDepthBuffer = new CommandBuffer { name = "RealGlass the scene's depth for under the water (preview)" };
+            underDepthBuffer.GetTemporaryRT(underDepth, -1, -1, 0, FilterMode.Point, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
+            underDepthBuffer.Blit(BuiltinRenderTextureType.CameraTarget, underDepth, under, 2);
             var shadowData = new RenderTexture(24, 1, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear) { filterMode = FilterMode.Point };
             shadowData.Create();
             under.SetTexture("_RGSunShadowData", shadowData);
@@ -585,11 +599,12 @@ public static class FoamPreview
             underBuffer.SetRenderTarget(BuiltinRenderTextureType.CameraTarget);
             underBuffer.DrawMesh(cube, Matrix4x4.identity, under, 0, 0);
             underBuffer.ReleaseTemporaryRT(underFrame);
+            underBuffer.ReleaseTemporaryRT(underDepth);
             // The same as it stood at affebf9, before the surface from below was redone.
             Shader underTodayShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/Editor/PreviewUnderToday.shader");
             log.Add("under (today) shader " + (underTodayShader != null ? underTodayShader.name + " supported=" + underTodayShader.isSupported : "MISSING"));
             var underToday = new Material(underTodayShader);
-            underToday.SetTexture("_CameraDepthTexture", sceneDepth);
+            underToday.SetTexture("_CameraDepthTexture", underTodayNear ? (Texture)Texture2D.whiteTexture : sceneDepth);
             underToday.SetTexture("_RGSunShadowData", shadowData);
             var underTodayBuffer = new CommandBuffer { name = "RealGlass under the water, today (preview)" };
             underTodayBuffer.GetTemporaryRT(underFrame, -1, -1, 0, FilterMode.Bilinear, RenderTextureFormat.ARGBHalf);
@@ -607,7 +622,7 @@ public static class FoamPreview
 
             var scene = new Scene
             {
-                Under = under, UnderBuffer = underBuffer, UnderToday = underToday, UnderTodayBuffer = underTodayBuffer, ShadowGrab = shadowGrab, Bridge = bridge,
+                Under = under, UnderBuffer = underBuffer, UnderDepthBuffer = underDepthBuffer, UnderToday = underToday, UnderTodayBuffer = underTodayBuffer, ShadowGrab = shadowGrab, Bridge = bridge,
                 Coast = coast, Camera = camera, CameraObject = cameraObject, Target = target, Sun = sun, Skybox = skybox, Water = water,
                 Foam = foamMaterial, Reflection = reflection, Surface = surface, Sky = skyMaterial, Capture = capture, SkyCube = skyCube, Towers = towers,
                 CubeFog = cubeFog,
@@ -1575,6 +1590,20 @@ public static class FoamPreview
             // before the bridge, a pier ahead, looking along the water 2 deg down.
             eye = new Vector3(-222f, SeaLevel - 0.05f, 22f);
             at = eye + new Vector3(1f, -0.035f, -0.02f) * 100f;
+        }
+        else if (view == "overbridge")
+        {
+            // The same, 5 cm over the water: the near plane dips in, the waterline across the frame.
+            eye = new Vector3(-222f, SeaLevel + 0.05f, 22f);
+            at = eye + new Vector3(1f, -0.035f, -0.02f) * 100f;
+        }
+        else if (view == "undertop")
+        {
+            // The author's in-game shot (2026-10-30, later): just under the surface (40 cm) 600 m out,
+            // looking toward the town ashore 12 deg up -- the game's near plane, a metre out, crosses the
+            // surface for the upper part of the frame.
+            eye = new Vector3(-600f, SeaLevel - 0.4f, 0f);
+            at = eye + new Vector3(Mathf.Cos(12f * Mathf.Deg2Rad), Mathf.Sin(12f * Mathf.Deg2Rad), 0f) * 100f;
         }
         else if (view == "undershafts")
         {

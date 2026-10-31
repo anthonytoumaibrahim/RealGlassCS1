@@ -1,9 +1,9 @@
 // The view from under the water (RealGlass/Water/WaterUnder.cs draws it, Water/WaterUnderOptics.cs has
 // the numbers and their sources; 2026-10-24, its look redone 2026-10-28 after a player's picture): one
 // full-screen pass while the camera is at or below the water's level, on a copy of the frame before the
-// image effects. Per pixel, the ray from the near plane on -- under water where that point is below the
-// level, so a camera half in the water gets the waterline across the frame -- through the water to what
-// it ends on:
+// image effects. Per pixel, the ray through the water to what it ends on -- from the eye when the eye is
+// under the level (the game's near plane, a metre or more out, may cross the surface: those rays still
+// meet it from below); from the near plane when only that dips in, the waterline across the frame:
 //   THE MURK  the image formation of Jaffe 1990 / McGlamery 1975 as revised by Akkaynak & Treibitz
 //             (2018, "A Revised Underwater Image Formation Model"): what the ray ends on x e^(-c d) +
 //             the veiling light. The water's beam attenuation c per channel (WaterUnderOptics: pure
@@ -67,8 +67,11 @@ Shader "RealGlass/WaterUnder"
             #include "UnityCG.cginc"
             #include "Finite.cginc"
 
-            // The scene before the water (the material's own: WaterSurfaceMask.SceneDepth).
-            UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
+            // The scene before the water: this pass's own copy of the camera's depth texture, taken at
+            // AfterFinalPass (pass 2; WaterUnder.cs). The global _CameraDepthTexture this late in the frame
+            // is not to be trusted: in the author's game (2026-10-30) it read far too near, and every pixel
+            // took the frame as drawn, the city above sharp and lit through the surface.
+            UNITY_DECLARE_DEPTH_TEXTURE(_RGUnderDepth);
             // The frame as drawn (a copy).
             sampler2D _RGUnderFrame;
             // The ripple texture the water is shaded with (the game's layout: x in .w, y in .y).
@@ -440,13 +443,17 @@ Shader "RealGlass/WaterUnder"
                 float2 sxz = cam.xz + d.xz * tLevel;
                 float2 dxz = ddx(sxz), dyz = ddy(sxz);
 
-                // Where the ray starts: the near plane. Above the level, the air's: as drawn.
-                float start = _ProjectionParams.y / along;
+                // Where the ray starts in the water. The eye under the level: at the eye, every ray in the
+                // water from there (the game's near plane is a metre or more out: a ray may cross it above
+                // the surface, yet it left the eye in the water and meets the surface from below). The eye
+                // over it, its near plane dipping in: at the near plane, the rays crossing it above the
+                // level the air's, as drawn.
+                float start = cam.y < level ? 0.0 : _ProjectionParams.y / along;
                 float3 p0 = cam + d * start;
                 if (p0.y >= level)
                     return float4(frame, 1.0);
 
-                float raw = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, uv);
+                float raw = SAMPLE_DEPTH_TEXTURE(_RGUnderDepth, uv);
                 float eye = LinearEyeDepth(raw);
                 bool sky = eye >= 0.999 * _ProjectionParams.z;
                 float tScene = sky ? 1.0e6 : eye / along;
@@ -589,6 +596,32 @@ Shader "RealGlass/WaterUnder"
                 else
                     v = _LightSplitsNear;
                 return v;
+            }
+            ENDCG
+        }
+
+        // 2 SCENE DEPTH (a Blit at AfterFinalPass, before the forward water and every image effect:
+        // WaterUnder.cs): the camera's depth texture copied raw into _RGUnderDepth, as WaterSurfaceMask's
+        // pass 1 copies it for the city reflection.
+        Pass
+        {
+            ZWrite Off
+            ZTest Always
+            Cull Off
+            Blend Off
+
+            CGPROGRAM
+            #pragma target 3.5
+            #pragma vertex vert_full
+            #pragma fragment frag
+            #include "UnityCG.cginc"
+            #include "FullScreen.cginc"
+            UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
+
+            float4 frag(v2f_full i) : SV_Target
+            {
+                float raw = SAMPLE_DEPTH_TEXTURE_LOD(_CameraDepthTexture, float4(i.uv, 0.0, 0.0));
+                return float4(raw, 0.0, 0.0, 1.0);
             }
             ENDCG
         }

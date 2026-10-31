@@ -21,6 +21,9 @@
 #   ... -Views "underlook,underzenith,underaway" -UnderColumns "today:60:0:1,60:0:1"   the surface from below
 #                             (2026-10-30, the author's reference): 8 m under the open sea looking up 40 deg
 #                             toward the sun, 80 deg up, and 25 deg up away from it
+#   ... -Views "undertop,underbridge,overbridge" -UnderColumns "today:60:0:1,60:0:1"   at the waterline: 40 cm
+#                             under looking 12 deg up at the town, 5 cm under / over by the bridge (only the
+#                             camera over the water gets the near plane's waterline across the frame)
 #   ... -Later 3              also the foam this many seconds later (the motion; 0: no such column)
 #   ... -Amount 1 -Shore 1 -Fast 1 -Front 1     the foam's amount and each source's share (1 = the model's)
 #   ... -Sources              a last column: each source's amount as a colour (red shore, green fast, blue fronts)
@@ -97,6 +100,9 @@ param(
     [double]$RippleRms = -1.0,
     [double]$Strength = 1.0,
     [double]$DepthSkew = 0.0,
+    # The "today:" under columns read a depth that is at the near plane everywhere: what the author's game
+    # showed on 2026-10-30 (the pass read the global depth texture late in the frame), for the comparison.
+    [switch]$UnderTodayNear,
     # The water's surface in the depth texture after it (1, the mod's since 2026-10-28; 0 as before), and
     # stand-ins for the game's fog and Volumetric Weather's clouds, which read that texture (-Fog).
     [int]$WaterDepth = 1,
@@ -157,6 +163,7 @@ $lines.Add("skyripples " + (N $start) + " " + (N $span) + " " + $optics::RippleT
 if ($Body -ne "") { $lines.Add("body " + $Body) }
 if ($Spectrum -ne "") { $lines.Add("spectrum " + ($Spectrum.Split(',') -join " ")) }
 $lines.Add("depthskew " + (N $DepthSkew))
+if ($UnderTodayNear) { $lines.Add("undertodaynear 1") }
 $lines.Add("waterdepth " + $WaterDepth)
 $lines.Add("fog " + $(if ($Fog) { 1 } else { 0 }))
 $lines.Add("citygain " + (N ($optics::CityRippleGain(1.0, $rms))))

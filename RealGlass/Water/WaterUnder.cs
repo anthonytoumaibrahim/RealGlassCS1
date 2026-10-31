@@ -6,11 +6,11 @@ using UnityEngine.Rendering;
 namespace RealGlass.Water
 {
     /// <summary>
-    /// The view from under the water (RealGlass/WaterUnder; docs/UNDERWATER-PLAN.md): one command buffer
-    /// on the game's camera at CameraEvent.BeforeImageEffects while the camera is at or below the water's
-    /// level -- a copy of the frame, then the pass over it on a cube round the camera -- and, for the
-    /// light shafts, one on the sun's Light at LightEvent.AfterShadowMap. Detached the rest of the time:
-    /// above the water nothing is copied, grabbed or drawn.
+    /// The view from under the water (RealGlass/WaterUnder; docs/UNDERWATER-PLAN.md): two command buffers
+    /// on the game's camera while the camera is at or below the water's level -- at AfterFinalPass a copy
+    /// of the scene's depth, at BeforeImageEffects a copy of the frame and the pass over it on a cube round
+    /// the camera -- and, for the light shafts, one on the sun's Light at LightEvent.AfterShadowMap.
+    /// Detached the rest of the time: above the water nothing is copied, grabbed or drawn.
     /// </summary>
     /// <remarks>
     /// - Only camera mods take the camera under: the game's own keeps it 2 m over the water
@@ -23,8 +23,12 @@ namespace RealGlass.Water
     /// - Per pixel the shader decides: under where the near plane's point is below the level, so a
     ///   camera half in the water gets the waterline across the frame.
     /// - Before the image effects: after the fog, the glass and the transparents; bloom and the tone
-    ///   mapping come after, as for everything else. The depth it reads there holds no water a ray from
-    ///   under the surface could meet (WaterSurfaceMask records the surface from above only).
+    ///   mapping come after, as for everything else.
+    /// - THE DEPTH (2026-10-30): its own copy of the camera's depth texture, taken by a second buffer at
+    ///   AfterFinalPass -- before the forward water and every image effect, where the city reflection's
+    ///   copy is taken (WaterSurfaceMask) -- and held as a temporary texture to the pass. Until then it read
+    ///   the global _CameraDepthTexture before the image effects, and in the author's game that read far
+    ///   too near: every pixel took the frame as drawn, the city above sharp through the surface, no haze.
     /// - The game draws no water seen from below (Cull Back), nor the mod's layers on it (WaterSky,
     ///   WaterFoam: Cull Back): the surface from below is this pass's alone. The city reflection adds
     ///   nothing meanwhile (WaterController).
@@ -55,9 +59,13 @@ namespace RealGlass.Water
         private static readonly int IdShadowData = Shader.PropertyToID("_RGSunShadowData");
         private static readonly int IdSky = Shader.PropertyToID("_RGUnderSky");
         private static readonly int IdSunLight = Shader.PropertyToID("_RGUnderSunLight");
+        private static readonly int IdDepth = Shader.PropertyToID("_RGUnderDepth");
 
         /// <summary>The shader's pass that writes the sun's cascade constants.</summary>
         private const int PassShadowData = 1;
+
+        /// <summary>The shader's pass that copies the camera's depth texture.</summary>
+        private const int PassSceneDepth = 2;
 
         /// <summary>The ripples' slope per decoded unit of their texture: the game shades still water at 0.5 x 0.5 (WaterGame.cginc).</summary>
         private const float RippleSlope = 0.25f;
@@ -80,6 +88,7 @@ namespace RealGlass.Water
         private readonly Material _capture;
         private readonly Mesh _cube;
         private readonly CommandBuffer _buffer;
+        private readonly CommandBuffer _depthBuffer;
         private readonly CommandBuffer _shadowBuffer;
         private readonly RenderTexture _shadowData;
         private Camera _camera;
@@ -94,12 +103,18 @@ namespace RealGlass.Water
             _material = new Material(shader) { name = "RealGlass under the water", hideFlags = HideFlags.HideAndDontSave };
             _capture = new Material(shader) { name = "RealGlass the sun's cascades", hideFlags = HideFlags.HideAndDontSave };
             _cube = WaterCityReflection.Cube("RealGlassUnderCube");
+            // The scene's depth, copied right after the deferred final pass (THE DEPTH, above); held as a
+            // temporary texture to the pass before the image effects, which lets it go.
+            _depthBuffer = new CommandBuffer { name = "RealGlass the scene's depth for under the water" };
+            _depthBuffer.GetTemporaryRT(IdDepth, -1, -1, 0, FilterMode.Point, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
+            _depthBuffer.Blit(BuiltinRenderTextureType.CameraTarget, IdDepth, _material, PassSceneDepth);
             _buffer = new CommandBuffer { name = "RealGlass under the water" };
             _buffer.GetTemporaryRT(IdFrame, -1, -1, 0, FilterMode.Bilinear, RenderTextureFormat.ARGBHalf);
             _buffer.Blit(BuiltinRenderTextureType.CameraTarget, IdFrame);
             _buffer.SetRenderTarget(BuiltinRenderTextureType.CameraTarget);
             _buffer.DrawMesh(_cube, Matrix4x4.identity, _material, 0, 0);
             _buffer.ReleaseTemporaryRT(IdFrame);
+            _buffer.ReleaseTemporaryRT(IdDepth);
 
             // Zeros until the sun's first capture: no cascade holds any point (their radii 0), all sunlit.
             _shadowData = new RenderTexture(24, 1, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear)
@@ -123,7 +138,7 @@ namespace RealGlass.Water
             Shader shader = ShaderBundle.Get(ShaderBundle.WaterUnder);
             if (shader == null || !shader.isSupported)
                 return null;
-            if (!SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.ARGBFloat))
+            if (!SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.ARGBFloat) || !SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.RFloat))
             {
                 Log.Warn("water: float render textures are unsupported; no view from under the water");
                 return null;
@@ -178,10 +193,11 @@ namespace RealGlass.Water
             {
                 Detach(false);
                 _addedDepth = false;
+                camera.AddCommandBuffer(CameraEvent.AfterFinalPass, _depthBuffer);
                 camera.AddCommandBuffer(CameraEvent.BeforeImageEffects, _buffer);
                 _camera = camera;
                 string line = "water: under the water on '" + camera.name + "' (level " + level.ToString("F1") + " m, camera at " +
-                              camera.transform.position.y.ToString("F1") + " m): a copy of the frame and one pass before the image effects; " + describe;
+                              camera.transform.position.y.ToString("F1") + " m): the scene's depth copied after the final pass, a copy of the frame and one pass before the image effects; " + describe;
                 if (!_loggedOnce)
                     Log.Msg(line);
                 else if (Log.Detailed)
@@ -301,6 +317,7 @@ namespace RealGlass.Water
 
             try
             {
+                _camera.RemoveCommandBuffer(CameraEvent.AfterFinalPass, _depthBuffer);
                 _camera.RemoveCommandBuffer(CameraEvent.BeforeImageEffects, _buffer);
                 if (_addedDepth && !othersWantDepth)
                     _camera.depthTextureMode &= ~DepthTextureMode.Depth;
@@ -320,6 +337,7 @@ namespace RealGlass.Water
         {
             Detach(true);
             _buffer.Release();
+            _depthBuffer.Release();
             _shadowBuffer.Release();
             _shadowData.Release();
             UnityEngine.Object.Destroy(_shadowData);
