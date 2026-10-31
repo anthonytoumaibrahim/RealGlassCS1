@@ -6,7 +6,8 @@ using UnityEngine;
 namespace RealGlass
 {
     /// <summary>
-    /// Loads the mod icon (Openclipart's "Window" by ali2013, public domain, 80 x 80: see
+    /// Loads the mod icon (Lucide's mirror-rectangular, white, 72 x 72, drawn from
+    /// Resources\GlassIcon.lucide.txt by ModsLibCS1's make-button-icon.ps1: see
     /// THIRD-PARTY-NOTICES.md) out of the assembly's embedded resources.
     /// </summary>
     internal static class IconLoader

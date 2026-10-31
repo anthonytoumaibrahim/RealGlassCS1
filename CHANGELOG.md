@@ -55,6 +55,10 @@ the mod's name in the game.
   most. Nothing changes in how the glass looks. (Measured before the change on a highway with
   thousands of vehicles a second: memory did not grow with the glass on; this takes out the fixed
   reservation per model.)
+- **A new button icon, on a round button.** The mod's button (and its Unified UI icon) shows a white
+  mirror glyph in place of the window picture, and the button is the game's round one in every panel
+  look, matching Play It!'s and Render It's buttons beside it. It was a rounded square in the
+  See-through, Blue and Frosted looks.
 
 ## 1.1.5 — 2026-10-26
 
